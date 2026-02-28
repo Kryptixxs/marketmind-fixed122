@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Calendar, ArrowRight, Brain, Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import Link from 'next/link';
 import { analyzeEconomicEvent } from '@/lib/analyzeEvent';
-import { fetchEconomicCalendar, filterTodayEvents, isEconomicCalendarConfigured, type CalendarEvent } from '@/app/actions/fetchEconomicCalendar';
+import { fetchEconomicCalendar, type CalendarEvent } from '@/app/actions/fetchEconomicCalendar';
 import { useSettings } from '@/context/SettingsContext';
 import { eventMatchesCurrency } from '@/lib/economicCalendar';
 
@@ -50,19 +50,48 @@ export function EconomicCalendarList() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [title, setTitle] = useState("Today's Events");
 
   useEffect(() => {
     async function load() {
+      setLoading(true);
+      setError(null);
       try {
         const data = await fetchEconomicCalendar();
-        const today = await filterTodayEvents(data);
-        const filtered = applySettingsFilter(today, settings.impactFilter, settings.currency);
+        
+        const now = new Date();
+        const isSameDay = (d1: Date, d2: Date) => 
+          d1.getFullYear() === d2.getFullYear() &&
+          d1.getMonth() === d2.getMonth() &&
+          d1.getDate() === d2.getDate();
+
+        // 1. Try to get events for today (local time)
+        let relevantEvents = data.filter(e => isSameDay(new Date(e.date), now));
+        let displayTitle = "Today's Events";
+
+        // 2. If no events today, get upcoming events for the rest of the week
+        if (relevantEvents.length === 0) {
+          relevantEvents = data.filter(e => new Date(e.date) > now);
+          if (relevantEvents.length > 0) {
+            displayTitle = "Upcoming Events";
+          }
+        }
+
+        // 3. Apply user settings (Impact/Currency)
+        const filtered = applySettingsFilter(relevantEvents, settings.impactFilter, settings.currency);
+        
+        // 4. Sort: High impact first, then by time
         const sorted = filtered.sort((a, b) => {
-          const order: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
-          return (order[a.impact] ?? 3) - (order[b.impact] ?? 3);
+          const impactOrder: Record<string, number> = { High: 0, Medium: 1, Low: 2 };
+          const impactDiff = (impactOrder[a.impact] ?? 3) - (impactOrder[b.impact] ?? 3);
+          if (impactDiff !== 0) return impactDiff;
+          return new Date(a.date).getTime() - new Date(b.date).getTime();
         });
+
         setEvents(sorted.slice(0, 6));
-      } catch {
+        setTitle(displayTitle);
+      } catch (err) {
+        console.error(err);
         setError('Could not load calendar data.');
       } finally {
         setLoading(false);
@@ -131,7 +160,7 @@ export function EconomicCalendarList() {
             <Calendar size={15} color="var(--color-accent)" />
           </div>
           <span style={{ fontSize: '1rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'rgba(255,255,255,0.92)' }}>
-            Today's Events
+            {title}
           </span>
         </div>
         <Link href="/economic" style={{
@@ -163,7 +192,7 @@ export function EconomicCalendarList() {
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 10 }}>
             <Calendar size={34} style={{ opacity: 0.12 }} />
             <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.30)', fontWeight: 500, textAlign: 'center' }}>
-              No major events scheduled for today.
+              No major events found.
             </p>
           </div>
         ) : (
@@ -173,6 +202,13 @@ export function EconomicCalendarList() {
               const hasActual = !!event.actual;
               const actualVsForecast = hasActual && event.forecast
                 ? parseFloat(event.actual) >= parseFloat(event.forecast)
+                : null;
+              
+              const eventDate = new Date(event.date);
+              // Show date if listing upcoming events
+              const showDate = title === "Upcoming Events";
+              const dateString = showDate 
+                ? eventDate.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })
                 : null;
 
               return (
@@ -211,6 +247,11 @@ export function EconomicCalendarList() {
                       minWidth: 48, flexShrink: 0,
                       boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.08)',
                     }}>
+                      {showDate && (
+                        <span style={{ fontSize: '0.5rem', fontWeight: 700, color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', marginBottom: 2 }}>
+                          {dateString}
+                        </span>
+                      )}
                       <span style={{ fontSize: '0.625rem', fontWeight: 700, color: 'rgba(255,255,255,0.85)', lineHeight: 1.2, whiteSpace: 'nowrap' }}>
                         {event.time === 'All Day' ? 'All' : event.time.split(' ')[0]}
                       </span>
