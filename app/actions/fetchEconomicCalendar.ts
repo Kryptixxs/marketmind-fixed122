@@ -29,21 +29,39 @@ function normalizeImpact(impact: string): string {
   return 'Low';
 }
 
+// --- In-Memory Cache ---
+// preventing 429s during hot reloads
+let cachedData: CalendarEvent[] | null = null;
+let lastFetchTime = 0;
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+
 /**
  * Fetches the official JSON feed which is much more reliable than scraping.
  */
 async function fetchJSONFeed(): Promise<CalendarEvent[]> {
+  const now = Date.now();
+  
+  // Return cached data if fresh
+  if (cachedData && (now - lastFetchTime < CACHE_DURATION)) {
+    return cachedData;
+  }
+
   const url = 'https://nfs.faireconomy.media/ff_calendar_thisweek.json';
   
   try {
     console.log('Fetching economic calendar from JSON feed...');
     const response = await fetch(url, {
-      cache: 'no-store',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
       },
-      next: { revalidate: 300 } // Cache for 5 minutes
+      next: { revalidate: 3600 } // Ask Next.js to cache for 1 hour
     });
+
+    // Handle Rate Limiting gracefully
+    if (response.status === 429) {
+      console.warn('Rate limited (429) by Forex Factory. Returning cached data if available.');
+      return cachedData || [];
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);
@@ -55,7 +73,7 @@ async function fetchJSONFeed(): Promise<CalendarEvent[]> {
       throw new Error('Data is not an array');
     }
 
-    return data.map((item: any) => {
+    const mappedData = data.map((item: any) => {
       const dateStr = item.date || '';
       let timeStr = 'All Day';
       
@@ -85,9 +103,17 @@ async function fetchJSONFeed(): Promise<CalendarEvent[]> {
         country: country,
       };
     });
+
+    // Update Cache
+    cachedData = mappedData;
+    lastFetchTime = now;
+    
+    return mappedData;
+
   } catch (error) {
     console.error('Failed to fetch JSON feed:', error);
-    return [];
+    // Fallback to cache if request fails completely
+    return cachedData || [];
   }
 }
 
