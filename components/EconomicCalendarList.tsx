@@ -4,8 +4,9 @@ import { useState, useEffect } from 'react';
 import { Calendar, ArrowRight, Brain, Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import Link from 'next/link';
 import { analyzeEconomicEvent } from '@/lib/analyzeEvent';
-import { fetchEconomicCalendar, filterTodayEvents, type CalendarEvent } from '@/app/actions/fetchEconomicCalendar';
+import { fetchEconomicCalendar, filterTodayEvents, isEconomicCalendarConfigured, type CalendarEvent } from '@/app/actions/fetchEconomicCalendar';
 import { useSettings } from '@/context/SettingsContext';
+import { eventMatchesCurrency } from '@/lib/economicCalendar';
 
 type EventAnalysis = {
   impactRating: number;
@@ -20,9 +21,9 @@ type EventItem = CalendarEvent & {
 };
 
 const IMPACT_STYLES: Record<string, { bg: string; color: string; border: string; label: string }> = {
-  High:   { bg: 'rgba(255,69,58,0.12)',  color: '#FF453A', border: 'rgba(255,69,58,0.25)',  label: 'High' },
+  High: { bg: 'rgba(255,69,58,0.12)', color: '#FF453A', border: 'rgba(255,69,58,0.25)', label: 'High' },
   Medium: { bg: 'rgba(255,159,10,0.12)', color: '#FF9F0A', border: 'rgba(255,159,10,0.25)', label: 'Med' },
-  Low:    { bg: 'rgba(48,209,88,0.10)',  color: '#30D158', border: 'rgba(48,209,88,0.22)',  label: 'Low' },
+  Low: { bg: 'rgba(48,209,88,0.10)', color: '#30D158', border: 'rgba(48,209,88,0.22)', label: 'Low' },
 };
 
 function SentimentIcon({ sentiment }: { sentiment: string }) {
@@ -39,7 +40,7 @@ function applySettingsFilter(
   if (impactFilter === 'All' && (currency === 'All' || !currency)) return events;
   return events.filter((e) => {
     const impactOk = impactFilter === 'All' || e.impact === impactFilter;
-    const currencyOk = currency === 'All' || !currency || e.currency === currency;
+    const currencyOk = eventMatchesCurrency(e, currency);
     return impactOk && currencyOk;
   });
 }

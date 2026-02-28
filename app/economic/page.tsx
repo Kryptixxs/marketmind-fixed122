@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Settings, LayoutGrid, Brain, Loader2, X } from 'lucide-react';
 import { analyzeEconomicEvent } from '@/lib/analyzeEvent';
-import { fetchEconomicCalendarForWeek } from '@/app/actions/fetchEconomicCalendar';
+import { fetchEconomicCalendarForWeek, isEconomicCalendarConfigured } from '@/app/actions/fetchEconomicCalendar';
 import { SettingsModal } from '@/components/SettingsModal';
 import { useSettings } from '@/context/SettingsContext';
+import { eventMatchesCurrency } from '@/lib/economicCalendar';
 
 type EventAnalysis = {
   impactRating: number;
@@ -30,14 +31,14 @@ type DayData = {
 };
 
 function filterBySettings(
-  events: { impact: string; currency: string }[],
+  events: { impact: string; currency: string; country: string }[],
   impactFilter: string,
   currency: string
 ) {
   if (impactFilter === 'All' && (currency === 'All' || !currency)) return events;
   return events.filter((e) => {
     const impactOk = impactFilter === 'All' || impactFilter === e.impact;
-    const currencyOk = currency === 'All' || !currency || e.currency === currency;
+    const currencyOk = eventMatchesCurrency(e, currency);
     return impactOk && currencyOk;
   });
 }
@@ -46,7 +47,7 @@ export default function EconomicCalendar() {
   const { settings } = useSettings();
   const [days, setDays] = useState<DayData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedEvent, setSelectedEvent] = useState<{dayIndex: number, eventIndex: number} | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<{ dayIndex: number, eventIndex: number } | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
@@ -62,7 +63,7 @@ export default function EconomicCalendar() {
       setLoading(true);
       try {
         const data = await fetchEconomicCalendarForWeek(weekOffset);
-        
+
         if (!data || !Array.isArray(data)) {
           setDays([]);
           setLoading(false);
@@ -74,7 +75,7 @@ export default function EconomicCalendar() {
         const startOfWeek = new Date(today);
         startOfWeek.setDate(today.getDate() - currentDay + weekOffset * 7);
         startOfWeek.setHours(0, 0, 0, 0);
-        
+
         const weekDays = Array.from({ length: 7 }).map((_, i) => {
           const d = new Date(startOfWeek);
           d.setDate(startOfWeek.getDate() + i);
@@ -86,14 +87,14 @@ export default function EconomicCalendar() {
             events: [] as EventItem[]
           };
         });
-        
+
         filtered.forEach((item: any) => {
           if (!item.date) return;
           const date = new Date(item.date);
           const itemYear = date.getFullYear();
           const itemMonth = date.getMonth();
           const itemDate = date.getDate();
-          const dayIndex = weekDays.findIndex(d => 
+          const dayIndex = weekDays.findIndex(d =>
             d.year === itemYear && d.month === itemMonth && d.date === itemDate
           );
           if (dayIndex !== -1) {
@@ -107,7 +108,7 @@ export default function EconomicCalendar() {
         });
 
         setDays(weekDays as any);
-        
+
         // Scroll to current hour after a short delay to allow rendering
         setTimeout(() => {
           const currentHour = new Date().getHours();
@@ -117,7 +118,7 @@ export default function EconomicCalendar() {
             container.scrollTop = Math.max(0, (currentHour - 2) * 120);
           }
         }, 100);
-        
+
       } catch (error) {
         console.error('Failed to load calendar:', error);
       } finally {
@@ -128,8 +129,8 @@ export default function EconomicCalendar() {
   }, [weekOffset, settings.impactFilter, settings.currency]);
 
   const handleAnalyze = async (dayIndex: number, eventIndex: number) => {
-    setSelectedEvent({dayIndex, eventIndex});
-    
+    setSelectedEvent({ dayIndex, eventIndex });
+
     if (days[dayIndex].events[eventIndex].analysis || days[dayIndex].events[eventIndex].isLoading) return;
 
     const newDays = [...days];
@@ -181,20 +182,19 @@ export default function EconomicCalendar() {
                 <ChevronRight size={16} />
               </button>
             </div>
-            
+
             <div className="flex items-center bg-surface/50 border border-border/50 rounded-full p-1 shadow-sm backdrop-blur-md">
               <button
                 type="button"
                 onClick={() => setViewMode((m) => (m === 'week' ? 'day' : 'week'))}
-                className={`px-4 py-2 text-sm font-semibold rounded-full flex items-center gap-2 shadow-sm transition-colors ${
-                  viewMode === 'week' ? 'bg-background text-text-primary' : 'text-text-secondary hover:text-text-primary'
-                }`}
+                className={`px-4 py-2 text-sm font-semibold rounded-full flex items-center gap-2 shadow-sm transition-colors ${viewMode === 'week' ? 'bg-background text-text-primary' : 'text-text-secondary hover:text-text-primary'
+                  }`}
               >
                 <LayoutGrid size={16} />
                 {viewMode === 'week' ? 'Week' : 'Day'}
               </button>
             </div>
-            
+
             <button
               type="button"
               onClick={() => setSettingsOpen(true)}
@@ -206,15 +206,19 @@ export default function EconomicCalendar() {
           </div>
         </div>
 
-        {weekOffset !== 0 && !loading && days.every((d: any) => d.events.length === 0) && (
+        {!loading && weekOffset !== 0 && days.every((d: any) => d.events.length === 0) && (
           <div className="px-4 py-2 text-sm text-text-secondary bg-surface/80 border border-border/50 rounded-xl mx-4 mb-2">
-            Event data for this week may not be available from the data source. Try &quot;This Week&quot; for current events.
+            No events returned for this week. Try &quot;This Week&quot;.
           </div>
         )}
         <div className="flex-1 overflow-auto relative glass-card" id="calendar-grid-container">
           {loading ? (
             <div className="flex items-center justify-center h-full text-text-secondary">
               <Loader2 className="animate-spin w-8 h-8 text-accent" />
+            </div>
+          ) : days.every((d: any) => d.events.length === 0) ? (
+            <div className="flex flex-col items-center justify-center h-full text-text-secondary px-6 text-center gap-4">
+              <p className="text-base font-medium">No major events scheduled for today.</p>
             </div>
           ) : (
             <div className="min-w-[1000px] h-full flex flex-col">
@@ -223,9 +227,9 @@ export default function EconomicCalendar() {
                 <div className="w-20 shrink-0 border-r border-border/50 p-4 text-xs text-text-secondary text-center font-semibold tracking-wide uppercase flex items-center justify-center">EST</div>
                 {days.map((day: any, i) => {
                   const today = new Date();
-                  const isToday = day.year === today.getFullYear() && 
-                                  day.month === today.getMonth() && 
-                                  day.date === today.getDate();
+                  const isToday = day.year === today.getFullYear() &&
+                    day.month === today.getMonth() &&
+                    day.date === today.getDate();
                   return (
                     <div key={i} className={`flex-1 border-r border-border/50 p-4 text-center transition-colors ${isToday ? 'bg-accent/10' : ''}`}>
                       <span className={`text-sm font-bold tracking-wide uppercase ${isToday ? 'text-accent' : 'text-text-secondary'}`}>
@@ -257,9 +261,9 @@ export default function EconomicCalendar() {
                     </div>
                     {days.map((day: any, j) => {
                       const today = new Date();
-                      const isToday = day.year === today.getFullYear() && 
-                                      day.month === today.getMonth() && 
-                                      day.date === today.getDate();
+                      const isToday = day.year === today.getFullYear() &&
+                        day.month === today.getMonth() &&
+                        day.date === today.getDate();
                       return (
                         <div key={j} className={`flex-1 border-r border-border/50 p-2 relative ${isToday ? 'bg-accent/5' : ''}`}>
                           <div className="flex flex-col gap-2">
@@ -267,31 +271,29 @@ export default function EconomicCalendar() {
                               const eventHour = parseInt(e.time.split(':')[0]);
                               const isPM = e.time.includes('PM');
                               const eventHour24 = isPM && eventHour !== 12 ? eventHour + 12 : (!isPM && eventHour === 12 ? 0 : eventHour);
-                              
+
                               const gridHour = parseInt(hour.split(' ')[0]);
                               const gridIsPM = hour.includes('PM');
                               const gridHour24 = gridIsPM && gridHour !== 12 ? gridHour + 12 : (!gridIsPM && gridHour === 12 ? 0 : gridHour);
-                              
+
                               return eventHour24 === gridHour24;
                             }).map((event: any, k: number) => {
                               const eventIndex = day.events.findIndex((e: any) => e === event);
                               return (
-                                <div 
-                                  key={k} 
-                                  className={`bg-surface/80 backdrop-blur-xl border rounded-2xl p-3 hover:bg-surface-hover hover:shadow-lg transition-all cursor-pointer group ${
-                                    selectedEvent?.dayIndex === j && selectedEvent?.eventIndex === eventIndex 
-                                      ? 'border-accent ring-2 ring-accent/30 shadow-md' 
-                                      : 'border-border/50 hover:border-border'
-                                  }`}
+                                <div
+                                  key={k}
+                                  className={`bg-surface/80 backdrop-blur-xl border rounded-2xl p-3 hover:bg-surface-hover hover:shadow-lg transition-all cursor-pointer group ${selectedEvent?.dayIndex === j && selectedEvent?.eventIndex === eventIndex
+                                    ? 'border-accent ring-2 ring-accent/30 shadow-md'
+                                    : 'border-border/50 hover:border-border'
+                                    }`}
                                   onClick={() => handleAnalyze(j, eventIndex)}
                                 >
                                   <div className="flex items-center justify-between mb-2">
                                     <span className="text-xs font-semibold text-text-secondary flex items-center gap-1.5">
-                                      <span className={`w-2 h-2 rounded-full ${
-                                        event.impact === 'High' ? 'bg-negative shadow-[0_0_8px_rgba(255,69,58,0.6)]' :
+                                      <span className={`w-2 h-2 rounded-full ${event.impact === 'High' ? 'bg-negative shadow-[0_0_8px_rgba(255,69,58,0.6)]' :
                                         event.impact === 'Medium' ? 'bg-warning shadow-[0_0_8px_rgba(255,159,10,0.6)]' :
-                                        'bg-positive shadow-[0_0_8px_rgba(48,209,88,0.6)]'
-                                      }`} />
+                                          'bg-positive shadow-[0_0_8px_rgba(48,209,88,0.6)]'
+                                        }`} />
                                       {event.time}
                                     </span>
                                     {event.isLoading ? (
@@ -326,22 +328,21 @@ export default function EconomicCalendar() {
               <Brain size={20} className="text-accent" />
               Gemini Insights
             </h3>
-            <button 
+            <button
               onClick={() => setSelectedEvent(null)}
               className="p-2 text-text-secondary hover:text-text-primary hover:bg-surface-hover rounded-full transition-all bg-surface/50 border border-border/50"
             >
               <X size={18} />
             </button>
           </div>
-          
+
           <div className="p-6 flex flex-col gap-6 overflow-y-auto">
             <div className="flex flex-col gap-2">
               <span className="text-sm font-semibold text-text-secondary flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${
-                  selectedEventData.impact === 'High' ? 'bg-negative shadow-[0_0_8px_rgba(255,69,58,0.6)]' :
+                <span className={`w-2.5 h-2.5 rounded-full ${selectedEventData.impact === 'High' ? 'bg-negative shadow-[0_0_8px_rgba(255,69,58,0.6)]' :
                   selectedEventData.impact === 'Medium' ? 'bg-warning shadow-[0_0_8px_rgba(255,159,10,0.6)]' :
-                  'bg-positive shadow-[0_0_8px_rgba(48,209,88,0.6)]'
-                }`} />
+                    'bg-positive shadow-[0_0_8px_rgba(48,209,88,0.6)]'
+                  }`} />
                 {selectedEventData.time} • {selectedEventData.country}
               </span>
               <h2 className="text-2xl font-bold text-text-primary leading-tight">{selectedEventData.title}</h2>
@@ -357,11 +358,10 @@ export default function EconomicCalendar() {
                 <div className="glass-card p-5 flex flex-col gap-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Sentiment</span>
-                    <span className={`text-sm font-bold px-3 py-1 rounded-full ${
-                      selectedEventData.analysis.sentiment === 'Bullish' ? 'bg-positive/20 text-positive' :
+                    <span className={`text-sm font-bold px-3 py-1 rounded-full ${selectedEventData.analysis.sentiment === 'Bullish' ? 'bg-positive/20 text-positive' :
                       selectedEventData.analysis.sentiment === 'Bearish' ? 'bg-negative/20 text-negative' :
-                      'bg-warning/20 text-warning'
-                    }`}>
+                        'bg-warning/20 text-warning'
+                      }`}>
                       {selectedEventData.analysis.sentiment}
                     </span>
                   </div>
@@ -390,7 +390,7 @@ export default function EconomicCalendar() {
             ) : (
               <div className="flex flex-col items-center justify-center py-16 gap-5 text-text-secondary">
                 <p className="text-base text-center font-medium">Click "Analyze" to generate AI insights for this event.</p>
-                <button 
+                <button
                   onClick={() => {
                     if (selectedEvent) {
                       handleAnalyze(selectedEvent.dayIndex, selectedEvent.eventIndex);
