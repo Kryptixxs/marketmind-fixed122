@@ -1,12 +1,10 @@
 'use server';
 
-import * as cheerio from 'cheerio';
-
 export interface CalendarEvent {
   date: string;       // ISO string
   time: string;       // Formatted time or "All Day"
   currency: string;
-  impact: string;     // Inferred for Yahoo
+  impact: string;     // Inferred
   title: string;
   forecast: string;
   previous: string;
@@ -14,11 +12,11 @@ export interface CalendarEvent {
   country: string;
 }
 
-// Map Yahoo country codes to currencies
+// Map country names to currencies
 const COUNTRY_TO_CURRENCY: Record<string, string> = {
-  'US': 'USD', 'United States': 'USD',
-  'EMU': 'EUR', 'Eurozone': 'EUR', 'Germany': 'EUR', 'France': 'EUR', 'Italy': 'EUR', 'Spain': 'EUR',
-  'UK': 'GBP', 'United Kingdom': 'GBP', 'Great Britain': 'GBP',
+  'United States': 'USD', 'USA': 'USD', 'US': 'USD',
+  'Euro Zone': 'EUR', 'Germany': 'EUR', 'France': 'EUR', 'Italy': 'EUR', 'Spain': 'EUR',
+  'United Kingdom': 'GBP', 'Great Britain': 'GBP', 'UK': 'GBP',
   'Japan': 'JPY',
   'China': 'CNY',
   'Australia': 'AUD',
@@ -28,15 +26,16 @@ const COUNTRY_TO_CURRENCY: Record<string, string> = {
   'India': 'INR',
   'Brazil': 'BRL',
   'South Korea': 'KRW',
+  'Russia': 'RUB',
 };
 
 // Heuristic to guess impact based on event title keywords
 function inferImpact(title: string): string {
   const t = title.toLowerCase();
-  if (t.includes('interest rate') || t.includes('non-farm') || t.includes('gdp') || t.includes('cpi') || t.includes('fomc') || t.includes('payroll')) {
+  if (t.includes('rate decision') || t.includes('interest rate') || t.includes('non-farm') || t.includes('gdp') || t.includes('cpi') || t.includes('fomc') || t.includes('payroll') || t.includes('meeting')) {
     return 'High';
   }
-  if (t.includes('pmi') || t.includes('sales') || t.includes('unemployment') || t.includes('sentiment') || t.includes('inventory')) {
+  if (t.includes('pmi') || t.includes('sales') || t.includes('unemployment') || t.includes('sentiment') || t.includes('inventory') || t.includes('confidence') || t.includes('claims')) {
     return 'Medium';
   }
   return 'Low';
@@ -47,91 +46,61 @@ let cachedData: { weekKey: string, events: CalendarEvent[] } | null = null;
 let lastFetchTime = 0;
 const CACHE_DURATION = 15 * 60 * 1000; // 15 mins
 
-async function fetchYahooDay(dateStr: string): Promise<CalendarEvent[]> {
+async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
   // dateStr format: YYYY-MM-DD
-  const url = `https://finance.yahoo.com/calendar/economic?day=${dateStr}`;
+  const url = `https://api.nasdaq.com/api/calendar/economicevents?date=${dateStr}`;
   
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    
     const res = await fetch(url, {
-      signal: controller.signal,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept': 'application/json, text/plain, */*',
+        'Origin': 'https://www.nasdaq.com',
+        'Referer': 'https://www.nasdaq.com/',
         'Accept-Language': 'en-US,en;q=0.9',
       },
       next: { revalidate: 3600 }
     });
-    clearTimeout(timeout);
     
     if (!res.ok) {
-      console.warn(`Yahoo fetch failed for ${dateStr}: ${res.status}`);
+      console.warn(`Nasdaq API failed for ${dateStr}: ${res.status}`);
       return [];
     }
 
-    const html = await res.text();
-    const $ = cheerio.load(html);
-    const events: CalendarEvent[] = [];
+    const data = await res.json();
+    const rows = data?.data?.rows;
 
-    // Yahoo table rows are usually inside a <tbody>
-    $('table tbody tr').each((_, el) => {
-      const cols = $(el).find('td');
-      if (cols.length < 5) return;
+    if (!Array.isArray(rows)) return [];
 
-      const timeText = $(cols[0]).text().trim();
-      const country = $(cols[1]).text().trim();
-      const title = $(cols[2]).text().trim();
-      const actual = $(cols[3]).text().trim(); // "Actual" column index varies sometimes, usually 3
-      const forecast = $(cols[4]).text().trim(); // "Market Expectation"
-      const previous = $(cols[5]).text().trim(); // "Prior"
+    return rows.map((item: any) => {
+      // Nasdaq fields: "gmt", "country", "eventName", "actual", "consensus", "previous"
+      const country = item.country || 'Global';
+      const title = item.eventName || 'Economic Event';
+      const timeText = item.gmt || 'All Day'; // usually HH:mm or 'Tentative'
 
-      if (!title) return;
-
-      // Construct a rough ISO date
-      // timeText is usually "12:30 PM" or "Tentative"
+      // Construct ISO date if time is available
       let fullDateStr = dateStr;
       if (timeText.includes(':')) {
-        // Simple append, actual timezone handling ideally requires offset parsing
-        // We'll treat it as EST/EDT usually for Yahoo US site, but let's just keep it simple string for UI
-        fullDateStr = `${dateStr}T${convertTo24Hour(timeText)}`;
+        fullDateStr = `${dateStr}T${timeText}:00`;
       }
 
-      const currency = COUNTRY_TO_CURRENCY[country] || 'USD'; // Default fallback
-
-      events.push({
+      return {
         date: fullDateStr,
         time: timeText,
-        currency,
+        currency: COUNTRY_TO_CURRENCY[country] || 'USD',
         impact: inferImpact(title),
         title,
-        forecast: forecast !== '-' ? forecast : '',
-        previous: previous !== '-' ? previous : '',
-        actual: actual !== '-' ? actual : '',
+        forecast: item.consensus || '',
+        previous: item.previous || '',
+        actual: item.actual || '',
         country
-      });
+      };
     });
 
-    return events;
-
   } catch (err) {
-    console.error(`Error scraping Yahoo for ${dateStr}:`, err);
+    console.error(`Error fetching Nasdaq for ${dateStr}:`, err);
     return [];
   }
-}
-
-function convertTo24Hour(time12h: string) {
-  const [time, modifier] = time12h.split(' ');
-  if (!time || !modifier) return '00:00:00';
-  let [hours, minutes] = time.split(':');
-  if (hours === '12') {
-    hours = '00';
-  }
-  if (modifier === 'PM') {
-    hours = String(parseInt(hours, 10) + 12);
-  }
-  return `${hours.padStart(2, '0')}:${minutes}:00`;
 }
 
 function getWeekDates(offset: number) {
@@ -156,15 +125,14 @@ export async function fetchEconomicCalendarForWeek(weekOffset: number): Promise<
   const weekDates = getWeekDates(weekOffset);
   const weekKey = weekDates[0]; // cache key by monday date
 
-  // Check cache
   const now = Date.now();
   if (cachedData && cachedData.weekKey === weekKey && (now - lastFetchTime < CACHE_DURATION)) {
     return cachedData.events;
   }
 
   // Fetch all 7 days in parallel
-  console.log(`Fetching Yahoo Calendar for week of ${weekKey}...`);
-  const promises = weekDates.map(date => fetchYahooDay(date));
+  console.log(`Fetching Nasdaq Calendar for week of ${weekKey}...`);
+  const promises = weekDates.map(date => fetchNasdaqDay(date));
   const results = await Promise.all(promises);
   
   const allEvents = results.flat();
@@ -176,7 +144,6 @@ export async function fetchEconomicCalendarForWeek(weekOffset: number): Promise<
     return 0;
   });
 
-  // Update Cache
   cachedData = { weekKey, events: allEvents };
   lastFetchTime = now;
 
