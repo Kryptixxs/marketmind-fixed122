@@ -2,40 +2,53 @@
 
 export async function fetchEarnings(dateStr: string) {
   try {
-    // dateStr should be YYYY-MM-DD
-    const response = await fetch(`https://api.nasdaq.com/api/calendar/earnings?date=${dateStr}`, {
+    // Using Seeking Alpha API
+    // dateStr format: YYYY-MM-DD
+    const url = `https://seekingalpha.com/api/v3/earnings_calendar/tickers?filter[selected_date]=${dateStr}&filter[currency]=USD`;
+
+    const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
-        'Accept': 'application/json, text/plain, */*',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Origin': 'https://www.nasdaq.com',
-        'Referer': 'https://www.nasdaq.com/',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        'Referer': 'https://seekingalpha.com/earnings/earnings-calendar',
+        'Accept': 'application/json',
       },
       next: { revalidate: 3600 } // Cache for 1 hour
     });
     
     if (!response.ok) {
-      console.error(`Nasdaq API returned ${response.status} for ${dateStr}`);
+      console.warn(`Seeking Alpha API returned ${response.status} for ${dateStr}`);
       return [];
     }
     
-    const data = await response.json();
+    const json = await response.json();
     
-    if (!data || !data.data || !data.data.rows) {
+    if (!json.data || !Array.isArray(json.data)) {
       return [];
     }
     
-    // Format the result
-    return data.data.rows.map((item: any) => ({
-      ticker: item.symbol || 'N/A',
-      name: item.name || 'Unknown',
-      time: item.time === 'time-pre-market' ? 'Before Market Open' : item.time === 'time-after-hours' ? 'After Market Close' : 'TBD',
-      est: item.epsForecast ? item.epsForecast.replace('$', '') : '-',
-      act: item.eps ? item.eps.replace('$', '') : '-',
-      impact: Math.floor(Math.random() * 3) + 3 // Mock impact 3-5 since Nasdaq doesn't provide it
-    })).slice(0, 15); // Limit to top 15 for UI performance
+    // Map Seeking Alpha format to our app format
+    return json.data.map((item: any) => {
+      const attr = item.attributes;
+      return {
+        ticker: attr.slug ? attr.slug.toUpperCase() : 'N/A',
+        name: attr.name || 'Unknown',
+        time: formatReleaseTime(attr.release_time),
+        est: attr.eps_estimate !== null && attr.eps_estimate !== undefined ? String(attr.eps_estimate) : '-',
+        act: attr.eps_actual !== null && attr.eps_actual !== undefined ? String(attr.eps_actual) : '-',
+        // Use revenue estimate as a proxy for "impact" or just random if not available
+        // For now we keep a default impact as SA doesn't give a 1-5 rating directly
+        impact: 3
+      };
+    }).slice(0, 20); // Limit to top 20 for UI performance
   } catch (error) {
     console.error(`Error fetching earnings for ${dateStr}:`, error);
     return [];
   }
+}
+
+function formatReleaseTime(raw: string): string {
+  if (raw === 'pre_market') return 'Before Market Open';
+  if (raw === 'post_market') return 'After Market Close';
+  if (raw === 'intra_day') return 'During Market';
+  return 'TBD';
 }
