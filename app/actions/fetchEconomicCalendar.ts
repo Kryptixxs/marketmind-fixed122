@@ -54,6 +54,9 @@ async function fetchForexFactoryCalendar(): Promise<CalendarEvent[]> {
     const response = await fetch(url, {
       cache: 'no-store',
       signal: controller.signal,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; MarketMind/1.0)',
+      }
     });
     clearTimeout(timeoutId);
 
@@ -85,31 +88,19 @@ async function fetchForexFactoryCalendar(): Promise<CalendarEvent[]> {
   }
 }
 
-// ---------- Public API ----------
-
 export async function fetchEconomicCalendarForWeek(weekOffset: number): Promise<CalendarEvent[]> {
-  // Forex Factory's "thisweek" JSON essentially only covers the current week.
-  // To cover other weeks accurately from FF, we would need to parse their HTML or use a different endpoint.
-  // For now, if weekOffset !== 0 we return empty, or we could just ignore it and return this week.
-  // Given their JSON is mainly for this week, we'll return empty if weekOffset is not 0 for safety, 
-  // or just return the data anyway if they allow week offsets (they don't cleanly in the free JSON).
+  // Forex Factory's "thisweek" JSON only covers the current week.
   if (weekOffset !== 0) {
     return [];
   }
 
-  try {
-    return await fetchForexFactoryCalendar();
-  } catch (error) {
-    console.error('Economic calendar fetch failed:', error);
-    return [];
-  }
+  return await fetchForexFactoryCalendar();
 }
 
 export async function fetchEconomicCalendar(): Promise<CalendarEvent[]> {
   return fetchEconomicCalendarForWeek(0);
 }
 
-/** No longer requires FMP_API_KEY, Forex Factory is free and public. */
 export async function isEconomicCalendarConfigured(): Promise<boolean> {
   return true;
 }
@@ -120,16 +111,6 @@ export async function filterTodayEvents(events: CalendarEvent[]): Promise<Calend
 
   return events.filter((event) => {
     if (!event.date) return false;
-    return event.date.startsWith(todayStr) || parseFFDate(event.date) === todayStr;
+    return event.date.startsWith(todayStr);
   });
-}
-
-function parseFFDate(dateStr: string): string {
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '';
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  } catch {
-    return '';
-  }
 }

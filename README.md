@@ -17,6 +17,5 @@ View your app in AI Studio: https://ai.studio/apps/df16a4c3-39f8-4f4c-823a-cad5b
    `npm install`
 2. Set in [.env.local](.env.local):
    - `GEMINI_API_KEY` — your Gemini API key (for AI features)
-   - `FMP_API_KEY` — (optional) for **accurate economic calendar**; get a free key at [Financial Modeling Prep](https://site.financialmodelingprep.com/developer/docs). Without it, the calendar uses a fallback source that may have incorrect dates.
 3. Run the app:
    `npm run dev`
