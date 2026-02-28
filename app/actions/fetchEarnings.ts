@@ -2,11 +2,10 @@
 
 export async function fetchEarnings(dateStr: string) {
   try {
-    // Correction for "off-by-one" shift:
-    // User reports "Tuesday is on Wednesday", meaning Query(Wednesday) returns Tuesday events.
-    // To get Tuesday events (for the Tuesday column), we need to query Wednesday (Date + 1).
+    // Correction for date alignment:
+    // Subtracting 1 day from the requested date to align Seeking Alpha data with the correct column.
     const dateObj = new Date(dateStr);
-    dateObj.setDate(dateObj.getDate() + 1);
+    dateObj.setDate(dateObj.getDate() - 1);
     const adjustedDateStr = dateObj.toISOString().split('T')[0];
 
     // Using Seeking Alpha API
@@ -19,7 +18,7 @@ export async function fetchEarnings(dateStr: string) {
         'Referer': 'https://seekingalpha.com/earnings/earnings-calendar',
         'Accept': 'application/json',
       },
-      next: { revalidate: 3600 } // Cache for 1 hour
+      cache: 'no-store', // Disable caching to ensure fresh data
     });
     
     if (!response.ok) {
