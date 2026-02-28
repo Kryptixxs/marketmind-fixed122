@@ -50,25 +50,38 @@ async function fetchForexFactoryCalendar(): Promise<CalendarEvent[]> {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout
+    
+    // Use a standard browser User-Agent to avoid blocking
     const response = await fetch(url, {
       cache: 'no-store',
       signal: controller.signal,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (compatible; MarketMind/1.0)',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Origin': 'https://www.forexfactory.com',
+        'Referer': 'https://www.forexfactory.com/'
       }
     });
     clearTimeout(timeoutId);
 
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.error(`Forex Factory returned status: ${response.status}`);
+      return [];
+    }
 
     const body = await response.json();
-    if (!Array.isArray(body)) return [];
+    if (!Array.isArray(body)) {
+      console.error('Forex Factory returned non-array body');
+      return [];
+    }
 
     return body.map((item: any) => {
       const dateStr = String(item.date ?? '').trim();
       const country = String(item.country ?? '');
-      const currency = COUNTRY_TO_CURRENCY[country] ?? (String(item.currency ?? '').toUpperCase() || country);
+      // Infer currency from country if missing
+      const currency = String(item.currency ?? '').toUpperCase() || COUNTRY_TO_CURRENCY[country] || country;
 
       return {
         date: dateStr,
