@@ -1,142 +1,198 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MiniChart } from '@/components/MiniChart';
-import { EconomicCalendarList } from '@/components/EconomicCalendarList';
 import { NewsFeed } from '@/components/NewsFeed';
+import { Sparkles, TrendingUp, Activity, Globe, Zap, ArrowRight, Layers } from 'lucide-react';
+import Link from 'next/link';
 
-const CHART_GROUPS = {
-  Crypto: [
-    { title: 'BTC/USD',  symbol: 'BTC-USD'   },
-    { title: 'ETH/USD',  symbol: 'ETH-USD'   },
-    { title: 'SOL/USD',  symbol: 'SOL-USD'   },
-    { title: 'BNB/USD',  symbol: 'BNB-USD'   },
-    { title: 'XRP/USD',  symbol: 'XRP-USD'   },
-    { title: 'ADA/USD',  symbol: 'ADA-USD'   },
-  ],
-  Indexes: [
-    { title: 'S&P 500',      symbol: '^GSPC'        },
-    { title: 'Nasdaq 100',   symbol: '^NDX'         },
-    { title: 'Dow Jones',    symbol: '^DJI'         },
-    { title: 'Russell 2000', symbol: '^RUT'         },
-    { title: 'DXY Index',    symbol: 'DX-Y.NYB'    },
-    { title: 'Gold',         symbol: 'GC=F'         },
-  ],
-  Forex: [
-    { title: 'EUR/USD', symbol: 'EURUSD=X' },
-    { title: 'GBP/USD', symbol: 'GBPUSD=X' },
-    { title: 'USD/JPY', symbol: 'JPY=X'    },
-    { title: 'AUD/USD', symbol: 'AUDUSD=X' },
-    { title: 'USD/CAD', symbol: 'CAD=X'    },
-    { title: 'USD/CHF', symbol: 'CHF=X'    },
-  ],
-};
+const INDICES = [
+  { title: 'S&P 500', symbol: '^GSPC' },
+  { title: 'Nasdaq', symbol: '^NDX' },
+  { title: 'Dow Jones', symbol: '^DJI' },
+  { title: 'Gold', symbol: 'GC=F' },
+  { title: 'Crude Oil', symbol: 'CL=F' },
+  { title: '10Y Yield', symbol: '^TNX' },
+];
 
-type Tab = keyof typeof CHART_GROUPS;
-const TABS: Tab[] = ['Indexes', 'Forex', 'Crypto'];
+const CRYPTO = [
+  { title: 'Bitcoin', symbol: 'BTC-USD', isCrypto: true },
+  { title: 'Ethereum', symbol: 'ETH-USD', isCrypto: true },
+  { title: 'Solana', symbol: 'SOL-USD', isCrypto: true },
+];
+
+const FOREX = [
+  { title: 'EUR/USD', symbol: 'EURUSD=X' },
+  { title: 'USD/JPY', symbol: 'JPY=X' },
+  { title: 'GBP/USD', symbol: 'GBPUSD=X' },
+];
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<Tab>('Crypto');
-  const charts = CHART_GROUPS[activeTab];
-  const isCrypto = activeTab === 'Crypto';
+  const [activeSet, setActiveSet] = useState<'Indices' | 'Crypto' | 'Forex'>('Indices');
+  
+  // Dynamic market summary generation (simulated AI response for speed)
+  const [briefing, setBriefing] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Simulate an AI analyzing the pre-market conditions
+    setTimeout(() => {
+      setBriefing("Markets are showing resilience today as traders digest the latest inflation data. Tech sector leads the rebound with Nasdaq futures up 0.8%. Treasury yields have stabilized, providing support for growth stocks. Watch for volatility around 10 AM ET.");
+    }, 1500);
+  }, []);
+
+  const currentTickers = activeSet === 'Indices' ? INDICES : activeSet === 'Crypto' ? CRYPTO : FOREX;
 
   return (
-    <div style={{
-      flex: 1, display: 'flex', flexDirection: 'column',
-      padding: '20px 20px 24px',
-      gap: 18, overflow: 'hidden', position: 'relative', zIndex: 1,
-    }}>
-
-      {/* Tab selector row */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div style={{
-          display: 'flex',
-          background: 'rgba(255,255,255,0.055)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          border: '1px solid rgba(255,255,255,0.11)',
-          borderRadius: 999,
-          padding: '4px 5px',
-          gap: 2,
-          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.16), 0 2px 12px rgba(0,0,0,0.30)',
-        }}>
-          {TABS.map(tab => {
-            const isActive = tab === activeTab;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  padding: '7px 18px',
-                  borderRadius: 999,
-                  fontSize: '0.8125rem',
-                  fontWeight: 600,
-                  letterSpacing: '-0.01em',
-                  cursor: 'pointer',
-                  transition: 'all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                  background: isActive ? 'rgba(255,255,255,0.13)' : 'transparent',
-                  color: isActive ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.42)',
-                  border: isActive ? '1px solid rgba(255,255,255,0.20)' : '1px solid transparent',
-                  boxShadow: isActive
-                    ? 'inset 0 1px 0 rgba(255,255,255,0.26), 0 2px 10px rgba(0,0,0,0.28)'
-                    : 'none',
-                  transform: isActive ? 'scale(1)' : 'scale(0.96)',
-                }}
-              >
-                {tab}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Live indicator */}
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 6,
-          fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.03em',
-          color: 'rgba(255,255,255,0.35)',
-        }}>
-          <span style={{
-            width: 6, height: 6, borderRadius: '50%',
-            background: 'var(--color-positive)',
-            boxShadow: '0 0 6px rgba(48,209,88,0.7)',
-            display: 'inline-block',
-            animation: 'pulse-dot 2s ease-in-out infinite',
-          }} />
-          Live · 1m refresh
-        </div>
-      </div>
-
-      {/* Mini charts grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(2, 1fr)',
-        gap: 10,
-      }}
-        className="sm:grid-cols-3 lg:grid-cols-6"
-      >
-        {charts.map((chart, i) => (
-          <div key={`${activeTab}-${i}`} style={{ animation: `liquid-in 0.4s cubic-bezier(0.25, 1.0, 0.5, 1) both`, animationDelay: `${i * 0.06}s` }}>
-            <MiniChart {...chart} isCrypto={isCrypto} />
+    <div className="flex flex-col flex-1 h-[calc(100vh-60px)] overflow-hidden bg-background p-4 gap-4">
+      {/* --- Top Bar: Market Summary & AI Brief --- */}
+      <div className="flex gap-4 min-h-[140px] shrink-0">
+        
+        {/* AI Briefing Card */}
+        <div className="flex-[2] glass-card p-5 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Sparkles size={80} />
           </div>
-        ))}
+          <div className="relative z-10 flex flex-col h-full">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-md bg-accent/20 flex items-center justify-center">
+                <Sparkles size={14} className="text-accent" />
+              </div>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-text-secondary">AI Market Brief</h2>
+              <span className="text-[10px] bg-surface border border-border px-1.5 py-0.5 rounded text-text-tertiary">
+                {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              </span>
+            </div>
+            
+            {briefing ? (
+              <p className="text-lg font-medium text-text-primary leading-relaxed animate-in fade-in duration-700">
+                {briefing}
+              </p>
+            ) : (
+              <div className="space-y-2 animate-pulse">
+                <div className="h-4 bg-surface rounded w-3/4"></div>
+                <div className="h-4 bg-surface rounded w-1/2"></div>
+              </div>
+            )}
+            
+            <div className="mt-auto pt-3 flex gap-3">
+               <button className="text-xs font-bold text-accent hover:text-white transition-colors flex items-center gap-1">
+                 View Full Analysis <ArrowRight size={12} />
+               </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Market Vitals / Stats (Static Mock for layout) */}
+        <div className="flex-1 glass-card p-4 flex flex-col justify-between">
+           <div className="flex items-center gap-2 mb-2">
+             <Activity size={14} className="text-positive" />
+             <span className="text-xs font-bold uppercase text-text-secondary">Market Vitals</span>
+           </div>
+           <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+             <div>
+               <div className="text-[10px] text-text-tertiary uppercase">VIX Volatility</div>
+               <div className="text-base font-mono font-bold text-text-primary">14.25 <span className="text-negative text-xs">-2.1%</span></div>
+             </div>
+             <div>
+               <div className="text-[10px] text-text-tertiary uppercase">Put/Call Ratio</div>
+               <div className="text-base font-mono font-bold text-text-primary">0.85 <span className="text-text-tertiary text-xs">Neutral</span></div>
+             </div>
+             <div>
+               <div className="text-[10px] text-text-tertiary uppercase">Breadth</div>
+               <div className="text-base font-mono font-bold text-positive">65% Buy</div>
+             </div>
+             <div>
+               <div className="text-[10px] text-text-tertiary uppercase">10Y Yield</div>
+               <div className="text-base font-mono font-bold text-text-primary">4.12%</div>
+             </div>
+           </div>
+        </div>
       </div>
 
-      {/* Main content grid */}
-      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14, minHeight: 0 }}>
-        <EconomicCalendarList />
-        <NewsFeed />
+      {/* --- Middle Row: Controls & Mini Charts --- */}
+      <div className="flex flex-col gap-3 shrink-0">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex gap-2 bg-surface rounded-lg p-1 border border-border">
+            {(['Indices', 'Crypto', 'Forex'] as const).map((set) => (
+              <button
+                key={set}
+                onClick={() => setActiveSet(set)}
+                className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${
+                  activeSet === set 
+                    ? 'bg-accent text-white shadow-lg shadow-accent/25' 
+                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+                }`}
+              >
+                {set}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 text-xs text-text-secondary">
+            <span className="flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-positive opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-positive"></span>
+              </span>
+              Live Data
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+          {currentTickers.map((ticker, i) => (
+             <div key={ticker.symbol} className="h-[120px] animate-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${i * 50}ms` }}>
+               <MiniChart {...ticker} isCrypto={'isCrypto' in ticker} />
+             </div>
+          ))}
+        </div>
       </div>
 
-      <style>{`
-        .sm\\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
-        @media (min-width: 1024px) {
-          .lg\\:grid-cols-6 { grid-template-columns: repeat(6, 1fr) !important; }
-        }
-        @keyframes pulse-dot {
-          0%, 100% { opacity: 1; box-shadow: 0 0 6px rgba(48,209,88,0.7); }
-          50% { opacity: 0.6; box-shadow: 0 0 12px rgba(48,209,88,0.4); }
-        }
-      `}</style>
+      {/* --- Bottom Row: Split View (News & Movers) --- */}
+      <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
+        {/* News Feed */}
+        <div className="col-span-8 flex flex-col min-h-0">
+          <NewsFeed />
+        </div>
+
+        {/* Quick Lists / Tools */}
+        <div className="col-span-4 flex flex-col gap-4 min-h-0">
+           {/* Quick Actions */}
+           <div className="glass-card p-4">
+             <h3 className="text-xs font-bold uppercase text-text-secondary mb-3 flex items-center gap-2">
+               <Layers size={14} /> Quick Tools
+             </h3>
+             <div className="grid grid-cols-2 gap-2">
+               <Link href="/tools/forex" className="flex flex-col p-3 bg-surface hover:bg-surface-hover border border-border hover:border-accent/50 rounded-lg transition-colors group">
+                 <Globe size={16} className="text-text-secondary group-hover:text-accent mb-2" />
+                 <span className="text-xs font-bold text-text-primary">Forex Calc</span>
+               </Link>
+               <Link href="/tools/futures" className="flex flex-col p-3 bg-surface hover:bg-surface-hover border border-border hover:border-accent/50 rounded-lg transition-colors group">
+                 <Activity size={16} className="text-text-secondary group-hover:text-accent mb-2" />
+                 <span className="text-xs font-bold text-text-primary">Futures Calc</span>
+               </Link>
+               <Link href="/economic" className="flex flex-col p-3 bg-surface hover:bg-surface-hover border border-border hover:border-accent/50 rounded-lg transition-colors group">
+                 <Zap size={16} className="text-text-secondary group-hover:text-accent mb-2" />
+                 <span className="text-xs font-bold text-text-primary">Calendar</span>
+               </Link>
+               <Link href="/charts" className="flex flex-col p-3 bg-surface hover:bg-surface-hover border border-border hover:border-accent/50 rounded-lg transition-colors group">
+                 <TrendingUp size={16} className="text-text-secondary group-hover:text-accent mb-2" />
+                 <span className="text-xs font-bold text-text-primary">Terminal</span>
+               </Link>
+             </div>
+           </div>
+
+           {/* Watchlist Promo */}
+           <div className="flex-1 glass-card p-4 flex flex-col justify-center items-center text-center relative overflow-hidden">
+             <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent"></div>
+             <TrendingUp size={32} className="text-accent mb-2" />
+             <h3 className="text-sm font-bold text-text-primary">Go Pro</h3>
+             <p className="text-xs text-text-secondary mt-1 px-4">Get unlimited AI analysis and real-time data feeds.</p>
+             <button className="mt-3 px-6 py-2 bg-accent text-white text-xs font-bold rounded-full shadow-lg shadow-accent/25 hover:bg-accent/90 transition-all">
+               Upgrade Plan
+             </button>
+           </div>
+        </div>
+      </div>
     </div>
   );
 }
