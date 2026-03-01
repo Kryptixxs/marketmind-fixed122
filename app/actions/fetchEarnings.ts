@@ -3,9 +3,11 @@
 export async function fetchEarnings(dateStr: string) {
   try {
     // Correction for date alignment:
-    // Subtracting 1 day from the requested date to align Seeking Alpha data with the correct column.
+    // The user reports "Tuesday is on Wednesday", implying a 1-day lag.
+    // Querying Date D returns events for D-1.
+    // Therefore, we query Date D+1 to get events for Date D.
     const dateObj = new Date(dateStr);
-    dateObj.setDate(dateObj.getDate() - 1);
+    dateObj.setDate(dateObj.getDate() + 1);
     const adjustedDateStr = dateObj.toISOString().split('T')[0];
 
     // Using Seeking Alpha API
