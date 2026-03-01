@@ -31,19 +31,17 @@ type DayData = {
   events: EventItem[];
 };
 
-function filterBySettings(events: any[], impactFilter: string, currency: string) {
+function filterBySettings(
+  events: any[],
+  impactFilter: string,
+  currency: string
+) {
   if (impactFilter === 'All' && (currency === 'All' || !currency)) return events;
   return events.filter((e) => {
     const impactOk = impactFilter === 'All' || impactFilter === e.impact;
     const currencyOk = eventMatchesCurrency(e, currency);
     return impactOk && currencyOk;
   });
-}
-
-function getMonday(d: Date) {
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.setDate(diff));
 }
 
 export default function EconomicCalendar() {
@@ -69,19 +67,22 @@ export default function EconomicCalendar() {
 
         const filtered = filterBySettings(data, settings.impactFilter, settings.currency);
         
-        // Generate Mon-Fri columns matching server logic
+        // Calculate Monday of the target week
         const now = new Date();
-        const monday = getMonday(now);
-        monday.setDate(monday.getDate() + (weekOffset * 7));
+        const day = now.getDay();
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(now.setDate(diff + (weekOffset * 7)));
+        monday.setHours(0, 0, 0, 0);
 
         const weekDays = Array.from({ length: 5 }).map((_, i) => {
           const temp = new Date(monday);
           temp.setDate(monday.getDate() + i);
           
-          const y = temp.getFullYear();
-          const m = String(temp.getMonth() + 1).padStart(2, '0');
-          const d = String(temp.getDate()).padStart(2, '0');
-          const dateStr = `${y}-${m}-${d}`;
+          // Use local date components to avoid UTC shift
+          const year = temp.getFullYear();
+          const month = String(temp.getMonth() + 1).padStart(2, '0');
+          const dayNum = String(temp.getDate()).padStart(2, '0');
+          const dateStr = `${year}-${month}-${dayNum}`;
 
           return {
             name: temp.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }),
@@ -91,7 +92,7 @@ export default function EconomicCalendar() {
         });
 
         filtered.forEach((item: any) => {
-          // Strict string matching
+          // Match strictly by the date string from the API
           const dayIndex = weekDays.findIndex(d => d.dateStr === item.originalDate);
           
           if (dayIndex !== -1) {
@@ -157,17 +158,30 @@ export default function EconomicCalendar() {
           <h1 className="text-2xl font-bold tracking-tight">Economic Calendar</h1>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1 bg-surface/50 border border-border/50 rounded-full p-1 shadow-sm backdrop-blur-md">
-              <button onClick={() => setWeekOffset((o) => o - 1)} className="p-2 hover:bg-surface rounded-full transition-all text-text-secondary hover:text-text-primary">
+              <button
+                type="button"
+                onClick={() => setWeekOffset((o) => o - 1)}
+                className="p-2 hover:bg-surface rounded-full transition-all text-text-secondary hover:text-text-primary"
+              >
                 <ChevronLeft size={16} />
               </button>
               <span className="text-sm font-semibold px-3 min-w-[80px] text-center">
                 {weekOffset === 0 ? 'This Week' : `${weekOffset > 0 ? '+' : ''}${weekOffset} wk`}
               </span>
-              <button onClick={() => setWeekOffset((o) => o + 1)} className="p-2 hover:bg-surface rounded-full transition-all text-text-secondary hover:text-text-primary">
+              <button
+                type="button"
+                onClick={() => setWeekOffset((o) => o + 1)}
+                className="p-2 hover:bg-surface rounded-full transition-all text-text-secondary hover:text-text-primary"
+              >
                 <ChevronRight size={16} />
               </button>
             </div>
-            <button onClick={() => setSettingsOpen(true)} className="p-2.5 text-text-secondary hover:text-text-primary hover:bg-surface/80 rounded-full transition-all border border-transparent hover:border-border/50 shadow-sm backdrop-blur-md">
+
+            <button
+              type="button"
+              onClick={() => setSettingsOpen(true)}
+              className="p-2.5 text-text-secondary hover:text-text-primary hover:bg-surface/80 rounded-full transition-all border border-transparent hover:border-border/50 shadow-sm backdrop-blur-md"
+            >
               <Settings size={18} />
             </button>
           </div>
@@ -180,12 +194,16 @@ export default function EconomicCalendar() {
             </div>
           ) : (
             <div className="min-w-[1000px] h-full flex flex-col">
-              {/* Header */}
               <div className="flex border-b border-border/50 sticky top-0 bg-surface/80 backdrop-blur-xl z-20">
                 <div className="w-20 shrink-0 border-r border-border/50 p-4 text-xs text-text-secondary text-center font-semibold uppercase flex items-center justify-center">EST</div>
                 {days.map((day, i) => {
-                  const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
+                  const today = new Date();
+                  const year = today.getFullYear();
+                  const month = String(today.getMonth() + 1).padStart(2, '0');
+                  const d = String(today.getDate()).padStart(2, '0');
+                  const todayStr = `${year}-${month}-${d}`;
                   const isToday = day.dateStr === todayStr;
+                  
                   return (
                     <div key={i} className={`flex-1 border-r border-border/50 p-4 text-center ${isToday ? 'bg-accent/10' : ''}`}>
                       <span className={`text-sm font-bold uppercase ${isToday ? 'text-accent' : 'text-text-secondary'}`}>
@@ -196,7 +214,6 @@ export default function EconomicCalendar() {
                 })}
               </div>
 
-              {/* Grid */}
               <div className="flex-1 relative">
                 {hours.map((hour, i) => (
                   <div key={i} className="flex border-b border-border/50 min-h-[140px]">
@@ -204,13 +221,18 @@ export default function EconomicCalendar() {
                       <span className="absolute -top-2.5 right-3 bg-surface/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-border/50">{hour}</span>
                     </div>
                     {days.map((day, j) => {
-                      const todayStr = new Date().toLocaleDateString('en-CA');
+                      const today = new Date();
+                      const year = today.getFullYear();
+                      const month = String(today.getMonth() + 1).padStart(2, '0');
+                      const d = String(today.getDate()).padStart(2, '0');
+                      const todayStr = `${year}-${month}-${d}`;
                       const isToday = day.dateStr === todayStr;
+                      
                       return (
                         <div key={j} className={`flex-1 border-r border-border/50 p-2 relative ${isToday ? 'bg-accent/5' : ''}`}>
                           <div className="flex flex-col gap-2">
                             {day.events.filter((e) => {
-                              const [hStr] = e.time.split(':');
+                              const [hStr, mStr] = e.time.split(':');
                               let eventHour = parseInt(hStr);
                               const isPM = e.time.includes('PM');
                               if (isPM && eventHour !== 12) eventHour += 12;
@@ -267,6 +289,7 @@ export default function EconomicCalendar() {
               <X size={18} />
             </button>
           </div>
+
           <div className="p-6 flex flex-col gap-6 overflow-y-auto">
             <div className="flex flex-col gap-2">
               <span className="text-sm font-semibold text-text-secondary flex items-center gap-2">
@@ -275,6 +298,7 @@ export default function EconomicCalendar() {
               </span>
               <h2 className="text-2xl font-bold text-text-primary leading-tight">{selectedEventData.title}</h2>
             </div>
+
             {selectedEventData.isLoading ? (
               <div className="flex flex-col items-center justify-center py-16 gap-4 text-text-secondary">
                 <Loader2 size={40} className="animate-spin text-accent" />
@@ -291,6 +315,7 @@ export default function EconomicCalendar() {
                   </div>
                   <p className="text-[15px] text-text-primary leading-relaxed">{selectedEventData.analysis.analysis}</p>
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div className="glass-card p-5 flex flex-col gap-2">
                     <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Impact Score</span>
@@ -320,6 +345,7 @@ export default function EconomicCalendar() {
           </div>
         </div>
       )}
+
       <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
