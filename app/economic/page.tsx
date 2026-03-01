@@ -20,6 +20,7 @@ type EventItem = {
   title: string;
   impact: string;
   country: string;
+  originalDate: string;
   analysis?: EventAnalysis;
   isLoading?: boolean;
 };
@@ -27,9 +28,6 @@ type EventItem = {
 type DayData = {
   name: string;
   dateStr: string;
-  year: number;
-  month: number;
-  date: number;
   events: EventItem[];
 };
 
@@ -53,7 +51,6 @@ export default function EconomicCalendar() {
   const [selectedEvent, setSelectedEvent] = useState<{ dayIndex: number, eventIndex: number } | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<'week' | 'day'>('week');
 
   const hours = Array.from({ length: 24 }).map((_, i) => {
     const ampm = i >= 12 ? 'PM' : 'AM';
@@ -70,41 +67,35 @@ export default function EconomicCalendar() {
 
         const filtered = filterBySettings(data, settings.impactFilter, settings.currency);
         
-        // Align UI to start on Sunday
-        const d = new Date();
-        const day = d.getDay();
-        const diff = d.getDate() - day;
-        const sunday = new Date(d.setDate(diff + (weekOffset * 7)));
-        sunday.setHours(0, 0, 0, 0);
+        // Calculate Monday of the target week
+        const now = new Date();
+        const day = now.getDay();
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+        const monday = new Date(now.setDate(diff + (weekOffset * 7)));
+        monday.setHours(0, 0, 0, 0);
 
-        const weekDays = Array.from({ length: 7 }).map((_, i) => {
-          const temp = new Date(sunday);
-          temp.setDate(sunday.getDate() + i);
+        const weekDays = Array.from({ length: 5 }).map((_, i) => {
+          const temp = new Date(monday);
+          temp.setDate(monday.getDate() + i);
           return {
             name: temp.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }),
             dateStr: temp.toISOString().split('T')[0],
-            year: temp.getFullYear(),
-            month: temp.getMonth(),
-            date: temp.getDate(),
             events: [] as EventItem[]
           };
         });
 
         filtered.forEach((item: any) => {
-          if (!item.date) return;
-          const eventDate = new Date(item.date);
-          const dayIndex = weekDays.findIndex(d =>
-            d.year === eventDate.getFullYear() && 
-            d.month === eventDate.getMonth() && 
-            d.date === eventDate.getDate()
-          );
+          // Match strictly by the date string from the API
+          const dayIndex = weekDays.findIndex(d => d.dateStr === item.originalDate);
           
           if (dayIndex !== -1) {
+            const eventDate = new Date(item.date);
             weekDays[dayIndex].events.push({
               time: eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
               title: item.title,
               impact: item.impact,
-              country: item.country
+              country: item.country,
+              originalDate: item.originalDate
             });
           }
         });
@@ -199,8 +190,8 @@ export default function EconomicCalendar() {
               <div className="flex border-b border-border/50 sticky top-0 bg-surface/80 backdrop-blur-xl z-20">
                 <div className="w-20 shrink-0 border-r border-border/50 p-4 text-xs text-text-secondary text-center font-semibold uppercase flex items-center justify-center">EST</div>
                 {days.map((day, i) => {
-                  const today = new Date();
-                  const isToday = day.year === today.getFullYear() && day.month === today.getMonth() && day.date === today.getDate();
+                  const today = new Date().toISOString().split('T')[0];
+                  const isToday = day.dateStr === today;
                   return (
                     <div key={i} className={`flex-1 border-r border-border/50 p-4 text-center ${isToday ? 'bg-accent/10' : ''}`}>
                       <span className={`text-sm font-bold uppercase ${isToday ? 'text-accent' : 'text-text-secondary'}`}>
@@ -218,8 +209,8 @@ export default function EconomicCalendar() {
                       <span className="absolute -top-2.5 right-3 bg-surface/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-border/50">{hour}</span>
                     </div>
                     {days.map((day, j) => {
-                      const today = new Date();
-                      const isToday = day.year === today.getFullYear() && day.month === today.getMonth() && day.date === today.getDate();
+                      const today = new Date().toISOString().split('T')[0];
+                      const isToday = day.dateStr === today;
                       return (
                         <div key={j} className={`flex-1 border-r border-border/50 p-2 relative ${isToday ? 'bg-accent/5' : ''}`}>
                           <div className="flex flex-col gap-2">

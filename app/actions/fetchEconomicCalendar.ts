@@ -1,7 +1,8 @@
 'use server';
 
 export interface CalendarEvent {
-  date: string;       // ISO string
+  date: string;       // ISO string for time display
+  originalDate: string; // YYYY-MM-DD for column placement
   time: string;       // Formatted time or "All Day"
   currency: string;
   impact: string;     // Inferred
@@ -29,7 +30,6 @@ const COUNTRY_TO_CURRENCY: Record<string, string> = {
   'Russia': 'RUB',
 };
 
-// Heuristic to guess impact based on event title keywords
 function inferImpact(title: string): string {
   const t = title.toLowerCase();
   if (t.includes('rate decision') || t.includes('interest rate') || t.includes('non-farm') || t.includes('gdp') || t.includes('cpi') || t.includes('fomc') || t.includes('payroll') || t.includes('meeting')) {
@@ -41,10 +41,9 @@ function inferImpact(title: string): string {
   return 'Low';
 }
 
-// In-Memory Cache
 let cachedData: { weekKey: string, events: CalendarEvent[] } | null = null;
 let lastFetchTime = 0;
-const CACHE_DURATION = 15 * 60 * 1000; // 15 mins
+const CACHE_DURATION = 15 * 60 * 1000;
 
 async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
   const url = `https://api.nasdaq.com/api/calendar/economicevents?date=${dateStr}`;
@@ -74,12 +73,12 @@ async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
 
       let fullDateStr = dateStr;
       if (timeText.includes(':')) {
-        // Nasdaq uses ET. We use -05:00 to represent Eastern Standard Time.
         fullDateStr = `${dateStr}T${timeText}:00-05:00`;
       }
 
       return {
         date: fullDateStr,
+        originalDate: dateStr, // Crucial for UI placement
         time: timeText,
         currency: COUNTRY_TO_CURRENCY[country] || 'USD',
         impact: inferImpact(title),
@@ -96,17 +95,18 @@ async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
 }
 
 function getWeekDates(offset: number) {
-  const d = new Date();
-  const day = d.getDay();
-  // Calculate distance to Sunday (Sunday is 0)
-  const diff = d.getDate() - day;
-  d.setDate(diff + (offset * 7));
+  const now = new Date();
+  const day = now.getDay();
+  // Calculate distance to Monday (Monday is 1, Sunday is 0)
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(now.setDate(diff));
+  monday.setDate(monday.getDate() + (offset * 7));
   
   const dates = [];
-  for (let i = 0; i < 7; i++) {
-    const temp = new Date(d);
-    temp.setDate(d.getDate() + i);
-    dates.push(temp.toISOString().split('T')[0]);
+  for (let i = 0; i < 5; i++) { // Monday to Friday only
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    dates.push(d.toISOString().split('T')[0]);
   }
   return dates;
 }
