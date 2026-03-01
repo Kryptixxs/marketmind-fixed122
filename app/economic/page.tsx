@@ -67,18 +67,17 @@ export default function EconomicCalendar() {
 
         const filtered = filterBySettings(data, settings.impactFilter, settings.currency);
         
-        // Calculate Monday of the target week
+        // Calculate Monday of the target week consistently
         const now = new Date();
         const day = now.getDay();
-        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+        const diff = now.getDate() - (day === 0 ? 6 : day - 1);
         const monday = new Date(now.setDate(diff + (weekOffset * 7)));
-        monday.setHours(0, 0, 0, 0);
+        monday.setHours(12, 0, 0, 0); // Set to noon to avoid timezone shifts
 
         const weekDays = Array.from({ length: 5 }).map((_, i) => {
           const temp = new Date(monday);
           temp.setDate(monday.getDate() + i);
           
-          // Use local date components to avoid UTC shift
           const year = temp.getFullYear();
           const month = String(temp.getMonth() + 1).padStart(2, '0');
           const dayNum = String(temp.getDate()).padStart(2, '0');

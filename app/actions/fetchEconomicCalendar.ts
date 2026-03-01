@@ -71,8 +71,10 @@ async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
       const title = item.eventName || 'Economic Event';
       const timeText = item.gmt || 'All Day';
 
+      // Nasdaq times are generally in EST/EDT. We'll treat them as such.
       let fullDateStr = dateStr;
       if (timeText.includes(':')) {
+        // Append a fixed offset for EST (-05:00) to create a valid ISO string
         fullDateStr = `${dateStr}T${timeText}:00-05:00`;
       }
 
@@ -98,8 +100,12 @@ function getWeekDates(offset: number) {
   const now = new Date();
   const day = now.getDay();
   // Calculate distance to Monday (Monday is 1, Sunday is 0)
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  // If today is Sunday, we usually want the upcoming week, but the app logic
+  // seems to prefer the "current" week. We'll stick to the current week logic
+  // but make it more robust.
+  const diff = now.getDate() - (day === 0 ? 6 : day - 1);
   const monday = new Date(now.setDate(diff));
+  monday.setHours(12, 0, 0, 0); // Set to noon to avoid timezone shifts
   monday.setDate(monday.getDate() + (offset * 7));
   
   const dates = [];
@@ -107,7 +113,6 @@ function getWeekDates(offset: number) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     
-    // Use local date components to avoid UTC shift
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const dayNum = String(d.getDate()).padStart(2, '0');
