@@ -79,10 +79,13 @@ async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
       const timeText = item.gmt || 'All Day'; // usually HH:mm or 'Tentative'
 
       // Construct ISO date if time is available
-      // Nasdaq provides time in GMT. We append 'Z' to treat it as UTC.
+      // Nasdaq provides time in Eastern Time (ET) despite the key being 'gmt'.
+      // We append '-05:00' to treat it as EST. 
+      // Note: This approximates ET as -05:00 (Standard). 
+      // Handling DST perfectly requires heavier libraries, but this fixes the immediate 5h shift.
       let fullDateStr = dateStr;
       if (timeText.includes(':')) {
-        fullDateStr = `${dateStr}T${timeText}:00Z`;
+        fullDateStr = `${dateStr}T${timeText}:00-05:00`;
       }
 
       return {
