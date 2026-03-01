@@ -70,16 +70,16 @@ export default function EconomicCalendar() {
 
         const filtered = filterBySettings(data, settings.impactFilter, settings.currency);
         
-        // Align UI to start on Monday
+        // Align UI to start on Sunday
         const d = new Date();
         const day = d.getDay();
-        const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-        const monday = new Date(d.setDate(diff + (weekOffset * 7)));
-        monday.setHours(0, 0, 0, 0);
+        const diff = d.getDate() - day;
+        const sunday = new Date(d.setDate(diff + (weekOffset * 7)));
+        sunday.setHours(0, 0, 0, 0);
 
         const weekDays = Array.from({ length: 7 }).map((_, i) => {
-          const temp = new Date(monday);
-          temp.setDate(monday.getDate() + i);
+          const temp = new Date(sunday);
+          temp.setDate(sunday.getDate() + i);
           return {
             name: temp.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }),
             dateStr: temp.toISOString().split('T')[0],

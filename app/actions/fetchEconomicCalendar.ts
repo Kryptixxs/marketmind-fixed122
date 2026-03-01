@@ -98,8 +98,8 @@ async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
 function getWeekDates(offset: number) {
   const d = new Date();
   const day = d.getDay();
-  // Calculate distance to Monday (Monday is 1, Sunday is 0)
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  // Calculate distance to Sunday (Sunday is 0)
+  const diff = d.getDate() - day;
   d.setDate(diff + (offset * 7));
   
   const dates = [];
