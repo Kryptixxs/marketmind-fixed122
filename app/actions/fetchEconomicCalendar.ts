@@ -47,7 +47,6 @@ let lastFetchTime = 0;
 const CACHE_DURATION = 15 * 60 * 1000; // 15 mins
 
 async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
-  // dateStr format: YYYY-MM-DD
   const url = `https://api.nasdaq.com/api/calendar/economicevents?date=${dateStr}`;
   
   try {
@@ -62,29 +61,20 @@ async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
       next: { revalidate: 3600 }
     });
     
-    if (!res.ok) {
-      console.warn(`Nasdaq API failed for ${dateStr}: ${res.status}`);
-      return [];
-    }
+    if (!res.ok) return [];
 
     const data = await res.json();
     const rows = data?.data?.rows;
-
     if (!Array.isArray(rows)) return [];
 
     return rows.map((item: any) => {
-      // Nasdaq fields: "gmt", "country", "eventName", "actual", "consensus", "previous"
       const country = item.country || 'Global';
       const title = item.eventName || 'Economic Event';
-      const timeText = item.gmt || 'All Day'; // usually HH:mm or 'Tentative'
+      const timeText = item.gmt || 'All Day';
 
-      // Construct ISO date if time is available
-      // Nasdaq provides time in Eastern Time (ET) despite the key being 'gmt'.
-      // We append '-05:00' to treat it as EST. 
-      // Note: This approximates ET as -05:00 (Standard). 
-      // Handling DST perfectly requires heavier libraries, but this fixes the immediate 5h shift.
       let fullDateStr = dateStr;
       if (timeText.includes(':')) {
+        // Nasdaq uses ET. We use -05:00 to represent Eastern Standard Time.
         fullDateStr = `${dateStr}T${timeText}:00-05:00`;
       }
 
@@ -100,57 +90,44 @@ async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
         country
       };
     });
-
   } catch (err) {
-    console.error(`Error fetching Nasdaq for ${dateStr}:`, err);
     return [];
   }
 }
 
 function getWeekDates(offset: number) {
-  const now = new Date();
-  const currentDay = now.getDay(); // 0 = Sun
-  const diff = now.getDate() - currentDay + (currentDay === 0 ? -6 : 1); // Adjust to Monday
-  const monday = new Date(now.setDate(diff));
-  
-  // Apply week offset
-  monday.setDate(monday.getDate() + (offset * 7));
+  const d = new Date();
+  const day = d.getDay();
+  // Calculate distance to Monday (Monday is 1, Sunday is 0)
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  d.setDate(diff + (offset * 7));
   
   const dates = [];
   for (let i = 0; i < 7; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    dates.push(d.toISOString().split('T')[0]);
+    const temp = new Date(d);
+    temp.setDate(d.getDate() + i);
+    dates.push(temp.toISOString().split('T')[0]);
   }
   return dates;
 }
 
 export async function fetchEconomicCalendarForWeek(weekOffset: number): Promise<CalendarEvent[]> {
   const weekDates = getWeekDates(weekOffset);
-  const weekKey = weekDates[0]; // cache key by monday date
+  const weekKey = weekDates[0];
 
   const now = Date.now();
   if (cachedData && cachedData.weekKey === weekKey && (now - lastFetchTime < CACHE_DURATION)) {
     return cachedData.events;
   }
 
-  // Fetch all 7 days in parallel
-  console.log(`Fetching Nasdaq Calendar for week of ${weekKey}...`);
   const promises = weekDates.map(date => fetchNasdaqDay(date));
   const results = await Promise.all(promises);
-  
   const allEvents = results.flat();
   
-  // Sort by date/time
-  allEvents.sort((a, b) => {
-    if (a.date < b.date) return -1;
-    if (a.date > b.date) return 1;
-    return 0;
-  });
+  allEvents.sort((a, b) => a.date.localeCompare(b.date));
 
   cachedData = { weekKey, events: allEvents };
   lastFetchTime = now;
-
   return allEvents;
 }
 
