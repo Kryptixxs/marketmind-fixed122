@@ -78,7 +78,7 @@ async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
 
       return {
         date: fullDateStr,
-        originalDate: dateStr, // Crucial for UI placement
+        originalDate: dateStr,
         time: timeText,
         currency: COUNTRY_TO_CURRENCY[country] || 'USD',
         impact: inferImpact(title),
@@ -103,10 +103,15 @@ function getWeekDates(offset: number) {
   monday.setDate(monday.getDate() + (offset * 7));
   
   const dates = [];
-  for (let i = 0; i < 5; i++) { // Monday to Friday only
+  for (let i = 0; i < 5; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    dates.push(d.toISOString().split('T')[0]);
+    
+    // Use local date components to avoid UTC shift
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const dayNum = String(d.getDate()).padStart(2, '0');
+    dates.push(`${year}-${month}-${dayNum}`);
   }
   return dates;
 }

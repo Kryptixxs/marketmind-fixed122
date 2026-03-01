@@ -77,9 +77,16 @@ export default function EconomicCalendar() {
         const weekDays = Array.from({ length: 5 }).map((_, i) => {
           const temp = new Date(monday);
           temp.setDate(monday.getDate() + i);
+          
+          // Use local date components to avoid UTC shift
+          const year = temp.getFullYear();
+          const month = String(temp.getMonth() + 1).padStart(2, '0');
+          const dayNum = String(temp.getDate()).padStart(2, '0');
+          const dateStr = `${year}-${month}-${dayNum}`;
+
           return {
             name: temp.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }),
-            dateStr: temp.toISOString().split('T')[0],
+            dateStr: dateStr,
             events: [] as EventItem[]
           };
         });
@@ -190,8 +197,13 @@ export default function EconomicCalendar() {
               <div className="flex border-b border-border/50 sticky top-0 bg-surface/80 backdrop-blur-xl z-20">
                 <div className="w-20 shrink-0 border-r border-border/50 p-4 text-xs text-text-secondary text-center font-semibold uppercase flex items-center justify-center">EST</div>
                 {days.map((day, i) => {
-                  const today = new Date().toISOString().split('T')[0];
-                  const isToday = day.dateStr === today;
+                  const today = new Date();
+                  const year = today.getFullYear();
+                  const month = String(today.getMonth() + 1).padStart(2, '0');
+                  const d = String(today.getDate()).padStart(2, '0');
+                  const todayStr = `${year}-${month}-${d}`;
+                  const isToday = day.dateStr === todayStr;
+                  
                   return (
                     <div key={i} className={`flex-1 border-r border-border/50 p-4 text-center ${isToday ? 'bg-accent/10' : ''}`}>
                       <span className={`text-sm font-bold uppercase ${isToday ? 'text-accent' : 'text-text-secondary'}`}>
@@ -209,8 +221,13 @@ export default function EconomicCalendar() {
                       <span className="absolute -top-2.5 right-3 bg-surface/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-border/50">{hour}</span>
                     </div>
                     {days.map((day, j) => {
-                      const today = new Date().toISOString().split('T')[0];
-                      const isToday = day.dateStr === today;
+                      const today = new Date();
+                      const year = today.getFullYear();
+                      const month = String(today.getMonth() + 1).padStart(2, '0');
+                      const d = String(today.getDate()).padStart(2, '0');
+                      const todayStr = `${year}-${month}-${d}`;
+                      const isToday = day.dateStr === todayStr;
+                      
                       return (
                         <div key={j} className={`flex-1 border-r border-border/50 p-2 relative ${isToday ? 'bg-accent/5' : ''}`}>
                           <div className="flex flex-col gap-2">
