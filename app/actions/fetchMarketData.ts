@@ -2,49 +2,64 @@
 
 import YahooFinance from 'yahoo-finance2';
 
-const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey', 'ripHistorical'] });
+const yahooFinance = new YahooFinance({ 
+  suppressNotices: ['yahooSurvey', 'ripHistorical'],
+  // Add a queue or delay if needed in a real high-volume app
+});
 
-export async function fetchMarketData(symbol: string) {
+export interface MarketData {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  currency: string;
+  marketState: string;
+  history: number[];
+  name?: string;
+}
+
+export async function fetchMarketData(symbol: string): Promise<MarketData | null> {
+  if (!symbol) return null;
+
   try {
-    const quote = await yahooFinance.quote(symbol) as any;
+    const quotePromise = yahooFinance.quote(symbol);
     
-    if (!quote || typeof quote.regularMarketPrice === 'undefined') {
-      console.warn(`No quote data for ${symbol}`);
-      return null;
-    }
+    // We only need history for the sparkline, don't fail the whole request if this fails
+    const historyPromise = yahooFinance.chart(symbol, { 
+      period1: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days
+      interval: '1d' 
+    }).catch(() => null);
 
-    // Fetch 30-day history for sparkline
+    const [quote, chartData] = await Promise.all([quotePromise, historyPromise]);
+    
+    if (!quote) return null;
+
     let history: number[] = [];
-    try {
-      const queryOptions = { 
-        period1: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 
-        interval: '1d' as const 
-      };
-      const result = await yahooFinance.chart(symbol, queryOptions) as any;
-      if (result?.quotes && Array.isArray(result.quotes)) {
-        history = result.quotes
-          .slice(-20)
-          .map((item: any) => item.close)
-          .filter((val: any) => typeof val === 'number' && !isNaN(val));
-      }
-    } catch (histError) {
-      console.warn(`Could not fetch history for ${symbol}`);
+    if (chartData?.quotes && Array.isArray(chartData.quotes)) {
+      history = chartData.quotes
+        .slice(-20) // Last 20 days for sparkline
+        .map((q: any) => q.close)
+        .filter((c: any) => typeof c === 'number');
     }
     
-    const price = quote.regularMarketPrice ?? 0;
-    const changePercent = quote.regularMarketChangePercent ?? 0;
+    // Fill gaps if history is empty
+    if (history.length === 0 && quote.regularMarketPrice) {
+      history = [quote.regularMarketPrice, quote.regularMarketPrice];
+    }
 
     return {
-      price,
-      change: quote.regularMarketChange ?? 0,
-      changePercent,
-      history: history.length >= 2 ? history : [price, price],
-      // Extra metadata
-      currency: quote.currency ?? 'USD',
-      marketState: quote.marketState ?? 'REGULAR',
+      symbol,
+      name: quote.shortName || quote.longName || symbol,
+      price: quote.regularMarketPrice || 0,
+      change: quote.regularMarketChange || 0,
+      changePercent: quote.regularMarketChangePercent || 0,
+      currency: quote.currency || 'USD',
+      marketState: quote.marketState || 'REGULAR',
+      history
     };
+
   } catch (error) {
-    console.error(`Error fetching market data for ${symbol}:`, error);
+    console.warn(`[MarketData] Failed to fetch ${symbol}:`, error);
     return null;
   }
 }

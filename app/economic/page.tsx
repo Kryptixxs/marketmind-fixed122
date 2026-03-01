@@ -1,351 +1,317 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Settings, LayoutGrid, Brain, Loader2, X } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { 
+  ChevronLeft, ChevronRight, Settings, RefreshCw, 
+  Calendar as CalendarIcon, Filter, Brain, Loader2 
+} from 'lucide-react';
+import { fetchEconomicCalendarBatch, type EconomicEvent } from '@/app/actions/fetchEconomicCalendar';
 import { analyzeEconomicEvent } from '@/lib/analyzeEvent';
-import { fetchEconomicCalendarForWeek } from '@/app/actions/fetchEconomicCalendar';
 import { SettingsModal } from '@/components/SettingsModal';
 import { useSettings } from '@/context/SettingsContext';
-import { eventMatchesCurrency } from '@/lib/economicCalendar';
+import { getBusinessWeek, toISODateString, formatTime, DAYS } from '@/lib/date-utils';
 
-type EventAnalysis = {
-  impactRating: number;
-  impactedAssets: string[];
-  sentiment: string;
-  analysis: string;
-};
-
-type EventItem = {
-  time: string;
-  title: string;
-  impact: string;
-  country: string;
-  originalDate: string;
-  analysis?: EventAnalysis;
-  isLoading?: boolean;
-};
-
-type DayData = {
-  name: string;
-  dateStr: string;
-  events: EventItem[];
-};
-
-function filterBySettings(
-  events: any[],
-  impactFilter: string,
-  currency: string
-) {
-  if (impactFilter === 'All' && (currency === 'All' || !currency)) return events;
-  return events.filter((e) => {
-    const impactOk = impactFilter === 'All' || impactFilter === e.impact;
-    const currencyOk = eventMatchesCurrency(e, currency);
-    return impactOk && currencyOk;
-  });
-}
-
-export default function EconomicCalendar() {
+export default function EconomicCalendarPage() {
   const { settings } = useSettings();
-  const [days, setDays] = useState<DayData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedEvent, setSelectedEvent] = useState<{ dayIndex: number, eventIndex: number } | null>(null);
+  
+  // State
   const [weekOffset, setWeekOffset] = useState(0);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [weekDates, setWeekDates] = useState<{ date: Date; dateStr: string; dayName: string }[]>([]);
+  const [eventsData, setEventsData] = useState<Record<string, EconomicEvent[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [analyzingId, setAnalyzingId] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<any | null>(null);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const hours = Array.from({ length: 24 }).map((_, i) => {
-    const ampm = i >= 12 ? 'PM' : 'AM';
-    const hour = i % 12 === 0 ? 12 : i % 12;
-    return `${hour} ${ampm}`;
-  });
-
+  // Calculate the dates for the view
   useEffect(() => {
-    async function loadCalendar() {
+    const today = new Date();
+    // Shift today by weeks if needed
+    const referenceDate = new Date(today);
+    referenceDate.setDate(today.getDate() + (weekOffset * 7));
+    
+    const week = getBusinessWeek(referenceDate);
+    setWeekDates(week);
+  }, [weekOffset]);
+
+  // Fetch data when dates change
+  useEffect(() => {
+    if (weekDates.length === 0) return;
+    
+    const fetchDates = async () => {
       setLoading(true);
+      const dateStrings = weekDates.map(d => d.dateStr);
       try {
-        const data = await fetchEconomicCalendarForWeek(weekOffset);
-        if (!data) return;
-
-        const filtered = filterBySettings(data, settings.impactFilter, settings.currency);
-        
-        // Calculate Monday of the target week consistently
-        const now = new Date();
-        const day = now.getDay();
-        const diff = now.getDate() - (day === 0 ? 6 : day - 1);
-        const monday = new Date(now.setDate(diff + (weekOffset * 7)));
-        monday.setHours(12, 0, 0, 0); // Set to noon to avoid timezone shifts
-
-        const weekDays = Array.from({ length: 5 }).map((_, i) => {
-          const temp = new Date(monday);
-          temp.setDate(monday.getDate() + i);
-          
-          const year = temp.getFullYear();
-          const month = String(temp.getMonth() + 1).padStart(2, '0');
-          const dayNum = String(temp.getDate()).padStart(2, '0');
-          const dateStr = `${year}-${month}-${dayNum}`;
-
-          return {
-            name: temp.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' }),
-            dateStr: dateStr,
-            events: [] as EventItem[]
-          };
-        });
-
-        filtered.forEach((item: any) => {
-          // Match strictly by the date string from the API
-          const dayIndex = weekDays.findIndex(d => d.dateStr === item.originalDate);
-          
-          if (dayIndex !== -1) {
-            const eventDate = new Date(item.date);
-            weekDays[dayIndex].events.push({
-              time: eventDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
-              title: item.title,
-              impact: item.impact,
-              country: item.country,
-              originalDate: item.originalDate
-            });
-          }
-        });
-
-        setDays(weekDays);
-
-        setTimeout(() => {
-          const container = document.getElementById('calendar-grid-container');
-          if (container) {
-            const currentHour = new Date().getHours();
-            container.scrollTop = Math.max(0, (currentHour - 2) * 140);
-          }
-        }, 100);
-
-      } catch (error) {
-        console.error('Failed to load calendar:', error);
+        const data = await fetchEconomicCalendarBatch(dateStrings);
+        setEventsData(data);
+      } catch (err) {
+        console.error('Failed to load calendar events', err);
       } finally {
         setLoading(false);
       }
-    }
-    loadCalendar();
-  }, [weekOffset, settings.impactFilter, settings.currency]);
+    };
+    fetchDates();
+  }, [weekDates]);
 
-  const handleAnalyze = async (dayIndex: number, eventIndex: number) => {
-    setSelectedEvent({ dayIndex, eventIndex });
-    if (days[dayIndex].events[eventIndex].analysis || days[dayIndex].events[eventIndex].isLoading) return;
-
-    const newDays = [...days];
-    newDays[dayIndex].events[eventIndex].isLoading = true;
-    setDays(newDays);
-
+  // Analyze function
+  const handleAnalyze = async (event: EconomicEvent) => {
+    if (analyzingId === event.id) return; // Prevent double click
+    setAnalyzingId(event.id);
     try {
-      const event = days[dayIndex].events[eventIndex];
-      const analysis = await analyzeEconomicEvent(event.title, event.country);
-      const updatedDays = [...days];
-      updatedDays[dayIndex].events[eventIndex].analysis = analysis;
-      updatedDays[dayIndex].events[eventIndex].isLoading = false;
-      setDays(updatedDays);
-    } catch (error) {
-      const updatedDays = [...days];
-      updatedDays[dayIndex].events[eventIndex].isLoading = false;
-      setDays(updatedDays);
+      const result = await analyzeEconomicEvent(event.title, event.country);
+      setAnalysisResult(result);
+    } catch (e) {
+      console.error('Analysis failed', e);
+    } finally {
+      setAnalyzingId(null);
     }
   };
 
-  const selectedEventData = selectedEvent ? days[selectedEvent.dayIndex]?.events[selectedEvent.eventIndex] : null;
-
   return (
-    <div className="flex-1 flex h-full bg-background overflow-hidden relative">
-      <div className="absolute inset-0 bg-gradient-to-br from-accent/10 via-background to-background pointer-events-none" />
-      <div className="flex-1 flex flex-col overflow-hidden relative z-0 p-4 gap-4">
-        <div className="flex items-center justify-between p-4 glass-card z-10">
-          <h1 className="text-2xl font-bold tracking-tight">Economic Calendar</h1>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1 bg-surface/50 border border-border/50 rounded-full p-1 shadow-sm backdrop-blur-md">
-              <button
-                type="button"
-                onClick={() => setWeekOffset((o) => o - 1)}
-                className="p-2 hover:bg-surface rounded-full transition-all text-text-secondary hover:text-text-primary"
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <span className="text-sm font-semibold px-3 min-w-[80px] text-center">
-                {weekOffset === 0 ? 'This Week' : `${weekOffset > 0 ? '+' : ''}${weekOffset} wk`}
-              </span>
-              <button
-                type="button"
-                onClick={() => setWeekOffset((o) => o + 1)}
-                className="p-2 hover:bg-surface rounded-full transition-all text-text-secondary hover:text-text-primary"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSettingsOpen(true)}
-              className="p-2.5 text-text-secondary hover:text-text-primary hover:bg-surface/80 rounded-full transition-all border border-transparent hover:border-border/50 shadow-sm backdrop-blur-md"
-            >
-              <Settings size={18} />
-            </button>
+    <div className="flex flex-col flex-1 h-screen overflow-hidden bg-background">
+      {/* --- Terminal Header --- */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-surface sticky top-0 z-20">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 flex items-center justify-center bg-accent/10 border border-accent/20 rounded-md">
+            <CalendarIcon size={16} className="text-accent" />
           </div>
+          <h1 className="text-lg font-bold tracking-tight text-text-primary uppercase">Global Economic Calendar</h1>
+          <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase text-positive bg-positive/10 border border-positive/20 rounded-sm">Live Feed</span>
         </div>
 
-        <div className="flex-1 overflow-auto relative glass-card" id="calendar-grid-container">
-          {loading ? (
-            <div className="flex items-center justify-center h-full">
-              <Loader2 className="animate-spin w-8 h-8 text-accent" />
-            </div>
-          ) : (
-            <div className="min-w-[1000px] h-full flex flex-col">
-              <div className="flex border-b border-border/50 sticky top-0 bg-surface/80 backdrop-blur-xl z-20">
-                <div className="w-20 shrink-0 border-r border-border/50 p-4 text-xs text-text-secondary text-center font-semibold uppercase flex items-center justify-center">EST</div>
-                {days.map((day, i) => {
-                  const today = new Date();
-                  const year = today.getFullYear();
-                  const month = String(today.getMonth() + 1).padStart(2, '0');
-                  const d = String(today.getDate()).padStart(2, '0');
-                  const todayStr = `${year}-${month}-${d}`;
-                  const isToday = day.dateStr === todayStr;
-                  
-                  return (
-                    <div key={i} className={`flex-1 border-r border-border/50 p-4 text-center ${isToday ? 'bg-accent/10' : ''}`}>
-                      <span className={`text-sm font-bold uppercase ${isToday ? 'text-accent' : 'text-text-secondary'}`}>
-                        {day.name}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+        <div className="flex items-center gap-2">
+          {/* Week Controls */}
+          <div className="flex items-center bg-background border border-border rounded-md overflow-hidden mr-2">
+            <button 
+              onClick={() => setWeekOffset(w => w - 1)}
+              className="p-1.5 hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-colors border-r border-border"
+            >
+              <ChevronLeft size={14} />
+            </button>
+            <span className="px-3 text-xs font-mono font-medium text-text-primary min-w-[100px] text-center">
+              {weekOffset === 0 ? 'Current Week' : `${Math.abs(weekOffset)} Wk ${weekOffset > 0 ? 'Fwd' : 'Back'}`}
+            </span>
+            <button 
+              onClick={() => setWeekOffset(w => w + 1)}
+              className="p-1.5 hover:bg-surface-hover text-text-secondary hover:text-text-primary transition-colors border-l border-border"
+            >
+              <ChevronRight size={14} />
+            </button>
+          </div>
 
-              <div className="flex-1 relative">
-                {hours.map((hour, i) => (
-                  <div key={i} className="flex border-b border-border/50 min-h-[140px]">
-                    <div className="w-20 shrink-0 border-r border-border/50 p-3 text-xs font-medium text-text-secondary text-right relative">
-                      <span className="absolute -top-2.5 right-3 bg-surface/80 backdrop-blur-md px-2 py-0.5 rounded-full border border-border/50">{hour}</span>
-                    </div>
-                    {days.map((day, j) => {
-                      const today = new Date();
-                      const year = today.getFullYear();
-                      const month = String(today.getMonth() + 1).padStart(2, '0');
-                      const d = String(today.getDate()).padStart(2, '0');
-                      const todayStr = `${year}-${month}-${d}`;
-                      const isToday = day.dateStr === todayStr;
-                      
-                      return (
-                        <div key={j} className={`flex-1 border-r border-border/50 p-2 relative ${isToday ? 'bg-accent/5' : ''}`}>
-                          <div className="flex flex-col gap-2">
-                            {day.events.filter((e) => {
-                              const [hStr, mStr] = e.time.split(':');
-                              let eventHour = parseInt(hStr);
-                              const isPM = e.time.includes('PM');
-                              if (isPM && eventHour !== 12) eventHour += 12;
-                              if (!isPM && eventHour === 12) eventHour = 0;
-
-                              const gridHour = parseInt(hour.split(' ')[0]);
-                              const gridIsPM = hour.includes('PM');
-                              let gridHour24 = gridHour;
-                              if (gridIsPM && gridHour !== 12) gridHour24 += 12;
-                              if (!gridIsPM && gridHour === 12) gridHour24 = 0;
-
-                              return eventHour === gridHour24;
-                            }).map((event, k) => {
-                              const eventIndex = day.events.findIndex((e) => e === event);
-                              return (
-                                <div
-                                  key={k}
-                                  className={`bg-surface/80 backdrop-blur-xl border rounded-2xl p-3 hover:bg-surface-hover hover:shadow-lg transition-all cursor-pointer group ${selectedEvent?.dayIndex === j && selectedEvent?.eventIndex === eventIndex ? 'border-accent ring-2 ring-accent/30 shadow-md' : 'border-border/50'}`}
-                                  onClick={() => handleAnalyze(j, eventIndex)}
-                                >
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-semibold text-text-secondary flex items-center gap-1.5">
-                                      <span className={`w-2 h-2 rounded-full ${event.impact === 'High' ? 'bg-negative' : event.impact === 'Medium' ? 'bg-warning' : 'bg-positive'}`} />
-                                      {event.time}
-                                    </span>
-                                    {event.isLoading ? <Loader2 size={14} className="text-accent animate-spin" /> : event.analysis ? <Brain size={14} className="text-accent" /> : null}
-                                  </div>
-                                  <div className="text-sm font-bold text-text-primary leading-snug group-hover:text-accent transition-colors">
-                                    {event.title}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          <button 
+            onClick={() => setIsSettingsOpen(true)}
+            className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-text-secondary hover:text-text-primary bg-surface hover:bg-surface-hover border border-border rounded-md transition-all"
+          >
+            <Settings size={14} />
+            <span>Filters</span>
+          </button>
+          
+          <button 
+            onClick={() => setLoading(true)} // Re-trigger effect
+            className="p-1.5 text-text-secondary hover:text-accent hover:bg-surface-hover rounded-md transition-colors"
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+          </button>
         </div>
       </div>
 
-      {selectedEventData && (
-        <div className="w-96 border-l border-border/50 glass bg-surface/90 flex flex-col animate-in slide-in-from-right-8 shadow-2xl z-30 absolute right-0 top-0 bottom-0">
-          <div className="p-5 border-b border-border/50 flex items-center justify-between bg-surface/50 backdrop-blur-xl">
-            <h3 className="font-bold text-lg text-text-primary flex items-center gap-2">
-              <Brain size={20} className="text-accent" />
-              Gemini Insights
-            </h3>
-            <button onClick={() => setSelectedEvent(null)} className="p-2 text-text-secondary hover:text-text-primary hover:bg-surface-hover rounded-full transition-all bg-surface/50 border border-border/50">
-              <X size={18} />
-            </button>
-          </div>
-
-          <div className="p-6 flex flex-col gap-6 overflow-y-auto">
-            <div className="flex flex-col gap-2">
-              <span className="text-sm font-semibold text-text-secondary flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${selectedEventData.impact === 'High' ? 'bg-negative' : selectedEventData.impact === 'Medium' ? 'bg-warning' : 'bg-positive'}`} />
-                {selectedEventData.time} • {selectedEventData.country}
-              </span>
-              <h2 className="text-2xl font-bold text-text-primary leading-tight">{selectedEventData.title}</h2>
-            </div>
-
-            {selectedEventData.isLoading ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-4 text-text-secondary">
-                <Loader2 size={40} className="animate-spin text-accent" />
-                <p className="text-base font-medium">Analyzing market impact...</p>
-              </div>
-            ) : selectedEventData.analysis ? (
-              <div className="flex flex-col gap-6">
-                <div className="glass-card p-5 flex flex-col gap-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Sentiment</span>
-                    <span className={`text-sm font-bold px-3 py-1 rounded-full ${selectedEventData.analysis.sentiment === 'Bullish' ? 'bg-positive/20 text-positive' : selectedEventData.analysis.sentiment === 'Bearish' ? 'bg-negative/20 text-negative' : 'bg-warning/20 text-warning'}`}>
-                      {selectedEventData.analysis.sentiment}
-                    </span>
-                  </div>
-                  <p className="text-[15px] text-text-primary leading-relaxed">{selectedEventData.analysis.analysis}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="glass-card p-5 flex flex-col gap-2">
-                    <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Impact Score</span>
-                    <span className="text-4xl font-bold text-text-primary">{selectedEventData.analysis.impactRating}<span className="text-xl text-text-secondary font-medium">/10</span></span>
-                  </div>
-                  <div className="glass-card p-5 flex flex-col gap-3">
-                    <span className="text-xs font-bold text-text-secondary uppercase tracking-wider">Assets</span>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedEventData.analysis.impactedAssets.map(asset => (
-                        <span key={asset} className="px-3 py-1.5 text-xs font-bold bg-surface rounded-full text-text-primary border border-border/50 shadow-sm">{asset}</span>
-                      ))}
+      {/* --- Main Content Grid --- */}
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Lensing overlay */}
+        <div className="absolute inset-0 pointer-events-none bg-gradient-to-b from-surface/5 to-transparent z-0" />
+        
+        {/* Calendar Table Container */}
+        <div className="flex-1 overflow-x-auto overflow-y-auto custom-scrollbar relative z-10 p-4">
+          <div className="min-w-[1000px] h-full flex flex-col bg-surface/30 border border-border rounded-xl overflow-hidden backdrop-blur-sm shadow-xl">
+            
+            {/* Table Header - Days */}
+            <div className="flex border-b border-border bg-surface/90 sticky top-0 z-20 backdrop-blur-md">
+              {weekDates.map((day, i) => {
+                const isToday = day.dateStr === toISODateString(new Date());
+                return (
+                  <div key={i} className={`flex-1 p-3 text-center border-r border-border last:border-r-0 ${isToday ? 'bg-accent/5' : ''}`}>
+                    <div className={`text-[10px] font-bold uppercase tracking-widest mb-1 ${isToday ? 'text-accent' : 'text-text-secondary'}`}>
+                      {day.dayName}
+                    </div>
+                    <div className={`text-sm font-mono font-bold ${isToday ? 'text-text-primary' : 'text-text-secondary'}`}>
+                      {day.date.getDate()} {day.date.toLocaleString('default', { month: 'short' })}
                     </div>
                   </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-16 gap-5 text-text-secondary">
-                <p className="text-base text-center font-medium">Click "Analyze" to generate AI insights for this event.</p>
-                <button
-                  onClick={() => selectedEvent && handleAnalyze(selectedEvent.dayIndex, selectedEvent.eventIndex)}
-                  className="px-6 py-3 bg-accent text-white rounded-full font-bold hover:bg-accent/90 transition-all shadow-lg hover:shadow-xl active:scale-95 w-full"
-                >
-                  Analyze Event
-                </button>
-              </div>
-            )}
+                );
+              })}
+            </div>
+
+            {/* Table Body - Events Grid */}
+            <div className="flex flex-1 divide-x divide-border bg-background/40">
+              {weekDates.map((day, i) => {
+                const dayEvents = eventsData[day.dateStr] || [];
+                const isToday = day.dateStr === toISODateString(new Date());
+
+                return (
+                  <div key={i} className={`flex-1 flex flex-col relative min-h-[400px] ${isToday ? 'bg-accent/[0.02]' : ''}`}>
+                    {loading ? (
+                      <div className="flex-1 flex items-center justify-center">
+                        <Loader2 className="w-5 h-5 animate-spin text-text-tertiary" />
+                      </div>
+                    ) : dayEvents.length === 0 ? (
+                      <div className="flex-1 flex items-center justify-center text-xs text-text-tertiary italic">
+                        No major events
+                      </div>
+                    ) : (
+                      <div className="flex flex-col p-2 gap-2 pb-20"> {/* Padding bottom for scroll */}
+                        {dayEvents.map((event, j) => {
+                          const isHigh = event.impact === 'High';
+                          const isMed = event.impact === 'Medium';
+                          
+                          return (
+                            <div 
+                              key={event.id}
+                              className={`
+                                group relative flex flex-col p-2.5 rounded-lg border transition-all cursor-pointer
+                                ${isHigh ? 'bg-negative/5 border-negative/20 hover:border-negative/40' : 
+                                  isMed ? 'bg-warning/5 border-warning/20 hover:border-warning/40' : 
+                                  'bg-surface border-border hover:border-text-secondary/30'}
+                                hover:shadow-lg hover:-translate-y-0.5
+                              `}
+                              onClick={() => handleAnalyze(event)}
+                            >
+                              {/* Header: Time + Country */}
+                              <div className="flex items-center justify-between mb-1.5">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded text-text-primary bg-surface/80 border border-border/50`}>
+                                    {formatTime(event.time)}
+                                  </span>
+                                  <span className="text-[9px] font-bold uppercase tracking-wider text-text-tertiary">
+                                    {event.country}
+                                  </span>
+                                </div>
+                                <div className={`w-1.5 h-1.5 rounded-full ${isHigh ? 'bg-negative animate-pulse' : isMed ? 'bg-warning' : 'bg-positive'}`} />
+                              </div>
+                              
+                              {/* Title */}
+                              <h3 className="text-xs font-semibold text-text-primary leading-tight mb-2 line-clamp-2">
+                                {event.title}
+                              </h3>
+
+                              {/* Data Grid */}
+                              <div className="grid grid-cols-3 gap-1 mt-auto pt-2 border-t border-border/40">
+                                <div className="flex flex-col">
+                                  <span className="text-[9px] text-text-tertiary uppercase">Act</span>
+                                  <span className={`text-[10px] font-mono font-bold ${event.actual !== '-' ? 'text-text-primary' : 'text-text-tertiary'}`}>
+                                    {event.actual}
+                                  </span>
+                                </div>
+                                <div className="flex flex-col text-center border-l border-r border-border/30 px-1">
+                                  <span className="text-[9px] text-text-tertiary uppercase">Fcst</span>
+                                  <span className="text-[10px] font-mono text-text-secondary">
+                                    {event.forecast}
+                                  </span>
+                                </div>
+                                <div className="flex flex-col text-right">
+                                  <span className="text-[9px] text-text-tertiary uppercase">Prev</span>
+                                  <span className="text-[10px] font-mono text-text-secondary">
+                                    {event.previous}
+                                  </span>
+                                </div>
+                              </div>
+                              
+                              {/* AI Analysis Button (Hover) */}
+                              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button className="p-1 rounded-full bg-accent text-white hover:bg-accent-hover shadow-md">
+                                  <Brain size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
-      )}
 
-      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
+        {/* --- Analysis Sidebar (Slide-over) --- */}
+        {analysisResult && (
+          <div className="w-[340px] border-l border-border bg-surface/95 backdrop-blur-xl flex flex-col shadow-2xl z-30 animate-in slide-in-from-right duration-300 absolute right-0 top-0 bottom-0">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h2 className="text-sm font-bold uppercase tracking-widest text-text-secondary flex items-center gap-2">
+                <Brain size={14} className="text-accent" />
+                AI Market Intelligence
+              </h2>
+              <button 
+                onClick={() => setAnalysisResult(null)}
+                className="p-1.5 hover:bg-surface-hover rounded-md transition-colors"
+              >
+                <X size={16} className="text-text-tertiary hover:text-text-primary" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-5 space-y-6">
+              {/* Sentiment Score */}
+              <div className="flex flex-col gap-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-text-secondary">Market Sentiment</span>
+                  <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-full border ${
+                    analysisResult.sentiment === 'Bullish' ? 'text-positive border-positive/30 bg-positive/10' : 
+                    analysisResult.sentiment === 'Bearish' ? 'text-negative border-negative/30 bg-negative/10' : 
+                    'text-warning border-warning/30 bg-warning/10'
+                  }`}>
+                    {analysisResult.sentiment}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full bg-surface-hover rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full rounded-full ${
+                      analysisResult.sentiment === 'Bullish' ? 'bg-positive w-3/4' : 
+                      analysisResult.sentiment === 'Bearish' ? 'bg-negative w-1/4' : 
+                      'bg-warning w-1/2'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* Analysis Text */}
+              <div className="p-4 rounded-lg bg-surface border border-border">
+                <p className="text-sm text-text-primary leading-relaxed">
+                  {analysisResult.analysis}
+                </p>
+              </div>
+
+              {/* Impact Score */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 rounded-lg bg-surface border border-border text-center">
+                  <div className="text-[10px] font-bold text-text-tertiary uppercase mb-1">Impact Score</div>
+                  <div className="text-2xl font-bold text-text-primary">{analysisResult.impactRating}<span className="text-sm text-text-tertiary">/10</span></div>
+                </div>
+                <div className="p-3 rounded-lg bg-surface border border-border text-center">
+                  <div className="text-[10px] font-bold text-text-tertiary uppercase mb-1">Volatility</div>
+                  <div className="text-2xl font-bold text-text-primary">
+                    {analysisResult.impactRating > 7 ? 'High' : analysisResult.impactRating > 4 ? 'Med' : 'Low'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Impacted Assets */}
+              <div>
+                <div className="text-xs font-bold text-text-secondary uppercase mb-3">Watchlist Impact</div>
+                <div className="flex flex-wrap gap-2">
+                  {analysisResult.impactedAssets.map((asset: string) => (
+                    <span key={asset} className="px-2 py-1 text-[11px] font-mono font-medium text-text-primary bg-surface border border-border rounded hover:border-accent/50 transition-colors cursor-default">
+                      {asset}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );
 }

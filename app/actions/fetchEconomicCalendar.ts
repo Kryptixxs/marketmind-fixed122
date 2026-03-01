@@ -1,150 +1,136 @@
 'use server';
 
-export interface CalendarEvent {
-  date: string;       // ISO string for time display
-  originalDate: string; // YYYY-MM-DD for column placement
-  time: string;       // Formatted time or "All Day"
+import { CalendarEvent } from '@/types/financial'; // We will define this type locally if not exists, but for now strict typing here.
+
+export interface EconomicEvent {
+  id: string;
+  date: string;       // YYYY-MM-DD
+  time: string;       // HH:mm or "All Day"
+  timestamp: number;  // Unix timestamp for sorting
   currency: string;
-  impact: string;     // Inferred
+  country: string;
+  impact: 'High' | 'Medium' | 'Low';
   title: string;
+  actual: string;
   forecast: string;
   previous: string;
-  actual: string;
-  country: string;
+  source: string;
 }
 
-// Map country names to currencies
-const COUNTRY_TO_CURRENCY: Record<string, string> = {
-  'United States': 'USD', 'USA': 'USD', 'US': 'USD',
+const COUNTRY_MAP: Record<string, string> = {
+  'USA': 'USD', 'United States': 'USD', 'US': 'USD',
   'Euro Zone': 'EUR', 'Germany': 'EUR', 'France': 'EUR', 'Italy': 'EUR', 'Spain': 'EUR',
-  'United Kingdom': 'GBP', 'Great Britain': 'GBP', 'UK': 'GBP',
-  'Japan': 'JPY',
-  'China': 'CNY',
-  'Australia': 'AUD',
-  'Canada': 'CAD',
-  'New Zealand': 'NZD',
-  'Switzerland': 'CHF',
-  'India': 'INR',
-  'Brazil': 'BRL',
-  'South Korea': 'KRW',
-  'Russia': 'RUB',
+  'United Kingdom': 'GBP', 'UK': 'GBP', 'Great Britain': 'GBP',
+  'Japan': 'JPY', 'China': 'CNY', 'Australia': 'AUD', 'Canada': 'CAD',
+  'New Zealand': 'NZD', 'Switzerland': 'CHF',
 };
 
-function inferImpact(title: string): string {
+function determineImpact(title: string, country: string): 'High' | 'Medium' | 'Low' {
   const t = title.toLowerCase();
-  if (t.includes('rate decision') || t.includes('interest rate') || t.includes('non-farm') || t.includes('gdp') || t.includes('cpi') || t.includes('fomc') || t.includes('payroll') || t.includes('meeting')) {
-    return 'High';
-  }
-  if (t.includes('pmi') || t.includes('sales') || t.includes('unemployment') || t.includes('sentiment') || t.includes('inventory') || t.includes('confidence') || t.includes('claims')) {
-    return 'Medium';
-  }
+  
+  // High Impact Keywords
+  if (
+    t.includes('interest rate') || 
+    t.includes('rate decision') || 
+    t.includes('non-farm') || 
+    t.includes('payroll') || 
+    t.includes('gdp') || 
+    t.includes('cpi') || 
+    t.includes('fomc') ||
+    t.includes('unemployment rate')
+  ) return 'High';
+
+  // Medium Impact
+  if (
+    t.includes('pmi') || 
+    t.includes('retail sales') || 
+    t.includes('confidence') || 
+    t.includes('sentiment') || 
+    t.includes('trade balance') || 
+    t.includes('ppi') ||
+    t.includes('durable goods') ||
+    t.includes('housing starts')
+  ) return 'Medium';
+
   return 'Low';
 }
 
-let cachedData: { weekKey: string, events: CalendarEvent[] } | null = null;
-let lastFetchTime = 0;
-const CACHE_DURATION = 15 * 60 * 1000;
-
-async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
+async function fetchDayData(dateStr: string): Promise<EconomicEvent[]> {
+  // Using Nasdaq API as the data source
   const url = `https://api.nasdaq.com/api/calendar/economicevents?date=${dateStr}`;
   
   try {
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'application/json, text/plain, */*',
         'Origin': 'https://www.nasdaq.com',
         'Referer': 'https://www.nasdaq.com/',
-        'Accept-Language': 'en-US,en;q=0.9',
       },
-      next: { revalidate: 3600 }
+      next: { revalidate: 3600 } // Cache for 1 hour
     });
-    
-    if (!res.ok) return [];
 
-    const data = await res.json();
-    const rows = data?.data?.rows;
+    if (!res.ok) throw new Error(`Failed to fetch ${dateStr}: ${res.status}`);
+
+    const json = await res.json();
+    const rows = json?.data?.rows;
+
     if (!Array.isArray(rows)) return [];
 
-    return rows.map((item: any) => {
+    return rows.map((item: any, index: number) => {
       const country = item.country || 'Global';
+      const currency = COUNTRY_MAP[country] || 'USD'; // Default to USD if unknown, or we could leave blank
       const title = item.eventName || 'Economic Event';
-      const timeText = item.gmt || 'All Day';
-
-      // Nasdaq times are generally in EST/EDT. We'll treat them as such.
-      let fullDateStr = dateStr;
-      if (timeText.includes(':')) {
-        // Append a fixed offset for EST (-05:00) to create a valid ISO string
-        fullDateStr = `${dateStr}T${timeText}:00-05:00`;
-      }
+      const rawTime = item.gmt || '00:00';
+      
+      // Construct a pseudo-timestamp for sorting (Assuming EST for Nasdaq data usually)
+      // This is rough but sufficient for intra-day sorting
+      const [h, m] = rawTime.includes(':') ? rawTime.split(':') : ['0', '0'];
+      const timestamp = new Date(dateStr).setHours(parseInt(h), parseInt(m), 0);
 
       return {
-        date: fullDateStr,
-        originalDate: dateStr,
-        time: timeText,
-        currency: COUNTRY_TO_CURRENCY[country] || 'USD',
-        impact: inferImpact(title),
+        id: `${dateStr}-${index}`,
+        date: dateStr,
+        time: rawTime,
+        timestamp,
+        country,
+        currency,
+        impact: determineImpact(title, country),
         title,
-        forecast: item.consensus || '',
-        previous: item.previous || '',
-        actual: item.actual || '',
-        country
+        actual: item.actual || '-',
+        forecast: item.consensus || '-',
+        previous: item.previous || '-',
+        source: 'Nasdaq'
       };
     });
-  } catch (err) {
+  } catch (e) {
+    console.error(`Error fetching calendar for ${dateStr}`, e);
     return [];
   }
 }
 
-function getWeekDates(offset: number) {
-  const now = new Date();
-  const day = now.getDay();
-  // Calculate distance to Monday (Monday is 1, Sunday is 0)
-  // If today is Sunday, we usually want the upcoming week, but the app logic
-  // seems to prefer the "current" week. We'll stick to the current week logic
-  // but make it more robust.
-  const diff = now.getDate() - (day === 0 ? 6 : day - 1);
-  const monday = new Date(now.setDate(diff));
-  monday.setHours(12, 0, 0, 0); // Set to noon to avoid timezone shifts
-  monday.setDate(monday.getDate() + (offset * 7));
+/**
+ * Fetches economic calendar events for a specific array of date strings.
+ * This ensures the server fetches exactly what the client requested.
+ */
+export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Record<string, EconomicEvent[]>> {
+  const results: Record<string, EconomicEvent[]> = {};
   
-  const dates = [];
-  for (let i = 0; i < 5; i++) {
-    const d = new Date(monday);
-    d.setDate(monday.getDate() + i);
-    
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const dayNum = String(d.getDate()).padStart(2, '0');
-    dates.push(`${year}-${month}-${dayNum}`);
-  }
-  return dates;
-}
+  // Run fetches in parallel
+  const promises = dates.map(async (date) => {
+    const events = await fetchDayData(date);
+    // Sort events by time within the day
+    events.sort((a, b) => {
+      // Prioritize High impact if times are equal
+      if (a.time === b.time) {
+         const impactScore = { 'High': 3, 'Medium': 2, 'Low': 1 };
+         return impactScore[b.impact] - impactScore[a.impact];
+      }
+      return a.time.localeCompare(b.time);
+    });
+    results[date] = events;
+  });
 
-export async function fetchEconomicCalendarForWeek(weekOffset: number): Promise<CalendarEvent[]> {
-  const weekDates = getWeekDates(weekOffset);
-  const weekKey = weekDates[0];
-
-  const now = Date.now();
-  if (cachedData && cachedData.weekKey === weekKey && (now - lastFetchTime < CACHE_DURATION)) {
-    return cachedData.events;
-  }
-
-  const promises = weekDates.map(date => fetchNasdaqDay(date));
-  const results = await Promise.all(promises);
-  const allEvents = results.flat();
-  
-  allEvents.sort((a, b) => a.date.localeCompare(b.date));
-
-  cachedData = { weekKey, events: allEvents };
-  lastFetchTime = now;
-  return allEvents;
-}
-
-export async function fetchEconomicCalendar(): Promise<CalendarEvent[]> {
-  return fetchEconomicCalendarForWeek(0);
-}
-
-export async function isEconomicCalendarConfigured(): Promise<boolean> {
-  return true;
+  await Promise.all(promises);
+  return results;
 }
