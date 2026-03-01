@@ -2,17 +2,9 @@
 
 export async function fetchEarnings(dateStr: string) {
   try {
-    // Correction for date alignment:
-    // The user reports "Tuesday is on Wednesday", implying a 1-day lag.
-    // Querying Date D returns events for D-1.
-    // Therefore, we query Date D+1 to get events for Date D.
-    const dateObj = new Date(dateStr);
-    dateObj.setDate(dateObj.getDate() + 1);
-    const adjustedDateStr = dateObj.toISOString().split('T')[0];
-
     // Using Seeking Alpha API
     // dateStr format: YYYY-MM-DD
-    const url = `https://seekingalpha.com/api/v3/earnings_calendar/tickers?filter[selected_date]=${adjustedDateStr}&filter[currency]=USD`;
+    const url = `https://seekingalpha.com/api/v3/earnings_calendar/tickers?filter[selected_date]=${dateStr}&filter[currency]=USD`;
 
     const response = await fetch(url, {
       headers: {
@@ -20,11 +12,11 @@ export async function fetchEarnings(dateStr: string) {
         'Referer': 'https://seekingalpha.com/earnings/earnings-calendar',
         'Accept': 'application/json',
       },
-      cache: 'no-store', // Disable caching to ensure fresh data
+      next: { revalidate: 3600 }
     });
     
     if (!response.ok) {
-      console.warn(`Seeking Alpha API returned ${response.status} for ${adjustedDateStr}`);
+      console.warn(`Seeking Alpha API returned ${response.status} for ${dateStr}`);
       return [];
     }
     

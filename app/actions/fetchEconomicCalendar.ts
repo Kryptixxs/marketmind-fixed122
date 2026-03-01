@@ -79,9 +79,10 @@ async function fetchNasdaqDay(dateStr: string): Promise<CalendarEvent[]> {
       const timeText = item.gmt || 'All Day'; // usually HH:mm or 'Tentative'
 
       // Construct ISO date if time is available
+      // Nasdaq provides time in GMT. We append 'Z' to treat it as UTC.
       let fullDateStr = dateStr;
       if (timeText.includes(':')) {
-        fullDateStr = `${dateStr}T${timeText}:00`;
+        fullDateStr = `${dateStr}T${timeText}:00Z`;
       }
 
       return {
