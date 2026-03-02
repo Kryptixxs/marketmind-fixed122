@@ -1,9 +1,8 @@
 'use server';
 
 import { EconomicEvent } from '@/lib/types';
-import { GoogleGenAI, Type } from '@google/genai';
 
-// Simple in-memory cache to prevent burning through tokens on every refresh
+// Simple in-memory cache
 const CACHE: Record<string, { data: EconomicEvent[], timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
@@ -40,7 +39,6 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
   return results;
 }
 
-// Fetch single date events
 export async function fetchEconomicCalendar(dateStr?: string): Promise<EconomicEvent[]> {
     const date = dateStr || new Date().toISOString().split('T')[0];
     const batch = await fetchEconomicCalendarBatch([date]);
@@ -48,97 +46,78 @@ export async function fetchEconomicCalendar(dateStr?: string): Promise<EconomicE
 }
 
 async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
-  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    console.warn("Missing GEMINI_API_KEY");
-    return [{
-      id: 'error-key',
-      date: dateStr,
-      time: 'Error',
-      country: 'System',
-      currency: '-',
-      impact: 'High',
-      title: 'Missing GEMINI_API_KEY. Please set in .env.local',
-      actual: '-',
-      forecast: '-',
-      previous: '-',
-      timestamp: Date.now()
-    }];
-  }
-
   try {
-    const ai = new GoogleGenAI({ apiKey });
+    // NASDAQ Economic Calendar API
+    const url = `https://api.nasdaq.com/api/calendar/economicevents?date=${dateStr}`;
     
-    // We try to make Gemini generate events directly.
-    const prompt = `Find the 5 most important economic calendar events for ${dateStr}. 
-    Focus on US, UK, EU, Japan.
-    Return strictly JSON with this schema:
-    [
-      {
-        "time": "HH:MM or All Day",
-        "country": "USA/UK/EU/JP",
-        "currency": "USD/GBP/EUR/JPY",
-        "impact": "High/Medium/Low",
-        "title": "Event Name",
-        "actual": "value or -",
-        "forecast": "value or -",
-        "previous": "value or -"
-      }
-    ]
-    If no major events, return empty array.`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      }
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+        'Accept': 'application/json, text/plain, */*',
+        'Origin': 'https://www.nasdaq.com',
+        'Referer': 'https://www.nasdaq.com/',
+        'Accept-Language': 'en-US,en;q=0.9',
+      },
+      next: { revalidate: 3600 }
     });
 
-    const text = response.text;
-    if (!text) return [];
-
-    let events = [];
-    try {
-      events = JSON.parse(text);
-      if (!Array.isArray(events)) {
-         // @ts-ignore
-         if (events.events) events = events.events;
-         else events = [];
-      }
-    } catch (e) {
-      console.warn("Failed to parse JSON from Gemini", text);
+    if (!response.ok) {
+      console.warn(`NASDAQ API error: ${response.status} for ${dateStr}`);
       return [];
     }
 
-    return events.map((e: any, i: number) => ({
-      id: `${dateStr}-${i}`,
-      date: dateStr,
-      time: e.time || 'All Day',
-      country: e.country,
-      currency: e.currency,
-      impact: e.impact,
-      title: e.title,
-      actual: e.actual || '-',
-      forecast: e.forecast || '-',
-      previous: e.previous || '-',
-      timestamp: new Date(`${dateStr}T${e.time || '00:00'}`).getTime()
-    }));
+    const json = await response.json();
+    
+    // Validate structure
+    if (!json.data || !json.data.rows || !Array.isArray(json.data.rows)) {
+      return [];
+    }
+
+    return json.data.rows.map((row: any, i: number) => {
+      // Clean values
+      const actual = row.actual ? row.actual.toString().trim() : '-';
+      const forecast = row.consensus ? row.consensus.toString().trim() : '-';
+      const previous = row.previous ? row.previous.toString().trim() : '-';
+      
+      // Determine impact (NASDAQ doesn't always provide this explicitly in this endpoint, 
+      // so we might default to 'Medium' or try to infer, but let's default to Medium/Low if missing)
+      // Some rows might have star ratings or importance.
+      // For now, we map everything to a safe default if missing.
+      const impact = 'Medium'; 
+
+      // Calculate surprise if numeric
+      let surprise = null;
+      try {
+        const actNum = parseFloat(actual.replace(/[^0-9.-]/g, ''));
+        const forNum = parseFloat(forecast.replace(/[^0-9.-]/g, ''));
+        if (!isNaN(actNum) && !isNaN(forNum) && forNum !== 0) {
+          surprise = ((actNum - forNum) / Math.abs(forNum)) * 100;
+        }
+      } catch {}
+
+      return {
+        id: `${dateStr}-${i}`,
+        date: dateStr,
+        time: row.gmt || 'All Day',
+        country: row.country || 'Global',
+        currency: row.country === 'United States' ? 'USD' : 
+                 row.country === 'Euro Zone' ? 'EUR' : 
+                 row.country === 'United Kingdom' ? 'GBP' : 
+                 row.country === 'Japan' ? 'JPY' : 
+                 row.country === 'Canada' ? 'CAD' : 
+                 row.country === 'Australia' ? 'AUD' : '-',
+        impact: impact, 
+        title: row.eventName || 'Economic Event',
+        actual,
+        forecast,
+        previous,
+        surprise,
+        timestamp: new Date(`${dateStr}T${row.gmt || '00:00'}:00`).getTime()
+      };
+    });
 
   } catch (error) {
-    console.error("Gemini fetch error:", error);
-    return [{
-      id: 'error-fetch',
-      date: dateStr,
-      time: 'Error',
-      country: 'System',
-      currency: '-',
-      impact: 'High',
-      title: 'Failed to fetch data from AI. Check logs.',
-      actual: '-',
-      forecast: '-',
-      previous: '-',
-      timestamp: Date.now()
-    }];
+    console.error("Fetch error:", error);
+    return [];
   }
 }
