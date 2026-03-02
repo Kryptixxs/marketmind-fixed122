@@ -7,12 +7,12 @@ import { NewsFeed } from '@/components/NewsFeed';
 import { Activity, Wifi, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { fetchMarketData } from '@/app/actions/fetchMarketData';
 
-// Mapping Yahoo symbols to TradingView-compatible index/CFD symbols
+// Mapping Yahoo symbols to TradingView-compatible CFD symbols
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
-  '^NDX': { tv: 'TVC:NDX', label: 'Nasdaq 100' },
-  '^GSPC': { tv: 'TVC:SPX', label: 'S&P 500' },
-  '^DJI': { tv: 'TVC:DJI', label: 'Dow Jones' },
-  '^RUT': { tv: 'TVC:RUT', label: 'Russell 2000' },
+  '^NDX': { tv: 'FX:NAS100', label: 'Nasdaq 100' },
+  '^GSPC': { tv: 'FX:SPX500', label: 'S&P 500' },
+  '^DJI': { tv: 'FX:US30', label: 'Dow Jones' },
+  '^RUT': { tv: 'FX:US2000', label: 'Russell 2000' },
   'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil' },
   'GC=F': { tv: 'TVC:GOLD', label: 'Gold' },
   '^TNX': { tv: 'TVC:US10Y', label: 'US 10Y Yield' },
