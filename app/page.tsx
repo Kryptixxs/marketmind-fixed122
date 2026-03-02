@@ -12,7 +12,7 @@ const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
   '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
   '^GSPC': { tv: 'BLACKBULL:SPX500', label: 'S&P 500' },
   '^DJI': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones' },
-  '^RUT': { tv: 'PEPPERSTONE:GER30', label: 'DAX 40' },
+  '^RUT': { tv: 'IG:RUSSELL', label: 'Russell 2000' },
   'CL=F': { tv: 'PEPPERSTONE:WTI', label: 'Crude Oil' },
   'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold' },
   '^TNX': { tv: 'TVC:US10Y', label: 'US 10Y Yield' },
