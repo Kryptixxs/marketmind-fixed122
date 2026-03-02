@@ -1,11 +1,12 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Calendar, DollarSign } from 'lucide-react';
+import { Calendar, DollarSign, Loader2 } from 'lucide-react';
 import { EconomicCalendarView } from '@/components/calendar/EconomicCalendarView';
 import { EarningsCalendarView } from '@/components/calendar/EarningsCalendarView';
 
-export default function CalendarPage() {
+function CalendarContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   
@@ -57,5 +58,17 @@ export default function CalendarPage() {
         {view === 'economic' ? <EconomicCalendarView /> : <EarningsCalendarView />}
       </div>
     </div>
+  );
+}
+
+export default function CalendarPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex-1 flex items-center justify-center bg-background">
+        <Loader2 className="animate-spin text-accent" size={32} />
+      </div>
+    }>
+      <CalendarContent />
+    </Suspense>
   );
 }
