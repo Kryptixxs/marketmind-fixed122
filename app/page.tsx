@@ -2,19 +2,32 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Widget } from '@/components/Widget';
-import { TradingChart } from '@/components/TradingChart';
+import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
-import { Activity, Wifi, Loader2 } from 'lucide-react';
+import { Activity, Wifi, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { fetchMarketData } from '@/app/actions/fetchMarketData';
 
-const WATCHLIST_SYMBOLS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'AAPL', 'TSLA', 'NVDA', 'EURUSD=X', 'GC=F'];
+// Mapping Yahoo symbols to TradingView symbols
+const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
+  'NQ=F': { tv: 'CME_MINI:NQ1!', label: 'Nasdaq 100 Fut' },
+  'ES=F': { tv: 'CME_MINI:ES1!', label: 'S&P 500 Fut' },
+  'CL=F': { tv: 'NYMEX:CL1!', label: 'Crude Oil Fut' },
+  '^GSPC': { tv: 'SP:SPX', label: 'S&P 500 Index' },
+  '^NDX': { tv: 'NASDAQ:NDX', label: 'Nasdaq 100' },
+  '^DJI': { tv: 'DJ:DJI', label: 'Dow Jones' },
+  '^RUT': { tv: 'RUSSELL:RUT', label: 'Russell 2000' },
+  'GC=F': { tv: 'COMEX:GC1!', label: 'Gold Futures' },
+  '^TNX': { tv: 'TVC:US10Y', label: 'US 10Y Yield' },
+  'EURUSD=X': { tv: 'FX:EURUSD', label: 'EUR/USD' },
+};
+
+const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
 
 export default function TerminalPage() {
-  const [activeSymbol, setActiveSymbol] = useState("BTC-USD");
+  const [activeSymbol, setActiveSymbol] = useState("NQ=F");
   const [marketData, setMarketData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
-  // Fetch data for the entire watchlist
   const refreshWatchlist = useCallback(async () => {
     const results: Record<string, any> = {};
     await Promise.all(WATCHLIST_SYMBOLS.map(async (sym) => {
@@ -27,39 +40,44 @@ export default function TerminalPage() {
 
   useEffect(() => {
     refreshWatchlist();
-    const interval = setInterval(refreshWatchlist, 30000); // Refresh every 30s
+    const interval = setInterval(refreshWatchlist, 30000);
     return () => clearInterval(interval);
   }, [refreshWatchlist]);
 
   const activeQuote = marketData[activeSymbol];
+  const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
 
   return (
     <div className="h-full w-full bg-background p-1 overflow-hidden">
       <div className="grid grid-cols-12 grid-rows-12 gap-1 h-full w-full">
         
-        {/* --- LEFT COLUMN --- */}
+        {/* --- LEFT COLUMN: MARKET WATCH --- */}
         <div className="col-span-3 row-span-8 overflow-hidden">
-          <Widget title="Market Watch">
+          <Widget title="Market Watch // Futures & Indices">
             <div className="flex flex-col">
               {WATCHLIST_SYMBOLS.map(sym => {
                 const data = marketData[sym];
+                const info = SYMBOL_MAP[sym];
+                const isPositive = data?.change >= 0;
+                
                 return (
                   <div 
                     key={sym} 
                     onClick={() => setActiveSymbol(sym)}
-                    className={`flex justify-between items-center px-3 py-2 border-b border-border/50 cursor-pointer hover:bg-surface-highlight ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
+                    className={`flex justify-between items-center px-3 py-2 border-b border-border/50 cursor-pointer hover:bg-surface-highlight transition-colors ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
                   >
                     <div className="flex flex-col">
-                      <span className="font-bold text-xs">{sym}</span>
-                      <span className="text-[9px] text-text-tertiary truncate max-w-[80px]">{data?.name || 'Loading...'}</span>
+                      <span className="font-bold text-[11px] text-text-primary">{sym}</span>
+                      <span className="text-[9px] text-text-tertiary uppercase tracking-tighter">{info.label}</span>
                     </div>
                     <div className="flex flex-col items-end">
-                      <span className="text-xs font-mono font-bold text-text-primary">
+                      <span className="text-[11px] font-mono font-bold text-text-primary">
                         {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '---'}
                       </span>
-                      <span className={`text-[10px] font-mono ${data?.change >= 0 ? 'text-positive' : 'text-negative'}`}>
-                        {data ? `${data.change >= 0 ? '+' : ''}${data.changePercent.toFixed(2)}%` : '--'}
-                      </span>
+                      <div className={`flex items-center gap-1 text-[10px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
+                        {isPositive ? <TrendingUp size={10}/> : <TrendingDown size={10}/>}
+                        <span>{data ? `${isPositive ? '+' : ''}${data.changePercent.toFixed(2)}%` : '--'}</span>
+                      </div>
                     </div>
                   </div>
                 );
@@ -91,10 +109,10 @@ export default function TerminalPage() {
            </Widget>
         </div>
 
-        {/* --- CENTER COLUMN --- */}
+        {/* --- CENTER COLUMN: TRADINGVIEW CHART --- */}
         <div className="col-span-6 row-span-12 overflow-hidden relative">
           <Widget 
-            title={`${activeSymbol} • ${activeQuote?.name || ''}`} 
+            title={`${activeSymbol} • ${SYMBOL_MAP[activeSymbol]?.label || ''}`} 
             actions={
               <div className="flex items-center gap-2 text-[10px]">
                 <span className="text-positive flex items-center gap-1"><Wifi size={10}/> Live</span>
@@ -103,14 +121,12 @@ export default function TerminalPage() {
             }
           >
             <div className="w-full h-full bg-black">
-              <div className="flex items-center justify-center h-full text-text-tertiary text-[10px] uppercase tracking-widest">
-                {loading ? <Loader2 className="animate-spin" /> : 'Chart Engine Active'}
-              </div>
+              <TradingViewChart symbol={activeTV} />
             </div>
           </Widget>
         </div>
 
-        {/* --- RIGHT COLUMN --- */}
+        {/* --- RIGHT COLUMN: NEWS & AI --- */}
         <div className="col-span-3 row-span-6 overflow-hidden">
            <Widget title="Intelligence Wire">
              <NewsFeed />
