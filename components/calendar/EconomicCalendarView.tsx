@@ -77,10 +77,12 @@ export function EconomicCalendarView() {
               onChange={e => setFilterCountry(e.target.value)}
             >
               <option value="All">All Countries</option>
-              <option value="USA">USA</option>
+              <option value="United States">USA</option>
               <option value="Euro Zone">Euro Zone</option>
-              <option value="UK">UK</option>
+              <option value="United Kingdom">UK</option>
+              <option value="Japan">Japan</option>
             </select>
+            <span className="text-[10px] text-text-tertiary uppercase font-bold ml-2">Times in Eastern (ET)</span>
           </div>
         </div>
 
@@ -113,14 +115,14 @@ export function EconomicCalendarView() {
                   dayEvents.map(e => (
                     <div key={e.id} className="p-2 bg-background border border-border rounded hover:border-text-tertiary transition-colors group">
                       <div className="flex justify-between items-start mb-1">
-                        <span className="font-mono text-[10px] text-text-secondary">{e.time}</span>
+                        <span className="font-mono text-[10px] text-text-secondary whitespace-nowrap">{e.time.replace(' ET', '')}</span>
                         <span className={`text-[9px] px-1.5 py-0.5 rounded border uppercase font-bold ${IMPACT_COLORS[e.impact]}`}>
                           {e.impact}
                         </span>
                       </div>
                       
                       <div className="flex items-center gap-1 mb-2">
-                        <span className="text-[9px] font-bold text-text-tertiary">{e.country}</span>
+                        <span className="text-[9px] font-bold text-text-tertiary">{e.country === 'United States' ? 'USA' : e.country}</span>
                         <h4 className="text-[11px] font-medium leading-tight text-text-primary line-clamp-2">{e.title}</h4>
                       </div>
 
@@ -136,10 +138,8 @@ export function EconomicCalendarView() {
                           <div className="text-text-secondary">{e.forecast}</div>
                         </div>
                         <div className="text-right">
-                          <div className="text-text-tertiary text-[8px] uppercase">Surp</div>
-                          <div className={`${!e.surprise ? 'text-text-tertiary' : e.surprise > 0 ? 'text-positive' : 'text-negative'}`}>
-                            {e.surprise ? `${e.surprise > 0 ? '+' : ''}${e.surprise.toFixed(1)}%` : '-'}
-                          </div>
+                          <div className="text-text-tertiary text-[8px] uppercase">Prev</div>
+                          <div className="text-text-secondary">{e.previous}</div>
                         </div>
                       </div>
                     </div>
