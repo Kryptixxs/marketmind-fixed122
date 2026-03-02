@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { 
-  X, Bell, TrendingUp, Info, History, Speedometer, 
-  AlertTriangle, Globe, Eye, Zap, BarChart3 
+  X, Bell, TrendingUp, Globe, Zap, BarChart3, AlertTriangle, Eye 
 } from 'lucide-react';
 import { EconomicEvent } from '@/lib/types';
 import { formatTime } from '@/lib/date-utils';
+import { getEventIntel } from '@/lib/event-intelligence';
 
 interface EventDetailModalProps {
   event: EconomicEvent;
@@ -14,22 +14,17 @@ interface EventDetailModalProps {
 }
 
 export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
-  // Mocking some institutional data based on impact level
-  const isHigh = event.impact === 'High';
-  const importanceScore = isHigh ? 10 : event.impact === 'Medium' ? 7 : 4;
-  
-  const metrics = [
-    { label: 'Volatility', value: isHigh ? 'Very High' : 'Moderate', icon: Zap },
-    { label: 'Macro Impact', value: isHigh ? 'Very High' : 'Moderate', icon: Globe },
-    { label: 'Risk Level', value: isHigh ? 'Very High' : 'Moderate', icon: AlertTriangle },
-    { label: 'Popularity', value: isHigh ? 'Very High' : 'High', icon: Eye },
-  ];
+  // Use the rules engine to get deterministic intelligence
+  const intel = useMemo(() => 
+    getEventIntel(event.title, event.currency, event.impact), 
+    [event.title, event.currency, event.impact]
+  );
 
-  const impactedAssets = [
-    { name: event.currency, score: 8, sentiment: 'Bullish', desc: `Stronger ${event.title} numbers typically lead to higher ${event.currency} due to expected interest rate hikes.` },
-    { name: 'US Stocks', score: 6, sentiment: 'Bullish', desc: 'Good numbers suggest economic strength, potentially boosting stock market confidence.' },
-    { name: 'EUR/USD', score: 7, sentiment: 'Bearish', desc: `Improved ${event.country} employment can lead to a stronger ${event.currency}, impacting this forex pair negatively.` },
-    { name: 'Gold', score: 5, sentiment: 'Bearish', desc: `Stronger ${event.currency} and potential rate hikes reduce appeal of non-yielding assets like gold.` },
+  const metrics = [
+    { label: 'Volatility', value: intel.volatility, icon: Zap },
+    { label: 'Macro Impact', value: event.impact === 'High' ? 'Systemic' : 'Localized', icon: Globe },
+    { label: 'Risk Level', value: event.impact === 'High' ? 'Elevated' : 'Standard', icon: AlertTriangle },
+    { label: 'Popularity', value: event.impact === 'High' ? 'Institutional' : 'Retail', icon: Eye },
   ];
 
   return (
@@ -66,20 +61,15 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               </div>
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] text-text-tertiary uppercase font-bold">Frequency</span>
-              <div className="text-xs font-mono text-text-primary">Monthly</div>
+              <span className="text-[10px] text-text-tertiary uppercase font-bold">Impact Level</span>
+              <div className={`text-xs font-mono font-bold ${event.impact === 'High' ? 'text-negative' : event.impact === 'Medium' ? 'text-warning' : 'text-positive'}`}>
+                {event.impact}
+              </div>
             </div>
             <div className="space-y-1">
               <span className="text-[10px] text-text-tertiary uppercase font-bold">Status</span>
-              <div className="text-xs font-mono text-accent animate-pulse">Starts in 4 days</div>
+              <div className="text-xs font-mono text-accent">Upcoming</div>
             </div>
-          </div>
-
-          {/* Actions */}
-          <div className="flex gap-2">
-            <button className="flex items-center gap-2 px-4 py-2 bg-accent/10 border border-accent/20 text-accent rounded-sm text-xs font-bold hover:bg-accent/20 transition-all">
-              <Bell size={14} /> Set Alert
-            </button>
           </div>
 
           {/* Importance & Effect */}
@@ -90,15 +80,12 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                 <span className="text-[10px] font-bold uppercase">Importance Score</span>
               </div>
               <div className="flex items-end gap-2">
-                <span className="text-4xl font-mono font-bold text-accent">{importanceScore}</span>
+                <span className="text-4xl font-mono font-bold text-accent">{intel.importanceScore}</span>
                 <span className="text-text-tertiary text-xs mb-1">/ 10</span>
               </div>
-              <p className="text-[11px] text-text-secondary mt-2">
-                {isHigh ? 'Critical market impact expected. High liquidity requirements.' : 'Moderate impact. Watch for deviations from consensus.'}
-              </p>
               <div className="flex gap-1 mt-4">
-                {['None', 'Low', 'Med', 'High', 'Crit'].map((l, i) => (
-                  <div key={l} className={`h-1 flex-1 rounded-full ${i <= (importanceScore/2) ? 'bg-accent' : 'bg-surface-highlight'}`} />
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className={`h-1 flex-1 rounded-full ${i <= (intel.importanceScore / 2) ? 'bg-accent' : 'bg-surface-highlight'}`} />
                 ))}
               </div>
             </div>
@@ -106,10 +93,10 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
             <div className="bg-background border border-border p-4 rounded-sm">
               <div className="flex items-center gap-2 mb-4 text-text-tertiary">
                 <TrendingUp size={14} />
-                <span className="text-[10px] font-bold uppercase">Usual Effect</span>
+                <span className="text-[10px] font-bold uppercase">Market Logic</span>
               </div>
               <p className="text-xs text-text-primary leading-relaxed">
-                Higher than expected values typically strengthen <span className="text-accent font-bold">{event.currency}</span> (Bullish), while lower values weaken it (Bearish).
+                {intel.logic}
               </p>
             </div>
           </div>
@@ -132,19 +119,19 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               <span className="text-[10px] font-bold uppercase">Impacted Assets</span>
             </div>
             <div className="grid grid-cols-1 gap-2">
-              {impactedAssets.map(asset => (
-                <div key={asset.name} className="bg-background border border-border p-4 rounded-sm group hover:border-accent/30 transition-colors">
+              {intel.impactedAssets.map(asset => (
+                <div key={asset.symbol} className="bg-background border border-border p-4 rounded-sm group hover:border-accent/30 transition-colors">
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center gap-3">
-                      <span className="text-sm font-bold text-text-primary">{asset.name}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 bg-surface-highlight rounded text-text-tertiary font-mono">Score: {asset.score}</span>
+                      <span className="text-sm font-bold text-text-primary">{asset.symbol}</span>
+                      <span className="text-[10px] px-1.5 py-0.5 bg-surface-highlight rounded text-text-tertiary font-mono">Weight: {asset.weight}</span>
                     </div>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${asset.sentiment === 'Bullish' ? 'bg-positive/10 text-positive' : 'bg-negative/10 text-negative'}`}>
-                      {asset.sentiment}
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${asset.correlation === 'Positive' ? 'bg-positive/10 text-positive' : asset.correlation === 'Negative' ? 'bg-negative/10 text-negative' : 'bg-surface-highlight text-text-secondary'}`}>
+                      {asset.correlation}
                     </span>
                   </div>
                   <p className="text-[11px] text-text-secondary leading-relaxed">
-                    {asset.desc}
+                    {asset.description}
                   </p>
                 </div>
               ))}
