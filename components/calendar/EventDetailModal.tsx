@@ -2,11 +2,11 @@
 
 import React, { useMemo } from 'react';
 import { 
-  X, Bell, TrendingUp, Globe, Zap, BarChart3, AlertTriangle, Eye 
+  X, TrendingUp, Globe, Zap, BarChart3, AlertTriangle, Eye, Activity
 } from 'lucide-react';
 import { EconomicEvent } from '@/lib/types';
 import { formatTime } from '@/lib/date-utils';
-import { getEventIntel } from '@/lib/event-intelligence';
+import { getEventIntel, computeSurprise } from '@/lib/event-intelligence';
 
 interface EventDetailModalProps {
   event: EconomicEvent;
@@ -14,17 +14,14 @@ interface EventDetailModalProps {
 }
 
 export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
-  // Use the rules engine to get deterministic intelligence
-  const intel = useMemo(() => 
-    getEventIntel(event.title, event.currency, event.impact), 
-    [event.title, event.currency, event.impact]
-  );
+  const intel = useMemo(() => getEventIntel(event), [event]);
+  const surprise = useMemo(() => computeSurprise(event), [event]);
 
   const metrics = [
     { label: 'Volatility', value: intel.volatility, icon: Zap },
-    { label: 'Macro Impact', value: event.impact === 'High' ? 'Systemic' : 'Localized', icon: Globe },
+    { label: 'Macro Impact', value: `${intel.macroImpact}/10`, icon: Globe },
     { label: 'Risk Level', value: event.impact === 'High' ? 'Elevated' : 'Standard', icon: AlertTriangle },
-    { label: 'Popularity', value: event.impact === 'High' ? 'Institutional' : 'Retail', icon: Eye },
+    { label: 'Surprise Threshold', value: `${intel.surpriseThresholdPct}%`, icon: Activity },
   ];
 
   return (
@@ -47,6 +44,21 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
           
+          {/* Surprise Badge */}
+          {surprise.classification !== 'N/A' && (
+            <div className={`p-3 rounded-sm border flex items-center justify-between ${
+              surprise.classification === 'HOT' ? 'bg-negative/10 border-negative/20 text-negative' :
+              surprise.classification === 'COOL' ? 'bg-positive/10 border-positive/20 text-positive' :
+              'bg-surface-highlight border-border text-text-secondary'
+            }`}>
+              <div className="flex items-center gap-2">
+                <Activity size={16} />
+                <span className="text-xs font-bold uppercase tracking-wider">Surprise Classification: {surprise.classification}</span>
+              </div>
+              <span className="font-mono font-bold">{surprise.surprisePct?.toFixed(2)}%</span>
+            </div>
+          )}
+
           {/* Event Meta */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="space-y-1">
@@ -67,38 +79,20 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               </div>
             </div>
             <div className="space-y-1">
-              <span className="text-[10px] text-text-tertiary uppercase font-bold">Status</span>
-              <div className="text-xs font-mono text-accent">Upcoming</div>
+              <span className="text-[10px] text-text-tertiary uppercase font-bold">Actual / Forecast</span>
+              <div className="text-xs font-mono text-text-primary">{event.actual || '---'} / {event.forecast || '---'}</div>
             </div>
           </div>
 
-          {/* Importance & Effect */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-background border border-border p-4 rounded-sm">
-              <div className="flex items-center gap-2 mb-4 text-text-tertiary">
-                <BarChart3 size={14} />
-                <span className="text-[10px] font-bold uppercase">Importance Score</span>
-              </div>
-              <div className="flex items-end gap-2">
-                <span className="text-4xl font-mono font-bold text-accent">{intel.importanceScore}</span>
-                <span className="text-text-tertiary text-xs mb-1">/ 10</span>
-              </div>
-              <div className="flex gap-1 mt-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className={`h-1 flex-1 rounded-full ${i <= (intel.importanceScore / 2) ? 'bg-accent' : 'bg-surface-highlight'}`} />
-                ))}
-              </div>
+          {/* Logic */}
+          <div className="bg-background border border-border p-4 rounded-sm">
+            <div className="flex items-center gap-2 mb-3 text-text-tertiary">
+              <BarChart3 size={14} />
+              <span className="text-[10px] font-bold uppercase">Market Logic</span>
             </div>
-
-            <div className="bg-background border border-border p-4 rounded-sm">
-              <div className="flex items-center gap-2 mb-4 text-text-tertiary">
-                <TrendingUp size={14} />
-                <span className="text-[10px] font-bold uppercase">Market Logic</span>
-              </div>
-              <p className="text-xs text-text-primary leading-relaxed">
-                {intel.logic}
-              </p>
-            </div>
+            <p className="text-xs text-text-primary leading-relaxed">
+              {intel.logic}
+            </p>
           </div>
 
           {/* Metrics Grid */}
@@ -110,6 +104,25 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                 <span className="text-xs font-bold text-text-primary">{m.value}</span>
               </div>
             ))}
+          </div>
+
+          {/* Scenarios */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-text-tertiary">
+              <TrendingUp size={14} />
+              <span className="text-[10px] font-bold uppercase">Probabilistic Scenarios</span>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              {intel.scenarios.map(s => (
+                <div key={s.label} className="bg-background border border-border p-3 rounded-sm flex justify-between items-center">
+                  <div className="flex flex-col">
+                    <span className="text-xs font-bold text-text-primary">{s.label}</span>
+                    <span className="text-[10px] text-text-secondary">{s.reaction}</span>
+                  </div>
+                  <div className="text-xs font-mono font-bold text-accent">{s.probability}%</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Impacted Assets */}
@@ -126,8 +139,8 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                       <span className="text-sm font-bold text-text-primary">{asset.symbol}</span>
                       <span className="text-[10px] px-1.5 py-0.5 bg-surface-highlight rounded text-text-tertiary font-mono">Weight: {asset.weight}</span>
                     </div>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${asset.correlation === 'Positive' ? 'bg-positive/10 text-positive' : asset.correlation === 'Negative' ? 'bg-negative/10 text-negative' : 'bg-surface-highlight text-text-secondary'}`}>
-                      {asset.correlation}
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${asset.direction === 'UP' ? 'bg-positive/10 text-positive' : asset.direction === 'DOWN' ? 'bg-negative/10 text-negative' : 'bg-surface-highlight text-text-secondary'}`}>
+                      {asset.direction}
                     </span>
                   </div>
                   <p className="text-[11px] text-text-secondary leading-relaxed">

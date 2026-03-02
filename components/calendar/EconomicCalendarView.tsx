@@ -2,12 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  ChevronLeft, ChevronRight, Filter, Download
+  ChevronLeft, ChevronRight, Download
 } from 'lucide-react';
 import { fetchEconomicCalendarBatch } from '@/app/actions/fetchEconomicCalendar';
 import { EconomicEvent } from '@/lib/types';
 import { getFullWeek, toISODateString } from '@/lib/date-utils';
 import { EventDetailModal } from './EventDetailModal';
+import { computeSurprise, getEventIntel } from '@/lib/event-intelligence';
 
 const IMPACT_COLORS: Record<string, string> = {
   High: 'border-l-4 border-l-red-500 bg-red-500/10',
@@ -103,10 +104,6 @@ export function EconomicCalendarView() {
             >
               {showLowImpact ? 'Hiding Low Impact' : 'Show All'}
             </button>
-            <span className="text-[10px] bg-surface-highlight px-2 py-1 rounded text-text-secondary border border-border flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-positive"></span>
-              EST (New York)
-            </span>
           </div>
         </div>
 
@@ -154,52 +151,62 @@ export function EconomicCalendarView() {
                   return (
                     <div key={`${day.dateStr}-${hour}`} className={`border-r border-border p-1 relative group ${isToday ? 'bg-accent/[0.02]' : ''}`}>
                       <div className="flex flex-col gap-1.5 h-full">
-                        {dayEvents.map((event) => (
-                          <div 
-                            key={event.id}
-                            onClick={() => setSelectedEvent(event)}
-                            className={`
-                              relative p-1.5 rounded bg-surface border border-border/50 shadow-sm hover:border-accent/50 hover:bg-surface-highlight transition-all cursor-pointer
-                              ${IMPACT_COLORS[event.impact] || IMPACT_COLORS.Low}
-                            `}
-                          >
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <div className="flex items-center gap-1.5">
-                                {event.country && (
-                                  <img 
-                                    src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`}
-                                    alt={event.country}
-                                    className="w-3 h-2 object-cover rounded-[1px] opacity-80"
-                                    onError={(e) => e.currentTarget.style.display = 'none'}
-                                  />
-                                )}
-                                <span className="text-[9px] font-mono text-text-secondary leading-none">
-                                  {event.time}
-                                </span>
-                              </div>
-                            </div>
-                            
-                            <div className="text-[10px] font-medium leading-tight text-text-primary line-clamp-2 mb-1">
-                              {event.title}
-                            </div>
+                        {dayEvents.map((event) => {
+                          const surprise = computeSurprise(event);
+                          const intel = getEventIntel(event);
+                          const isMajorSurprise = surprise.surprisePct && Math.abs(surprise.surprisePct) >= intel.surpriseThresholdPct;
 
-                            {(event.actual || event.forecast) && (
-                              <div className="flex items-center gap-2 text-[9px] font-mono border-t border-black/10 pt-1 mt-1 opacity-80">
-                                {event.actual && (
-                                  <span className={
-                                    event.forecast && parseFloat(event.actual) > parseFloat(event.forecast) ? 'text-green-600' : 
-                                    event.forecast && parseFloat(event.actual) < parseFloat(event.forecast) ? 'text-red-500' : 'text-text-secondary'
-                                  }>
-                                    {event.actual}
+                          return (
+                            <div 
+                              key={event.id}
+                              onClick={() => setSelectedEvent(event)}
+                              className={`
+                                relative p-1.5 rounded bg-surface border border-border/50 shadow-sm hover:border-accent/50 hover:bg-surface-highlight transition-all cursor-pointer
+                                ${IMPACT_COLORS[event.impact] || IMPACT_COLORS.Low}
+                                ${isMajorSurprise ? 'ring-1 ring-accent ring-offset-1 ring-offset-background' : ''}
+                              `}
+                            >
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <div className="flex items-center gap-1.5">
+                                  {event.country && (
+                                    <img 
+                                      src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`}
+                                      alt={event.country}
+                                      className="w-3 h-2 object-cover rounded-[1px] opacity-80"
+                                      onError={(e) => e.currentTarget.style.display = 'none'}
+                                    />
+                                  )}
+                                  <span className="text-[9px] font-mono text-text-secondary leading-none">
+                                    {event.time}
                                   </span>
-                                )}
-                                {event.forecast && (
-                                  <span className="text-text-tertiary">/ {event.forecast}</span>
+                                </div>
+                                {isMajorSurprise && (
+                                  <span className="text-[8px] font-bold text-accent animate-pulse">SURPRISE</span>
                                 )}
                               </div>
-                            )}
-                          </div>
-                        ))}
+                              
+                              <div className="text-[10px] font-medium leading-tight text-text-primary line-clamp-2 mb-1">
+                                {event.title}
+                              </div>
+
+                              {(event.actual || event.forecast) && (
+                                <div className="flex items-center gap-2 text-[9px] font-mono border-t border-black/10 pt-1 mt-1 opacity-80">
+                                  {event.actual && (
+                                    <span className={
+                                      surprise.classification === 'HOT' ? 'text-negative' : 
+                                      surprise.classification === 'COOL' ? 'text-positive' : 'text-text-secondary'
+                                    }>
+                                      {event.actual}
+                                    </span>
+                                  )}
+                                  {event.forecast && (
+                                    <span className="text-text-tertiary">/ {event.forecast}</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
