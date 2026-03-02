@@ -51,7 +51,6 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
   const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
   if (!apiKey) {
     console.warn("Missing GEMINI_API_KEY");
-    // Return a dummy error event so user knows WHY it's empty
     return [{
       id: 'error-key',
       date: dateStr,
@@ -71,8 +70,6 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
     const ai = new GoogleGenAI({ apiKey });
     
     // We try to make Gemini generate events directly.
-    // The googleSearch tool can sometimes fail silently or return text not JSON.
-    // We will ask for JSON strictly.
     const prompt = `Find the 5 most important economic calendar events for ${dateStr}. 
     Focus on US, UK, EU, Japan.
     Return strictly JSON with this schema:
@@ -91,12 +88,9 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
     If no major events, return empty array.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       contents: prompt,
       config: {
-        // Removed googleSearch tool to simplify and reduce failure points for now.
-        // The model has enough knowledge about calendar patterns or will hallucinate plausible ones for demo if search fails.
-        // Ideally we would use a real API, but for this demo app, this is the fallback.
         responseMimeType: "application/json",
       }
     });
@@ -108,7 +102,6 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
     try {
       events = JSON.parse(text);
       if (!Array.isArray(events)) {
-         // Sometimes it wraps in { events: [] }
          // @ts-ignore
          if (events.events) events = events.events;
          else events = [];

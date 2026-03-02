@@ -42,7 +42,7 @@ export function EarningsCalendarView() {
           </div>
           <div className="h-4 w-[1px] bg-border" />
           <div className="flex items-center gap-2 text-xs font-bold text-text-secondary">
-             <span>Q3 2025 EARNINGS SEASON</span>
+             <span>EARNINGS SEASON</span>
           </div>
         </div>
       </div>
@@ -62,12 +62,14 @@ export function EarningsCalendarView() {
               <div className="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-1">
                  {loading ? (
                     <div className="h-full flex items-center justify-center opacity-50">...</div>
+                 ) : dayEvents.length === 0 ? (
+                    <div className="text-center text-[10px] text-text-tertiary mt-4">No Earnings</div>
                  ) : dayEvents.map(e => (
                    <div key={e.id} className="p-2 bg-background border border-border rounded hover:border-accent/40 transition-colors cursor-pointer group">
                       <div className="flex justify-between items-start mb-1">
                         <span className="font-bold text-sm text-text-primary">{e.ticker}</span>
-                        <span className={`text-[9px] px-1 rounded uppercase font-bold ${e.time === 'bmo' ? 'bg-yellow-500/10 text-yellow-500' : 'bg-blue-500/10 text-blue-500'}`}>
-                          {e.time === 'bmo' ? 'SUN' : 'MOON'}
+                        <span className={`text-[9px] px-1 rounded uppercase font-bold ${e.time === 'bmo' ? 'bg-yellow-500/10 text-yellow-500' : e.time === 'amc' ? 'bg-blue-500/10 text-blue-500' : 'bg-surface-highlight text-text-secondary'}`}>
+                          {e.time === 'bmo' ? 'Pre' : e.time === 'amc' ? 'Post' : '---'}
                         </span>
                       </div>
                       <div className="text-[10px] text-text-tertiary mb-2 truncate">{e.name}</div>
@@ -75,11 +77,11 @@ export function EarningsCalendarView() {
                       <div className="grid grid-cols-2 gap-2 text-[10px] border-t border-border pt-2">
                         <div>
                           <div className="text-text-tertiary uppercase text-[8px]">EPS Est</div>
-                          <div className="font-mono">{e.epsEst}</div>
+                          <div className="font-mono">{e.epsEst !== null ? e.epsEst : '-'}</div>
                         </div>
                         <div className="text-right">
                           <div className="text-text-tertiary uppercase text-[8px]">Rev Est</div>
-                          <div className="font-mono">{e.revEst}B</div>
+                          <div className="font-mono">{e.revEst !== null ? `${e.revEst}B` : '-'}</div>
                         </div>
                       </div>
                    </div>

@@ -31,9 +31,16 @@ export async function fetchEarnings(dateStr: string): Promise<EarningsEvent[]> {
     }
 
     return json.data.rows.map((row: any, i: number) => {
-      // Clean up string values
-      const epsEst = parseFloat(row.epsForecast?.replace('$', '') || '0');
-      const epsAct = row.eps?.length ? parseFloat(row.eps.replace('$', '')) : null;
+      // Helper to safely parse floats
+      const safeFloat = (val: string | undefined): number | null => {
+        if (!val) return null;
+        const cleaned = val.toString().replace(/[$,%]/g, '');
+        const parsed = parseFloat(cleaned);
+        return isNaN(parsed) ? null : parsed;
+      };
+
+      const epsEst = safeFloat(row.epsForecast);
+      const epsAct = safeFloat(row.eps);
       
       // NASDAQ provides Market Cap in the row usually
       const marketCap = row.marketCap || '-';
@@ -44,7 +51,7 @@ export async function fetchEarnings(dateStr: string): Promise<EarningsEvent[]> {
       else if (row.time?.toLowerCase().includes('before') || row.time?.toLowerCase().includes('pre')) time = 'bmo';
 
       // Surprise is in %Surprise column
-      const surprise = parseFloat(row.percentSurprise?.replace('%', '')) || null;
+      const surprise = safeFloat(row.percentSurprise);
       
       return {
         id: `${dateStr}-${row.symbol}-${i}`,
