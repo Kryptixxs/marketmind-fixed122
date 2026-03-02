@@ -1,80 +1,94 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Widget } from '@/components/Widget';
 import { TapeWidget } from '@/components/widgets/Tape';
 import { TradingChart } from '@/components/TradingChart';
 import { NewsFeed } from '@/components/NewsFeed';
-import { Activity, Wifi } from 'lucide-react';
+import { Activity, Wifi, Loader2 } from 'lucide-react';
+import { fetchMarketData } from '@/app/actions/fetchMarketData';
 
-const MOCK_CHART_DATA = Array.from({ length: 100 }, (_, i) => ({
-  time: Math.floor(Date.now() / 1000) - (100 - i) * 3600,
-  open: 100 + Math.random() * 10,
-  high: 110 + Math.random() * 10,
-  low: 90 + Math.random() * 10,
-  close: 105 + Math.random() * 10,
-}));
+const WATCHLIST_SYMBOLS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'AAPL', 'TSLA', 'NVDA', 'EURUSD=X', 'GC=F'];
 
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("BTC-USD");
-  const [marketData, setMarketData] = useState<Record<string, { price: string, change: string }>>({});
+  const [marketData, setMarketData] = useState<Record<string, any>>({});
   const [orderBook, setOrderBook] = useState<{asks: any[], bids: any[]}>({ asks: [], bids: [] });
+  const [loading, setLoading] = useState(true);
 
-  // Hydration fix: Generate random data only on client mount
-  useEffect(() => {
-    const data: any = {};
-    ['BTC-USD', 'ETH-USD', 'SOL-USD', 'ES1!', 'NQ1!', 'EUR/USD', 'GC1!', 'CL1!'].forEach(sym => {
-      data[sym] = {
-        price: (Math.random() * 4000 + 1000).toFixed(2),
-        change: '+' + (Math.random() * 1.5).toFixed(2) + '%'
-      };
-    });
-    setMarketData(data);
-
-    // Generate initial order book
-    const asks = Array.from({length: 8}).map((_, i) => ({
-      price: (65000 + i * 10).toFixed(1),
-      size: (Math.random() * 2).toFixed(3),
-      width: Math.random() * 80
+  // Fetch data for the entire watchlist
+  const refreshWatchlist = useCallback(async () => {
+    const results: Record<string, any> = {};
+    await Promise.all(WATCHLIST_SYMBOLS.map(async (sym) => {
+      const data = await fetchMarketData(sym);
+      if (data) results[sym] = data;
     }));
-    const bids = Array.from({length: 8}).map((_, i) => ({
-      price: (64950 - i * 10).toFixed(1),
-      size: (Math.random() * 2).toFixed(3),
-      width: Math.random() * 80
-    }));
-    setOrderBook({ asks, bids });
+    setMarketData(results);
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    refreshWatchlist();
+    const interval = setInterval(refreshWatchlist, 30000); // Refresh every 30s
+    return () => clearInterval(interval);
+  }, [refreshWatchlist]);
+
+  // Update Order Book when active symbol or its price changes
+  useEffect(() => {
+    const current = marketData[activeSymbol];
+    if (!current) return;
+
+    const price = current.price;
+    const step = price * 0.0002;
+
+    const asks = Array.from({length: 12}).map((_, i) => ({
+      price: (price + (i + 1) * step).toFixed(price > 1000 ? 2 : 4),
+      size: (Math.random() * (price > 1000 ? 1 : 500)).toFixed(2),
+      width: Math.random() * 90
+    })).reverse();
+
+    const bids = Array.from({length: 12}).map((_, i) => ({
+      price: (price - (i + 1) * step).toFixed(price > 1000 ? 2 : 4),
+      size: (Math.random() * (price > 1000 ? 1 : 500)).toFixed(2),
+      width: Math.random() * 90
+    }));
+
+    setOrderBook({ asks, bids });
+  }, [activeSymbol, marketData]);
+
+  const activeQuote = marketData[activeSymbol];
 
   return (
     <div className="h-full w-full bg-background p-1 overflow-hidden">
-      {/* 
-        GRID LAYOUT:
-        Cols: 20% (Left) | 55% (Center) | 25% (Right)
-        Rows: Main Content vs Bottom Panel
-      */}
       <div className="grid grid-cols-12 grid-rows-12 gap-1 h-full w-full">
         
-        {/* --- LEFT COLUMN (Cols 1-3) --- */}
+        {/* --- LEFT COLUMN --- */}
         <div className="col-span-3 row-span-8 overflow-hidden">
           <Widget title="Market Watch">
             <div className="flex flex-col">
-              {['BTC-USD', 'ETH-USD', 'SOL-USD', 'ES1!', 'NQ1!', 'EUR/USD', 'GC1!', 'CL1!'].map(sym => (
-                <div 
-                  key={sym} 
-                  onClick={() => setActiveSymbol(sym)}
-                  className={`flex justify-between items-center px-3 py-2 border-b border-border/50 cursor-pointer hover:bg-surface-highlight ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
-                >
-                  <span className="font-bold text-xs">{sym}</span>
-                  <div className="flex flex-col items-end">
-                    <span className="text-xs text-text-primary">
-                      {marketData[sym]?.price || '---'}
-                    </span>
-                    <span className="text-[10px] text-positive">
-                      {marketData[sym]?.change || '--'}
-                    </span>
+              {WATCHLIST_SYMBOLS.map(sym => {
+                const data = marketData[sym];
+                return (
+                  <div 
+                    key={sym} 
+                    onClick={() => setActiveSymbol(sym)}
+                    className={`flex justify-between items-center px-3 py-2 border-b border-border/50 cursor-pointer hover:bg-surface-highlight ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
+                  >
+                    <div className="flex flex-col">
+                      <span className="font-bold text-xs">{sym}</span>
+                      <span className="text-[9px] text-text-tertiary truncate max-w-[80px]">{data?.name || 'Loading...'}</span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-xs font-mono font-bold text-text-primary">
+                        {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '---'}
+                      </span>
+                      <span className={`text-[10px] font-mono ${data?.change >= 0 ? 'text-positive' : 'text-negative'}`}>
+                        {data ? `${data.change >= 0 ? '+' : ''}${data.changePercent.toFixed(2)}%` : '--'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </Widget>
         </div>
@@ -102,20 +116,22 @@ export default function TerminalPage() {
            </Widget>
         </div>
 
-        {/* --- CENTER COLUMN (Cols 4-9) --- */}
+        {/* --- CENTER COLUMN --- */}
         <div className="col-span-6 row-span-8 overflow-hidden relative">
           <Widget 
-            title={`${activeSymbol} • 1H`} 
+            title={`${activeSymbol} • ${activeQuote?.name || ''}`} 
             actions={
               <div className="flex items-center gap-2 text-[10px]">
                 <span className="text-positive flex items-center gap-1"><Wifi size={10}/> Live</span>
-                <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary">1H</span>
-                <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary">Candles</span>
+                <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase">{activeQuote?.marketState || 'REGULAR'}</span>
               </div>
             }
           >
-            <div className="w-full h-full bg-black flex flex-col justify-center items-center text-text-tertiary">
-              <TradingChart data={MOCK_CHART_DATA} />
+            <div className="w-full h-full bg-black">
+              {/* In a real app, we'd fetch historical data for the chart here */}
+              <div className="flex items-center justify-center h-full text-text-tertiary text-[10px] uppercase tracking-widest">
+                {loading ? <Loader2 className="animate-spin" /> : 'Chart Engine Active'}
+              </div>
             </div>
           </Widget>
         </div>
@@ -123,11 +139,10 @@ export default function TerminalPage() {
         <div className="col-span-6 row-span-4 overflow-hidden">
           <div className="grid grid-cols-2 gap-1 h-full">
             <Widget title="Time & Sales">
-              <TapeWidget symbol={activeSymbol} />
+              <TapeWidget symbol={activeSymbol} basePrice={activeQuote?.price} />
             </Widget>
             <Widget title="Order Book">
               <div className="w-full h-full flex flex-col text-[10px]">
-                {/* Order Book */}
                 <div className="flex-1 flex flex-col justify-end overflow-hidden">
                   {orderBook.asks.map((ask, i) => (
                       <div key={i} className="flex justify-between px-2 py-0.5 text-negative hover:bg-surface-highlight relative">
@@ -138,8 +153,8 @@ export default function TerminalPage() {
                   ))}
                 </div>
                 <div className="bg-surface border-y border-border py-1 px-2 flex justify-between font-bold">
-                  <span className="text-positive">64,950.00</span>
-                  <span>Spread: 5.0</span>
+                  <span className="text-positive">{activeQuote?.price.toLocaleString()}</span>
+                  <span className="text-text-tertiary">SPREAD: {(activeQuote?.price * 0.0002).toFixed(2)}</span>
                 </div>
                 <div className="flex-1 overflow-hidden">
                   {orderBook.bids.map((bid, i) => (
@@ -155,7 +170,7 @@ export default function TerminalPage() {
           </div>
         </div>
 
-        {/* --- RIGHT COLUMN (Cols 10-12) --- */}
+        {/* --- RIGHT COLUMN --- */}
         <div className="col-span-3 row-span-6 overflow-hidden">
            <Widget title="Intelligence Wire">
              <NewsFeed />
@@ -167,21 +182,21 @@ export default function TerminalPage() {
              <div className="p-3 text-xs text-text-secondary leading-relaxed">
                <div className="flex items-center gap-2 mb-3 text-accent">
                  <Activity size={14} />
-                 <span className="font-bold">Bullish Divergence Detected</span>
+                 <span className="font-bold">Market Sentiment: {activeQuote?.changePercent >= 0 ? 'Bullish' : 'Bearish'}</span>
                </div>
                <p className="mb-2">
-                 <span className="text-text-primary font-bold">Signal:</span> Momentum indicators on 4H timeframe suggest trend reversal for BTC-USD.
+                 <span className="text-text-primary font-bold">Analysis:</span> {activeSymbol} is currently trading at {activeQuote?.price.toLocaleString()} {activeQuote?.currency}.
                </p>
                <p className="mb-2">
-                 <span className="text-text-primary font-bold">Correlation:</span> Decoupling from Nasdaq-100 observed in last 2 sessions.
+                 Daily volatility is {Math.abs(activeQuote?.changePercent || 0).toFixed(2)}%.
                </p>
                <div className="mt-4 p-2 bg-surface border border-border rounded">
                  <div className="flex justify-between mb-1">
-                    <span>Confidence</span>
-                    <span className="text-positive">87%</span>
+                    <span>Trend Strength</span>
+                    <span className="text-positive">High</span>
                  </div>
                  <div className="w-full h-1 bg-surface-highlight rounded-full overflow-hidden">
-                    <div className="h-full w-[87%] bg-positive"></div>
+                    <div className="h-full w-[75%] bg-accent"></div>
                  </div>
                </div>
              </div>
