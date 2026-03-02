@@ -7,15 +7,15 @@ import { NewsFeed } from '@/components/NewsFeed';
 import { Activity, Wifi, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { fetchMarketData } from '@/app/actions/fetchMarketData';
 
-// Mapping Yahoo symbols to TradingView symbols
+// Mapping Yahoo symbols to TradingView-compatible symbols for the free widget
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
-  'NQ=F': { tv: 'CME_MINI:NQ1!', label: 'Nasdaq 100 Fut' },
-  'ES=F': { tv: 'CME_MINI:ES1!', label: 'S&P 500 Fut' },
+  'NQ=F': { tv: 'CME:NQ1!', label: 'Nasdaq 100 Fut' },
+  'ES=F': { tv: 'CME:ES1!', label: 'S&P 500 Fut' },
   'CL=F': { tv: 'NYMEX:CL1!', label: 'Crude Oil Fut' },
-  '^GSPC': { tv: 'SP:SPX', label: 'S&P 500 Index' },
-  '^NDX': { tv: 'NASDAQ:NDX', label: 'Nasdaq 100' },
-  '^DJI': { tv: 'DJ:DJI', label: 'Dow Jones' },
-  '^RUT': { tv: 'RUSSELL:RUT', label: 'Russell 2000' },
+  '^GSPC': { tv: 'TVC:SPX', label: 'S&P 500 Index' },
+  '^NDX': { tv: 'TVC:NDX', label: 'Nasdaq 100' },
+  '^DJI': { tv: 'TVC:DJI', label: 'Dow Jones' },
+  '^RUT': { tv: 'TVC:RUT', label: 'Russell 2000' },
   'GC=F': { tv: 'COMEX:GC1!', label: 'Gold Futures' },
   '^TNX': { tv: 'TVC:US10Y', label: 'US 10Y Yield' },
   'EURUSD=X': { tv: 'FX:EURUSD', label: 'EUR/USD' },
