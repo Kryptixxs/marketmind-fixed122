@@ -7,6 +7,7 @@ import {
 import { fetchEconomicCalendarBatch } from '@/app/actions/fetchEconomicCalendar';
 import { EconomicEvent } from '@/lib/types';
 import { getFullWeek, toISODateString } from '@/lib/date-utils';
+import { EventDetailModal } from './EventDetailModal';
 
 const IMPACT_COLORS: Record<string, string> = {
   High: 'border-l-4 border-l-red-500 bg-red-500/10',
@@ -32,6 +33,7 @@ export function EconomicCalendarView() {
   const [eventsData, setEventsData] = useState<Record<string, EconomicEvent[]>>({});
   const [loading, setLoading] = useState(true);
   const [showLowImpact, setShowLowImpact] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<EconomicEvent | null>(null);
 
   const weekDates = useMemo(() => {
     const today = new Date();
@@ -42,11 +44,8 @@ export function EconomicCalendarView() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      // Fetch requested week + 1 extra day (next Monday) to catch timezone shifts
-      // Events early Mon GMT -> Sun EST
       const datesToFetch = weekDates.map(d => d.dateStr);
       
-      // Calculate next Monday string
       const lastDay = new Date(weekDates[6].date);
       lastDay.setDate(lastDay.getDate() + 1);
       datesToFetch.push(toISODateString(lastDay));
@@ -58,7 +57,6 @@ export function EconomicCalendarView() {
     load();
   }, [weekDates]);
 
-  // Group events by Day -> Hour
   const schedule = useMemo(() => {
     const grid: Record<string, Record<string, EconomicEvent[]>> = {};
 
@@ -70,7 +68,6 @@ export function EconomicCalendarView() {
       dayEvents.forEach(e => {
         if (!showLowImpact && e.impact === 'Low') return;
         
-        // Convert "19:00" to "19:00" bucket
         let hourKey = '00:00';
         if (e.time.includes(':')) {
            const parts = e.time.split(':');
@@ -120,7 +117,7 @@ export function EconomicCalendarView() {
 
       {/* Calendar Grid */}
       <div className="flex-1 overflow-auto custom-scrollbar bg-background relative">
-        <div className="min-w-[1000px]"> {/* Horizontal scroll if needed on small screens */}
+        <div className="min-w-[1000px]">
           
           {/* Header Row (Days) */}
           <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border sticky top-0 bg-surface/95 backdrop-blur z-20">
@@ -146,12 +143,10 @@ export function EconomicCalendarView() {
           <div className="divide-y divide-border">
             {HOURS.map(hour => (
               <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] min-h-[80px]">
-                {/* Time Label */}
                 <div className="border-r border-border p-2 text-[10px] font-bold text-text-tertiary text-center sticky left-0 bg-background z-10">
                   <span className="-mt-3 block bg-background px-1">{formatHourLabel(hour)}</span>
                 </div>
 
-                {/* Day Cells */}
                 {weekDates.map(day => {
                   const dayEvents = schedule[day.dateStr]?.[hour] || [];
                   const isToday = day.dateStr === toISODateString(new Date());
@@ -159,11 +154,12 @@ export function EconomicCalendarView() {
                   return (
                     <div key={`${day.dateStr}-${hour}`} className={`border-r border-border p-1 relative group ${isToday ? 'bg-accent/[0.02]' : ''}`}>
                       <div className="flex flex-col gap-1.5 h-full">
-                        {dayEvents.map((event, idx) => (
+                        {dayEvents.map((event) => (
                           <div 
                             key={event.id}
+                            onClick={() => setSelectedEvent(event)}
                             className={`
-                              relative p-1.5 rounded bg-surface border border-border/50 shadow-sm hover:border-border transition-all cursor-default
+                              relative p-1.5 rounded bg-surface border border-border/50 shadow-sm hover:border-accent/50 hover:bg-surface-highlight transition-all cursor-pointer
                               ${IMPACT_COLORS[event.impact] || IMPACT_COLORS.Low}
                             `}
                           >
@@ -213,6 +209,14 @@ export function EconomicCalendarView() {
           </div>
         </div>
       </div>
+
+      {/* Detail Modal */}
+      {selectedEvent && (
+        <EventDetailModal 
+          event={selectedEvent} 
+          onClose={() => setSelectedEvent(null)} 
+        />
+      )}
     </div>
   );
 }
