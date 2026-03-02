@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect } from 'react';
-import { checkUpdate, installUpdate, onUpdaterEvent } from '@tauri-apps/api/updater';
-import { relaunch } from '@tauri-apps/api/process';
+import { check } from '@tauri-apps/plugin-updater';
+import { relaunch } from '@tauri-apps/plugin-process';
 import { isTauri } from '@/lib/tauri';
 
 export function useTauriUpdater() {
@@ -11,10 +11,10 @@ export function useTauriUpdater() {
 
     const checkAndInstall = async () => {
       try {
-        const { shouldUpdate, manifest } = await checkUpdate();
-        if (shouldUpdate) {
-          console.log(`Installing update ${manifest?.version}...`);
-          await installUpdate();
+        const update = await check();
+        if (update) {
+          console.log(`Installing update ${update.version}...`);
+          await update.downloadAndInstall();
           await relaunch();
         }
       } catch (error) {
@@ -23,14 +23,5 @@ export function useTauriUpdater() {
     };
 
     checkAndInstall();
-
-    // Listen for updater events
-    const unlisten = onUpdaterEvent(({ error, status }) => {
-      console.log('Updater event:', status, error);
-    });
-
-    return () => {
-      unlisten.then(fn => fn());
-    };
   }, []);
 }
