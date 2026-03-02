@@ -41,6 +41,26 @@ export function getFullWeek(referenceDate: Date = new Date()): { date: Date; dat
   return week;
 }
 
+/**
+ * Generates an array of 5 dates (Mon-Fri) for the business week view.
+ */
+export function getBusinessWeek(referenceDate: Date = new Date()): { date: Date; dateStr: string; dayName: string; dayNum: string }[] {
+  const monday = getMonday(referenceDate);
+  const week = [];
+  
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    week.push({
+      date: d,
+      dateStr: toISODateString(d),
+      dayName: DAYS[d.getDay()].substring(0, 3),
+      dayNum: String(d.getDate())
+    });
+  }
+  return week;
+}
+
 export function formatTime(timeStr: string): string {
   if (!timeStr || timeStr === 'All Day') return 'All Day';
   if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr;
