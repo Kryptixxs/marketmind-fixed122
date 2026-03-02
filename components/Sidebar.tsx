@@ -26,9 +26,9 @@ export function Sidebar() {
   return (
     <div className="w-12 h-full bg-surface border-r border-border flex flex-col items-center py-3 z-50">
       {/* Brand Icon */}
-      <div className="mb-6 text-accent">
+      <Link href="/" className="mb-6 text-accent hover:opacity-80 transition-opacity">
         <Terminal size={20} />
-      </div>
+      </Link>
 
       {/* Nav Items */}
       <nav className="flex flex-col gap-2 w-full px-2">

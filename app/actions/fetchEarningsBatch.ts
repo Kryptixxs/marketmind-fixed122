@@ -1,41 +1,51 @@
 'use server';
 
-import { fetchEarnings } from './fetchEarnings';
+import { EarningsEvent } from '@/lib/types';
 
-export interface EarningEvent {
-  ticker: string;
-  name: string;
-  time: string;
-  est: string;
-  act: string;
-  revenue_est?: string;
-  revenue_act?: string;
-  impact: number;
-  date: string; // YYYY-MM-DD
+const TICKERS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META', 'AMD', 'NFLX', 'INTC', 'JPM', 'BAC', 'GS', 'C', 'WMT', 'TGT', 'COST', 'KO', 'PEP', 'MCD'];
+const SECTORS: Record<string, string> = {
+  AAPL: 'Technology', MSFT: 'Technology', GOOGL: 'Communication', AMZN: 'Consumer Cyclical',
+  NVDA: 'Technology', TSLA: 'Consumer Cyclical', META: 'Communication', AMD: 'Technology',
+  NFLX: 'Communication', INTC: 'Technology', JPM: 'Financial', BAC: 'Financial',
+  GS: 'Financial', C: 'Financial', WMT: 'Consumer Defensive', TGT: 'Consumer Defensive',
+  COST: 'Consumer Defensive', KO: 'Consumer Defensive', PEP: 'Consumer Defensive', MCD: 'Consumer Cyclical'
+};
+
+function generateMockEarnings(dateStr: string): EarningsEvent[] {
+  const seed = dateStr.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const count = 3 + (seed % 5);
+  
+  return Array.from({ length: count }).map((_, i) => {
+    const ticker = TICKERS[(seed + i) % TICKERS.length];
+    const epsEst = 2 + (seed % 50) / 10;
+    const epsAct = Math.random() > 0.5 ? epsEst + (Math.random() - 0.4) : null;
+    
+    let surprise = null;
+    if (epsAct !== null) {
+      surprise = ((epsAct - epsEst) / Math.abs(epsEst)) * 100;
+    }
+
+    return {
+      id: `${dateStr}-${ticker}`,
+      ticker,
+      name: `${ticker} Corp`,
+      date: dateStr,
+      time: i % 2 === 0 ? 'bmo' : 'amc',
+      epsEst: parseFloat(epsEst.toFixed(2)),
+      epsAct: epsAct ? parseFloat(epsAct.toFixed(2)) : null,
+      revEst: parseFloat((10 + (seed % 100)).toFixed(2)),
+      revAct: epsAct ? parseFloat((10 + (seed % 100) + (Math.random() - 0.5) * 5).toFixed(2)) : null,
+      surprise: surprise ? parseFloat(surprise.toFixed(2)) : null,
+      sector: SECTORS[ticker] || 'Unknown',
+      marketCap: (100 + (seed % 900)).toString() + 'B'
+    };
+  });
 }
 
-export async function fetchEarningsBatch(dates: string[]): Promise<Record<string, EarningEvent[]>> {
-  const results: Record<string, EarningEvent[]> = {};
-
-  // Fetch in parallel
-  const promises = dates.map(async (date) => {
-    try {
-      const data = await fetchEarnings(date);
-      // Augment with the date so we can track it
-      results[date] = data.map((item: any) => ({
-        ...item,
-        date,
-        // Mocking revenue for now as the base fetcher didn't include it, 
-        // in a real app this would come from the provider.
-        revenue_est: (Math.random() * 10).toFixed(1) + 'B',
-        revenue_act: Math.random() > 0.5 ? (Math.random() * 10).toFixed(1) + 'B' : '-',
-      }));
-    } catch (error) {
-      console.error(`Error batch fetching earnings for ${date}`, error);
-      results[date] = [];
-    }
-  });
-
-  await Promise.all(promises);
+export async function fetchEarningsBatch(dates: string[]): Promise<Record<string, EarningsEvent[]>> {
+  const results: Record<string, EarningsEvent[]> = {};
+  for (const date of dates) {
+    results[date] = generateMockEarnings(date);
+  }
   return results;
 }
