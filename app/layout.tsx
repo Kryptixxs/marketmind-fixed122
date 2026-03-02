@@ -3,6 +3,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { CommandPalette } from "@/components/CommandPalette";
+import { NotificationToast } from "@/components/NotificationToast";
 
 export const metadata: Metadata = {
   title: "VANTAGE TERMINAL // v4.0",
@@ -23,6 +24,7 @@ export default function RootLayout({
             {children}
           </main>
           <CommandPalette />
+          <NotificationToast />
         </SettingsProvider>
       </body>
     </html>

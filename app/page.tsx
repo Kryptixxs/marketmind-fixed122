@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Widget } from '@/components/Widget';
 import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
 import { Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle } from 'lucide-react';
-import { fetchMarketData } from '@/app/actions/fetchMarketData';
 import { analyzeMarket } from '@/app/actions/analyzeMarket';
+import { useMarketData } from '@/lib/marketdata/useMarketData';
 
 // Mapping Yahoo symbols to specific TradingView broker symbols
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
@@ -23,33 +23,15 @@ const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
 
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("^NDX");
-  const [marketData, setMarketData] = useState<Record<string, any>>({});
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  // Use the new streaming market data hook
+  const { data: marketData, error: streamError } = useMarketData(WATCHLIST_SYMBOLS);
+  const loading = Object.keys(marketData).length === 0 && !streamError;
+
   const lastAnalyzedRef = useRef<string | null>(null);
-
-  const refreshWatchlist = useCallback(async () => {
-    try {
-      const results: Record<string, any> = {};
-      await Promise.all(WATCHLIST_SYMBOLS.map(async (sym) => {
-        const data = await fetchMarketData(sym);
-        if (data) results[sym] = data;
-      }));
-      setMarketData(results);
-      setLoading(false);
-    } catch (err) {
-      console.error("Failed to refresh watchlist:", err);
-    }
-  }, []);
-
-  useEffect(() => {
-    refreshWatchlist();
-    const interval = setInterval(refreshWatchlist, 30000);
-    return () => clearInterval(interval);
-  }, [refreshWatchlist]);
 
   // Trigger AI analysis when active symbol or its data changes
   useEffect(() => {

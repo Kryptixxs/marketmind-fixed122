@@ -7,6 +7,7 @@ import {
 import { EconomicEvent } from '@/lib/types';
 import { formatTime } from '@/lib/date-utils';
 import { getEventIntel, computeSurprise } from '@/lib/event-intelligence';
+import { addAlert } from '@/lib/alerts';
 
 interface EventDetailModalProps {
   event: EconomicEvent;
@@ -16,6 +17,19 @@ interface EventDetailModalProps {
 export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   const intel = useMemo(() => getEventIntel(event), [event]);
   const surprise = useMemo(() => computeSurprise(event), [event]);
+
+  const handleSetAlert = () => {
+    // Determine a default alert type (e.g., 5 mins before)
+    addAlert({
+      eventId: event.id,
+      eventTitle: event.title,
+      eventTime: event.time,
+      eventDate: event.date,
+      type: 'BEFORE',
+      minutesBefore: 5,
+    });
+    alert(`Alert set for ${event.title}. You will be notified 5 minutes before the release.`);
+  };
 
   const metrics = [
     { label: 'Volatility', value: intel.volatility, icon: Zap },
@@ -31,10 +45,16 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         {/* Header */}
         <div className="panel-header shrink-0 flex justify-between items-center px-4 py-3 h-auto border-b border-border bg-surface-highlight">
           <div className="flex flex-col">
-            <h2 className="text-lg font-bold text-text-primary leading-tight">
+            <h2 className="text-lg font-bold text-text-primary leading-tight flex items-center gap-3">
               {event.title}
+              <button
+                onClick={handleSetAlert}
+                className="text-[10px] uppercase font-bold bg-accent/20 hover:bg-accent/30 text-accent px-2 py-1 rounded transition-colors flex items-center gap-1"
+              >
+                <Zap size={10} /> Set Alert
+              </button>
             </h2>
-            <span className="text-[10px] text-text-tertiary uppercase tracking-widest">Institutional Insight // v4.0</span>
+            <span className="text-[10px] text-text-tertiary uppercase tracking-widest mt-1">Institutional Insight // v4.0</span>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full transition-colors">
             <X size={20} />
