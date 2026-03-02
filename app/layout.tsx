@@ -1,15 +1,12 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-import { Navbar } from "@/components/Navbar";
+import { Sidebar } from "@/components/Sidebar";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { CommandPalette } from "@/components/CommandPalette";
 
-const inter = Inter({ subsets: ["latin"] });
-
 export const metadata: Metadata = {
-  title: "MarketMind Terminal",
-  description: "Institutional Grade Intelligence Platform",
+  title: "VANTAGE TERMINAL // v4.0",
+  description: "Institutional Intelligence",
 };
 
 export default function RootLayout({
@@ -19,14 +16,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} min-h-screen bg-background text-foreground antialiased selection:bg-accent selection:text-white overflow-hidden`}>
+      <body className="flex h-screen w-screen overflow-hidden bg-background text-text-primary antialiased">
         <SettingsProvider>
-          <div className="flex flex-col h-screen">
-            <Navbar />
-            <main className="flex-1 overflow-hidden relative">
-              {children}
-            </main>
-          </div>
+          <Sidebar />
+          <main className="flex-1 flex flex-col min-w-0 bg-background relative">
+            {children}
+          </main>
           <CommandPalette />
         </SettingsProvider>
       </body>

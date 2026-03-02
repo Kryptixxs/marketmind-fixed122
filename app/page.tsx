@@ -1,198 +1,186 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { MiniChart } from '@/components/MiniChart';
+import { useState } from 'react';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable";
+import { Widget } from '@/components/Widget';
+import { TapeWidget } from '@/components/widgets/Tape';
+import { TradingChart } from '@/components/TradingChart';
 import { NewsFeed } from '@/components/NewsFeed';
-import { Sparkles, TrendingUp, Activity, Globe, Zap, ArrowRight, Layers } from 'lucide-react';
-import Link from 'next/link';
+import { Activity, Radio, Wifi } from 'lucide-react';
 
-const INDICES = [
-  { title: 'S&P 500', symbol: '^GSPC' },
-  { title: 'Nasdaq', symbol: '^NDX' },
-  { title: 'Dow Jones', symbol: '^DJI' },
-  { title: 'Gold', symbol: 'GC=F' },
-  { title: 'Crude Oil', symbol: 'CL=F' },
-  { title: '10Y Yield', symbol: '^TNX' },
-];
+// We need to fetch/generate chart data in a real app, but for now passing mock
+const MOCK_CHART_DATA = Array.from({ length: 100 }, (_, i) => ({
+  time: Math.floor(Date.now() / 1000) - (100 - i) * 3600,
+  open: 100 + Math.random() * 10,
+  high: 110 + Math.random() * 10,
+  low: 90 + Math.random() * 10,
+  close: 105 + Math.random() * 10,
+}));
 
-const CRYPTO = [
-  { title: 'Bitcoin', symbol: 'BTC-USD', isCrypto: true },
-  { title: 'Ethereum', symbol: 'ETH-USD', isCrypto: true },
-  { title: 'Solana', symbol: 'SOL-USD', isCrypto: true },
-];
-
-const FOREX = [
-  { title: 'EUR/USD', symbol: 'EURUSD=X' },
-  { title: 'USD/JPY', symbol: 'JPY=X' },
-  { title: 'GBP/USD', symbol: 'GBPUSD=X' },
-];
-
-export default function Home() {
-  const [activeSet, setActiveSet] = useState<'Indices' | 'Crypto' | 'Forex'>('Indices');
-  
-  // Dynamic market summary generation (simulated AI response for speed)
-  const [briefing, setBriefing] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Simulate an AI analyzing the pre-market conditions
-    setTimeout(() => {
-      setBriefing("Markets are showing resilience today as traders digest the latest inflation data. Tech sector leads the rebound with Nasdaq futures up 0.8%. Treasury yields have stabilized, providing support for growth stocks. Watch for volatility around 10 AM ET.");
-    }, 1500);
-  }, []);
-
-  const currentTickers = activeSet === 'Indices' ? INDICES : activeSet === 'Crypto' ? CRYPTO : FOREX;
+export default function TerminalPage() {
+  const [activeSymbol, setActiveSymbol] = useState("BTC-USD");
 
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden bg-background p-2 gap-2">
-      {/* --- Top Bar: Market Summary & AI Brief --- */}
-      <div className="flex gap-2 min-h-[120px] shrink-0">
+    <div className="h-full w-full bg-background p-1">
+      <ResizablePanelGroup direction="horizontal" className="h-full w-full rounded-sm border border-border">
         
-        {/* AI Briefing Card */}
-        <div className="flex-[2] glass-card p-3 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Sparkles size={60} />
-          </div>
-          <div className="relative z-10 flex flex-col h-full">
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 rounded-md bg-accent/20 flex items-center justify-center">
-                <Sparkles size={12} className="text-accent" />
-              </div>
-              <h2 className="text-xs font-bold uppercase tracking-widest text-text-secondary">AI Market Brief</h2>
-              <span className="text-[10px] bg-surface border border-border px-1.5 py-0.5 rounded text-text-tertiary">
-                {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-              </span>
-            </div>
-            
-            {briefing ? (
-              <p className="text-lg font-medium text-text-primary leading-relaxed animate-in fade-in duration-700">
-                {briefing}
-              </p>
-            ) : (
-              <div className="space-y-2 animate-pulse">
-                <div className="h-4 bg-surface rounded w-3/4"></div>
-                <div className="h-4 bg-surface rounded w-1/2"></div>
-              </div>
-            )}
-            
-            <div className="mt-auto pt-3 flex gap-3">
-               <button className="text-xs font-bold text-accent hover:text-white transition-colors flex items-center gap-1">
-                 View Full Analysis <ArrowRight size={12} />
-               </button>
-            </div>
-          </div>
-        </div>
+        {/* LEFT COLUMN: WATCHLIST & MARKET STATS */}
+        <ResizablePanel defaultSize={20} minSize={15} maxSize={30} className="bg-background">
+          <ResizablePanelGroup direction="vertical">
+            <ResizablePanel defaultSize={60}>
+              <Widget title="Market Watch">
+                <div className="flex flex-col">
+                  {['BTC-USD', 'ETH-USD', 'SOL-USD', 'ES1!', 'NQ1!', 'EUR/USD', 'GC1!', 'CL1!'].map(sym => (
+                    <div 
+                      key={sym} 
+                      onClick={() => setActiveSymbol(sym)}
+                      className={`flex justify-between items-center px-3 py-2 border-b border-border/50 cursor-pointer hover:bg-surface-highlight ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
+                    >
+                      <span className="font-bold text-xs">{sym}</span>
+                      <div className="flex flex-col items-end">
+                        <span className="text-xs text-text-primary">{(Math.random() * 4000 + 1000).toFixed(2)}</span>
+                        <span className="text-[10px] text-positive">+0.45%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Widget>
+            </ResizablePanel>
+            <ResizableHandle className="bg-border" />
+            <ResizablePanel defaultSize={40}>
+               <Widget title="Global Vitals">
+                 <div className="p-3 grid grid-cols-2 gap-4">
+                   <div>
+                     <div className="text-[10px] text-text-tertiary uppercase mb-1">VIX Index</div>
+                     <div className="text-xl font-bold text-warning">14.52</div>
+                   </div>
+                   <div>
+                     <div className="text-[10px] text-text-tertiary uppercase mb-1">DXY Dollar</div>
+                     <div className="text-xl font-bold text-text-primary">104.20</div>
+                   </div>
+                   <div>
+                     <div className="text-[10px] text-text-tertiary uppercase mb-1">10Y Yield</div>
+                     <div className="text-xl font-bold text-negative">4.31%</div>
+                   </div>
+                   <div>
+                     <div className="text-[10px] text-text-tertiary uppercase mb-1">Liquidity</div>
+                     <div className="text-xl font-bold text-positive">High</div>
+                   </div>
+                 </div>
+               </Widget>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </ResizablePanel>
 
-        {/* Market Vitals / Stats (Static Mock for layout) */}
-        <div className="flex-1 glass-card p-3 flex flex-col justify-between">
-           <div className="flex items-center gap-2 mb-1">
-             <Activity size={12} className="text-positive" />
-             <span className="text-[10px] font-bold uppercase text-text-secondary">Market Vitals</span>
-           </div>
-           <div className="grid grid-cols-2 gap-y-1 gap-x-3">
-             <div>
-               <div className="text-[10px] text-text-tertiary uppercase">VIX Volatility</div>
-               <div className="text-base font-mono font-bold text-text-primary">14.25 <span className="text-negative text-xs">-2.1%</span></div>
-             </div>
-             <div>
-               <div className="text-[10px] text-text-tertiary uppercase">Put/Call Ratio</div>
-               <div className="text-base font-mono font-bold text-text-primary">0.85 <span className="text-text-tertiary text-xs">Neutral</span></div>
-             </div>
-             <div>
-               <div className="text-[10px] text-text-tertiary uppercase">Breadth</div>
-               <div className="text-base font-mono font-bold text-positive">65% Buy</div>
-             </div>
-             <div>
-               <div className="text-[10px] text-text-tertiary uppercase">10Y Yield</div>
-               <div className="text-base font-mono font-bold text-text-primary">4.12%</div>
-             </div>
-           </div>
-        </div>
-      </div>
+        <ResizableHandle className="bg-border w-[2px]" />
 
-      {/* --- Middle Row: Controls & Mini Charts --- */}
-      <div className="flex flex-col gap-3 shrink-0">
-        <div className="flex items-center justify-between px-1">
-          <div className="flex gap-2 bg-surface rounded-lg p-1 border border-border">
-            {(['Indices', 'Crypto', 'Forex'] as const).map((set) => (
-              <button
-                key={set}
-                onClick={() => setActiveSet(set)}
-                className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${
-                  activeSet === set 
-                    ? 'bg-accent text-white shadow-lg shadow-accent/25' 
-                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-hover'
-                }`}
+        {/* CENTER COLUMN: CHART & TAPE */}
+        <ResizablePanel defaultSize={55}>
+          <ResizablePanelGroup direction="vertical">
+            {/* Main Chart */}
+            <ResizablePanel defaultSize={70} className="relative">
+              <Widget 
+                title={`${activeSymbol} • 1H`} 
+                actions={
+                  <div className="flex items-center gap-2 text-[10px]">
+                    <span className="text-positive flex items-center gap-1"><Wifi size={10}/> Live</span>
+                    <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary">1H</span>
+                    <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary">Candles</span>
+                  </div>
+                }
               >
-                {set}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-text-secondary">
-            <span className="flex items-center gap-1.5">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-positive opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-positive"></span>
-              </span>
-              Live Data
-            </span>
-          </div>
-        </div>
+                <div className="w-full h-full bg-black">
+                  {/* Reuse TradingChart but container must be sized */}
+                  <TradingChart data={MOCK_CHART_DATA} />
+                </div>
+              </Widget>
+            </ResizablePanel>
+            
+            <ResizableHandle className="bg-border h-[2px]" />
+            
+            {/* Level 2 / Tape */}
+            <ResizablePanel defaultSize={30}>
+              <ResizablePanelGroup direction="horizontal">
+                <ResizablePanel defaultSize={50}>
+                  <Widget title="Time & Sales">
+                    <TapeWidget symbol={activeSymbol} />
+                  </Widget>
+                </ResizablePanel>
+                <ResizableHandle className="bg-border w-[1px]" />
+                <ResizablePanel defaultSize={50}>
+                  <Widget title="Order Book">
+                    <div className="w-full h-full flex flex-col text-[10px]">
+                      {/* Mock Order Book */}
+                      <div className="flex-1 flex flex-col justify-end overflow-hidden">
+                        {Array.from({length: 8}).map((_, i) => (
+                           <div key={i} className="flex justify-between px-2 py-0.5 text-negative hover:bg-surface-highlight relative">
+                             <div className="absolute right-0 top-0 bottom-0 bg-negative/10" style={{width: `${Math.random() * 80}%`}}></div>
+                             <span className="z-10 font-mono">{(65000 + i * 10).toFixed(1)}</span>
+                             <span className="z-10 font-mono">{(Math.random() * 2).toFixed(3)}</span>
+                           </div>
+                        ))}
+                      </div>
+                      <div className="bg-surface border-y border-border py-1 px-2 flex justify-between font-bold">
+                        <span className="text-positive">64,950.00</span>
+                        <span>Spread: 5.0</span>
+                      </div>
+                      <div className="flex-1 overflow-hidden">
+                        {Array.from({length: 8}).map((_, i) => (
+                           <div key={i} className="flex justify-between px-2 py-0.5 text-positive hover:bg-surface-highlight relative">
+                             <div className="absolute right-0 top-0 bottom-0 bg-positive/10" style={{width: `${Math.random() * 80}%`}}></div>
+                             <span className="z-10 font-mono">{(64950 - i * 10).toFixed(1)}</span>
+                             <span className="z-10 font-mono">{(Math.random() * 2).toFixed(3)}</span>
+                           </div>
+                        ))}
+                      </div>
+                    </div>
+                  </Widget>
+                </ResizablePanel>
+              </ResizablePanelGroup>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </ResizablePanel>
 
-        <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
-          {currentTickers.map((ticker, i) => (
-             <div key={ticker.symbol} className="h-[100px] animate-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${i * 50}ms` }}>
-               <MiniChart {...ticker} isCrypto={'isCrypto' in ticker} />
-             </div>
-          ))}
-        </div>
-      </div>
+        <ResizableHandle className="bg-border w-[2px]" />
 
-      {/* --- Bottom Row: Split View (News & Movers) --- */}
-      <div className="flex-1 grid grid-cols-12 gap-4 min-h-0">
-        {/* News Feed */}
-        <div className="col-span-8 flex flex-col min-h-0">
-          <NewsFeed />
-        </div>
+        {/* RIGHT COLUMN: NEWS & AI */}
+        <ResizablePanel defaultSize={25} minSize={20}>
+          <ResizablePanelGroup direction="vertical">
+             <ResizablePanel defaultSize={50}>
+               <Widget title="Intelligence Wire">
+                 <NewsFeed />
+               </Widget>
+             </ResizablePanel>
+             <ResizableHandle className="bg-border h-[2px]" />
+             <ResizablePanel defaultSize={50}>
+               <Widget title="AI Analysis">
+                 <div className="p-3 text-xs text-text-secondary leading-relaxed">
+                   <div className="flex items-center gap-2 mb-3 text-accent">
+                     <Activity size={14} />
+                     <span className="font-bold">Bullish Divergence Detected</span>
+                   </div>
+                   <p className="mb-2">
+                     <span className="text-text-primary font-bold">Signal:</span> Momentum indicators on 4H timeframe suggest trend reversal for BTC-USD.
+                   </p>
+                   <p className="mb-2">
+                     <span className="text-text-primary font-bold">Correlation:</span> Decoupling from Nasdaq-100 observed in last 2 sessions.
+                   </p>
+                   <div className="mt-4 p-2 bg-surface border border-border rounded">
+                     <div className="flex justify-between mb-1">
+                        <span>Confidence</span>
+                        <span className="text-positive">87%</span>
+                     </div>
+                     <div className="w-full h-1 bg-surface-highlight rounded-full overflow-hidden">
+                        <div className="h-full w-[87%] bg-positive"></div>
+                     </div>
+                   </div>
+                 </div>
+               </Widget>
+             </ResizablePanel>
+          </ResizablePanelGroup>
+        </ResizablePanel>
 
-        {/* Quick Lists / Tools */}
-        <div className="col-span-4 flex flex-col gap-4 min-h-0">
-           {/* Quick Actions */}
-           <div className="glass-card p-4">
-             <h3 className="text-xs font-bold uppercase text-text-secondary mb-3 flex items-center gap-2">
-               <Layers size={14} /> Quick Tools
-             </h3>
-             <div className="grid grid-cols-2 gap-2">
-               <Link href="/tools/forex" className="flex flex-col p-3 bg-surface hover:bg-surface-hover border border-border hover:border-accent/50 rounded-lg transition-colors group">
-                 <Globe size={16} className="text-text-secondary group-hover:text-accent mb-2" />
-                 <span className="text-xs font-bold text-text-primary">Forex Calc</span>
-               </Link>
-               <Link href="/tools/futures" className="flex flex-col p-3 bg-surface hover:bg-surface-hover border border-border hover:border-accent/50 rounded-lg transition-colors group">
-                 <Activity size={16} className="text-text-secondary group-hover:text-accent mb-2" />
-                 <span className="text-xs font-bold text-text-primary">Futures Calc</span>
-               </Link>
-               <Link href="/economic" className="flex flex-col p-3 bg-surface hover:bg-surface-hover border border-border hover:border-accent/50 rounded-lg transition-colors group">
-                 <Zap size={16} className="text-text-secondary group-hover:text-accent mb-2" />
-                 <span className="text-xs font-bold text-text-primary">Calendar</span>
-               </Link>
-               <Link href="/charts" className="flex flex-col p-3 bg-surface hover:bg-surface-hover border border-border hover:border-accent/50 rounded-lg transition-colors group">
-                 <TrendingUp size={16} className="text-text-secondary group-hover:text-accent mb-2" />
-                 <span className="text-xs font-bold text-text-primary">Terminal</span>
-               </Link>
-             </div>
-           </div>
-
-           {/* Watchlist Promo */}
-           <div className="flex-1 glass-card p-4 flex flex-col justify-center items-center text-center relative overflow-hidden">
-             <div className="absolute inset-0 bg-gradient-to-br from-accent/10 to-transparent"></div>
-             <TrendingUp size={32} className="text-accent mb-2" />
-             <h3 className="text-sm font-bold text-text-primary">Go Pro</h3>
-             <p className="text-xs text-text-secondary mt-1 px-4">Get unlimited AI analysis and real-time data feeds.</p>
-             <button className="mt-3 px-6 py-2 bg-accent text-white text-xs font-bold rounded-full shadow-lg shadow-accent/25 hover:bg-accent/90 transition-all">
-               Upgrade Plan
-             </button>
-           </div>
-        </div>
-      </div>
+      </ResizablePanelGroup>
     </div>
   );
 }
