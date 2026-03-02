@@ -7,17 +7,14 @@ import { NewsFeed } from '@/components/NewsFeed';
 import { Activity, Wifi, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { fetchMarketData } from '@/app/actions/fetchMarketData';
 
-// Mapping Yahoo symbols to TradingView-compatible symbols for the free widget
-// Using continuous contracts (1!) which typically show delayed data in the free widget
+// Mapping Yahoo symbols to TradingView-compatible index/CFD symbols
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
-  'NQ=F': { tv: 'CME_MINI:NQ1!', label: 'Nasdaq 100 Fut' },
-  'ES=F': { tv: 'CME_MINI:ES1!', label: 'S&P 500 Fut' },
-  'CL=F': { tv: 'NYMEX:CL1!', label: 'Crude Oil Fut' },
-  '^GSPC': { tv: 'TVC:SPX', label: 'S&P 500 Index' },
   '^NDX': { tv: 'TVC:NDX', label: 'Nasdaq 100' },
+  '^GSPC': { tv: 'TVC:SPX', label: 'S&P 500' },
   '^DJI': { tv: 'TVC:DJI', label: 'Dow Jones' },
   '^RUT': { tv: 'TVC:RUT', label: 'Russell 2000' },
-  'GC=F': { tv: 'COMEX:GC1!', label: 'Gold Futures' },
+  'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil' },
+  'GC=F': { tv: 'TVC:GOLD', label: 'Gold' },
   '^TNX': { tv: 'TVC:US10Y', label: 'US 10Y Yield' },
   'EURUSD=X': { tv: 'FX:EURUSD', label: 'EUR/USD' },
 };
@@ -25,7 +22,7 @@ const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
 const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
 
 export default function TerminalPage() {
-  const [activeSymbol, setActiveSymbol] = useState("NQ=F");
+  const [activeSymbol, setActiveSymbol] = useState("^NDX");
   const [marketData, setMarketData] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(true);
 
@@ -54,7 +51,7 @@ export default function TerminalPage() {
         
         {/* --- LEFT COLUMN: MARKET WATCH --- */}
         <div className="col-span-3 row-span-8 overflow-hidden">
-          <Widget title="Market Watch // Futures & Indices">
+          <Widget title="Market Watch // Indices & Commodities">
             <div className="flex flex-col">
               {WATCHLIST_SYMBOLS.map(sym => {
                 const data = marketData[sym];
