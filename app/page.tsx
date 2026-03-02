@@ -7,12 +7,12 @@ import { NewsFeed } from '@/components/NewsFeed';
 import { Activity, Wifi, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { fetchMarketData } from '@/app/actions/fetchMarketData';
 
-// Mapping Yahoo symbols to Pepperstone TradingView symbols
+// Mapping Yahoo symbols to specific TradingView broker symbols
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
   '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
-  '^GSPC': { tv: 'PEPPERSTONE:SPX500', label: 'S&P 500' },
+  '^GSPC': { tv: 'BLACKBULL:SPX500', label: 'S&P 500' },
   '^DJI': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones' },
-  '^RUT': { tv: 'PEPPERSTONE:GER30', label: 'DAX 40' }, // Swapped for a major Pepperstone index
+  '^RUT': { tv: 'PEPPERSTONE:GER30', label: 'DAX 40' },
   'CL=F': { tv: 'PEPPERSTONE:WTI', label: 'Crude Oil' },
   'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold' },
   '^TNX': { tv: 'TVC:US10Y', label: 'US 10Y Yield' },
@@ -51,7 +51,7 @@ export default function TerminalPage() {
         
         {/* --- LEFT COLUMN: MARKET WATCH --- */}
         <div className="col-span-3 row-span-8 overflow-hidden">
-          <Widget title="Market Watch // Pepperstone Feed">
+          <Widget title="Market Watch // Institutional Feed">
             <div className="flex flex-col">
               {WATCHLIST_SYMBOLS.map(sym => {
                 const data = marketData[sym];
