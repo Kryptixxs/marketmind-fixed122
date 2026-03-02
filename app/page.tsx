@@ -7,16 +7,16 @@ import { NewsFeed } from '@/components/NewsFeed';
 import { Activity, Wifi, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
 import { fetchMarketData } from '@/app/actions/fetchMarketData';
 
-// Mapping Yahoo symbols to TradingView-compatible CFD symbols
+// Mapping Yahoo symbols to Pepperstone TradingView symbols
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
-  '^NDX': { tv: 'FX:NAS100', label: 'Nasdaq 100' },
-  '^GSPC': { tv: 'FX:SPX500', label: 'S&P 500' },
-  '^DJI': { tv: 'FX:US30', label: 'Dow Jones' },
-  '^RUT': { tv: 'FX:US2000', label: 'Russell 2000' },
-  'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil' },
-  'GC=F': { tv: 'TVC:GOLD', label: 'Gold' },
+  '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
+  '^GSPC': { tv: 'PEPPERSTONE:SPX500', label: 'S&P 500' },
+  '^DJI': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones' },
+  '^RUT': { tv: 'PEPPERSTONE:GER30', label: 'DAX 40' }, // Swapped for a major Pepperstone index
+  'CL=F': { tv: 'PEPPERSTONE:WTI', label: 'Crude Oil' },
+  'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold' },
   '^TNX': { tv: 'TVC:US10Y', label: 'US 10Y Yield' },
-  'EURUSD=X': { tv: 'FX:EURUSD', label: 'EUR/USD' },
+  'EURUSD=X': { tv: 'PEPPERSTONE:EURUSD', label: 'EUR/USD' },
 };
 
 const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
@@ -51,7 +51,7 @@ export default function TerminalPage() {
         
         {/* --- LEFT COLUMN: MARKET WATCH --- */}
         <div className="col-span-3 row-span-8 overflow-hidden">
-          <Widget title="Market Watch // Indices & Commodities">
+          <Widget title="Market Watch // Pepperstone Feed">
             <div className="flex flex-col">
               {WATCHLIST_SYMBOLS.map(sym => {
                 const data = marketData[sym];

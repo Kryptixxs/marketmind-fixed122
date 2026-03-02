@@ -2,61 +2,52 @@
 
 import React, { useEffect, useRef } from 'react';
 
-let tvScriptLoadingPromise: Promise<void> | null = null;
-
 export default function TradingViewChart({ symbol }: { symbol: string }) {
-  const onLoadScriptRef = useRef<(() => void) | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    onLoadScriptRef.current = createWidget;
+    if (!containerRef.current) return;
 
-    if (!tvScriptLoadingPromise) {
-      tvScriptLoadingPromise = new Promise((resolve) => {
-        const script = document.createElement('script');
-        script.id = 'tradingview-widget-loading-script';
-        script.src = 'https://s3.tradingview.com/tv.js';
-        script.type = 'text/javascript';
-        script.onload = () => resolve();
-        document.head.appendChild(script);
-      });
-    }
+    // Clear previous widget
+    containerRef.current.innerHTML = '';
 
-    tvScriptLoadingPromise.then(() => onLoadScriptRef.current && onLoadScriptRef.current());
-
-    return () => {
-      onLoadScriptRef.current = null;
+    const script = document.createElement('script');
+    script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
+    script.type = 'text/javascript';
+    script.async = true;
+    
+    // Configuration for the Pepperstone Advanced Chart
+    const config = {
+      "autosize": true,
+      "symbol": symbol,
+      "interval": "5",
+      "timezone": "Etc/UTC",
+      "theme": "dark",
+      "style": "1",
+      "locale": "en",
+      "backgroundColor": "#000000",
+      "gridColor": "rgba(242, 242, 242, 0.06)",
+      "hide_side_toolbar": true,
+      "allow_symbol_change": true,
+      "save_image": true,
+      "details": false,
+      "calendar": false,
+      "support_host": "https://www.tradingview.com"
     };
 
-    function createWidget() {
-      if (document.getElementById('tradingview_widget') && 'TradingView' in window) {
-        new (window as any).TradingView.widget({
-          autosize: true,
-          symbol: symbol,
-          interval: '5',
-          timezone: 'Etc/UTC',
-          theme: 'dark',
-          style: '1',
-          locale: 'en',
-          toolbar_bg: '#000000',
-          enable_publishing: false,
-          hide_top_toolbar: false,
-          hide_legend: false,
-          save_image: false,
-          container_id: 'tradingview_widget',
-          backgroundColor: '#000000',
-          gridColor: 'rgba(42, 46, 57, 0.06)',
-          studies: [
-            'RSI@tv-basicstudies',
-            'MASimple@tv-basicstudies'
-          ],
-        });
+    script.innerHTML = JSON.stringify(config);
+    containerRef.current.appendChild(script);
+
+    return () => {
+      if (containerRef.current) {
+        containerRef.current.innerHTML = '';
       }
-    }
+    };
   }, [symbol]);
 
   return (
-    <div className="tradingview-widget-container h-full w-full">
-      <div id="tradingview_widget" className="h-full w-full" />
+    <div className="tradingview-widget-container h-full w-full" ref={containerRef}>
+      <div className="tradingview-widget-container__widget h-full w-full"></div>
     </div>
   );
 }
