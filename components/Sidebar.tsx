@@ -12,7 +12,8 @@ import {
   Cpu,
   Search,
   Bell,
-  Calendar
+  Calendar,
+  User
 } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 import { NotificationsPanel } from './notifications/NotificationsPanel';
