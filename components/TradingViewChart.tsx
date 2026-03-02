@@ -2,7 +2,12 @@
 
 import React, { useEffect, useRef } from 'react';
 
-export default function TradingViewChart({ symbol }: { symbol: string }) {
+interface TradingViewChartProps {
+  symbol: string;
+  interval?: string;
+}
+
+export default function TradingViewChart({ symbol, interval = "5" }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -16,11 +21,11 @@ export default function TradingViewChart({ symbol }: { symbol: string }) {
     script.type = 'text/javascript';
     script.async = true;
     
-    // Configuration for the Pepperstone Advanced Chart
+    // Configuration for the Advanced Chart
     const config = {
       "autosize": true,
       "symbol": symbol,
-      "interval": "5",
+      "interval": interval,
       "timezone": "Etc/UTC",
       "theme": "dark",
       "style": "1",
@@ -43,7 +48,7 @@ export default function TradingViewChart({ symbol }: { symbol: string }) {
         containerRef.current.innerHTML = '';
       }
     };
-  }, [symbol]);
+  }, [symbol, interval]);
 
   return (
     <div className="tradingview-widget-container h-full w-full" ref={containerRef}>
