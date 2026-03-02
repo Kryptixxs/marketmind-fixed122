@@ -2,153 +2,210 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  ChevronLeft, ChevronRight, Filter, Download
+  ChevronLeft, ChevronRight, Filter, Download, AlertCircle
 } from 'lucide-react';
 import { fetchEconomicCalendarBatch } from '@/app/actions/fetchEconomicCalendar';
 import { EconomicEvent } from '@/lib/types';
-import { getBusinessWeek, toISODateString } from '@/lib/date-utils';
+import { getFullWeek, toISODateString } from '@/lib/date-utils';
 
 const IMPACT_COLORS: Record<string, string> = {
-  High: 'text-negative bg-negative/10 border-negative/20',
-  Medium: 'text-warning bg-warning/10 border-warning/20',
-  Low: 'text-positive bg-positive/10 border-positive/20'
+  High: 'border-l-4 border-l-red-500 bg-red-500/10',
+  Medium: 'border-l-4 border-l-orange-500 bg-orange-500/10',
+  Low: 'border-l-4 border-l-green-500 bg-green-500/10'
 };
+
+const HOURS = [
+  '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', 
+  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', 
+  '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'
+];
+
+function formatHourLabel(h: string) {
+  const hour = parseInt(h.split(':')[0]);
+  if (hour === 0) return '12 AM';
+  if (hour === 12) return '12 PM';
+  return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
+}
 
 export function EconomicCalendarView() {
   const [weekOffset, setWeekOffset] = useState(0);
-  const [events, setEvents] = useState<Record<string, EconomicEvent[]>>({});
+  const [eventsData, setEventsData] = useState<Record<string, EconomicEvent[]>>({});
   const [loading, setLoading] = useState(true);
-  const [filterImpact, setFilterImpact] = useState<'All' | 'High' | 'Medium'>('All');
-  const [filterCountry, setFilterCountry] = useState('All');
+  const [showLowImpact, setShowLowImpact] = useState(false);
 
   const weekDates = useMemo(() => {
     const today = new Date();
     today.setDate(today.getDate() + (weekOffset * 7));
-    return getBusinessWeek(today);
+    return getFullWeek(today);
   }, [weekOffset]);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       const data = await fetchEconomicCalendarBatch(weekDates.map(d => d.dateStr));
-      setEvents(data);
+      setEventsData(data);
       setLoading(false);
     };
     load();
   }, [weekDates]);
 
-  const filteredEvents = (dateStr: string) => {
-    return (events[dateStr] || []).filter(e => {
-      if (filterImpact !== 'All' && e.impact !== filterImpact) return false;
-      if (filterCountry !== 'All' && e.country !== filterCountry) return false;
-      return true;
+  // Group events by Day -> Hour
+  const schedule = useMemo(() => {
+    const grid: Record<string, Record<string, EconomicEvent[]>> = {};
+
+    weekDates.forEach(day => {
+      grid[day.dateStr] = {};
+      HOURS.forEach(h => grid[day.dateStr][h] = []);
+      
+      const dayEvents = eventsData[day.dateStr] || [];
+      dayEvents.forEach(e => {
+        if (!showLowImpact && e.impact === 'Low') return;
+        
+        // Convert "08:30" to "08:00" bucket
+        let hourKey = '00:00';
+        if (e.time.includes(':')) {
+           const parts = e.time.split(':');
+           const h = parseInt(parts[0]);
+           if (!isNaN(h)) {
+             // Handle 12h format if needed, but assuming standard HH:MM
+             // For simplicity, let's just grab the hour part if it's 24h
+             // Or parse normalized 24h time. 
+             // NASDAQ returns "08:30". We just want "08:00".
+             hourKey = `${parts[0].padStart(2, '0')}:00`;
+           }
+        }
+        if (!grid[day.dateStr][hourKey]) grid[day.dateStr][hourKey] = [];
+        grid[day.dateStr][hourKey].push(e);
+      });
     });
-  };
+    return grid;
+  }, [eventsData, weekDates, showLowImpact]);
 
   return (
-    <div className="flex flex-col h-full gap-2">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between bg-surface border border-border p-2 rounded-sm shrink-0">
+    <div className="flex flex-col h-full bg-background">
+      {/* Header Toolbar */}
+      <div className="flex items-center justify-between p-3 border-b border-border bg-surface shrink-0">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <button onClick={() => setWeekOffset(w => w - 1)} className="p-1 hover:bg-surface-highlight rounded"><ChevronLeft size={16}/></button>
-            <span className="font-mono font-bold w-32 text-center text-sm">
-              {weekDates[0]?.dateStr} - {weekDates[4]?.dateStr.slice(5)}
+          <div className="flex items-center gap-1 bg-surface-highlight rounded-lg p-0.5 border border-border">
+            <button onClick={() => setWeekOffset(w => w - 1)} className="p-1.5 hover:bg-surface rounded-md text-text-secondary hover:text-text-primary"><ChevronLeft size={16}/></button>
+            <span className="px-3 font-mono font-bold text-sm min-w-[140px] text-center">
+              {weekDates[0]?.dateStr}
             </span>
-            <button onClick={() => setWeekOffset(w => w + 1)} className="p-1 hover:bg-surface-highlight rounded"><ChevronRight size={16}/></button>
+            <button onClick={() => setWeekOffset(w => w + 1)} className="p-1.5 hover:bg-surface rounded-md text-text-secondary hover:text-text-primary"><ChevronRight size={16}/></button>
           </div>
           
-          <div className="h-4 w-[1px] bg-border" />
-          
-          <div className="flex items-center gap-2 text-xs">
-            <Filter size={14} className="text-text-tertiary" />
-            <select 
-              className="bg-background border border-border rounded px-2 py-1 outline-none focus:border-accent"
-              value={filterImpact}
-              onChange={e => setFilterImpact(e.target.value as any)}
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowLowImpact(!showLowImpact)}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold border transition-colors ${showLowImpact ? 'bg-surface-highlight border-border text-text-primary' : 'bg-transparent border-transparent text-text-tertiary hover:text-text-secondary'}`}
             >
-              <option value="All">All Impact</option>
-              <option value="High">High Impact</option>
-              <option value="Medium">Medium Impact</option>
-            </select>
-            <select 
-              className="bg-background border border-border rounded px-2 py-1 outline-none focus:border-accent"
-              value={filterCountry}
-              onChange={e => setFilterCountry(e.target.value)}
-            >
-              <option value="All">All Countries</option>
-              <option value="United States">USA</option>
-              <option value="Euro Zone">Euro Zone</option>
-              <option value="United Kingdom">UK</option>
-              <option value="Japan">Japan</option>
-            </select>
-            <span className="text-[10px] text-text-tertiary uppercase font-bold ml-2">Times in Eastern (ET)</span>
+              {showLowImpact ? 'Hiding Low Impact' : 'Show All'}
+            </button>
+            <span className="text-[10px] bg-surface-highlight px-2 py-1 rounded text-text-secondary border border-border">
+              EST (New York)
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1 px-3 py-1 bg-accent/10 text-accent text-xs font-bold rounded hover:bg-accent/20 transition-colors">
-            <Download size={14} /> Export CSV
-          </button>
-        </div>
+        <button className="p-2 text-text-tertiary hover:text-text-primary">
+          <Download size={16} />
+        </button>
       </div>
 
-      {/* Main Grid */}
-      <div className="flex-1 grid grid-cols-5 gap-1 overflow-hidden min-h-0">
-        {weekDates.map((day) => {
-          const isToday = day.dateStr === toISODateString(new Date());
-          const dayEvents = filteredEvents(day.dateStr);
+      {/* Calendar Grid */}
+      <div className="flex-1 overflow-auto custom-scrollbar bg-background relative">
+        <div className="min-w-[1000px]"> {/* Horizontal scroll if needed on small screens */}
+          
+          {/* Header Row (Days) */}
+          <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border sticky top-0 bg-surface/95 backdrop-blur z-20">
+            <div className="p-2 border-r border-border text-[10px] text-text-tertiary font-bold flex items-end justify-center">
+              TIME
+            </div>
+            {weekDates.map(day => {
+               const isToday = day.dateStr === toISODateString(new Date());
+               return (
+                 <div key={day.dateStr} className={`p-2 border-r border-border text-center ${isToday ? 'bg-accent/5' : ''}`}>
+                   <div className={`text-[10px] uppercase font-bold mb-1 ${isToday ? 'text-accent' : 'text-text-tertiary'}`}>
+                     {day.dayName}
+                   </div>
+                   <div className={`text-sm font-bold ${isToday ? 'text-text-primary' : 'text-text-secondary'}`}>
+                     {day.dayNum}
+                   </div>
+                 </div>
+               );
+            })}
+          </div>
 
-          return (
-            <div key={day.dateStr} className={`flex flex-col border border-border rounded-sm overflow-hidden ${isToday ? 'bg-surface-highlight/10' : 'bg-surface'}`}>
-              <div className={`p-2 border-b border-border text-center shrink-0 ${isToday ? 'bg-accent/10 text-accent' : 'bg-surface-highlight text-text-secondary'}`}>
-                <div className="text-[10px] uppercase font-bold tracking-wider">{day.dayName}</div>
-                <div className="text-xs font-mono">{day.dateStr.slice(5)}</div>
-              </div>
-              
-              <div className="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-1">
-                {loading ? (
-                  <div className="h-full flex items-center justify-center opacity-50">...</div>
-                ) : dayEvents.length === 0 ? (
-                  <div className="text-center text-[10px] text-text-tertiary mt-10">No Events</div>
-                ) : (
-                  dayEvents.map(e => (
-                    <div key={e.id} className="p-2 bg-background border border-border rounded hover:border-text-tertiary transition-colors group">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="font-mono text-[10px] text-text-secondary whitespace-nowrap">{e.time.replace(' ET', '')}</span>
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded border uppercase font-bold ${IMPACT_COLORS[e.impact]}`}>
-                          {e.impact}
-                        </span>
-                      </div>
-                      
-                      <div className="flex items-center gap-1 mb-2">
-                        <span className="text-[9px] font-bold text-text-tertiary">{e.country === 'United States' ? 'USA' : e.country}</span>
-                        <h4 className="text-[11px] font-medium leading-tight text-text-primary line-clamp-2">{e.title}</h4>
-                      </div>
+          {/* Body Rows (Hours) */}
+          <div className="divide-y divide-border">
+            {HOURS.map(hour => (
+              <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] min-h-[80px]">
+                {/* Time Label */}
+                <div className="border-r border-border p-2 text-[10px] font-bold text-text-tertiary text-center sticky left-0 bg-background z-10">
+                  <span className="-mt-3 block bg-background px-1">{formatHourLabel(hour)}</span>
+                </div>
 
-                      <div className="grid grid-cols-3 gap-1 text-[10px] font-mono border-t border-border pt-1.5">
-                        <div>
-                          <div className="text-text-tertiary text-[8px] uppercase">Act</div>
-                          <div className={`font-bold ${e.surprise && e.surprise > 0 ? 'text-positive' : e.surprise && e.surprise < 0 ? 'text-negative' : 'text-text-primary'}`}>
-                            {e.actual}
+                {/* Day Cells */}
+                {weekDates.map(day => {
+                  const dayEvents = schedule[day.dateStr]?.[hour] || [];
+                  const isToday = day.dateStr === toISODateString(new Date());
+                  
+                  return (
+                    <div key={`${day.dateStr}-${hour}`} className={`border-r border-border p-1 relative group ${isToday ? 'bg-accent/[0.02]' : ''}`}>
+                      <div className="flex flex-col gap-1.5 h-full">
+                        {dayEvents.map((event, idx) => (
+                          <div 
+                            key={event.id}
+                            className={`
+                              relative p-1.5 rounded bg-surface border border-border/50 shadow-sm hover:border-border transition-all cursor-default
+                              ${IMPACT_COLORS[event.impact] || IMPACT_COLORS.Low}
+                            `}
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <div className="flex items-center gap-1.5">
+                                {event.country && (
+                                  <img 
+                                    src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`}
+                                    alt={event.country}
+                                    className="w-3 h-2 object-cover rounded-[1px] opacity-80"
+                                    onError={(e) => e.currentTarget.style.display = 'none'}
+                                  />
+                                )}
+                                <span className="text-[9px] font-mono text-text-secondary leading-none">
+                                  {event.time.split(' ')[0]}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            <div className="text-[10px] font-medium leading-tight text-text-primary line-clamp-2 mb-1">
+                              {event.title}
+                            </div>
+
+                            {(event.actual || event.forecast) && (
+                              <div className="flex items-center gap-2 text-[9px] font-mono border-t border-black/10 pt-1 mt-1 opacity-80">
+                                {event.actual && (
+                                  <span className={
+                                    event.forecast && parseFloat(event.actual) > parseFloat(event.forecast) ? 'text-green-600' : 
+                                    event.forecast && parseFloat(event.actual) < parseFloat(event.forecast) ? 'text-red-500' : 'text-text-secondary'
+                                  }>
+                                    {event.actual}
+                                  </span>
+                                )}
+                                {event.forecast && (
+                                  <span className="text-text-tertiary">/ {event.forecast}</span>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                        <div className="text-center border-x border-border">
-                          <div className="text-text-tertiary text-[8px] uppercase">Fcst</div>
-                          <div className="text-text-secondary">{e.forecast}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-text-tertiary text-[8px] uppercase">Prev</div>
-                          <div className="text-text-secondary">{e.previous}</div>
-                        </div>
+                        ))}
                       </div>
                     </div>
-                  ))
-                )}
+                  );
+                })}
               </div>
-            </div>
-          );
-        })}
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );

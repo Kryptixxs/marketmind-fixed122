@@ -3,7 +3,6 @@ export const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', '
 
 /**
  * Returns a date string in YYYY-MM-DD format using local time.
- * This is crucial for matching the UI's perception of "today".
  */
 export function toISODateString(date: Date): string {
   const year = date.getFullYear();
@@ -14,8 +13,6 @@ export function toISODateString(date: Date): string {
 
 /**
  * Returns the Monday of the week for the given date.
- * Adjusts so that if it's Sunday, we show the week that is ending (or starting, depending on pref).
- * Standard business logic: Monday is start of week.
  */
 export function getMonday(d: Date): Date {
   const date = new Date(d);
@@ -25,31 +22,27 @@ export function getMonday(d: Date): Date {
 }
 
 /**
- * Generates an array of 5 dates (Mon-Fri) starting from the provided reference date.
+ * Generates an array of 7 dates (Mon-Sun) for the weekly view.
  */
-export function getBusinessWeek(referenceDate: Date = new Date()): { date: Date; dateStr: string; dayName: string }[] {
+export function getFullWeek(referenceDate: Date = new Date()): { date: Date; dateStr: string; dayName: string; dayNum: string }[] {
   const monday = getMonday(referenceDate);
   const week = [];
   
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 7; i++) {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
     week.push({
       date: d,
       dateStr: toISODateString(d),
-      dayName: DAYS[d.getDay()]
+      dayName: DAYS[d.getDay()].substring(0, 3),
+      dayNum: String(d.getDate())
     });
   }
   return week;
 }
 
-/**
- * Formats a time string (e.g., "14:30") to a more readable format (e.g., "2:30 PM").
- */
 export function formatTime(timeStr: string): string {
   if (!timeStr || timeStr === 'All Day') return 'All Day';
-  
-  // Check if it's already 12h format
   if (timeStr.includes('AM') || timeStr.includes('PM')) return timeStr;
 
   const [hours, minutes] = timeStr.split(':');
