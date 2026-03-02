@@ -19,3 +19,5 @@ View your app in AI Studio: https://ai.studio/apps/df16a4c3-39f8-4f4c-823a-cad5b
    - `GEMINI_API_KEY` — your Gemini API key (for AI features)
 3. Run the app:
    `npm run dev`
+
+# hello
