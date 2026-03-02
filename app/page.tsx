@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Widget } from '@/components/Widget';
-import { TapeWidget } from '@/components/widgets/Tape';
 import { TradingChart } from '@/components/TradingChart';
 import { NewsFeed } from '@/components/NewsFeed';
 import { Activity, Wifi, Loader2 } from 'lucide-react';
@@ -13,7 +12,6 @@ const WATCHLIST_SYMBOLS = ['BTC-USD', 'ETH-USD', 'SOL-USD', 'AAPL', 'TSLA', 'NVD
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("BTC-USD");
   const [marketData, setMarketData] = useState<Record<string, any>>({});
-  const [orderBook, setOrderBook] = useState<{asks: any[], bids: any[]}>({ asks: [], bids: [] });
   const [loading, setLoading] = useState(true);
 
   // Fetch data for the entire watchlist
@@ -32,29 +30,6 @@ export default function TerminalPage() {
     const interval = setInterval(refreshWatchlist, 30000); // Refresh every 30s
     return () => clearInterval(interval);
   }, [refreshWatchlist]);
-
-  // Update Order Book when active symbol or its price changes
-  useEffect(() => {
-    const current = marketData[activeSymbol];
-    if (!current) return;
-
-    const price = current.price;
-    const step = price * 0.0002;
-
-    const asks = Array.from({length: 12}).map((_, i) => ({
-      price: (price + (i + 1) * step).toFixed(price > 1000 ? 2 : 4),
-      size: (Math.random() * (price > 1000 ? 1 : 500)).toFixed(2),
-      width: Math.random() * 90
-    })).reverse();
-
-    const bids = Array.from({length: 12}).map((_, i) => ({
-      price: (price - (i + 1) * step).toFixed(price > 1000 ? 2 : 4),
-      size: (Math.random() * (price > 1000 ? 1 : 500)).toFixed(2),
-      width: Math.random() * 90
-    }));
-
-    setOrderBook({ asks, bids });
-  }, [activeSymbol, marketData]);
 
   const activeQuote = marketData[activeSymbol];
 
@@ -117,7 +92,7 @@ export default function TerminalPage() {
         </div>
 
         {/* --- CENTER COLUMN --- */}
-        <div className="col-span-6 row-span-8 overflow-hidden relative">
+        <div className="col-span-6 row-span-12 overflow-hidden relative">
           <Widget 
             title={`${activeSymbol} • ${activeQuote?.name || ''}`} 
             actions={
@@ -128,46 +103,11 @@ export default function TerminalPage() {
             }
           >
             <div className="w-full h-full bg-black">
-              {/* In a real app, we'd fetch historical data for the chart here */}
               <div className="flex items-center justify-center h-full text-text-tertiary text-[10px] uppercase tracking-widest">
                 {loading ? <Loader2 className="animate-spin" /> : 'Chart Engine Active'}
               </div>
             </div>
           </Widget>
-        </div>
-
-        <div className="col-span-6 row-span-4 overflow-hidden">
-          <div className="grid grid-cols-2 gap-1 h-full">
-            <Widget title="Time & Sales">
-              <TapeWidget symbol={activeSymbol} basePrice={activeQuote?.price} />
-            </Widget>
-            <Widget title="Order Book">
-              <div className="w-full h-full flex flex-col text-[10px]">
-                <div className="flex-1 flex flex-col justify-end overflow-hidden">
-                  {orderBook.asks.map((ask, i) => (
-                      <div key={i} className="flex justify-between px-2 py-0.5 text-negative hover:bg-surface-highlight relative">
-                        <div className="absolute right-0 top-0 bottom-0 bg-negative/10" style={{width: `${ask.width}%`}}></div>
-                        <span className="z-10 font-mono">{ask.price}</span>
-                        <span className="z-10 font-mono">{ask.size}</span>
-                      </div>
-                  ))}
-                </div>
-                <div className="bg-surface border-y border-border py-1 px-2 flex justify-between font-bold">
-                  <span className="text-positive">{activeQuote?.price.toLocaleString()}</span>
-                  <span className="text-text-tertiary">SPREAD: {(activeQuote?.price * 0.0002).toFixed(2)}</span>
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  {orderBook.bids.map((bid, i) => (
-                      <div key={i} className="flex justify-between px-2 py-0.5 text-positive hover:bg-surface-highlight relative">
-                        <div className="absolute right-0 top-0 bottom-0 bg-positive/10" style={{width: `${bid.width}%`}}></div>
-                        <span className="z-10 font-mono">{bid.price}</span>
-                        <span className="z-10 font-mono">{bid.size}</span>
-                      </div>
-                  ))}
-                </div>
-              </div>
-            </Widget>
-          </div>
         </div>
 
         {/* --- RIGHT COLUMN --- */}
