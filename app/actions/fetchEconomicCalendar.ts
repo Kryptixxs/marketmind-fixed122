@@ -5,7 +5,6 @@ import { EconomicEvent } from '@/lib/types';
 const CACHE: Record<string, { data: EconomicEvent[], timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
-// Enhanced High Impact Keywords
 const HIGH_IMPACT_KEYWORDS = [
   'Nonfarm Payrolls', 'Unemployment Rate', 'CPI', 'PPI', 'GDP', 'FOMC', 
   'Fed Interest Rate', 'Interest Rate Decision', 'Retail Sales', 'ISM Manufacturing', 
@@ -14,7 +13,6 @@ const HIGH_IMPACT_KEYWORDS = [
   'Employment Change', 'Jobless Claims', 'PMI', 'Rate Statement', 'Non-Farm'
 ];
 
-// Medium Impact
 const MEDIUM_IMPACT_KEYWORDS = [
   'Durable Goods', 'Housing Starts', 'Existing Home Sales', 'New Home Sales',
   'ADP', 'Trade Balance', 'Factory Orders', 'Building Permits', 'Michigan', 
@@ -22,7 +20,6 @@ const MEDIUM_IMPACT_KEYWORDS = [
   'Capacity Utilization', 'Leading Index', 'Budget Balance', 'Current Account'
 ];
 
-// Expanded Noise Filter
 const IGNORED_KEYWORDS = [
   'Bill Auction', 'Note Auction', 'Bond Auction', 'Tips Auction', 
   'Mortgage Market', 'MBA', 'Redbook', 'API Weekly', 'Rig Count',
@@ -57,23 +54,6 @@ function shouldFilterOut(title: string): boolean {
   return IGNORED_KEYWORDS.some(k => t.includes(k.toLowerCase()));
 }
 
-// Convert a UTC date to Eastern Time date string (YYYY-MM-DD)
-function getEasternDate(date: Date): string {
-  return date.toLocaleDateString('en-CA', { 
-    timeZone: 'America/New_York'
-  });
-}
-
-// Format time to HH:MM in Eastern Time
-function getEasternTime(date: Date): string {
-  return date.toLocaleTimeString('en-US', {
-    timeZone: 'America/New_York',
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
-
 export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Record<string, EconomicEvent[]>> {
   const results: Record<string, EconomicEvent[]> = {};
   const datesToFetch: string[] = [];
@@ -87,7 +67,7 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
     }
   }
 
-  // Ensure all requested keys exist
+  // Ensure all requested keys exist in the result object
   dates.forEach(d => { if (!results[d]) results[d] = []; });
 
   if (datesToFetch.length === 0) return results;
@@ -104,22 +84,26 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
   }));
 
   // Re-bucket events into the correct dates
+  // Since dates are shifted, they might land in a different bucket than they were fetched from
   rawEvents.forEach(event => {
     if (results[event.date]) {
       results[event.date].push(event);
     } else {
+      // If we didn't ask for this date specifically but got data for it (due to shift),
+      // we add it to the results map so the frontend can display it if it wants to.
       results[event.date] = [event];
     }
   });
   
-  // Sort
+  // Sort events within each day
   Object.keys(results).forEach(key => {
     results[key].sort((a, b) => {
        const impactScore = { High: 3, Medium: 2, Low: 1 };
        const scoreA = impactScore[a.impact] || 0;
        const scoreB = impactScore[b.impact] || 0;
        if (scoreA !== scoreB) return scoreB - scoreA;
-       return a.timestamp - b.timestamp;
+       // Sort by time string "HH:MM"
+       return a.time.localeCompare(b.time);
     });
   });
 
@@ -144,25 +128,24 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
     return json.data.rows
       .filter((row: any) => row.eventName && !shouldFilterOut(row.eventName))
       .map((row: any, i: number) => {
-        // Parse incoming time (assumed to be UTC/GMT based on NASDAQ usually)
-        const timeStr = row.gmt || '00:00';
-        const dateTimeStr = `${dateStr}T${timeStr}:00Z`;
-        const utcDate = new Date(dateTimeStr);
+        // Use the raw time string from API (e.g. "08:30" or "14:00")
+        // We assume this is already in the desired display timezone (EST) or close enough 
+        // that the user prefers it over our calculated offset.
+        let timeStr = row.gmt || '00:00';
         
-        // Manual 1-day shift left as requested
-        utcDate.setDate(utcDate.getDate() - 1);
-        
-        // Convert to Eastern Time
-        const estDateStr = getEasternDate(utcDate);
-        const estTimeStr = getEasternTime(utcDate);
-        
+        // Manual 1-day shift left logic
+        // We create a Date object from the query date, subtract 1 day, and format it back to YYYY-MM-DD
+        const d = new Date(`${dateStr}T00:00:00Z`);
+        d.setDate(d.getDate() - 1);
+        const shiftedDateStr = d.toISOString().split('T')[0];
+
         const impact = calculateImpact(row.eventName || '');
         const countryCode = COUNTRY_CODES[row.country] || 'US'; 
 
         return {
           id: `${dateStr}-${i}`,
-          date: estDateStr,
-          time: estTimeStr,
+          date: shiftedDateStr, // Shifted Date (-1 day)
+          time: timeStr,        // Original Time (No timezone conversion)
           country: countryCode, 
           currency: CURRENCY_MAP[row.country] || 'USD',
           impact: impact, 
@@ -170,7 +153,7 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
           actual: row.actual || '',
           forecast: row.consensus || '',
           previous: row.previous || '',
-          timestamp: utcDate.getTime()
+          timestamp: 0 // Not strictly needed for grid view anymore
         };
       });
   } catch {
