@@ -13,7 +13,7 @@ const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
   '^GSPC': { tv: 'BLACKBULL:SPX500', label: 'S&P 500' },
   '^DJI': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones' },
   '^RUT': { tv: 'IG:RUSSELL', label: 'Russell 2000' },
-  'CL=F': { tv: 'PEPPERSTONE:WTI', label: 'Crude Oil' },
+  'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil' },
   'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold' },
   '^TNX': { tv: 'TVC:US10Y', label: 'US 10Y Yield' },
   'EURUSD=X': { tv: 'PEPPERSTONE:EURUSD', label: 'EUR/USD' },
