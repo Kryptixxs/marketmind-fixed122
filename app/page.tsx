@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Widget } from '@/components/Widget';
 import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
-import { Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain } from 'lucide-react';
+import { Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle } from 'lucide-react';
 import { fetchMarketData } from '@/app/actions/fetchMarketData';
 import { analyzeMarket } from '@/app/actions/analyzeMarket';
 
@@ -28,15 +28,22 @@ export default function TerminalPage() {
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const lastAnalyzedRef = useRef<string | null>(null);
 
   const refreshWatchlist = useCallback(async () => {
-    const results: Record<string, any> = {};
-    await Promise.all(WATCHLIST_SYMBOLS.map(async (sym) => {
-      const data = await fetchMarketData(sym);
-      if (data) results[sym] = data;
-    }));
-    setMarketData(results);
-    setLoading(false);
+    try {
+      const results: Record<string, any> = {};
+      await Promise.all(WATCHLIST_SYMBOLS.map(async (sym) => {
+        const data = await fetchMarketData(sym);
+        if (data) results[sym] = data;
+      }));
+      setMarketData(results);
+      setLoading(false);
+    } catch (err) {
+      console.error("Failed to refresh watchlist:", err);
+    }
   }, []);
 
   useEffect(() => {
@@ -50,16 +57,32 @@ export default function TerminalPage() {
     const data = marketData[activeSymbol];
     if (!data) return;
 
+    // Avoid re-analyzing the same price point for the same symbol
+    const analysisKey = `${activeSymbol}-${data.price}`;
+    if (lastAnalyzedRef.current === analysisKey) return;
+
     const runAnalysis = async () => {
       setAnalyzing(true);
-      const result = await analyzeMarket(
-        activeSymbol, 
-        SYMBOL_MAP[activeSymbol].label, 
-        data.price, 
-        data.changePercent
-      );
-      setAiAnalysis(result);
-      setAnalyzing(false);
+      setError(null);
+      try {
+        const result = await analyzeMarket(
+          activeSymbol, 
+          SYMBOL_MAP[activeSymbol].label, 
+          data.price, 
+          data.changePercent
+        );
+        if (result) {
+          setAiAnalysis(result);
+          lastAnalyzedRef.current = analysisKey;
+        } else {
+          setError("Analysis failed to generate.");
+        }
+      } catch (err) {
+        setError("AI Service unavailable.");
+        console.error(err);
+      } finally {
+        setAnalyzing(false);
+      }
     };
 
     runAnalysis();
@@ -162,6 +185,11 @@ export default function TerminalPage() {
                    <Loader2 size={20} className="animate-spin text-accent" />
                    <span className="text-[10px] font-bold uppercase tracking-widest">Synthesizing Data...</span>
                  </div>
+               ) : error ? (
+                 <div className="flex-1 flex flex-col items-center justify-center gap-2 text-negative opacity-80">
+                   <AlertCircle size={20} />
+                   <span className="text-[10px] font-bold uppercase tracking-widest">{error}</span>
+                 </div>
                ) : aiAnalysis ? (
                  <>
                    <div className="flex items-center justify-between mb-4">
@@ -194,8 +222,9 @@ export default function TerminalPage() {
                    </div>
                  </>
                ) : (
-                 <div className="flex-1 flex items-center justify-center text-text-tertiary italic">
-                   Select a symbol to begin analysis
+                 <div className="flex-1 flex flex-col items-center justify-center gap-2 text-text-tertiary">
+                   <Loader2 size={16} className="animate-spin" />
+                   <span className="text-[10px] font-bold uppercase tracking-widest">Waiting for Market Data...</span>
                  </div>
                )}
              </div>
