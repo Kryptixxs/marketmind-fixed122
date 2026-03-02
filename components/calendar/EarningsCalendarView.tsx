@@ -67,7 +67,17 @@ export function EarningsCalendarView() {
                  ) : dayEvents.map(e => (
                    <div key={e.id} className="p-2 bg-background border border-border rounded hover:border-accent/40 transition-colors cursor-pointer group">
                       <div className="flex justify-between items-start mb-1">
-                        <span className="font-bold text-sm text-text-primary">{e.ticker}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded bg-surface-highlight border border-border flex items-center justify-center overflow-hidden shrink-0">
+                            <img 
+                              src={`https://financialmodelingprep.com/image-stock/${e.ticker}.png`}
+                              alt=""
+                              className="w-full h-full object-contain p-0.5"
+                              onError={(el) => el.currentTarget.style.display = 'none'}
+                            />
+                          </div>
+                          <span className="font-bold text-sm text-text-primary">{e.ticker}</span>
+                        </div>
                         <span className={`text-[9px] px-1 rounded uppercase font-bold ${e.time === 'bmo' ? 'bg-yellow-500/10 text-yellow-500' : e.time === 'amc' ? 'bg-blue-500/10 text-blue-500' : 'bg-surface-highlight text-text-secondary'}`}>
                           {e.time === 'bmo' ? 'Pre' : e.time === 'amc' ? 'Post' : '---'}
                         </span>
