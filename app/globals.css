@@ -37,14 +37,14 @@ html, body {
   background-color: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-mono); /* Force mono everywhere */
-  font-size: 12px; /* Small base size for density */
+  font-size: 11px; /* Reduced base size for higher density */
   -webkit-font-smoothing: antialiased;
 }
 
 /* ── Scrollbars ── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: var(--color-surface);
@@ -59,14 +59,14 @@ html, body {
 
 /* ── Utilities ── */
 .panel-header {
-  height: 28px;
+  height: 24px; /* More compact header */
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8px;
+  padding: 0 6px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -77,25 +77,31 @@ html, body {
 .panel-content {
   background: var(--color-background);
   overflow: auto;
-  height: calc(100% - 28px);
+  height: calc(100% - 24px);
 }
 
 .mono-num {
   font-feature-settings: "tnum" on, "lnum" on;
 }
 
-.animate-flash-green {
-  animation: flashGreen 0.5s ease-out;
-}
-.animate-flash-red {
-  animation: flashRed 0.5s ease-out;
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
 }
 
-@keyframes flashGreen {
-  0% { background-color: rgba(0, 255, 157, 0.3); color: white; }
-  100% { background-color: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
 }
-@keyframes flashRed {
-  0% { background-color: rgba(255, 51, 51, 0.3); color: white; }
-  100% { background-color: transparent; }
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* ── Animations ── */
+@keyframes liquid-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-in {
+  animation: liquid-fade 0.3s ease-out forwards;
 }
