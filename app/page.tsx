@@ -16,7 +16,6 @@ const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
   '^RUT': { tv: 'IG:RUSSELL', label: 'Russell 2000' },
   'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil' },
   'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold' },
-  '^TNX': { tv: 'TVC:US10Y', label: 'US 10Y Yield' },
   'EURUSD=X': { tv: 'PEPPERSTONE:EURUSD', label: 'EUR/USD' },
 };
 
