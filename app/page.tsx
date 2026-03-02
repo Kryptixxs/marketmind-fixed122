@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Widget } from '@/components/Widget';
 import { TapeWidget } from '@/components/widgets/Tape';
 import { TradingChart } from '@/components/TradingChart';
@@ -17,6 +17,33 @@ const MOCK_CHART_DATA = Array.from({ length: 100 }, (_, i) => ({
 
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("BTC-USD");
+  const [marketData, setMarketData] = useState<Record<string, { price: string, change: string }>>({});
+  const [orderBook, setOrderBook] = useState<{asks: any[], bids: any[]}>({ asks: [], bids: [] });
+
+  // Hydration fix: Generate random data only on client mount
+  useEffect(() => {
+    const data: any = {};
+    ['BTC-USD', 'ETH-USD', 'SOL-USD', 'ES1!', 'NQ1!', 'EUR/USD', 'GC1!', 'CL1!'].forEach(sym => {
+      data[sym] = {
+        price: (Math.random() * 4000 + 1000).toFixed(2),
+        change: '+' + (Math.random() * 1.5).toFixed(2) + '%'
+      };
+    });
+    setMarketData(data);
+
+    // Generate initial order book
+    const asks = Array.from({length: 8}).map((_, i) => ({
+      price: (65000 + i * 10).toFixed(1),
+      size: (Math.random() * 2).toFixed(3),
+      width: Math.random() * 80
+    }));
+    const bids = Array.from({length: 8}).map((_, i) => ({
+      price: (64950 - i * 10).toFixed(1),
+      size: (Math.random() * 2).toFixed(3),
+      width: Math.random() * 80
+    }));
+    setOrderBook({ asks, bids });
+  }, []);
 
   return (
     <div className="h-full w-full bg-background p-1 overflow-hidden">
@@ -39,8 +66,12 @@ export default function TerminalPage() {
                 >
                   <span className="font-bold text-xs">{sym}</span>
                   <div className="flex flex-col items-end">
-                    <span className="text-xs text-text-primary">{(Math.random() * 4000 + 1000).toFixed(2)}</span>
-                    <span className="text-[10px] text-positive">+0.45%</span>
+                    <span className="text-xs text-text-primary">
+                      {marketData[sym]?.price || '---'}
+                    </span>
+                    <span className="text-[10px] text-positive">
+                      {marketData[sym]?.change || '--'}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -96,13 +127,13 @@ export default function TerminalPage() {
             </Widget>
             <Widget title="Order Book">
               <div className="w-full h-full flex flex-col text-[10px]">
-                {/* Mock Order Book */}
+                {/* Order Book */}
                 <div className="flex-1 flex flex-col justify-end overflow-hidden">
-                  {Array.from({length: 8}).map((_, i) => (
+                  {orderBook.asks.map((ask, i) => (
                       <div key={i} className="flex justify-between px-2 py-0.5 text-negative hover:bg-surface-highlight relative">
-                        <div className="absolute right-0 top-0 bottom-0 bg-negative/10" style={{width: `${Math.random() * 80}%`}}></div>
-                        <span className="z-10 font-mono">{(65000 + i * 10).toFixed(1)}</span>
-                        <span className="z-10 font-mono">{(Math.random() * 2).toFixed(3)}</span>
+                        <div className="absolute right-0 top-0 bottom-0 bg-negative/10" style={{width: `${ask.width}%`}}></div>
+                        <span className="z-10 font-mono">{ask.price}</span>
+                        <span className="z-10 font-mono">{ask.size}</span>
                       </div>
                   ))}
                 </div>
@@ -111,11 +142,11 @@ export default function TerminalPage() {
                   <span>Spread: 5.0</span>
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  {Array.from({length: 8}).map((_, i) => (
+                  {orderBook.bids.map((bid, i) => (
                       <div key={i} className="flex justify-between px-2 py-0.5 text-positive hover:bg-surface-highlight relative">
-                        <div className="absolute right-0 top-0 bottom-0 bg-positive/10" style={{width: `${Math.random() * 80}%`}}></div>
-                        <span className="z-10 font-mono">{(64950 - i * 10).toFixed(1)}</span>
-                        <span className="z-10 font-mono">{(Math.random() * 2).toFixed(3)}</span>
+                        <div className="absolute right-0 top-0 bottom-0 bg-positive/10" style={{width: `${bid.width}%`}}></div>
+                        <span className="z-10 font-mono">{bid.price}</span>
+                        <span className="z-10 font-mono">{bid.size}</span>
                       </div>
                   ))}
                 </div>
