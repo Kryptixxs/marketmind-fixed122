@@ -43,21 +43,21 @@ export default function Home() {
   const currentTickers = activeSet === 'Indices' ? INDICES : activeSet === 'Crypto' ? CRYPTO : FOREX;
 
   return (
-    <div className="flex flex-col flex-1 h-[calc(100vh-60px)] overflow-hidden bg-background p-4 gap-4">
+    <div className="flex flex-col h-full w-full overflow-hidden bg-background p-2 gap-2">
       {/* --- Top Bar: Market Summary & AI Brief --- */}
-      <div className="flex gap-4 min-h-[140px] shrink-0">
+      <div className="flex gap-2 min-h-[120px] shrink-0">
         
         {/* AI Briefing Card */}
-        <div className="flex-[2] glass-card p-5 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
-            <Sparkles size={80} />
+        <div className="flex-[2] glass-card p-3 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Sparkles size={60} />
           </div>
           <div className="relative z-10 flex flex-col h-full">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-md bg-accent/20 flex items-center justify-center">
-                <Sparkles size={14} className="text-accent" />
+            <div className="flex items-center gap-2 mb-2">
+              <div className="w-5 h-5 rounded-md bg-accent/20 flex items-center justify-center">
+                <Sparkles size={12} className="text-accent" />
               </div>
-              <h2 className="text-sm font-bold uppercase tracking-widest text-text-secondary">AI Market Brief</h2>
+              <h2 className="text-xs font-bold uppercase tracking-widest text-text-secondary">AI Market Brief</h2>
               <span className="text-[10px] bg-surface border border-border px-1.5 py-0.5 rounded text-text-tertiary">
                 {new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
               </span>
@@ -83,12 +83,12 @@ export default function Home() {
         </div>
 
         {/* Market Vitals / Stats (Static Mock for layout) */}
-        <div className="flex-1 glass-card p-4 flex flex-col justify-between">
-           <div className="flex items-center gap-2 mb-2">
-             <Activity size={14} className="text-positive" />
-             <span className="text-xs font-bold uppercase text-text-secondary">Market Vitals</span>
+        <div className="flex-1 glass-card p-3 flex flex-col justify-between">
+           <div className="flex items-center gap-2 mb-1">
+             <Activity size={12} className="text-positive" />
+             <span className="text-[10px] font-bold uppercase text-text-secondary">Market Vitals</span>
            </div>
-           <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+           <div className="grid grid-cols-2 gap-y-1 gap-x-3">
              <div>
                <div className="text-[10px] text-text-tertiary uppercase">VIX Volatility</div>
                <div className="text-base font-mono font-bold text-text-primary">14.25 <span className="text-negative text-xs">-2.1%</span></div>
@@ -138,9 +138,9 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
           {currentTickers.map((ticker, i) => (
-             <div key={ticker.symbol} className="h-[120px] animate-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${i * 50}ms` }}>
+             <div key={ticker.symbol} className="h-[100px] animate-in slide-in-from-bottom-2 duration-500" style={{ animationDelay: `${i * 50}ms` }}>
                <MiniChart {...ticker} isCrypto={'isCrypto' in ticker} />
              </div>
           ))}

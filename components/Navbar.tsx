@@ -57,7 +57,16 @@ export function Navbar() {
              <span className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse"></span>
              US MARKET OPEN
           </div>
-          <button 
+          <button
+            onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+            className="hidden md:flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-border rounded-md hover:bg-surface-hover transition-colors text-xs text-text-secondary hover:text-text-primary"
+          >
+            <span className="font-medium">Search</span>
+            <kbd className="pointer-events-none inline-flex h-5 select-none items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
+              <span className="text-xs">⌘</span>K
+            </kbd>
+          </button>
+          <button
             onClick={() => setIsSettingsOpen(true)}
             className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface text-text-secondary hover:text-text-primary transition-colors"
           >

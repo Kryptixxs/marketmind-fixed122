@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
 import { fetchMarketData } from '@/app/actions/fetchMarketData';
+import { cn } from '@/lib/utils';
 
 const NON_USD_SYMBOLS = new Set([
   'EURUSD=X', 'GBPUSD=X', 'JPY=X', 'AUDUSD=X', 'CAD=X', 'CHF=X', 'DX-Y.NYB',
@@ -73,24 +74,28 @@ export function MiniChart({
   }, [symbol, isCrypto]);
 
   // SVG sparkline
-  let pathD = '';
-  let areaD = '';
+  // Normalize history to 0-1 range
+  let points = '';
+  let areaPoints = '';
+  
   if (history.length > 1) {
     const min = Math.min(...history);
     const max = Math.max(...history);
     const range = max - min || 1;
-    const pts = history.map((val, i) => {
+    
+    // SVG viewBox is 0 0 100 40. 
+    // X goes 0->100
+    // Y goes 40->0 (inverted because SVG y=0 is top)
+    // We leave some padding: top 5, bottom 5. Height available = 30.
+    
+    points = history.map((val, i) => {
       const x = (i / (history.length - 1)) * 100;
-      const y = 36 - ((val - min) / range) * 30;
-      return [x, y] as [number, number];
-    });
-    pathD = pts.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
-    areaD = pathD + ` L100,40 L0,40 Z`;
-  } else {
-    pathD = isPositive
-      ? 'M0,36 L25,26 L50,30 L75,12 L100,5'
-      : 'M0,5 L25,14 L50,10 L75,28 L100,36';
-    areaD = pathD + ' L100,40 L0,40 Z';
+      const normalizedVal = (val - min) / range;
+      const y = 35 - (normalizedVal * 30);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    
+    areaPoints = `0,40 ${points} 100,40`;
   }
 
   const positiveColor = 'var(--color-positive)';
@@ -100,118 +105,76 @@ export function MiniChart({
   const isAfterHours = marketState === 'POST' || marketState === 'PRE';
 
   return (
-    <div
-      className="glass-card glass-interactive flex flex-col relative"
-      style={{ height: 140, padding: '14px 16px 10px' }}
-    >
-      {/* Top row */}
-      <div className="flex items-start justify-between z-10 relative">
+    <div className="glass-card glass-interactive flex flex-col relative h-full w-full p-3 overflow-hidden">
+      {/* Top row: Header & Price */}
+      <div className="flex justify-between items-start z-10 relative mb-1">
         <div className="flex flex-col min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <div className={isPositive ? 'dot-positive' : 'dot-negative'} />
-            <span className="section-header truncate" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", isPositive ? "bg-positive shadow-[0_0_6px_rgba(48,209,88,0.7)]" : "bg-negative shadow-[0_0_6px_rgba(255,69,58,0.7)]")} />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-text-tertiary truncate">
               {title}
             </span>
           </div>
           {loading ? (
-            <div
-              style={{
-                height: 22, width: 80,
-                borderRadius: 6,
-                background: 'rgba(255,255,255,0.06)',
-                animation: 'pulse 1.5s ease-in-out infinite',
-              }}
-            />
-          ) : price ? (
-            <span
-              className={flash ? 'price-flash' : ''}
-              style={{
-                fontSize: '1.125rem',
-                fontWeight: 700,
-                letterSpacing: '-0.025em',
-                color: 'rgba(255,255,255,0.95)',
-                lineHeight: 1.2,
-              }}
-            >
-              {showPrefix ? '$' : ''}{price}
-            </span>
+            <div className="h-5 w-20 rounded bg-surface animate-pulse mt-0.5" />
           ) : (
-            <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.30)' }}>N/A</span>
+            <span className={cn(
+              "text-sm font-mono font-bold text-text-primary transition-opacity duration-300",
+              flash && "opacity-50"
+            )}>
+              {showPrefix && '$'}{price || 'N/A'}
+            </span>
           )}
         </div>
 
         {/* Change badge */}
-        <div className="flex flex-col items-end gap-1 flex-shrink-0 ml-2">
+        <div className="flex flex-col items-end shrink-0 ml-2">
           {loading ? (
-            <Loader2 size={14} className="animate-spin" style={{ color: 'rgba(255,255,255,0.25)' }} />
+            <div className="h-4 w-12 rounded-full bg-surface animate-pulse" />
           ) : change ? (
-            <>
-              <span className={isPositive ? 'chip-positive' : 'chip-negative'}>
-                {isPositive ? '+' : '−'}{change}
-              </span>
-              {isAfterHours && (
-                <span className="section-header" style={{ color: 'rgba(255,255,255,0.25)', fontSize: '0.5625rem' }}>
-                  {marketState === 'POST' ? 'AH' : 'Pre'}
-                </span>
-              )}
-            </>
+            <div className="flex flex-col items-end">
+               <span className={cn(
+                 "text-[10px] font-bold px-1.5 py-0.5 rounded-full border",
+                 isPositive
+                   ? "bg-positive/10 text-positive border-positive/20"
+                   : "bg-negative/10 text-negative border-negative/20"
+               )}>
+                 {isPositive ? '+' : '-'}{change}
+               </span>
+               {isAfterHours && (
+                 <span className="text-[9px] text-text-tertiary mt-0.5">{marketState === 'POST' ? 'AH' : 'Pre'}</span>
+               )}
+            </div>
           ) : null}
         </div>
       </div>
 
-      {/* Sparkline */}
-      <div className="flex-1 relative mt-2" style={{ minHeight: 38 }}>
-        <svg
-          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', overflow: 'visible' }}
-          preserveAspectRatio="none"
-          viewBox="0 0 100 40"
-        >
-          <defs>
-            <linearGradient id={`area-${idSafe}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={lineColor} stopOpacity="0.20" />
-              <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
-            </linearGradient>
-            <filter id={`glow-${idSafe}`}>
-              <feGaussianBlur stdDeviation="1.5" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-          {/* Area fill */}
-          <path d={areaD} fill={`url(#area-${idSafe})`} />
-          {/* Line with glow */}
-          <path
-            d={pathD}
-            fill="none"
-            stroke={lineColor}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            vectorEffect="non-scaling-stroke"
-            filter={`url(#glow-${idSafe})`}
-          />
-          {/* End dot */}
-          {history.length > 1 && (() => {
-            const lastPt = history.length - 1;
-            const min = Math.min(...history);
-            const max = Math.max(...history);
-            const range = max - min || 1;
-            const ex = 100;
-            const ey = 36 - ((history[lastPt] - min) / range) * 30;
-            return (
-              <circle
-                cx={ex}
-                cy={ey}
-                r="2.5"
-                fill={lineColor}
-                vectorEffect="non-scaling-stroke"
-                style={{ filter: `drop-shadow(0 0 3px ${lineColor})` }}
+      {/* Sparkline Area */}
+      <div className="absolute inset-x-0 bottom-0 h-[60%] opacity-80 pointer-events-none">
+         {points && (
+            <svg
+              className="w-full h-full overflow-visible"
+              viewBox="0 0 100 40"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id={`grad-${idSafe}`} x1="0" y1="0" x2="0" y2="1">
+                   <stop offset="0%" stopColor={lineColor} stopOpacity="0.2" />
+                   <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
+                </linearGradient>
+              </defs>
+              <polygon points={areaPoints} fill={`url(#grad-${idSafe})`} />
+              <polyline
+                 points={points}
+                 fill="none"
+                 stroke={lineColor}
+                 strokeWidth="1.5"
+                 vectorEffect="non-scaling-stroke"
+                 strokeLinecap="round"
+                 strokeLinejoin="round"
               />
-            );
-          })()}
-        </svg>
+            </svg>
+         )}
       </div>
     </div>
   );
