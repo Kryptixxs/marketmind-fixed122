@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  ChevronLeft, ChevronRight, Filter, Download, AlertCircle
+  ChevronLeft, ChevronRight, Filter, Download
 } from 'lucide-react';
 import { fetchEconomicCalendarBatch } from '@/app/actions/fetchEconomicCalendar';
 import { EconomicEvent } from '@/lib/types';
@@ -42,7 +42,16 @@ export function EconomicCalendarView() {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const data = await fetchEconomicCalendarBatch(weekDates.map(d => d.dateStr));
+      // Fetch requested week + 1 extra day (next Monday) to catch timezone shifts
+      // Events early Mon GMT -> Sun EST
+      const datesToFetch = weekDates.map(d => d.dateStr);
+      
+      // Calculate next Monday string
+      const lastDay = new Date(weekDates[6].date);
+      lastDay.setDate(lastDay.getDate() + 1);
+      datesToFetch.push(toISODateString(lastDay));
+
+      const data = await fetchEconomicCalendarBatch(datesToFetch);
       setEventsData(data);
       setLoading(false);
     };
@@ -61,16 +70,12 @@ export function EconomicCalendarView() {
       dayEvents.forEach(e => {
         if (!showLowImpact && e.impact === 'Low') return;
         
-        // Convert "08:30" to "08:00" bucket
+        // Convert "19:00" to "19:00" bucket
         let hourKey = '00:00';
         if (e.time.includes(':')) {
            const parts = e.time.split(':');
            const h = parseInt(parts[0]);
            if (!isNaN(h)) {
-             // Handle 12h format if needed, but assuming standard HH:MM
-             // For simplicity, let's just grab the hour part if it's 24h
-             // Or parse normalized 24h time. 
-             // NASDAQ returns "08:30". We just want "08:00".
              hourKey = `${parts[0].padStart(2, '0')}:00`;
            }
         }
@@ -89,7 +94,7 @@ export function EconomicCalendarView() {
           <div className="flex items-center gap-1 bg-surface-highlight rounded-lg p-0.5 border border-border">
             <button onClick={() => setWeekOffset(w => w - 1)} className="p-1.5 hover:bg-surface rounded-md text-text-secondary hover:text-text-primary"><ChevronLeft size={16}/></button>
             <span className="px-3 font-mono font-bold text-sm min-w-[140px] text-center">
-              {weekDates[0]?.dateStr}
+              {weekDates[0]?.dateStr} - {weekDates[6]?.dateStr.slice(5)}
             </span>
             <button onClick={() => setWeekOffset(w => w + 1)} className="p-1.5 hover:bg-surface rounded-md text-text-secondary hover:text-text-primary"><ChevronRight size={16}/></button>
           </div>
@@ -101,7 +106,8 @@ export function EconomicCalendarView() {
             >
               {showLowImpact ? 'Hiding Low Impact' : 'Show All'}
             </button>
-            <span className="text-[10px] bg-surface-highlight px-2 py-1 rounded text-text-secondary border border-border">
+            <span className="text-[10px] bg-surface-highlight px-2 py-1 rounded text-text-secondary border border-border flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-positive"></span>
               EST (New York)
             </span>
           </div>
@@ -172,7 +178,7 @@ export function EconomicCalendarView() {
                                   />
                                 )}
                                 <span className="text-[9px] font-mono text-text-secondary leading-none">
-                                  {event.time.split(' ')[0]}
+                                  {event.time}
                                 </span>
                               </div>
                             </div>
