@@ -4,8 +4,9 @@ import { useState, useEffect, useCallback } from 'react';
 import { Widget } from '@/components/Widget';
 import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
-import { Activity, Wifi, Loader2, TrendingUp, TrendingDown } from 'lucide-react';
+import { Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain } from 'lucide-react';
 import { fetchMarketData } from '@/app/actions/fetchMarketData';
+import { analyzeMarket } from '@/app/actions/analyzeMarket';
 
 // Mapping Yahoo symbols to specific TradingView broker symbols
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
@@ -24,6 +25,8 @@ const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("^NDX");
   const [marketData, setMarketData] = useState<Record<string, any>>({});
+  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [analyzing, setAnalyzing] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const refreshWatchlist = useCallback(async () => {
@@ -41,6 +44,26 @@ export default function TerminalPage() {
     const interval = setInterval(refreshWatchlist, 30000);
     return () => clearInterval(interval);
   }, [refreshWatchlist]);
+
+  // Trigger AI analysis when active symbol or its data changes
+  useEffect(() => {
+    const data = marketData[activeSymbol];
+    if (!data) return;
+
+    const runAnalysis = async () => {
+      setAnalyzing(true);
+      const result = await analyzeMarket(
+        activeSymbol, 
+        SYMBOL_MAP[activeSymbol].label, 
+        data.price, 
+        data.changePercent
+      );
+      setAiAnalysis(result);
+      setAnalyzing(false);
+    };
+
+    runAnalysis();
+  }, [activeSymbol, marketData[activeSymbol]?.price]);
 
   const activeQuote = marketData[activeSymbol];
   const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
@@ -132,27 +155,49 @@ export default function TerminalPage() {
         </div>
 
         <div className="col-span-3 row-span-6 overflow-hidden">
-           <Widget title="AI Analysis">
-             <div className="p-3 text-xs text-text-secondary leading-relaxed">
-               <div className="flex items-center gap-2 mb-3 text-accent">
-                 <Activity size={14} />
-                 <span className="font-bold">Market Sentiment: {activeQuote?.changePercent >= 0 ? 'Bullish' : 'Bearish'}</span>
-               </div>
-               <p className="mb-2">
-                 <span className="text-text-primary font-bold">Analysis:</span> {activeSymbol} is currently trading at {activeQuote?.price.toLocaleString()} {activeQuote?.currency}.
-               </p>
-               <p className="mb-2">
-                 Daily volatility is {Math.abs(activeQuote?.changePercent || 0).toFixed(2)}%.
-               </p>
-               <div className="mt-4 p-2 bg-surface border border-border rounded">
-                 <div className="flex justify-between mb-1">
-                    <span>Trend Strength</span>
-                    <span className="text-positive">High</span>
+           <Widget title="AI Intelligence">
+             <div className="p-3 text-xs text-text-secondary leading-relaxed h-full flex flex-col">
+               {analyzing ? (
+                 <div className="flex-1 flex flex-col items-center justify-center gap-2 opacity-50">
+                   <Loader2 size={20} className="animate-spin text-accent" />
+                   <span className="text-[10px] font-bold uppercase tracking-widest">Synthesizing Data...</span>
                  </div>
-                 <div className="w-full h-1 bg-surface-highlight rounded-full overflow-hidden">
-                    <div className="h-full w-[75%] bg-accent"></div>
+               ) : aiAnalysis ? (
+                 <>
+                   <div className="flex items-center justify-between mb-4">
+                     <div className="flex items-center gap-2 text-accent">
+                       <Brain size={14} />
+                       <span className="font-bold uppercase tracking-tight">Sentiment: {aiAnalysis.sentiment}</span>
+                     </div>
+                     {aiAnalysis.sentiment === 'Bullish' ? <TrendingUp size={14} className="text-positive" /> : <TrendingDown size={14} className="text-negative" />}
+                   </div>
+                   
+                   <div className="space-y-3 flex-1">
+                     <p className="text-text-primary leading-snug">
+                       {aiAnalysis.analysis}
+                     </p>
+                     
+                     <div className="pt-4 border-t border-border/50">
+                       <div className="flex justify-between mb-1.5">
+                          <span className="text-[10px] font-bold uppercase text-text-tertiary">Trend Strength</span>
+                          <span className={aiAnalysis.strength > 70 ? 'text-positive' : aiAnalysis.strength > 40 ? 'text-warning' : 'text-negative'}>
+                            {aiAnalysis.strength}%
+                          </span>
+                       </div>
+                       <div className="w-full h-1 bg-surface-highlight rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-accent transition-all duration-1000 ease-out" 
+                            style={{ width: `${aiAnalysis.strength}%` }}
+                          ></div>
+                       </div>
+                     </div>
+                   </div>
+                 </>
+               ) : (
+                 <div className="flex-1 flex items-center justify-center text-text-tertiary italic">
+                   Select a symbol to begin analysis
                  </div>
-               </div>
+               )}
              </div>
            </Widget>
         </div>
