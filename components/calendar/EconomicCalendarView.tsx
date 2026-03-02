@@ -2,21 +2,19 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  ChevronLeft, ChevronRight, Filter, RefreshCw, 
-  Download, Calendar as CalendarIcon, AlertTriangle 
+  ChevronLeft, ChevronRight, Filter, Download
 } from 'lucide-react';
 import { fetchEconomicCalendarBatch } from '@/app/actions/fetchEconomicCalendar';
 import { EconomicEvent } from '@/lib/types';
 import { getBusinessWeek, toISODateString } from '@/lib/date-utils';
-import { Widget } from '@/components/Widget';
 
-const IMPACT_COLORS = {
+const IMPACT_COLORS: Record<string, string> = {
   High: 'text-negative bg-negative/10 border-negative/20',
   Medium: 'text-warning bg-warning/10 border-warning/20',
   Low: 'text-positive bg-positive/10 border-positive/20'
 };
 
-export default function EconomicCalendarPage() {
+export function EconomicCalendarView() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [events, setEvents] = useState<Record<string, EconomicEvent[]>>({});
   const [loading, setLoading] = useState(true);
@@ -48,9 +46,9 @@ export default function EconomicCalendarPage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-background p-2 gap-2">
+    <div className="flex flex-col h-full gap-2">
       {/* Toolbar */}
-      <div className="flex items-center justify-between bg-surface border border-border p-2 rounded-sm">
+      <div className="flex items-center justify-between bg-surface border border-border p-2 rounded-sm shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <button onClick={() => setWeekOffset(w => w - 1)} className="p-1 hover:bg-surface-highlight rounded"><ChevronLeft size={16}/></button>
@@ -65,7 +63,7 @@ export default function EconomicCalendarPage() {
           <div className="flex items-center gap-2 text-xs">
             <Filter size={14} className="text-text-tertiary" />
             <select 
-              className="bg-background border border-border rounded px-2 py-1 outline-none"
+              className="bg-background border border-border rounded px-2 py-1 outline-none focus:border-accent"
               value={filterImpact}
               onChange={e => setFilterImpact(e.target.value as any)}
             >
@@ -74,7 +72,7 @@ export default function EconomicCalendarPage() {
               <option value="Medium">Medium Impact</option>
             </select>
             <select 
-              className="bg-background border border-border rounded px-2 py-1 outline-none"
+              className="bg-background border border-border rounded px-2 py-1 outline-none focus:border-accent"
               value={filterCountry}
               onChange={e => setFilterCountry(e.target.value)}
             >
@@ -87,27 +85,29 @@ export default function EconomicCalendarPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          <button className="flex items-center gap-1 px-3 py-1 bg-accent/10 text-accent text-xs font-bold rounded hover:bg-accent/20">
+          <button className="flex items-center gap-1 px-3 py-1 bg-accent/10 text-accent text-xs font-bold rounded hover:bg-accent/20 transition-colors">
             <Download size={14} /> Export CSV
           </button>
         </div>
       </div>
 
       {/* Main Grid */}
-      <div className="flex-1 grid grid-cols-5 gap-1 overflow-hidden">
+      <div className="flex-1 grid grid-cols-5 gap-1 overflow-hidden min-h-0">
         {weekDates.map((day) => {
           const isToday = day.dateStr === toISODateString(new Date());
           const dayEvents = filteredEvents(day.dateStr);
 
           return (
             <div key={day.dateStr} className={`flex flex-col border border-border rounded-sm overflow-hidden ${isToday ? 'bg-surface-highlight/10' : 'bg-surface'}`}>
-              <div className={`p-2 border-b border-border text-center ${isToday ? 'bg-accent/10 text-accent' : 'bg-surface-highlight text-text-secondary'}`}>
+              <div className={`p-2 border-b border-border text-center shrink-0 ${isToday ? 'bg-accent/10 text-accent' : 'bg-surface-highlight text-text-secondary'}`}>
                 <div className="text-[10px] uppercase font-bold tracking-wider">{day.dayName}</div>
                 <div className="text-xs font-mono">{day.dateStr.slice(5)}</div>
               </div>
               
               <div className="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-1">
-                {dayEvents.length === 0 ? (
+                {loading ? (
+                  <div className="h-full flex items-center justify-center opacity-50">...</div>
+                ) : dayEvents.length === 0 ? (
                   <div className="text-center text-[10px] text-text-tertiary mt-10">No Events</div>
                 ) : (
                   dayEvents.map(e => (

@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  ChevronLeft, ChevronRight, Filter, DollarSign
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { fetchEarningsBatch } from '@/app/actions/fetchEarningsBatch';
 import { EarningsEvent } from '@/lib/types';
 import { getBusinessWeek, toISODateString } from '@/lib/date-utils';
 
-export default function EarningsCalendarPage() {
+export function EarningsCalendarView() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [events, setEvents] = useState<Record<string, EarningsEvent[]>>({});
   const [loading, setLoading] = useState(true);
@@ -30,8 +30,8 @@ export default function EarningsCalendarPage() {
   }, [weekDates]);
 
   return (
-    <div className="flex flex-col h-full bg-background p-2 gap-2">
-      <div className="flex items-center justify-between bg-surface border border-border p-2 rounded-sm">
+    <div className="flex flex-col h-full gap-2">
+      <div className="flex items-center justify-between bg-surface border border-border p-2 rounded-sm shrink-0">
         <div className="flex items-center gap-4">
            <div className="flex items-center gap-2">
             <button onClick={() => setWeekOffset(w => w - 1)} className="p-1 hover:bg-surface-highlight rounded"><ChevronLeft size={16}/></button>
@@ -47,20 +47,22 @@ export default function EarningsCalendarPage() {
         </div>
       </div>
 
-      <div className="flex-1 grid grid-cols-5 gap-1 overflow-hidden">
+      <div className="flex-1 grid grid-cols-5 gap-1 overflow-hidden min-h-0">
         {weekDates.map((day) => {
           const isToday = day.dateStr === toISODateString(new Date());
           const dayEvents = events[day.dateStr] || [];
 
           return (
             <div key={day.dateStr} className={`flex flex-col border border-border rounded-sm overflow-hidden ${isToday ? 'bg-surface-highlight/10' : 'bg-surface'}`}>
-              <div className={`p-2 border-b border-border text-center ${isToday ? 'bg-accent/10 text-accent' : 'bg-surface-highlight text-text-secondary'}`}>
+              <div className={`p-2 border-b border-border text-center shrink-0 ${isToday ? 'bg-accent/10 text-accent' : 'bg-surface-highlight text-text-secondary'}`}>
                 <div className="text-[10px] uppercase font-bold tracking-wider">{day.dayName}</div>
                 <div className="text-xs font-mono">{day.dateStr.slice(5)}</div>
               </div>
               
               <div className="flex-1 overflow-y-auto custom-scrollbar p-1 space-y-1">
-                 {dayEvents.map(e => (
+                 {loading ? (
+                    <div className="h-full flex items-center justify-center opacity-50">...</div>
+                 ) : dayEvents.map(e => (
                    <div key={e.id} className="p-2 bg-background border border-border rounded hover:border-accent/40 transition-colors cursor-pointer group">
                       <div className="flex justify-between items-start mb-1">
                         <span className="font-bold text-sm text-text-primary">{e.ticker}</span>

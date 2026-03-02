@@ -2,14 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, useEffect } from 'react';
-import { Home, Calendar, DollarSign, LineChart, Wrench, Settings, TrendingUp } from 'lucide-react';
+import { useState } from 'react';
+import { Home, Calendar, LineChart, Wrench, Settings, TrendingUp } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 
 const NAV_ITEMS = [
   { href: '/', icon: Home, label: 'Market' },
-  { href: '/economic', icon: Calendar, label: 'Calendar' },
-  { href: '/earnings', icon: DollarSign, label: 'Earnings' },
+  { href: '/calendar', icon: Calendar, label: 'Calendar' },
   { href: '/charts', icon: LineChart, label: 'Charts' },
   { href: '/tools', icon: Wrench, label: 'Tools' },
 ];
@@ -32,7 +31,7 @@ export function Navbar() {
         {/* Center Nav */}
         <nav className="absolute left-1/2 -translate-x-1/2 flex items-center bg-surface/50 border border-border rounded-full p-1 gap-1">
            {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
-             const isActive = pathname === href;
+             const isActive = pathname === href || (href !== '/' && pathname.startsWith(href));
              return (
                <Link
                  key={href}

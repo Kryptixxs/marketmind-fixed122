@@ -6,17 +6,12 @@ import {
   Calendar,
   CreditCard,
   Settings,
-  Smile,
   User,
   LineChart,
-  Home,
   TrendingUp,
   Search,
   Globe,
   Zap,
-  Layout,
-  Layers,
-  BarChart4
 } from "lucide-react"
 
 import {
@@ -66,9 +61,13 @@ export function CommandPalette() {
             <span>Open Terminal</span>
             <CommandShortcut>⌘T</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push('/economic'))}>
+          <CommandItem onSelect={() => runCommand(() => router.push('/calendar'))}>
             <Calendar className="mr-2 h-4 w-4" />
             <span>Economic Calendar</span>
+          </CommandItem>
+          <CommandItem onSelect={() => runCommand(() => router.push('/calendar?view=earnings'))}>
+            <TrendingUp className="mr-2 h-4 w-4" />
+            <span>Earnings Calendar</span>
           </CommandItem>
           <CommandItem onSelect={() => runCommand(() => router.push('/tools/forex'))}>
             <Calculator className="mr-2 h-4 w-4" />

@@ -10,11 +10,13 @@ import {
   Terminal, 
   Cpu,
   Search,
-  Bell
+  Bell,
+  Calendar
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/', icon: LayoutGrid, label: 'Workspace' },
+  { href: '/calendar', icon: Calendar, label: 'Calendar' },
   { href: '/charts', icon: LineChart, label: 'Technical' },
   { href: '/news', icon: Newspaper, label: 'Wire' },
   { href: '/algo', icon: Cpu, label: 'Algos' },
@@ -33,7 +35,7 @@ export function Sidebar() {
       {/* Nav Items */}
       <nav className="flex flex-col gap-2 w-full px-2">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
