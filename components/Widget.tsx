@@ -25,7 +25,7 @@ export function Widget({
       </div>
       
       {/* Body */}
-      <div className="panel-content custom-scrollbar relative">
+      <div className="panel-content custom-scrollbar relative flex-1 flex flex-col min-h-0">
         {children}
       </div>
     </div>
