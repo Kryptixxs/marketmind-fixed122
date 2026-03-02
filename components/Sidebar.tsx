@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { href: '/charts', icon: LineChart, label: 'Technical' },
   { href: '/news', icon: Newspaper, label: 'Wire' },
   { href: '/algo', icon: Cpu, label: 'Algos' },
+  { href: '/account', icon: User, label: 'Account' },
 ];
 
 export function Sidebar() {
