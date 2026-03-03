@@ -26,47 +26,43 @@ const TIMEFRAMES = [
 ];
 
 export default function TerminalPage() {
+  // 1. Hooks & Store
   const { symbols, activeSymbol, setActiveSymbol, addSymbol } = useWatchlistStore();
   const [isHydrated, setIsHydrated] = useState(false);
+  
+  // 2. Local State
   const [aiAnalysis, setAiAnalysis] = useState<MarketAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [newSymbol, setNewSymbol] = useState('');
-  
   const [chartMode, setChartMode] = useState<'standard' | 'advanced'>('standard');
   const [interval, setInterval] = useState<'1m' | '5m' | '15m' | '1h' | '1d'>('1d');
   const [historicalData, setHistoricalData] = useState<Bar[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [vitals, setVitals] = useState<GlobalVitals | null>(null);
   
-  // Hydration guard for persisted store
+  // 3. Refs for tracking
+  const lastAnalyzedRef = useRef<string | null>(null);
+
+  // 4. Hydration Guard
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
+  // 5. Market Data Subscription
   const allRequiredYahooSymbols = symbols.map(id => resolveYahooSymbol(id));
   const { data: marketData } = useMarketData(allRequiredYahooSymbols);
-  const lastAnalyzedRef = useRef<string | null>(null);
 
+  // 6. Data Fetching Callbacks
   const loadVitals = useCallback(async () => {
-    const data = await fetchGlobalVitals();
-    setVitals(data);
-  }, []);
-
-  useEffect(() => {
-    if (!isHydrated) return;
-    loadVitals();
-    const intervalId = setInterval(loadVitals, 30000);
-    return () => clearInterval(intervalId);
-  }, [loadVitals, isHydrated]);
-
-  // Contain state update in useEffect to avoid "update during render" error
-  useEffect(() => {
-    if (isHydrated && !activeSymbol && symbols.length > 0) {
-      setActiveSymbol(symbols[0]);
+    try {
+      const data = await fetchGlobalVitals();
+      setVitals(data);
+    } catch (err) {
+      console.error("Vitals fetch failed", err);
     }
-  }, [activeSymbol, symbols, setActiveSymbol, isHydrated]);
+  }, []);
 
   const loadHistory = useCallback(async (id: string, int: any) => {
     if (!id) return;
@@ -75,18 +71,37 @@ export default function TerminalPage() {
       const bars = await fetchHistoricalBars(id, '1y', int);
       setHistoricalData(bars);
     } catch (err) {
-      console.error("Failed to load history", err);
+      console.error("History fetch failed", err);
     } finally {
       setLoadingHistory(false);
     }
   }, []);
 
+  // 7. Side Effects (Strictly after hydration)
+  
+  // Initial Load & Polling
   useEffect(() => {
-    if (isHydrated) {
+    if (!isHydrated) return;
+    
+    loadVitals();
+    const intervalId = setInterval(loadVitals, 30000);
+    
+    // Set default active symbol if none selected
+    if (!activeSymbol && symbols.length > 0) {
+      setActiveSymbol(symbols[0]);
+    }
+
+    return () => clearInterval(intervalId);
+  }, [isHydrated, loadVitals, symbols, activeSymbol, setActiveSymbol]);
+
+  // History Loading
+  useEffect(() => {
+    if (isHydrated && activeSymbol) {
       loadHistory(activeSymbol, interval);
     }
-  }, [activeSymbol, interval, loadHistory, isHydrated]);
+  }, [isHydrated, activeSymbol, interval, loadHistory]);
 
+  // AI Analysis
   useEffect(() => {
     if (!isHydrated || !activeSymbol) return;
     
@@ -103,15 +118,21 @@ export default function TerminalPage() {
       try {
         const closes = historicalData.map(b => b.close);
         const last20 = closes.slice(-20);
+        
+        // Simple RSI calculation
         let gains = 0, losses = 0;
         for (let i = closes.length - 14; i < closes.length; i++) {
           const diff = closes[i] - closes[i-1];
           if (diff >= 0) gains += diff; else losses -= diff;
         }
         const rsi = 100 - (100 / (1 + (gains / 14) / (losses / 14 || 1)));
+        
+        // MA Slope
         const ma20 = last20.reduce((a, b) => a + b, 0) / 20;
         const prevMa20 = closes.slice(-21, -1).reduce((a, b) => a + b, 0) / 20;
         const maSlope = (ma20 - prevMa20) / prevMa20;
+        
+        // Volatility
         const trs = historicalData.slice(-14).map((b, i, arr) => {
           if (i === 0) return b.high - b.low;
           return Math.max(b.high - b.low, Math.abs(b.high - arr[i-1].close), Math.abs(b.low - arr[i-1].close));
@@ -122,19 +143,22 @@ export default function TerminalPage() {
         const result = await analyzeMarket(activeSymbol, inst?.label || activeSymbol, data.price, data.changePercent, {
           rsi, maSlope, volatility, high52w: Math.max(...closes), low52w: Math.min(...closes)
         });
+        
         if (result) {
           setAiAnalysis(result);
           lastAnalyzedRef.current = analysisKey;
         }
       } catch (err) {
-        setError("AI Offline.");
+        setError("AI Analysis Offline.");
       } finally {
         setAnalyzing(false);
       }
     };
-    runAnalysis();
-  }, [activeSymbol, marketData, historicalData, interval, isHydrated]);
 
+    runAnalysis();
+  }, [isHydrated, activeSymbol, marketData, historicalData, interval]);
+
+  // 8. Handlers
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (newSymbol) {
@@ -145,10 +169,7 @@ export default function TerminalPage() {
     }
   };
 
-  const activeInstrument = getInstrument(activeSymbol);
-  const activeQuote = marketData[resolveYahooSymbol(activeSymbol)];
-
-  // Prevent hydration mismatch by returning null or skeleton during initial render
+  // 9. Render Logic
   if (!isHydrated) {
     return (
       <div className="h-full w-full bg-background flex items-center justify-center">
@@ -156,6 +177,9 @@ export default function TerminalPage() {
       </div>
     );
   }
+
+  const activeInstrument = getInstrument(activeSymbol);
+  const activeQuote = marketData[resolveYahooSymbol(activeSymbol)];
 
   return (
     <div className="h-full w-full bg-background p-0.5 overflow-hidden">
@@ -230,11 +254,6 @@ export default function TerminalPage() {
                     <div className="space-y-1">
                       <p className="text-xs font-bold text-text-primary uppercase tracking-widest">Select Instrument</p>
                       <p className="text-[9px] text-text-tertiary">Choose an asset from the watchlist to begin AI synthesis.</p>
-                    </div>
-                    <div className="flex flex-wrap justify-center gap-1.5 mt-2">
-                      {symbols.slice(0, 4).map(s => (
-                        <button key={s} onClick={() => setActiveSymbol(s)} className="px-2 py-1 bg-surface-highlight border border-border rounded text-[9px] font-bold hover:border-accent/50 transition-colors">{s}</button>
-                      ))}
                     </div>
                   </div>
                 ) : analyzing ? (
