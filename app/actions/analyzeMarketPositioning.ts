@@ -10,27 +10,32 @@ export async function analyzeMarketPositioning(symbol: string) {
     const quote = await yahooFinance.quote(symbol);
     if (!quote) return null;
 
-    // Real Math: Volume Ratio & Volatility
     const volRatio = (quote.regularMarketVolume || 0) / (quote.averageDailyVolume3Month || 1);
     const dayRange = (quote.regularMarketDayHigh || 0) - (quote.regularMarketDayLow || 0);
     const volRegime = dayRange / (quote.regularMarketPrice || 1) > 0.02 ? 'Expansion' : 'Contraction';
 
-    const prompt = `Analyze institutional positioning for ${symbol}. 
-      Price: ${quote.regularMarketPrice}
-      Volume Ratio: ${volRatio.toFixed(2)}x (Relative to 3M Avg)
-      Volatility Regime: ${volRegime}
-      
-      Provide a JSON response with:
-      - dxyPositioning: string
-      - futuresPositioning: string
-      - optionsImplied: string
-      - volatilityRegime: string
-      - liquidityIndex: number (0-100)
-      - gammaExposure: string
-      - riskRegime: "STABLE" | "VOLATILE" | "CRITICAL"
-      - metrics: { dxy: string, futures: string, options: string, volatility: string, liquidity: string, gamma: string }`;
+    const fallback = {
+      dxyPositioning: "Neutral / Balanced",
+      futuresPositioning: quote.regularMarketChangePercent! > 0 ? "Net Long" : "Net Short",
+      optionsImplied: "Balanced Gamma",
+      volatilityRegime: volRegime,
+      liquidityIndex: 65,
+      gammaExposure: "Positive",
+      riskRegime: volRegime === 'Expansion' ? "VOLATILE" : "STABLE",
+      metrics: { 
+        dxy: "neutral", 
+        futures: quote.regularMarketChangePercent! > 0 ? "positive" : "negative", 
+        options: "neutral", 
+        volatility: volRegime === 'Expansion' ? "warning" : "positive", 
+        liquidity: "positive", 
+        gamma: "positive" 
+      }
+    };
 
-    return await generateAIJSON(prompt);
+    const prompt = `Analyze institutional positioning for ${symbol}. Price: ${quote.regularMarketPrice}. Vol Ratio: ${volRatio.toFixed(2)}.
+      Provide a JSON response with positioning details and risk metrics.`;
+
+    return await generateAIJSON(prompt, fallback);
   } catch (error) {
     return null;
   }

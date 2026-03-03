@@ -7,7 +7,6 @@ const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
 
 export async function analyzeTechnicalSetup(symbol: string) {
   try {
-    // 1. Fetch real 15m OHLC data for the last 3 days
     const chartData = await yahooFinance.chart(symbol, { 
       interval: '15m', 
       period1: new Date(Date.now() - 3 * 86400000) 
@@ -24,40 +23,36 @@ export async function analyzeTechnicalSetup(symbol: string) {
     const prevHigh = Math.max(...highs.slice(-20, -1));
     const prevLow = Math.min(...lows.slice(-20, -1));
 
-    // 2. Algorithmic Detection (Provable Math)
     const isBOS = currentPrice > prevHigh;
     const isMSS = currentPrice < prevLow;
     
-    const fvgs = [];
+    const fvgs: string[] = [];
     for (let i = 2; i < quotes.length; i++) {
-      // Bullish FVG: Low of candle 3 > High of candle 1
-      if (lows[i] > highs[i-2]) {
-        fvgs.push({ type: 'Bullish', top: lows[i], bottom: highs[i-2] });
-      }
-      // Bearish FVG: High of candle 3 < Low of candle 1
-      if (highs[i] < lows[i-2]) {
-        fvgs.push({ type: 'Bearish', top: lows[i-2], bottom: highs[i] });
-      }
+      if (lows[i] > highs[i-2]) fvgs.push(`Bullish: ${highs[i-2].toFixed(2)}-${lows[i].toFixed(2)}`);
+      if (highs[i] < lows[i-2]) fvgs.push(`Bearish: ${lows[i].toFixed(2)}-${highs[i-2].toFixed(2)}`);
     }
 
-    const recentFVGs = fvgs.slice(-3); // Only show the most recent 3
+    // Deterministic Fallback (The Math)
+    const fallback = {
+      bias: isBOS ? "BULLISH" : isMSS ? "BEARISH" : "NEUTRAL",
+      structure: isBOS ? "BOS (Bullish)" : isMSS ? "MSS (Bearish)" : "Consolidation",
+      liquiditySweeps: currentPrice > prevHigh ? ["Buy-side Liquidity"] : currentPrice < prevLow ? ["Sell-side Liquidity"] : [],
+      fvgs: fvgs.slice(-2),
+      levels: { 
+        support: [prevLow, prevLow * 0.995].map(n => Number(n.toFixed(2))), 
+        resistance: [prevHigh, prevHigh * 1.005].map(n => Number(n.toFixed(2))) 
+      },
+      setup: isBOS ? "Look for long entries on FVG retest." : isMSS ? "Look for short entries on premium retest." : "Wait for expansion out of range.",
+      confidence: 75
+    };
 
-    // 3. AI Synthesis of the Math
     const prompt = `Analyze this algorithmic data for ${symbol}:
       Current Price: ${currentPrice}
-      Structure: ${isBOS ? 'BOS (Bullish)' : isMSS ? 'MSS (Bearish)' : 'Consolidation'}
-      Detected FVGs: ${JSON.stringify(recentFVGs)}
-      
-      Provide a JSON response with:
-      - bias: "BULLISH" | "BEARISH" | "NEUTRAL"
-      - structure: string (e.g. "BOS Detected at ${prevHigh}")
-      - liquiditySweeps: string[] (Identify sweeps of ${prevHigh} or ${prevLow})
-      - fvgs: string[] (Format as "Gap: [Price Range]")
-      - levels: { support: number[], resistance: number[] }
-      - setup: string (High-conviction trade idea)
-      - confidence: number (0-100)`;
+      Structure: ${fallback.structure}
+      FVGs: ${JSON.stringify(fallback.fvgs)}
+      Provide a JSON response with bias, structure, liquiditySweeps, fvgs, levels, setup, and confidence.`;
 
-    return await generateAIJSON(prompt);
+    return await generateAIJSON(prompt, fallback);
   } catch (error) {
     console.error("Technical analysis error:", error);
     return null;
