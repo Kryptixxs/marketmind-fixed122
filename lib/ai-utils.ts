@@ -1,9 +1,9 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const USER_KEY = "AIzaSyAX3dCFS5Yi8HryL9wC98IVAua71dki-zU";
-
 export async function generateAIJSON(prompt: string) {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || USER_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  if (!apiKey) return null;
+
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
@@ -12,9 +12,7 @@ export async function generateAIJSON(prompt: string) {
     const response = await result.response;
     const text = response.text();
     
-    console.log("[AI_RAW_RESPONSE]:", text);
-
-    // Robust JSON extraction
+    // Robust JSON extraction in case of LLM fluff
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       return JSON.parse(jsonMatch[0]);

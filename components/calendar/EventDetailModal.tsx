@@ -5,6 +5,7 @@ import {
   X, TrendingUp, Globe, Zap, BarChart3, AlertTriangle, Activity, Layers, Target, Info, Search, ShieldAlert, Loader2
 } from 'lucide-react';
 import { EconomicEvent } from '@/lib/types';
+import { formatTime } from '@/lib/date-utils';
 import { computeSurprise } from '@/lib/event-intelligence';
 import { analyzeEventIntel } from '@/app/actions/analyzeEventIntel';
 
@@ -17,11 +18,6 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   const [intel, setIntel] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const surprise = useMemo(() => computeSurprise(event), [event]);
-  const [mounted, setMounted] = React.useState(false);
-
-  React.useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     async function load() {
@@ -223,7 +219,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               Trade Implications
             </button>
           </div>
-          <span className="text-[9px] font-mono text-text-tertiary">VANTAGE TERMINAL // SECURE_FEED_ACTIVE // {mounted ? new Date().toISOString() : '---'}</span>
+          <span className="text-[9px] font-mono text-text-tertiary">VANTAGE TERMINAL // SECURE_FEED_ACTIVE // {new Date().toISOString()}</span>
         </div>
       </div>
     </div>
