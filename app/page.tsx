@@ -6,13 +6,12 @@ import { TradingChart } from '@/components/TradingChart';
 import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
 import { 
-  Activity, Wifi, Loader2, TrendingUp, TrendingDown, 
-  Brain, AlertCircle, Plus, X, Search, LineChart, Zap,
-  Target, ShieldAlert, ArrowRight, Clock, MousePointer2
+  Activity, Loader2, Zap, AlertCircle, Plus, LineChart, 
+  ShieldAlert, MousePointer2
 } from 'lucide-react';
 import { analyzeMarket, MarketAnalysis } from '@/app/actions/analyzeMarket';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
-import { formatPrice, formatPercent, formatInt } from '@/lib/format';
+import { formatPrice, formatPercent } from '@/lib/format';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { fetchHistoricalBars, Bar } from '@/app/actions/fetchHistoricalBars';
 import { getInstrument, resolveYahooSymbol } from '@/lib/instruments';
@@ -28,6 +27,7 @@ const TIMEFRAMES = [
 
 export default function TerminalPage() {
   const { symbols, activeSymbol, setActiveSymbol, addSymbol } = useWatchlistStore();
+  const [isHydrated, setIsHydrated] = useState(false);
   const [aiAnalysis, setAiAnalysis] = useState<MarketAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,6 +40,11 @@ export default function TerminalPage() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [vitals, setVitals] = useState<GlobalVitals | null>(null);
   
+  // Hydration guard for persisted store
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+
   const allRequiredYahooSymbols = symbols.map(id => resolveYahooSymbol(id));
   const { data: marketData } = useMarketData(allRequiredYahooSymbols);
   const lastAnalyzedRef = useRef<string | null>(null);
@@ -50,16 +55,18 @@ export default function TerminalPage() {
   }, []);
 
   useEffect(() => {
+    if (!isHydrated) return;
     loadVitals();
     const intervalId = setInterval(loadVitals, 30000);
     return () => clearInterval(intervalId);
-  }, [loadVitals]);
+  }, [loadVitals, isHydrated]);
 
+  // Contain state update in useEffect to avoid "update during render" error
   useEffect(() => {
-    if (!activeSymbol && symbols.length > 0) {
+    if (isHydrated && !activeSymbol && symbols.length > 0) {
       setActiveSymbol(symbols[0]);
     }
-  }, [activeSymbol, symbols, setActiveSymbol]);
+  }, [activeSymbol, symbols, setActiveSymbol, isHydrated]);
 
   const loadHistory = useCallback(async (id: string, int: any) => {
     if (!id) return;
@@ -75,10 +82,14 @@ export default function TerminalPage() {
   }, []);
 
   useEffect(() => {
-    loadHistory(activeSymbol, interval);
-  }, [activeSymbol, interval, loadHistory]);
+    if (isHydrated) {
+      loadHistory(activeSymbol, interval);
+    }
+  }, [activeSymbol, interval, loadHistory, isHydrated]);
 
   useEffect(() => {
+    if (!isHydrated || !activeSymbol) return;
+    
     const yahooSym = resolveYahooSymbol(activeSymbol);
     const data = marketData[yahooSym];
     if (!data || historicalData.length < 20) return;
@@ -122,7 +133,7 @@ export default function TerminalPage() {
       }
     };
     runAnalysis();
-  }, [activeSymbol, marketData, historicalData, interval]);
+  }, [activeSymbol, marketData, historicalData, interval, isHydrated]);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,6 +147,15 @@ export default function TerminalPage() {
 
   const activeInstrument = getInstrument(activeSymbol);
   const activeQuote = marketData[resolveYahooSymbol(activeSymbol)];
+
+  // Prevent hydration mismatch by returning null or skeleton during initial render
+  if (!isHydrated) {
+    return (
+      <div className="h-full w-full bg-background flex items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-accent opacity-20" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full w-full bg-background p-0.5 overflow-hidden">
