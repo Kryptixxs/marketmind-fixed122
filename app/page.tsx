@@ -1,14 +1,19 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Widget } from '@/components/Widget';
+import { TradingChart } from '@/components/TradingChart';
 import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
-import { Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle, Plus, X, Search } from 'lucide-react';
+import { 
+  Activity, Wifi, Loader2, TrendingUp, TrendingDown, 
+  Brain, AlertCircle, Plus, X, Search, LineChart, Zap 
+} from 'lucide-react';
 import { analyzeMarket } from '@/app/actions/analyzeMarket';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 import { formatPrice, formatPercent, formatInt } from '@/lib/format';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
+import { fetchHistoricalBars, Bar } from '@/app/actions/fetchHistoricalBars';
 
 // Metadata lookup for common symbols
 const SYMBOL_METADATA: Record<string, { label: string, type: any }> = {
@@ -32,10 +37,32 @@ export default function TerminalPage() {
   const [isAdding, setIsAdding] = useState(false);
   const [newSymbol, setNewSymbol] = useState('');
   
+  // Chart State
+  const [chartMode, setChartMode] = useState<'standard' | 'advanced'>('standard');
+  const [historicalData, setHistoricalData] = useState<Bar[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  
   const allRequiredSymbols = [...symbols, ...VITALS_SYMBOLS];
   const { data: marketData } = useMarketData(allRequiredSymbols);
   
   const lastAnalyzedRef = useRef<string | null>(null);
+
+  // Fetch historical data for the standard chart
+  const loadHistory = useCallback(async (sym: string) => {
+    setLoadingHistory(true);
+    try {
+      const bars = await fetchHistoricalBars(sym, '6m');
+      setHistoricalData(bars);
+    } catch (err) {
+      console.error("Failed to load history", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadHistory(activeSymbol);
+  }, [activeSymbol, loadHistory]);
 
   useEffect(() => {
     const data = marketData[activeSymbol];
@@ -234,14 +261,40 @@ export default function TerminalPage() {
           <Widget 
             title={`${activeSymbol} • ${SYMBOL_METADATA[activeSymbol]?.label || ''}`} 
             actions={
-              <div className="flex items-center gap-2 text-[8px]">
-                <span className="text-positive flex items-center gap-1"><Wifi size={8}/> Live</span>
-                <span className="px-1 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase">{marketData[activeSymbol]?.marketState || 'REGULAR'}</span>
+              <div className="flex items-center gap-3">
+                <div className="flex bg-surface border border-border rounded p-0.5">
+                  <button 
+                    onClick={() => setChartMode('standard')}
+                    className={`px-2 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${chartMode === 'standard' ? 'bg-accent text-accent-text' : 'text-text-tertiary hover:text-text-primary'}`}
+                  >
+                    Standard
+                  </button>
+                  <button 
+                    onClick={() => setChartMode('advanced')}
+                    className={`px-2 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${chartMode === 'advanced' ? 'bg-accent text-accent-text' : 'text-text-tertiary hover:text-text-primary'}`}
+                  >
+                    Advanced
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 text-[8px]">
+                  <span className="text-positive flex items-center gap-1"><Wifi size={8}/> Live</span>
+                  <span className="px-1 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase">{marketData[activeSymbol]?.marketState || 'REGULAR'}</span>
+                </div>
               </div>
             }
           >
-            <div className="w-full h-full bg-black">
-              <TradingViewChart symbol={activeSymbol} />
+            <div className="w-full h-full bg-black relative">
+              {chartMode === 'standard' ? (
+                loadingHistory ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+                    <Loader2 size={24} className="animate-spin text-accent" />
+                  </div>
+                ) : (
+                  <TradingChart data={historicalData} />
+                )
+              ) : (
+                <TradingViewChart symbol={activeSymbol} />
+              )}
             </div>
           </Widget>
         </div>
