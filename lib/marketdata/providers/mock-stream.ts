@@ -1,72 +1,111 @@
 import { Tick, OHLCV } from '../types';
 import { BaseProvider } from './base';
+import { fetchMarketDataBatch } from '@/app/actions/fetchMarketData';
 
 export class MockStreamingProvider extends BaseProvider {
   private intervalId: NodeJS.Timeout | null = null;
+  private syncIntervalId: NodeJS.Timeout | null = null;
+  
   private basePrices: Record<string, number> = {};
   private histories: Record<string, OHLCV[]> = {};
+  private trueData: Record<string, { change: number, changePercent: number, name?: string, marketState: string }> = {};
+  
   private isConnected = false;
 
   protected onConnect() {
     this.isConnected = true;
     this.startStream();
+    
+    // Background sync to real prices every 15 seconds
+    this.syncIntervalId = setInterval(() => {
+      this.syncRealData(Array.from(this.symbols));
+    }, 15000);
   }
 
   protected onDisconnect() {
     this.isConnected = false;
     this.stopStream();
+    if (this.syncIntervalId) clearInterval(this.syncIntervalId);
   }
 
   protected onSubscribe(symbols: string[]) {
     symbols.forEach(s => {
       if (!this.basePrices[s]) {
-        // Set realistic base prices for major assets
-        let base = s.length * 50;
-        if (s === '^NDX') base = 17950.25;
-        if (s === '^GSPC') base = 5085.50;
-        if (s === 'CL=F') base = 78.45;
-        if (s === 'GC=F') base = 2035.80;
-        if (s === 'BTC-USD') base = 51240.00;
-        if (s === 'ETH-USD') base = 2950.50;
-        if (s === 'AAPL') base = 182.52;
-        if (s === 'NVDA') base = 726.13;
-        if (s === 'TSLA') base = 202.64;
-        if (s === 'EURUSD=X') base = 1.0850;
-
-        this.basePrices[s] = base;
-
-        // Generate 100 historical OHLCV candles to feed the ICT & Confluence math engines
-        const hist: OHLCV[] = [];
-        let cur = base * 0.98; // Start slightly lower to simulate a rising trend
-        const now = Date.now();
-        
-        for(let i = 100; i >= 0; i--) {
-           const move = (Math.random() - 0.45) * (base * 0.002);
-           cur += move;
-           hist.push({
-             timestamp: now - (i * 15 * 60000), // 15m intervals
-             open: cur - (move * 0.5),
-             high: cur + Math.abs(move) * 1.5,
-             low: cur - Math.abs(move) * 1.5,
-             close: cur,
-             volume: Math.floor(Math.random() * 50000)
-           });
-        }
-        
-        this.histories[s] = hist;
-        this.basePrices[s] = cur;
+        this.initFallback(s);
       }
     });
+    // Immediately fetch the true market data
+    this.syncRealData(symbols);
   }
 
   protected onIntervalChange(interval: string) {
-    // Stream doesn't need to re-fetch on interval change, UI chart handles it
+    this.syncRealData(Array.from(this.symbols));
+  }
+
+  private initFallback(s: string) {
+    // Basic fallback so UI doesn't crash before the 1st network request finishes
+    let base = 150;
+    if (s === '^NDX') base = 17950;
+    if (s.includes('BTC')) base = 51200;
+    
+    this.basePrices[s] = base;
+    this.trueData[s] = { change: 0, changePercent: 0, marketState: 'SYNCING' };
+    
+    const hist: OHLCV[] = [];
+    const now = Date.now();
+    let cur = base * 0.98;
+    for(let i = 100; i >= 0; i--) {
+       cur += (Math.random() - 0.45) * (base * 0.002);
+       hist.push({
+         timestamp: now - (i * 15 * 60000),
+         open: cur, high: cur * 1.001, low: cur * 0.999, close: cur, volume: 1000
+       });
+    }
+    this.histories[s] = hist;
+  }
+
+  private async syncRealData(symbols: string[]) {
+    if (symbols.length === 0) return;
+    try {
+      const results = await fetchMarketDataBatch(symbols, this.currentInterval || '15m');
+      
+      results.forEach(res => {
+        if (res && res.price) {
+          // Lock onto the real Yahoo Finance data!
+          this.basePrices[res.symbol] = res.price;
+          this.trueData[res.symbol] = { 
+            change: res.change, 
+            changePercent: res.changePercent,
+            name: res.name,
+            marketState: res.marketState
+          };
+          
+          if (res.history && res.history.length > 10) {
+             this.histories[res.symbol] = [...res.history];
+          }
+
+          // Fire exact tick immediately to UI
+          this.emitTick({
+            symbol: res.symbol,
+            price: res.price,
+            change: res.change,
+            changePercent: res.changePercent,
+            marketState: res.marketState,
+            timestamp: Date.now(),
+            history: this.histories[res.symbol],
+            name: res.name
+          });
+        }
+      });
+    } catch (e) {
+      console.warn("Real data sync failed", e);
+    }
   }
 
   private startStream() {
     if (this.intervalId) clearInterval(this.intervalId);
-    // Fire sub-second ticks (400ms) for high-frequency terminal feel
-    this.intervalId = setInterval(() => this.tick(), 400);
+    // UI micro-ticks (every 400ms)
+    this.intervalId = setInterval(() => this.tick(), 400); 
   }
 
   private stopStream() {
@@ -79,42 +118,38 @@ export class MockStreamingProvider extends BaseProvider {
   private tick() {
     if (!this.isConnected || this.symbols.size === 0) return;
 
-    // Pick 1 to 4 random symbols to update this tick (simulates asynchronous exchange feeds)
+    // Pick 1-3 random symbols to twitch to simulate asynchronous order books
     const syms = Array.from(this.symbols);
-    const toUpdate = syms.sort(() => 0.5 - Math.random()).slice(0, Math.max(1, Math.floor(Math.random() * 4)));
+    const toUpdate = syms.sort(() => 0.5 - Math.random()).slice(0, Math.max(1, Math.floor(Math.random() * 3)));
 
     toUpdate.forEach(sym => {
       const base = this.basePrices[sym];
-      // 0.05% max volatility per tick
-      const volatility = base * 0.0005; 
+      if (!base) return;
+
+      // Micro-vibration around the REAL base price (0.005% max variance)
+      const volatility = base * 0.00005; 
       const move = (Math.random() - 0.5) * volatility;
-      
       const newPrice = base + move;
-      this.basePrices[sym] = newPrice;
       
       const hist = this.histories[sym];
-      if (!hist || hist.length === 0) return;
+      if (hist && hist.length > 0) {
+        const lastCandle = hist[hist.length - 1];
+        lastCandle.close = newPrice;
+        lastCandle.high = Math.max(lastCandle.high, newPrice);
+        lastCandle.low = Math.min(lastCandle.low, newPrice);
+      }
 
-      // Update the live developing candle
-      const lastCandle = hist[hist.length - 1];
-      lastCandle.close = newPrice;
-      lastCandle.high = Math.max(lastCandle.high, newPrice);
-      lastCandle.low = Math.min(lastCandle.low, newPrice);
-      lastCandle.volume += Math.floor(Math.random() * 100);
-
-      // Compare to the first candle of the day/session
-      const openPrice = hist[0].close;
-      const change = newPrice - openPrice;
-      const changePercent = (change / openPrice) * 100;
+      const trueInfo = this.trueData[sym] || { change: 0, changePercent: 0, marketState: 'REGULAR' };
 
       this.emitTick({
         symbol: sym,
         price: newPrice,
-        change,
-        changePercent,
-        marketState: 'REGULAR',
+        change: trueInfo.change, // Keep true daily change
+        changePercent: trueInfo.changePercent, // Keep true daily percent
+        marketState: trueInfo.marketState,
         timestamp: Date.now(),
-        history: [...hist] // Pass clone so React detects the update
+        history: hist ? [...hist] : undefined,
+        name: trueInfo.name
       });
     });
   }
