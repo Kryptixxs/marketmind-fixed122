@@ -3,20 +3,28 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
 import { 
-  LayoutGrid, LineChart, Newspaper, Settings, Terminal, 
-  Search, Bell, Calendar, Monitor, Code
+  LayoutGrid, 
+  LineChart, 
+  Newspaper, 
+  Settings, 
+  Terminal, 
+  Cpu,
+  Search,
+  Bell,
+  Calendar,
+  Zap
 } from 'lucide-react';
 import { SettingsModal } from './SettingsModal';
 import { NotificationsPanel } from './notifications/NotificationsPanel';
-import { useSettings } from '@/context/SettingsContext';
 
 const NAV_ITEMS = [
   { href: '/', icon: LayoutGrid, label: 'Workspace', key: '1' },
   { href: '/calendar', icon: Calendar, label: 'Calendar', key: '2' },
   { href: '/charts', icon: LineChart, label: 'Technical', key: '3' },
+  { href: '/confluences', icon: Zap, label: 'Confluences', key: '4' },
   { href: '/news', icon: Newspaper, label: 'Wire', key: '5' },
+  { href: '/algo', icon: Cpu, label: 'Algos', key: '6' },
 ];
 
 export function Sidebar() {
@@ -24,57 +32,37 @@ export function Sidebar() {
   const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const { settings, setUITheme } = useSettings();
-
-  const isTerminal = settings.uiTheme === 'terminal';
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
       const item = NAV_ITEMS.find(i => i.key === e.key);
-      if (item) { e.preventDefault(); router.push(item.href); }
-      if (e.key === 's' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); setIsSettingsOpen(true); }
+      if (item) {
+        e.preventDefault();
+        router.push(item.href);
+      }
+
+      if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setIsSettingsOpen(true);
+      }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [router]);
 
   return (
     <>
-      <motion.div 
-        onMouseEnter={() => !isTerminal && setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-        initial={false}
-        animate={{ 
-          width: isTerminal ? 64 : (isHovered ? 200 : 64) 
-        }}
-        transition={{ 
-          type: "spring", 
-          stiffness: 120, 
-          damping: 20, 
-          mass: 1 
-        }}
-        className={`h-14 w-full md:h-full flex flex-row md:flex-col items-center md:items-start py-0 md:py-6 z-50 shrink-0 overflow-hidden ${
-          isTerminal 
-            ? 'border-t md:border-t-0 md:border-r border-border bg-black' 
-            : 'bg-surface/30 backdrop-blur-3xl border-r border-border shadow-[1px_0_24px_rgba(0,0,0,0.5)]'
-        }`}
-      >
-        <div className="hidden md:flex items-center px-5 mb-10 text-text-primary w-full">
-          <Terminal size={24} strokeWidth={isTerminal ? 2 : 1.5} className="shrink-0" />
-          {!isTerminal && (
-            <motion.span 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: isHovered ? 1 : 0 }}
-              className="ml-4 font-bold tracking-widest text-[10px] uppercase whitespace-nowrap text-text-secondary"
-            >
-              Vantage
-            </motion.span>
-          )}
-        </div>
+      <div className="w-full h-14 md:w-12 md:h-full bg-surface border-t md:border-t-0 md:border-r border-border flex flex-row md:flex-col items-center md:py-3 z-50 shrink-0 overflow-x-auto md:overflow-x-visible hide-scrollbar">
+        {/* Brand Icon - Hidden on mobile to save nav space */}
+        <Link href="/" className="hidden md:flex mb-6 text-accent hover:opacity-80 transition-opacity">
+          <Terminal size={20} />
+        </Link>
 
-        <nav className="flex flex-row md:flex-col gap-2 px-2 flex-1 md:flex-none w-full">
+        {/* Nav Items */}
+        <nav className="flex flex-row md:flex-col gap-2 md:gap-2 px-2 flex-1 md:flex-none justify-evenly md:justify-start w-full min-w-max">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
             return (
@@ -82,72 +70,52 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={`
-                  btn-haptic group flex items-center w-full p-3 transition-colors duration-200
-                  ${isTerminal ? 'rounded-none border border-transparent' : 'rounded-lg'}
+                  group relative flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-[2px] transition-colors
                   ${isActive 
-                    ? isTerminal 
-                      ? 'bg-accent text-accent-text border-accent' 
-                      : 'bg-white/10 text-text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]' 
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/5'}
+                    ? 'bg-accent/10 text-accent border border-accent/20' 
+                    : 'text-text-tertiary hover:text-text-primary hover:bg-surface-highlight'}
                 `}
+                title={`${item.label} (${item.key})`}
               >
-                <item.icon size={20} strokeWidth={isActive && isTerminal ? 2.5 : 1.5} className="shrink-0 mx-auto md:mx-0" />
-                {!isTerminal && (
-                  <motion.span 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : -10 }}
-                    className="ml-4 font-medium tracking-wide text-xs whitespace-nowrap"
-                  >
-                    {item.label}
-                  </motion.span>
-                )}
+                <item.icon size={18} className="md:w-4 md:h-4" strokeWidth={1.5} />
+                <span className="hidden md:block absolute left-full ml-2 px-1.5 py-0.5 bg-surface border border-border text-[8px] text-text-secondary rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[100]">
+                  {item.label} <span className="text-accent ml-1">{item.key}</span>
+                </span>
               </Link>
             );
           })}
         </nav>
 
-        <div className="flex flex-row md:flex-col gap-2 px-2 md:mt-auto w-full items-center md:items-start border-l md:border-l-0 md:border-t border-border/50 pl-2 md:pl-2 md:pt-4">
-           {/* Theme Toggle Segmented Control */}
-           <div className={`flex w-full p-1 gap-1 mb-2 ${isTerminal ? 'flex-col border border-border bg-black' : 'bg-black/50 rounded-lg shadow-inner'}`}>
-              <button 
-                onClick={() => setUITheme('architect')}
-                className={`flex items-center justify-center p-2 flex-1 btn-haptic ${!isTerminal ? 'bg-surface-highlight rounded-md text-text-primary shadow-sm' : 'text-text-tertiary hover:text-accent'}`}
-                title="Workspace Mode"
-              >
-                <Monitor size={16} strokeWidth={1.5} />
-              </button>
-              <button 
-                onClick={() => setUITheme('terminal')}
-                className={`flex items-center justify-center p-2 flex-1 btn-haptic ${isTerminal ? 'bg-accent text-accent-text' : 'text-text-tertiary hover:text-text-primary rounded-md'}`}
-                title="Terminal Mode"
-              >
-                <Code size={16} strokeWidth={1.5} />
-              </button>
+        {/* Bottom / Right Action Icons */}
+        <div className="flex flex-row md:flex-col gap-2 md:gap-2 px-2 md:mt-auto justify-evenly md:justify-start w-full md:w-auto items-center min-w-max border-l md:border-l-0 md:border-t border-border/50 pl-2 md:pl-0 md:pt-4 ml-2 md:ml-0">
+           <button 
+             onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
+             className="flex items-center justify-center w-10 h-10 md:w-8 md:h-8 text-text-secondary hover:text-text-primary transition-colors"
+           >
+             <Search size={18} className="md:w-4 md:h-4" />
+           </button>
+           <button 
+             onClick={() => setIsNotificationsOpen(true)}
+             className="flex items-center justify-center w-10 h-10 md:w-8 md:h-8 text-text-secondary hover:text-text-primary transition-colors"
+           >
+             <Bell size={18} className="md:w-4 md:h-4" />
+           </button>
+           <button 
+             onClick={() => setIsSettingsOpen(true)}
+             className="flex items-center justify-center w-10 h-10 md:w-8 md:h-8 text-text-secondary hover:text-text-primary transition-colors"
+           >
+             <Settings size={18} className="md:w-4 md:h-4" />
+           </button>
+           
+           <div className="hidden md:block w-full h-[1px] bg-border my-1"></div>
+           
+           {/* Connection Status */}
+           <div className="hidden md:flex w-full flex-col items-center gap-2 py-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse" title="System Status: Connected"></div>
+              <div className="text-[8px] font-mono text-text-tertiary rotate-90 mt-2">V4.0</div>
            </div>
-
-           {[
-             { icon: Search, action: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true })), label: "Search" },
-             { icon: Bell, action: () => setIsNotificationsOpen(true), label: "Alerts" },
-             { icon: Settings, action: () => setIsSettingsOpen(true), label: "Settings" }
-           ].map((btn, i) => (
-             <button 
-               key={i} onClick={btn.action} 
-               className={`btn-haptic flex items-center w-full p-3 text-text-secondary hover:text-text-primary transition-colors ${isTerminal ? 'rounded-none hover:bg-border' : 'rounded-lg hover:bg-white/5'}`}
-             >
-               <btn.icon size={20} strokeWidth={1.5} className="shrink-0 mx-auto md:mx-0" />
-               {!isTerminal && (
-                  <motion.span 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : -10 }}
-                    className="ml-4 font-medium tracking-wide text-xs whitespace-nowrap"
-                  >
-                    {btn.label}
-                  </motion.span>
-               )}
-             </button>
-           ))}
         </div>
-      </motion.div>
+      </div>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <NotificationsPanel isOpen={isNotificationsOpen} onClose={() => setIsNotificationsOpen(false)} />

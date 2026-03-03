@@ -6,7 +6,6 @@ export type ImpactFilter = 'All' | 'Low' | 'Medium' | 'High';
 export type Strategy = 'Scalper' | 'Swing' | 'Macro';
 export type VolatilityPreference = 'Low' | 'Moderate' | 'High';
 export type RiskTolerance = 'Conservative' | 'Moderate' | 'Aggressive';
-export type UITheme = 'architect' | 'terminal';
 
 type Settings = {
   impactFilter: ImpactFilter;
@@ -14,7 +13,6 @@ type Settings = {
   strategy: Strategy;
   volatilityPreference: VolatilityPreference;
   riskTolerance: RiskTolerance;
-  uiTheme: UITheme;
 };
 
 const DEFAULT: Settings = {
@@ -23,10 +21,9 @@ const DEFAULT: Settings = {
   strategy: 'Macro',
   volatilityPreference: 'Moderate',
   riskTolerance: 'Moderate',
-  uiTheme: 'architect',
 };
 
-const STORAGE_KEY = 'vantage-terminal-settings-v3';
+const STORAGE_KEY = 'vantage-terminal-settings-v2';
 
 const SettingsContext = createContext<{
   settings: Settings;
@@ -35,7 +32,6 @@ const SettingsContext = createContext<{
   setStrategy: (v: Strategy) => void;
   setVolatilityPreference: (v: VolatilityPreference) => void;
   setRiskTolerance: (v: RiskTolerance) => void;
-  setUITheme: (v: UITheme) => void;
 }>({
   settings: DEFAULT,
   setImpactFilter: () => {},
@@ -43,7 +39,6 @@ const SettingsContext = createContext<{
   setStrategy: () => {},
   setVolatilityPreference: () => {},
   setRiskTolerance: () => {},
-  setUITheme: () => {},
 });
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
@@ -71,7 +66,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const setStrategy = (v: Strategy) => update({ strategy: v });
   const setVolatilityPreference = (v: VolatilityPreference) => update({ volatilityPreference: v });
   const setRiskTolerance = (v: RiskTolerance) => update({ riskTolerance: v });
-  const setUITheme = (v: UITheme) => update({ uiTheme: v });
 
   return (
     <SettingsContext.Provider value={{ 
@@ -80,8 +74,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setCurrency, 
       setStrategy, 
       setVolatilityPreference, 
-      setRiskTolerance,
-      setUITheme
+      setRiskTolerance 
     }}>
       {children}
     </SettingsContext.Provider>

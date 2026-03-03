@@ -1,154 +1,99 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-highlight: var(--surface-highlight);
-  --color-border: var(--border);
+  --color-background: #000000;
+  --color-surface: #09090b; /* Zinc 950 */
+  --color-surface-highlight: #18181b; /* Zinc 900 */
   
-  --color-text-primary: var(--text-main);
-  --color-text-secondary: var(--text-muted);
-  --color-text-tertiary: var(--text-dim);
+  --color-border: #27272a; /* Zinc 800 */
+  --color-border-highlight: #3f3f46; /* Zinc 700 */
 
-  --color-accent: var(--accent);
-  --color-accent-text: var(--accent-text);
+  --color-text-primary: #f4f4f5; /* Zinc 100 */
+  --color-text-secondary: #a1a1aa; /* Zinc 400 */
+  --color-text-tertiary: #52525b; /* Zinc 600 */
 
-  --color-positive: var(--positive);
-  --color-negative: var(--negative);
-  --color-warning: var(--warning);
+  --color-accent: #00ff9d; /* Spring Green */
+  --color-accent-dim: rgba(0, 255, 157, 0.1);
+  --color-accent-text: #000000;
 
-  --font-ui: var(--font-base);
-  --font-mono: var(--font-monospace);
-}
+  --color-positive: #00ff9d;
+  --color-negative: #ff3333;
+  --color-warning: #ffb302;
 
-/* ── Theme 1: The Modern Architect (Spatial Workspace) ── */
-:root, .theme-architect {
-  --bg: #08090A; /* Deep Space with 2% blue saturation */
-  --surface: rgba(22, 25, 30, 0.4);
-  --surface-highlight: rgba(255, 255, 255, 0.03);
-  --border: rgba(255, 255, 255, 0.05);
-  --border-hover: rgba(255, 255, 255, 0.15);
-  
-  --text-main: #ffffff;
-  --text-muted: #94a3b8; 
-  --text-dim: #475569;   
-  
-  --accent: #2dd4bf;     
-  --accent-text: #000000;
-  
-  --positive: #2dd4bf;
-  --negative: #fb7185;   
-  --warning: #fbbf24;    
-
-  --font-base: "Geist Sans", "Inter", system-ui, sans-serif;
-  --font-monospace: "JetBrains Mono", "SF Mono", monospace;
-  
-  --transition-base: all 400ms cubic-bezier(0.23, 1, 0.32, 1); /* Power Curve */
-}
-
-/* ── Theme 2: The Terminal (Institutional Machine) ── */
-.theme-terminal {
-  --bg: #000000; /* Dead Black */
-  --surface: transparent;
-  --surface-highlight: #FFB000;
-  --border: #222222; /* Machine Grey */
-  --border-hover: #222222;
-  
-  --text-main: #FFB000;
-  --text-muted: #A37000;
-  --text-dim: #664400;
-  
-  --accent: #FFB000;
-  --accent-text: #000000;
-  
-  --positive: #FFB000;
-  --negative: #FFB000;
-  --warning: #FFB000;
-
-  --font-base: "JetBrains Mono", "Fira Code", monospace;
-  --font-monospace: "JetBrains Mono", "Fira Code", monospace;
-  
-  --transition-base: none; /* Zero Latency */
-}
-
-/* Scanline Overlay */
-.theme-terminal::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
-              linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-  background-size: 100% 2px, 3px 100%;
-  pointer-events: none;
-  z-index: 9999;
+  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+  --radius-sm: 2px;
+  --radius-md: 4px;
 }
 
 /* ── Reset & Base ── */
-*, *::before, *::after { box-sizing: border-box; }
+*, *::before, *::after {
+  box-sizing: border-box;
+}
 
 html, body {
-  height: 100dvh;
+  height: 100dvh; /* Dynamic viewport height fixes iOS/Android address bar issues */
   width: 100%;
   background-color: var(--color-background);
   color: var(--color-text-primary);
-  font-family: var(--font-ui);
+  font-family: var(--font-mono);
   font-size: 11px;
   -webkit-font-smoothing: antialiased;
-  overscroll-behavior-y: none;
+  overscroll-behavior-y: none; /* Prevents pull-to-refresh so it feels like an app */
+  touch-action: pan-x pan-y pinch-zoom; /* Explicitly allow scrolling and zooming */
 }
-
-.theme-terminal body { text-transform: uppercase; }
 
 /* ── Scrollbars ── */
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-border); }
-.hide-scrollbar::-webkit-scrollbar { display: none; }
-.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* ── Architect Layout Physics ── */
-.theme-architect .panel-container {
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
   background: var(--color-surface);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  border: 1px solid var(--color-border);
-  border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02), 0 4px 24px -8px rgba(0,0,0,0.5);
-  transition: var(--transition-base);
 }
-.theme-architect .panel-container:hover {
-  border-color: var(--border-hover);
-  backdrop-filter: blur(40px);
-  -webkit-backdrop-filter: blur(40px);
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
 }
 
-.theme-architect .btn-haptic:active {
-  transform: scale(0.96);
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
 
-/* ── Terminal Layout Physics ── */
-.theme-terminal .panel-container {
-  background: transparent;
-  border: 1px solid var(--color-border);
-  border-radius: 0px;
-  transition: none;
+/* ── Panel System ── */
+.panel-header {
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 8px;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  font-size: 9px;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  flex-wrap: wrap; /* Added for mobile responsiveness */
+  gap: 4px;
 }
 
-/* Value Updates - Architect (Color Fade) */
-@keyframes fluid-color {
-  0% { color: var(--accent); }
-  100% { color: inherit; }
-}
-.theme-architect .value-flash {
-  animation: fluid-color 400ms cubic-bezier(0.23, 1, 0.32, 1);
+.panel-content {
+  background: var(--color-background);
+  overflow: auto;
+  flex: 1;
 }
 
-/* Value Updates - Terminal (Phosphor Persistence) */
-@keyframes phosphor-ghost {
-  0% { opacity: 1; text-shadow: 0 0 8px var(--accent); }
-  50% { opacity: 0.6; }
-  100% { opacity: 1; text-shadow: none; }
+.mono-num {
+  font-feature-settings: "tnum" on, "lnum" on;
 }
-.theme-terminal .value-flash {
-  animation: phosphor-ghost 100ms step-end;
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
 }
