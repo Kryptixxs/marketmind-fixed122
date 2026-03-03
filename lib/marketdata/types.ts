@@ -7,6 +7,8 @@ export interface Tick {
   history?: number[];
   timestamp: number;
   name?: string;
+  source?: 'YAHOO' | 'SIMULATED';
+  isStale?: boolean;
 }
 
 export interface ProviderConfig {
