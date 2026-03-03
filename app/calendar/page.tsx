@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Calendar, DollarSign, Loader2 } from 'lucide-react';
 import { EconomicCalendarView } from '@/components/calendar/EconomicCalendarView';
 import { EarningsCalendarView } from '@/components/calendar/EarningsCalendarView';
+import { NextHighImpactWidget } from '@/components/calendar/NextHighImpactWidget';
 
 function CalendarContent() {
   const searchParams = useSearchParams();
@@ -54,8 +55,11 @@ function CalendarContent() {
       </div>
 
       {/* View Content */}
-      <div className="flex-1 overflow-hidden p-2">
-        {view === 'economic' ? <EconomicCalendarView /> : <EarningsCalendarView />}
+      <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 overflow-hidden p-2">
+          {view === 'economic' ? <EconomicCalendarView /> : <EarningsCalendarView />}
+        </div>
+        {view === 'economic' && <NextHighImpactWidget />}
       </div>
     </div>
   );
