@@ -22,19 +22,15 @@ export default function TradingViewChart({ symbol, interval = "15", style = "1" 
     script.type = 'text/javascript';
     script.async = true;
     
-    // Strict institutional overrides
-    const overrides = settings.uiTheme === 'terminal' ? {
-      "mainSeriesProperties.barStyle.upColor": "#00FF41", // Green
-      "mainSeriesProperties.barStyle.downColor": "#FF003C", // Red
+    // In Terminal mode, force Amber/Orange overrides
+    const terminalOverrides = settings.uiTheme === 'terminal' ? {
+      "mainSeriesProperties.barStyle.upColor": "#FFB000",
+      "mainSeriesProperties.barStyle.downColor": "#CC8800",
       "paneProperties.background": "#000000",
-      "paneProperties.vertGridProperties.color": "#111111",
-      "paneProperties.horzGridProperties.color": "#111111",
-      "scalesProperties.textColor": "#666666"
-    } : {
-      "paneProperties.background": "#0C0D0F",
-      "paneProperties.vertGridProperties.color": "#1A1C1F",
-      "paneProperties.horzGridProperties.color": "#1A1C1F",
-    };
+      "paneProperties.vertGridProperties.color": "#222222",
+      "paneProperties.horzGridProperties.color": "#222222",
+      "scalesProperties.textColor": "#FFB000"
+    } : {};
 
     const config = {
       "autosize": true,
@@ -42,17 +38,17 @@ export default function TradingViewChart({ symbol, interval = "15", style = "1" 
       "interval": interval,
       "timezone": "Etc/UTC",
       "theme": "dark",
-      "style": style, // 0 = Bars (Terminal), 1 = Candles (Architect)
+      "style": style, // 0 = Bars, 1 = Candles
       "locale": "en",
-      "backgroundColor": settings.uiTheme === 'terminal' ? "#000000" : "#0C0D0F",
-      "gridColor": settings.uiTheme === 'terminal' ? "#111111" : "#1A1C1F",
+      "backgroundColor": settings.uiTheme === 'terminal' ? "#000000" : "rgba(0,0,0,0)",
+      "gridColor": settings.uiTheme === 'terminal' ? "#222222" : "rgba(255, 255, 255, 0.05)",
       "hide_side_toolbar": true,
       "allow_symbol_change": false,
       "save_image": false,
       "details": false,
       "calendar": false,
       "support_host": "https://www.tradingview.com",
-      "overrides": overrides
+      "overrides": terminalOverrides
     };
 
     script.innerHTML = JSON.stringify(config);
