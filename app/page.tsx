@@ -7,15 +7,15 @@ import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
 import { 
   Activity, Wifi, Loader2, TrendingUp, TrendingDown, 
-  Brain, AlertCircle, Plus, X, Search, LineChart, Zap 
+  Brain, AlertCircle, Plus, X, Search, LineChart, Zap,
+  Target, ShieldAlert, ArrowRight
 } from 'lucide-react';
-import { analyzeMarket } from '@/app/actions/analyzeMarket';
+import { analyzeMarket, MarketAnalysis } from '@/app/actions/analyzeMarket';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 import { formatPrice, formatPercent, formatInt } from '@/lib/format';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { fetchHistoricalBars, Bar } from '@/app/actions/fetchHistoricalBars';
 
-// Metadata lookup for common symbols
 const SYMBOL_METADATA: Record<string, { label: string, type: any }> = {
   '^NDX': { label: 'Nasdaq 100', type: 'index' },
   '^GSPC': { label: 'S&P 500', type: 'index' },
@@ -31,13 +31,12 @@ const VITALS_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX'];
 
 export default function TerminalPage() {
   const { symbols, activeSymbol, setActiveSymbol, addSymbol, removeSymbol } = useWatchlistStore();
-  const [aiAnalysis, setAiAnalysis] = useState<any>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<MarketAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [newSymbol, setNewSymbol] = useState('');
   
-  // Chart State
   const [chartMode, setChartMode] = useState<'standard' | 'advanced'>('standard');
   const [timeframe, setTimeframe] = useState('6m');
   const [historicalData, setHistoricalData] = useState<Bar[]>([]);
@@ -48,7 +47,6 @@ export default function TerminalPage() {
   
   const lastAnalyzedRef = useRef<string | null>(null);
 
-  // Fetch historical data for the standard chart
   const loadHistory = useCallback(async (sym: string, range: string) => {
     if (!sym) return;
     setLoadingHistory(true);
@@ -66,9 +64,46 @@ export default function TerminalPage() {
     loadHistory(activeSymbol, timeframe);
   }, [activeSymbol, timeframe, loadHistory]);
 
+  // Calculate technicals for AI grounding
+  const calculateTechnicals = (bars: Bar[]) => {
+    if (bars.length < 20) return null;
+    
+    const closes = bars.map(b => b.close);
+    const last20 = closes.slice(-20);
+    
+    // Simple RSI (14)
+    let gains = 0, losses = 0;
+    for (let i = closes.length - 14; i < closes.length; i++) {
+      const diff = closes[i] - closes[i-1];
+      if (diff >= 0) gains += diff;
+      else losses -= diff;
+    }
+    const rsi = 100 - (100 / (1 + (gains / 14) / (losses / 14 || 1)));
+    
+    // MA Slope (20d)
+    const ma20 = last20.reduce((a, b) => a + b, 0) / 20;
+    const prevMa20 = closes.slice(-21, -1).reduce((a, b) => a + b, 0) / 20;
+    const maSlope = (ma20 - prevMa20) / prevMa20;
+    
+    // Volatility (ATR Proxy)
+    const trs = bars.slice(-14).map((b, i, arr) => {
+      if (i === 0) return b.high - b.low;
+      return Math.max(b.high - b.low, Math.abs(b.high - arr[i-1].close), Math.abs(b.low - arr[i-1].close));
+    });
+    const volatility = trs.reduce((a, b) => a + b, 0) / 14;
+
+    return {
+      rsi,
+      maSlope,
+      volatility,
+      high52w: Math.max(...closes),
+      low52w: Math.min(...closes)
+    };
+  };
+
   useEffect(() => {
     const data = marketData[activeSymbol];
-    if (!data) return;
+    if (!data || historicalData.length < 20) return;
 
     const analysisKey = `${activeSymbol}-${data.price}`;
     if (lastAnalyzedRef.current === analysisKey) return;
@@ -77,8 +112,11 @@ export default function TerminalPage() {
       setAnalyzing(true);
       setError(null);
       try {
+        const technicals = calculateTechnicals(historicalData);
+        if (!technicals) return;
+
         const label = SYMBOL_METADATA[activeSymbol]?.label || activeSymbol;
-        const result = await analyzeMarket(activeSymbol, label, data.price, data.changePercent);
+        const result = await analyzeMarket(activeSymbol, label, data.price, data.changePercent, technicals);
         if (result) {
           setAiAnalysis(result);
           lastAnalyzedRef.current = analysisKey;
@@ -91,7 +129,7 @@ export default function TerminalPage() {
     };
 
     runAnalysis();
-  }, [activeSymbol, marketData[activeSymbol]?.price]);
+  }, [activeSymbol, marketData[activeSymbol]?.price, historicalData]);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -103,7 +141,6 @@ export default function TerminalPage() {
     }
   };
 
-  // Vitals Data
   const vix = marketData['^VIX'];
   const dxy = marketData['DX-Y.NYB'];
   const tnx = marketData['^TNX'];
@@ -125,10 +162,7 @@ export default function TerminalPage() {
             <Widget 
               title="Market Watch // Institutional"
               actions={
-                <button 
-                  onClick={() => setIsAdding(!isAdding)}
-                  className="text-text-tertiary hover:text-accent transition-colors"
-                >
+                <button onClick={() => setIsAdding(!isAdding)} className="text-text-tertiary hover:text-accent transition-colors">
                   <Plus size={12} />
                 </button>
               }
@@ -150,15 +184,10 @@ export default function TerminalPage() {
                   const data = marketData[sym];
                   const meta = SYMBOL_METADATA[sym] || { label: sym, type: sym.includes('=') ? 'fx' : 'equity' };
                   const isPositive = data?.change >= 0;
-                  
                   return (
                     <div 
                       key={sym} 
                       onClick={() => setActiveSymbol(sym)}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        if (confirm(`Remove ${sym} from watchlist?`)) removeSymbol(sym);
-                      }}
                       className={`flex justify-between items-center px-2 py-1.5 border-b border-border/30 cursor-pointer hover:bg-surface-highlight transition-colors group ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
                     >
                       <div className="flex flex-col">
@@ -180,13 +209,13 @@ export default function TerminalPage() {
             </Widget>
           </div>
           
-          <div className="h-1/3 min-h-0">
-            <Widget title="AI Intelligence">
-              <div className="p-2 text-[10px] text-text-secondary leading-tight h-full flex flex-col">
+          <div className="h-1/2 min-h-0">
+            <Widget title="Market Intelligence // AI">
+              <div className="p-3 text-[10px] text-text-secondary leading-tight h-full flex flex-col overflow-y-auto custom-scrollbar">
                 {analyzing ? (
-                  <div className="flex-1 flex flex-col items-center justify-center gap-1 opacity-50">
-                    <Loader2 size={14} className="animate-spin text-accent" />
-                    <span className="text-[8px] font-bold uppercase tracking-widest">Synthesizing...</span>
+                  <div className="flex-1 flex flex-col items-center justify-center gap-2 opacity-50">
+                    <Loader2 size={16} className="animate-spin text-accent" />
+                    <span className="text-[8px] font-bold uppercase tracking-widest">Synthesizing Intelligence...</span>
                   </div>
                 ) : error ? (
                   <div className="flex-1 flex flex-col items-center justify-center gap-1 text-negative opacity-80">
@@ -194,24 +223,68 @@ export default function TerminalPage() {
                     <span className="text-[8px] font-bold uppercase tracking-widest">{error}</span>
                   </div>
                 ) : aiAnalysis ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-accent">
-                        <Brain size={12} />
-                        <span className="font-bold uppercase tracking-tight">{aiAnalysis.sentiment}</span>
+                  <div className="space-y-4 animate-in">
+                    {/* Header Metrics */}
+                    <div className="flex items-center justify-between border-b border-border pb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${aiAnalysis.bias === 'Bullish' ? 'bg-positive' : aiAnalysis.bias === 'Bearish' ? 'bg-negative' : 'bg-warning'}`} />
+                        <span className="font-bold text-text-primary uppercase tracking-tight">{aiAnalysis.bias} Bias</span>
                       </div>
-                      <span className={aiAnalysis.strength > 50 ? 'text-positive' : 'text-negative'}>{formatInt(aiAnalysis.strength)}%</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-text-tertiary uppercase font-bold">Conf:</span>
+                        <span className="text-accent font-bold">{aiAnalysis.confidence}%</span>
+                      </div>
                     </div>
-                    <p className="text-text-primary leading-snug line-clamp-4">
-                      {aiAnalysis.analysis}
-                    </p>
-                    <div className="w-full h-0.5 bg-surface-highlight rounded-full overflow-hidden">
-                      <div className="h-full bg-accent transition-all duration-1000" style={{ width: `${aiAnalysis.strength}%` }}></div>
+
+                    {/* Regime & Thesis */}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Zap size={12} className="text-accent" />
+                        <span className="font-bold text-text-primary uppercase tracking-tighter">{aiAnalysis.regime} Regime</span>
+                      </div>
+                      <p className="text-text-primary leading-relaxed italic">"{aiAnalysis.thesis}"</p>
+                    </div>
+
+                    {/* Levels */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-surface-highlight/50 p-2 rounded border border-border">
+                        <span className="text-[8px] font-bold text-text-tertiary uppercase block mb-1">Resistance</span>
+                        <div className="space-y-1">
+                          {aiAnalysis.levels.resistance.map(l => <div key={l} className="font-mono text-negative font-bold">{formatPrice(l)}</div>)}
+                        </div>
+                      </div>
+                      <div className="bg-surface-highlight/50 p-2 rounded border border-border">
+                        <span className="text-[8px] font-bold text-text-tertiary uppercase block mb-1">Support</span>
+                        <div className="space-y-1">
+                          {aiAnalysis.levels.support.map(l => <div key={l} className="font-mono text-positive font-bold">{formatPrice(l)}</div>)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Risk & Invalidation */}
+                    <div className="space-y-2 pt-2 border-t border-border">
+                      <div className="flex items-center gap-2 text-negative">
+                        <ShieldAlert size={12} />
+                        <span className="font-bold uppercase tracking-tighter">Invalidation</span>
+                      </div>
+                      <p className="text-text-secondary">{aiAnalysis.invalidation}</p>
+                    </div>
+
+                    {/* Next Steps */}
+                    <div className="space-y-1.5">
+                      <span className="text-[8px] font-bold text-text-tertiary uppercase block">Tactical Steps</span>
+                      {aiAnalysis.nextSteps.map((step, i) => (
+                        <div key={i} className="flex items-start gap-2 text-text-primary">
+                          <ArrowRight size={10} className="mt-0.5 text-accent shrink-0" />
+                          <span>{step}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ) : (
                   <div className="flex-1 flex flex-col items-center justify-center opacity-30">
                     <Activity size={16} />
+                    <span className="text-[8px] mt-2 uppercase font-bold">Awaiting Data</span>
                   </div>
                 )}
               </div>
