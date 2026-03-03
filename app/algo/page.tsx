@@ -26,9 +26,27 @@ export default function AlgoPage() {
     setIsLoading(true);
     try {
       const data = await fetchMarketData(targetSymbol, '1d');
-      if (data && data.history) {
-        setRealData(data.history);
-        setResult(runBacktest(data.history, params));
+      if (data && data.history && data.history.length > 0) {
+        // Map the OHLCV 'timestamp' to 'time' expected by the backtester
+        const bars = data.history
+          .map(h => ({
+            time: h.timestamp,
+            open: h.open,
+            high: h.high,
+            low: h.low,
+            close: h.close,
+            volume: h.volume
+          }))
+          // Ensure strictly ascending chronological order
+          .sort((a, b) => a.time - b.time)
+          // Filter out any duplicate timestamps
+          .filter((b, i, a) => i === 0 || b.time > a[i - 1].time);
+
+        setRealData(bars);
+        setResult(runBacktest(bars, params));
+      } else {
+        setRealData([]);
+        setResult(null);
       }
     } catch (e) {
       console.error(e);
@@ -149,14 +167,14 @@ export default function AlgoPage() {
       <div className="lg:col-span-9 flex flex-col gap-2 shrink-0 min-h-[600px] lg:h-full">
         <div className="h-1/2 min-h-[300px]">
            <Widget title={`Equity Curve: ${targetSymbol} (${realData.length} Real Bars)`}>
-             {result ? (
+             {result && result.equityCurve.length > 0 ? (
                <TradingChart data={result.equityCurve.map(p => ({
-                 time: p.time / 1000,
+                 time: Math.floor(p.time / 1000), // Convert ms to exact seconds
                  open: p.value, high: p.value, low: p.value, close: p.value
                }))} />
              ) : (
                <div className="flex items-center justify-center h-full text-text-tertiary">
-                 Press Run to backtest strategy
+                 {isLoading ? 'Downloading Historical Data...' : 'Press Run to backtest strategy'}
                </div>
              )}
            </Widget>
