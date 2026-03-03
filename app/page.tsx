@@ -20,6 +20,8 @@ const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
 };
 
 const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
+const VITALS_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX'];
+const ALL_SYMBOLS = [...WATCHLIST_SYMBOLS, ...VITALS_SYMBOLS];
 
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("^NDX");
@@ -27,10 +29,9 @@ export default function TerminalPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Use the new streaming market data hook
-  const { data: marketData, error: streamError } = useMarketData(WATCHLIST_SYMBOLS);
-  const loading = Object.keys(marketData).length === 0 && !streamError;
-
+  // Use the streaming market data hook for all required symbols
+  const { data: marketData, error: streamError } = useMarketData(ALL_SYMBOLS);
+  
   const lastAnalyzedRef = useRef<string | null>(null);
 
   // Trigger AI analysis when active symbol or its data changes
@@ -70,6 +71,19 @@ export default function TerminalPage() {
 
   const activeQuote = marketData[activeSymbol];
   const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
+
+  // Vitals Data
+  const vix = marketData['^VIX'];
+  const dxy = marketData['DX-Y.NYB'];
+  const tnx = marketData['^TNX'];
+
+  // Liquidity Logic
+  const getLiquidity = (v: number) => {
+    if (v < 15) return { label: 'High', color: 'text-positive' };
+    if (v <= 25) return { label: 'Normal', color: 'text-warning' };
+    return { label: 'Risk-off', color: 'text-negative' };
+  };
+  const liquidity = vix ? getLiquidity(vix.price) : { label: '---', color: 'text-text-tertiary' };
 
   return (
     <div className="h-full w-full bg-background p-0.5 overflow-hidden">
@@ -156,19 +170,27 @@ export default function TerminalPage() {
               <div className="p-2 grid grid-cols-2 gap-x-4 gap-y-2 h-full content-start">
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">VIX Index</div>
-                  <div className="text-sm font-bold text-warning">14.52</div>
+                  <div className={`text-sm font-bold ${vix ? (vix.change >= 0 ? 'text-negative' : 'text-positive') : 'text-text-primary'}`}>
+                    {vix ? vix.price.toFixed(2) : '---'}
+                  </div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">DXY Dollar</div>
-                  <div className="text-sm font-bold text-text-primary">104.20</div>
+                  <div className={`text-sm font-bold ${dxy ? (dxy.change >= 0 ? 'text-positive' : 'text-negative') : 'text-text-primary'}`}>
+                    {dxy ? dxy.price.toFixed(2) : '---'}
+                  </div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">10Y Yield</div>
-                  <div className="text-sm font-bold text-negative">4.31%</div>
+                  <div className={`text-sm font-bold ${tnx ? (tnx.change >= 0 ? 'text-negative' : 'text-positive') : 'text-text-primary'}`}>
+                    {tnx ? `${(tnx.price / 10).toFixed(2)}%` : '---'}
+                  </div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">Liquidity</div>
-                  <div className="text-sm font-bold text-positive">High</div>
+                  <div className={`text-sm font-bold ${liquidity.color}`}>
+                    {liquidity.label}
+                  </div>
                 </div>
               </div>
             </Widget>
