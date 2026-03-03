@@ -62,7 +62,7 @@ function sanitizeValue(val: string | null | undefined): string | null {
   if (!val) return null;
   // Strip HTML and entities
   const clean = val.replace(/<[^>]*>?/gm, '').replace(/&[a-z0-9#]+;/gi, '').trim();
-  // Check if it's a reasonable numeric/percent string
+  // Check if it's a reasonable numeric/percent string (e.g. 5.2%, 250k, 1.2M, -0.1)
   if (/^-?\d*\.?\d+%?k?m?b?t?$/i.test(clean)) return clean;
   return null;
 }
@@ -120,7 +120,7 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
     return json.data.rows
       .filter((row: any) => row.eventName && !shouldFilterOut(row.eventName))
       .map((row: any) => {
-        // Normalize Time
+        // Normalize Time: Prefer row.time, then row.gmt, then "All Day"
         let timeStr = row.time || row.gmt || 'All Day';
         if (timeStr === '24H' || !timeStr.trim()) timeStr = 'All Day';
 
@@ -130,7 +130,7 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
         const title = row.eventName || 'Event';
         const impact = calculateImpact(title);
 
-        // Stable ID
+        // Stable ID based on content
         const id = Buffer.from(`${dateStr}-${title}-${countryCode}-${timeStr}`).toString('base64').slice(0, 16);
 
         // Timestamp for sorting
