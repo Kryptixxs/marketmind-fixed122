@@ -7,16 +7,17 @@ import { NewsFeed } from '@/components/NewsFeed';
 import { Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle } from 'lucide-react';
 import { analyzeMarket } from '@/app/actions/analyzeMarket';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
+import { formatPrice, formatPercent, formatInt } from '@/lib/format';
 
 // Mapping Yahoo symbols to specific TradingView broker symbols
-const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
-  '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
-  '^GSPC': { tv: 'BLACKBULL:SPX500', label: 'S&P 500' },
-  '^DJI': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones' },
-  '^RUT': { tv: 'IG:RUSSELL', label: 'Russell 2000' },
-  'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil' },
-  'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold' },
-  'EURUSD=X': { tv: 'PEPPERSTONE:EURUSD', label: 'EUR/USD' },
+const SYMBOL_MAP: Record<string, { tv: string, label: string, type: any }> = {
+  '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100', type: 'index' },
+  '^GSPC': { tv: 'BLACKBULL:SPX500', label: 'S&P 500', type: 'index' },
+  '^DJI': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones', type: 'index' },
+  '^RUT': { tv: 'IG:RUSSELL', label: 'Russell 2000', type: 'index' },
+  'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil', type: 'commodity' },
+  'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold', type: 'commodity' },
+  'EURUSD=X': { tv: 'PEPPERSTONE:EURUSD', label: 'EUR/USD', type: 'fx' },
 };
 
 const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
@@ -111,10 +112,10 @@ export default function TerminalPage() {
                       </div>
                       <div className="flex flex-col items-end">
                         <span className="text-[10px] font-mono font-bold text-text-primary">
-                          {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '---'}
+                          {data ? formatPrice(data.price, info.type) : '---'}
                         </span>
                         <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
-                          <span>{data ? `${isPositive ? '+' : ''}${data.changePercent.toFixed(2)}%` : '--'}</span>
+                          <span>{data ? `${isPositive ? '+' : ''}${formatPercent(data.changePercent)}` : '--'}</span>
                         </div>
                       </div>
                     </div>
@@ -144,7 +145,7 @@ export default function TerminalPage() {
                         <Brain size={12} />
                         <span className="font-bold uppercase tracking-tight">{aiAnalysis.sentiment}</span>
                       </div>
-                      <span className={aiAnalysis.strength > 50 ? 'text-positive' : 'text-negative'}>{aiAnalysis.strength}%</span>
+                      <span className={aiAnalysis.strength > 50 ? 'text-positive' : 'text-negative'}>{formatInt(aiAnalysis.strength)}%</span>
                     </div>
                     <p className="text-text-primary leading-snug line-clamp-4">
                       {aiAnalysis.analysis}
@@ -171,19 +172,19 @@ export default function TerminalPage() {
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">VIX Index</div>
                   <div className={`text-sm font-bold ${vix ? (vix.change >= 0 ? 'text-negative' : 'text-positive') : 'text-text-primary'}`}>
-                    {vix ? vix.price.toFixed(2) : '---'}
+                    {vix ? formatPrice(vix.price, 'index') : '---'}
                   </div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">DXY Dollar</div>
                   <div className={`text-sm font-bold ${dxy ? (dxy.change >= 0 ? 'text-positive' : 'text-negative') : 'text-text-primary'}`}>
-                    {dxy ? dxy.price.toFixed(2) : '---'}
+                    {dxy ? formatPrice(dxy.price, 'index') : '---'}
                   </div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">10Y Yield</div>
                   <div className={`text-sm font-bold ${tnx ? (tnx.change >= 0 ? 'text-negative' : 'text-positive') : 'text-text-primary'}`}>
-                    {tnx ? `${(tnx.price / 10).toFixed(2)}%` : '---'}
+                    {tnx ? `${formatPrice(tnx.price / 10, 'index')}%` : '---'}
                   </div>
                 </div>
                 <div>

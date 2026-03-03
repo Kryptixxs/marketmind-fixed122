@@ -8,6 +8,7 @@ import { EconomicEvent } from '@/lib/types';
 import { formatTime } from '@/lib/date-utils';
 import { getEventIntel, computeSurprise } from '@/lib/event-intelligence';
 import { AlertConfigModal } from './AlertConfigModal';
+import { formatPercent, formatInt, formatMaybeNumber } from '@/lib/format';
 
 interface EventDetailModalProps {
   event: EconomicEvent;
@@ -21,9 +22,9 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 
   const metrics = [
     { label: 'Volatility', value: intel.volatility, icon: Zap },
-    { label: 'Macro Impact', value: `${Math.round(intel.macroImpact)}/10`, icon: Globe },
+    { label: 'Macro Impact', value: `${formatInt(intel.macroImpact)}/10`, icon: Globe },
     { label: 'Risk Level', value: event.impact === 'High' ? 'Elevated' : 'Standard', icon: AlertTriangle },
-    { label: 'Surprise Threshold', value: `${intel.surpriseThresholdPct}%`, icon: Activity },
+    { label: 'Surprise Threshold', value: `${formatInt(intel.surpriseThresholdPct)}%`, icon: Activity },
   ];
 
   return (
@@ -64,7 +65,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                   <Activity size={16} />
                   <span className="text-xs font-bold uppercase tracking-wider">Surprise Classification: {surprise.classification}</span>
                 </div>
-                <span className="font-mono font-bold">{surprise.surprisePct?.toFixed(2)}%</span>
+                <span className="font-mono font-bold">{formatPercent(surprise.surprisePct)}</span>
               </div>
             )}
 
@@ -96,7 +97,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] text-text-tertiary uppercase font-bold">Actual / Forecast</span>
-                <div className="text-xs font-mono text-text-primary">{event.actual || '---'} / {event.forecast || '---'}</div>
+                <div className="text-xs font-mono text-text-primary">{formatMaybeNumber(event.actual)} / {formatMaybeNumber(event.forecast)}</div>
               </div>
             </div>
 
@@ -135,7 +136,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                       <span className="text-xs font-bold text-text-primary">{s.label}</span>
                       <span className="text-[10px] text-text-secondary">{s.reaction}</span>
                     </div>
-                    <div className="text-xs font-mono font-bold text-accent">{Math.round(s.probability)}%</div>
+                    <div className="text-xs font-mono font-bold text-accent">{formatInt(s.probability)}%</div>
                   </div>
                 ))}
               </div>

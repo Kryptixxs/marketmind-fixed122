@@ -10,6 +10,7 @@ import { getFullWeek, toISODateString } from '@/lib/date-utils';
 import { EventDetailModal } from './EventDetailModal';
 import { computeSurprise, getEventIntel } from '@/lib/event-intelligence';
 import { exportToCSV } from '@/lib/utils';
+import { formatMaybeNumber } from '@/lib/format';
 
 const IMPACT_COLORS: Record<string, string> = {
   High: 'border-l-4 border-l-red-500 bg-red-500/10',
@@ -213,11 +214,11 @@ export function EconomicCalendarView() {
                                 <div className="flex items-center gap-2 text-[9px] font-mono border-t border-black/10 pt-1 mt-1 opacity-80">
                                   {event.actual && (
                                     <span className={actualColor}>
-                                      {event.actual}
+                                      {formatMaybeNumber(event.actual)}
                                     </span>
                                   )}
                                   {event.forecast && (
-                                    <span className="text-text-tertiary">/ {event.forecast}</span>
+                                    <span className="text-text-tertiary">/ {formatMaybeNumber(event.forecast)}</span>
                                   )}
                                 </div>
                               )}
