@@ -40,11 +40,21 @@ export default function TerminalPage() {
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [time, setTime] = useState<string>('--:--:--');
   
   const { data: marketData, error: streamError } = useMarketData(WATCHLIST_SYMBOLS);
   const loading = Object.keys(marketData).length === 0 && !streamError;
 
   const lastAnalyzedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const updateTime = () => {
+      setTime(new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false }));
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const data = marketData[activeSymbol];
@@ -94,7 +104,7 @@ export default function TerminalPage() {
           <div className="h-3 w-[1px] bg-border" />
           <div className="flex items-center gap-2 text-[9px] font-mono text-text-secondary">
             <span className="text-positive animate-pulse">● LIVE_FEED</span>
-            <span>NY: {new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false })}</span>
+            <span>NY: {time}</span>
           </div>
         </div>
         <div className="flex items-center gap-3 text-[9px] font-mono text-text-tertiary">

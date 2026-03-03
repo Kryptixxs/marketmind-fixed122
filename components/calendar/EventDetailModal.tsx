@@ -16,6 +16,11 @@ interface EventDetailModalProps {
 export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   const intel = useMemo(() => getEventIntel(event), [event]);
   const surprise = useMemo(() => computeSurprise(event), [event]);
+  const [mounted, setMounted] = React.useState(false);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-2">
@@ -195,7 +200,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               Trade Implications
             </button>
           </div>
-          <span className="text-[9px] font-mono text-text-tertiary">VANTAGE TERMINAL // SECURE_FEED_ACTIVE // {new Date().toISOString()}</span>
+          <span className="text-[9px] font-mono text-text-tertiary">VANTAGE TERMINAL // SECURE_FEED_ACTIVE // {mounted ? new Date().toISOString() : '---'}</span>
         </div>
       </div>
     </div>

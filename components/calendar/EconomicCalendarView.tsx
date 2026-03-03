@@ -33,6 +33,11 @@ export function EconomicCalendarView() {
   const [loading, setLoading] = useState(true);
   const [showLowImpact, setShowLowImpact] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EconomicEvent | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const weekDates = useMemo(() => {
     const today = new Date();
@@ -82,6 +87,8 @@ export function EconomicCalendarView() {
     return grid;
   }, [eventsData, weekDates, showLowImpact]);
 
+  const todayStr = useMemo(() => mounted ? toISODateString(new Date()) : '', [mounted]);
+
   return (
     <div className="flex flex-col h-full bg-background border border-border">
       {/* Header Toolbar */}
@@ -127,7 +134,7 @@ export function EconomicCalendarView() {
               TIME
             </div>
             {weekDates.map(day => {
-               const isToday = day.dateStr === toISODateString(new Date());
+               const isToday = day.dateStr === todayStr;
                return (
                  <div key={day.dateStr} className={`p-2 border-r border-border text-center ${isToday ? 'bg-accent/5' : ''}`}>
                    <div className={`text-[9px] uppercase font-bold mb-0.5 ${isToday ? 'text-accent' : 'text-text-tertiary'}`}>
@@ -151,10 +158,11 @@ export function EconomicCalendarView() {
 
                 {weekDates.map(day => {
                   const dayEvents = schedule[day.dateStr]?.[hour] || [];
-                  const isToday = day.dateStr === toISODateString(new Date());
+                  const isToday = day.dateStr === todayStr;
                   
                   return (
                     <div key={`${day.dateStr}-${hour}`} className={`border-r border-border/50 p-0.5 relative group ${isToday ? 'bg-accent/[0.01]' : ''}`}>
+
                       <div className="flex flex-col gap-0.5 h-full">
                         {dayEvents.map((event) => (
                           <div
