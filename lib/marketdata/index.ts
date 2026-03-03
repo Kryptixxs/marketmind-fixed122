@@ -1,16 +1,15 @@
 import { MarketDataProvider } from './types';
 import { YahooPollingProvider } from './providers/yahoo-polling';
-import { MockStreamingProvider } from './providers/mock-stream';
 
-const USE_MOCK_STREAM = true; 
+// Rule: No simulated data.
+const USE_MOCK_STREAM = false; 
 
 let globalProvider: MarketDataProvider | null = null;
 
 export function getProvider(): MarketDataProvider {
   if (!globalProvider) {
-    globalProvider = USE_MOCK_STREAM 
-      ? new MockStreamingProvider()
-      : new YahooPollingProvider(30000);
+    // Using 15s polling for high-frequency 'real' data
+    globalProvider = new YahooPollingProvider(15000);
   }
   return globalProvider;
 }

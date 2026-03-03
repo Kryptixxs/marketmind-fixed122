@@ -8,11 +8,10 @@ import { TerminalCommandBar } from '@/components/TerminalCommandBar';
 import { 
   Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle, 
   Terminal as TerminalIcon, Layers, Target, Search, Zap, ShieldAlert, 
-  BarChart3, Globe, Cpu, Clock, ArrowUpRight, ArrowDownRight, Gauge,
-  TrendingUp as ChartUp
+  BarChart3, Globe, Cpu, Clock, ArrowUpRight, ArrowDownRight, Gauge
 } from 'lucide-react';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
-import { analyzeMarketState, getMacroRegime } from '@/lib/market-intelligence';
+import { analyzeMarketState } from '@/lib/market-intelligence';
 import { analyzeYieldCurve, getCreditStress } from '@/lib/macro-intelligence';
 
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
@@ -26,7 +25,7 @@ const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
 };
 
 const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
-const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX', 'ZT=F']; // ZT=F is 2Y Treasury
+const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX', '^IRX']; // ^IRX is 13-week T-Bill
 const ALL_SYMBOLS = [...WATCHLIST_SYMBOLS, ...MACRO_SYMBOLS];
 
 export default function TerminalPage() {
@@ -60,16 +59,12 @@ export default function TerminalPage() {
   const activeQuote = marketData[activeSymbol];
   const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
   
-  const insight = activeQuote ? analyzeMarketState(activeQuote, marketData) : null;
-  const macro = getMacroRegime(
-    marketData['^VIX']?.price || 15,
-    marketData['DX-Y.NYB']?.price || 104,
-    marketData['^TNX']?.price || 4.3
-  );
-
+  const insight = activeQuote ? analyzeMarketState(activeQuote) : null;
+  
+  // Real Yield Curve Analysis (10Y vs 3M)
   const yieldCurve = analyzeYieldCurve(
     marketData['^TNX']?.price || 4.3,
-    4.65 // Mock 2Y for now as ZT=F is complex to parse
+    marketData['^IRX']?.price || 5.2
   );
 
   const credit = getCreditStress(marketData['^VIX']?.price || 15);
@@ -165,14 +160,14 @@ export default function TerminalPage() {
                     <div className="text-xs font-mono font-bold text-text-primary">{yieldCurve.tenYear.toFixed(3)}%</div>
                   </div>
                   <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
-                    <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">2Y Yield</div>
+                    <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">3M T-Bill</div>
                     <div className="text-xs font-mono font-bold text-text-primary">{yieldCurve.twoYear.toFixed(3)}%</div>
                   </div>
                 </div>
                 
                 <div className="p-2 bg-background border border-border rounded-sm">
                   <div className="flex justify-between items-center mb-1">
-                    <span className="text-[9px] text-text-tertiary uppercase font-bold">2Y/10Y Spread</span>
+                    <span className="text-[9px] text-text-tertiary uppercase font-bold">3M/10Y Spread</span>
                     <span className={`text-[10px] font-mono font-bold ${yieldCurve.spread < 0 ? 'text-negative' : 'text-positive'}`}>
                       {(yieldCurve.spread * 100).toFixed(1)} bps
                     </span>
@@ -190,22 +185,22 @@ export default function TerminalPage() {
             <Widget title="SMC / ICT Levels">
               <div className="p-2 space-y-3 h-full overflow-y-auto custom-scrollbar">
                 <div className="space-y-1">
-                  <div className="text-[8px] text-text-tertiary uppercase font-bold">Order Blocks</div>
-                  {insight?.levels.orderBlocks.map((ob, i) => (
+                  <div className="text-[8px] text-text-tertiary uppercase font-bold">Order Blocks (Live)</div>
+                  {insight?.levels.orderBlocks.length ? insight.levels.orderBlocks.map((ob, i) => (
                     <div key={i} className={`flex justify-between items-center p-1 rounded-sm border ${ob.type === 'Bullish' ? 'bg-positive/5 border-positive/20 text-positive' : 'bg-negative/5 border-negative/20 text-negative'}`}>
                       <span className="text-[9px] font-bold">{ob.type} OB</span>
                       <span className="text-[10px] font-mono">{ob.price.toFixed(2)}</span>
                     </div>
-                  ))}
+                  )) : <div className="text-[8px] text-text-tertiary italic">Scanning for OBs...</div>}
                 </div>
                 <div className="space-y-1">
-                  <div className="text-[8px] text-text-tertiary uppercase font-bold">Fair Value Gaps</div>
-                  {insight?.levels.fvgs.map((fvg, i) => (
+                  <div className="text-[8px] text-text-tertiary uppercase font-bold">Fair Value Gaps (Live)</div>
+                  {insight?.levels.fvgs.length ? insight.levels.fvgs.map((fvg, i) => (
                     <div key={i} className="flex justify-between items-center p-1 rounded-sm border bg-warning/5 border-warning/20 text-warning">
-                      <span className="text-[9px] font-bold">FVG (15m)</span>
+                      <span className="text-[9px] font-bold">FVG (30D)</span>
                       <span className="text-[10px] font-mono">{fvg.bottom.toFixed(2)} - {fvg.top.toFixed(2)}</span>
                     </div>
-                  ))}
+                  )) : <div className="text-[8px] text-text-tertiary italic">Scanning for FVGs...</div>}
                 </div>
               </div>
             </Widget>
@@ -229,7 +224,9 @@ export default function TerminalPage() {
                 </div>
                 <div className="bg-surface-highlight/30 p-2 border border-border/50 rounded-sm">
                   <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">DXY Correlation</div>
-                  <div className="text-xs font-mono font-bold text-text-primary">-0.85 (Strong Inverse)</div>
+                  <div className="text-xs font-mono font-bold text-text-primary">
+                    {marketData['DX-Y.NYB'] ? (marketData['DX-Y.NYB'].changePercent > 0 ? 'Inverse Pressure' : 'Risk-On Tailwinds') : 'Syncing...'}
+                  </div>
                 </div>
               </div>
             </Widget>
