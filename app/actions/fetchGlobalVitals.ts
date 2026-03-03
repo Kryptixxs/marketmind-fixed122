@@ -13,7 +13,13 @@ export interface GlobalVitals {
 export async function fetchGlobalVitals(): Promise<GlobalVitals> {
   try {
     const symbols = ['^VIX', 'DX-Y.NYB', '^TNX'];
-    const quotes = await yahooFinance.quote(symbols);
+    const quotes = await yahooFinance.quote(symbols, {}, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
+    });
+
+    if (!Array.isArray(quotes)) return { liquidityLabel: "---", stale: true };
 
     const vixQuote = quotes.find(q => q.symbol === '^VIX');
     const dxyQuote = quotes.find(q => q.symbol === 'DX-Y.NYB');
@@ -25,21 +31,21 @@ export async function fetchGlobalVitals(): Promise<GlobalVitals> {
 
     let stale = false;
 
-    // Validation
-    if (vix !== undefined && (vix < 5 || vix > 120)) {
+    // Validation with wider ranges to ensure data isn't filtered out unnecessarily
+    if (vix !== undefined && (vix < 1 || vix > 200)) {
       vix = undefined;
       stale = true;
     }
-    if (dxy !== undefined && (dxy < 50 || dxy > 150)) {
+    if (dxy !== undefined && (dxy < 30 || dxy > 200)) {
       dxy = undefined;
       stale = true;
     }
-    if (us10y !== undefined && (us10y < 0 || us10y > 20)) {
+    if (us10y !== undefined && (us10y < -1 || us10y > 30)) {
       us10y = undefined;
       stale = true;
     }
 
-    if (!vix || !dxy || !us10y) stale = true;
+    if (vix === undefined || dxy === undefined || us10y === undefined) stale = true;
 
     // Liquidity Logic
     let liquidityLabel: GlobalVitals['liquidityLabel'] = "---";
