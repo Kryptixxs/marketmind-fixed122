@@ -27,11 +27,20 @@ const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
 const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX', '^IRX'];
 const ALL_SYMBOLS = [...WATCHLIST_SYMBOLS, ...MACRO_SYMBOLS];
 
+const TIMEFRAMES = [
+  { label: '1M', yf: '1m', tv: '1' },
+  { label: '5M', yf: '5m', tv: '5' },
+  { label: '15M', yf: '15m', tv: '15' },
+  { label: '1H', yf: '60m', tv: '60' },
+  { label: '1D', yf: '1d', tv: 'D' },
+];
+
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("^NDX");
+  const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]); // Default 15M
   
-  // Real Data Pipeline
-  const { data: marketData } = useMarketData(ALL_SYMBOLS);
+  // Dynamic Pipeline: Passes the selected timeframe to fetch the correct candles
+  const { data: marketData } = useMarketData(ALL_SYMBOLS, timeframe.yf);
 
   useEffect(() => {
     const handleSymbolChange = (e: any) => {
@@ -51,7 +60,6 @@ export default function TerminalPage() {
     <div className="h-full w-full bg-background overflow-hidden flex flex-col">
       <TerminalCommandBar />
 
-      {/* Maximized CSS Grid for Zero Wasted Space */}
       <div className="flex-1 w-full min-h-0 p-0.5 grid grid-cols-12 grid-rows-12 gap-0.5">
         
         {/* --- LEFT COLUMN --- */}
@@ -91,7 +99,7 @@ export default function TerminalPage() {
           </div>
           
           <div className="h-[40%] min-h-0">
-            <Widget title="Cross-Asset Correlation">
+            <Widget title={`Cross-Asset Correlation (${timeframe.label})`}>
               {activeQuote ? (
                 <CorrelationMatrix activeTick={activeQuote} marketData={marketData} />
               ) : (
@@ -107,14 +115,26 @@ export default function TerminalPage() {
             <Widget 
               title={`${activeSymbol} • ${SYMBOL_MAP[activeSymbol]?.label || ''}`} 
               actions={
-                <div className="flex items-center gap-2 text-[8px]">
-                  <span className="text-positive flex items-center gap-1"><Wifi size={8}/> Live</span>
-                  <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase font-mono">{activeQuote?.marketState || 'REGULAR'}</span>
+                <div className="flex items-center gap-2">
+                  {/* Timeframe Selector UI */}
+                  <div className="flex items-center gap-1 bg-background border border-border rounded-sm p-0.5 mr-2">
+                     {TIMEFRAMES.map(tf => (
+                       <button
+                         key={tf.label}
+                         onClick={() => setTimeframe(tf)}
+                         className={`px-1.5 py-0.5 text-[9px] font-bold rounded-sm transition-colors ${timeframe.label === tf.label ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
+                       >
+                         {tf.label}
+                       </button>
+                     ))}
+                  </div>
+                  <span className="text-positive flex items-center gap-1 text-[8px]"><Wifi size={8}/> Live</span>
+                  <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase font-mono text-[8px]">{activeQuote?.marketState || 'REGULAR'}</span>
                 </div>
               }
             >
               <div className="w-full h-full bg-black">
-                <TradingViewChart symbol={activeTV} />
+                <TradingViewChart symbol={activeTV} interval={timeframe.tv} />
               </div>
             </Widget>
           </div>
@@ -122,12 +142,12 @@ export default function TerminalPage() {
           <div className="h-[30%] min-h-0 flex gap-0.5">
             <div className="w-1/2 h-full">
               <Widget title="ICT Structure Engine">
-                <ICTPanel tick={activeQuote} />
+                <ICTPanel tick={activeQuote} timeframeLabel={timeframe.label} />
               </Widget>
             </div>
             <div className="w-1/2 h-full">
-              <Widget title={`Terminal Confluences`}>
-                <ConfluenceScanner symbol={activeSymbol} />
+              <Widget title="Terminal Confluences">
+                <ConfluenceScanner symbol={activeSymbol} timeframeLabel={timeframe.label} />
               </Widget>
             </div>
           </div>

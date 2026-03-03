@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { Target, Activity, AlertTriangle, ArrowUpRight, ArrowDownRight, Crosshair, Zap } from 'lucide-react';
+import { Target, AlertTriangle, ArrowUpRight, ArrowDownRight, Crosshair, Zap } from 'lucide-react';
 import { Tick } from '@/lib/marketdata/types';
 
-export function ICTPanel({ tick }: { tick?: Tick }) {
+export function ICTPanel({ tick, timeframeLabel = '15m' }: { tick?: Tick, timeframeLabel?: string }) {
   const data = useMemo(() => {
     if (!tick || !tick.history || tick.history.length < 15) return null;
 
@@ -67,26 +67,22 @@ export function ICTPanel({ tick }: { tick?: Tick }) {
     };
   }, [tick]);
 
-  if (!data) return <div className="flex h-full items-center justify-center opacity-50 text-[10px] uppercase font-bold tracking-widest text-text-tertiary">Awaiting Intraday Data</div>;
+  if (!data) return <div className="flex h-full items-center justify-center opacity-50 text-[10px] uppercase font-bold tracking-widest text-text-tertiary">Awaiting Data</div>;
 
   return (
     <div className="p-2 h-full flex flex-col gap-2 relative">
-      {/* Top Header */}
       <div className="flex items-center justify-between mb-1 shrink-0">
         <div className="text-[8px] text-text-tertiary uppercase font-bold tracking-widest flex items-center gap-1.5">
-          <Target size={10} /> Smart Money Concepts (15m)
+          <Target size={10} /> SMC Arrays ({timeframeLabel})
         </div>
       </div>
 
-      {/* Main Bias Indicator */}
       <div className="bg-surface-highlight border border-border p-3 rounded-sm flex flex-col items-center justify-center text-center">
         <span className="text-[9px] text-text-tertiary uppercase font-bold mb-1">Execution Bias</span>
         <span className={`text-xl font-black tracking-tighter ${data.biasColor}`}>{data.algoBias}</span>
       </div>
       
       <div className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar">
-        
-        {/* Liquidity Targets */}
         <div className="grid grid-cols-2 gap-1">
           <div className="bg-surface-highlight/30 border border-border/50 p-2 rounded-sm flex flex-col">
             <span className="text-[8px] text-text-tertiary uppercase font-bold flex items-center gap-1"><ArrowUpRight size={8}/> Buy-Side Liq (BSL)</span>
@@ -100,9 +96,8 @@ export function ICTPanel({ tick }: { tick?: Tick }) {
           </div>
         </div>
 
-        {/* Sweeps & Structure */}
         <div className="bg-surface-highlight/30 border border-border/50 p-2 rounded-sm flex items-center justify-between">
-          <span className="text-[9px] text-text-tertiary uppercase font-bold">Structure Array</span>
+          <span className="text-[9px] text-text-tertiary uppercase font-bold">Structure ({timeframeLabel})</span>
           <span className={`text-[9px] font-mono font-bold ${data.isDiscount ? 'text-positive' : 'text-negative'}`}>
             {data.structure} • {data.isDiscount ? 'DISCOUNT' : 'PREMIUM'}
           </span>
@@ -115,7 +110,6 @@ export function ICTPanel({ tick }: { tick?: Tick }) {
           </div>
         )}
 
-        {/* Nearest FVGs */}
         <div className="bg-surface-highlight/30 border border-border/50 p-2 rounded-sm flex flex-col gap-1.5">
           <span className="text-[9px] text-text-tertiary uppercase font-bold flex items-center gap-1">
             <Crosshair size={10} /> Nearest Active FVGs
@@ -139,4 +133,3 @@ export function ICTPanel({ tick }: { tick?: Tick }) {
     </div>
   );
 }
-</power-write>

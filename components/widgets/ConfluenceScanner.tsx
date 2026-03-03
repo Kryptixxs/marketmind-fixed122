@@ -6,10 +6,11 @@ import { ConfluenceEngine } from '@/lib/confluence/engine';
 import { ConfluenceResult } from '@/lib/confluence/types';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 
-export function ConfluenceScanner({ symbol }: { symbol: string }) {
+export function ConfluenceScanner({ symbol, timeframeLabel = '15m' }: { symbol: string, timeframeLabel?: string }) {
   const [bullish, setBullish] = useState<ConfluenceResult[]>([]);
   const [bearish, setBearish] = useState<ConfluenceResult[]>([]);
   
+  // Note: the hook at the app/page level handles interval, we just consume the data
   const { data } = useMarketData([symbol]);
   const tick = data[symbol];
 
@@ -18,7 +19,7 @@ export function ConfluenceScanner({ symbol }: { symbol: string }) {
 
     const engine = new ConfluenceEngine({
       symbol,
-      interval: '15m',
+      interval: timeframeLabel, // Inform engine of interval
       quotes: tick.history
     });
     
@@ -35,18 +36,17 @@ export function ConfluenceScanner({ symbol }: { symbol: string }) {
       } else if (str.match(/bullish|support|demand|oversold|golden cross|accumulation|long|low|bottom|up|buy|above|expansion/)) {
         bulls.push(res);
       } else {
-        // Default tie-breaker based on current price vs 20 SMA
         bulls.push(res); 
       }
     });
 
     setBullish(bulls.sort((a, b) => b.score - a.score));
     setBearish(bears.sort((a, b) => b.score - a.score));
-  }, [tick]);
+  }, [tick, timeframeLabel]);
 
   const loading = !tick || !tick.history || tick.history.length < 50;
 
-  if (loading) return <div className="flex flex-col items-center justify-center h-full text-text-tertiary gap-2"><Loader2 size={14} className="animate-spin text-accent" /><span className="text-[10px] font-bold tracking-widest uppercase">Computing 15m Confluences...</span></div>;
+  if (loading) return <div className="flex flex-col items-center justify-center h-full text-text-tertiary gap-2"><Loader2 size={14} className="animate-spin text-accent" /><span className="text-[10px] font-bold tracking-widest uppercase">Computing Confluences...</span></div>;
 
   const totalScore = bullish.length + bearish.length;
   const bullPct = totalScore > 0 ? (bullish.length / totalScore) * 100 : 50;
@@ -54,19 +54,17 @@ export function ConfluenceScanner({ symbol }: { symbol: string }) {
   return (
     <div className="p-2 h-full flex flex-col gap-2">
       <div className="flex items-center justify-between shrink-0 mb-2">
-        <div className="text-[8px] text-text-tertiary uppercase font-bold">15m Confluence Matrix</div>
+        <div className="text-[8px] text-text-tertiary uppercase font-bold">{timeframeLabel} Confluence Matrix</div>
         <span className="text-[9px] text-text-secondary font-mono font-bold">
           <span className="text-positive">{bullish.length}</span> vs <span className="text-negative">{bearish.length}</span>
         </span>
       </div>
 
-      {/* Tug of War Gauge */}
       <div className="w-full h-1.5 bg-surface-highlight rounded-full overflow-hidden flex mb-2 shrink-0">
         <div className="h-full bg-positive transition-all duration-500" style={{ width: `${bullPct}%` }} />
         <div className="h-full bg-negative transition-all duration-500" style={{ width: `${100 - bullPct}%` }} />
       </div>
       
-      {/* Two Column Layout for Bull vs Bear */}
       <div className="flex-1 grid grid-cols-2 gap-2 min-h-0">
         {/* BULLISH COLUMN */}
         <div className="flex flex-col overflow-y-auto custom-scrollbar pr-1 gap-1">

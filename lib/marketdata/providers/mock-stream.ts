@@ -24,6 +24,10 @@ export class MockStreamingProvider extends BaseProvider {
     });
   }
 
+  protected onIntervalChange(interval: string) {
+    // Mock doesn't care about intervals for fake ticks
+  }
+
   private simulateConnection() {
     setTimeout(() => {
       this.isConnected = true;

@@ -22,6 +22,11 @@ export class YahooPollingProvider extends BaseProvider {
     this.triggerPoll(symbols);
   }
 
+  protected onIntervalChange(interval: string) {
+    // Re-fetch immediately with new interval
+    this.triggerPoll(Array.from(this.symbols));
+  }
+
   private startPolling() {
     if (!this.intervalId) {
       this.intervalId = setInterval(() => this.triggerPoll(Array.from(this.symbols)), this.pollIntervalMs);
@@ -39,7 +44,7 @@ export class YahooPollingProvider extends BaseProvider {
     if (symbolsToFetch.length === 0) return;
 
     try {
-      const promises = symbolsToFetch.map(sym => fetchMarketData(sym));
+      const promises = symbolsToFetch.map(sym => fetchMarketData(sym, this.currentInterval));
       const results = await Promise.allSettled(promises);
 
       results.forEach((res) => {

@@ -4,15 +4,22 @@ import { useState, useEffect, useRef } from 'react';
 import { Tick } from './types';
 import { getProvider } from './index';
 
-export function useMarketData(symbols: string[]) {
+export function useMarketData(symbols: string[], interval: string = '15m') {
   const [data, setData] = useState<Record<string, Tick>>({});
   const [error, setError] = useState<string | null>(null);
   const subId = useRef(Math.random().toString(36).substring(7)).current;
+  const provider = getProvider();
+
+  // Sync interval to provider
+  useEffect(() => {
+    if (provider.setInterval) {
+      provider.setInterval(interval);
+    }
+  }, [interval, provider]);
 
   useEffect(() => {
     if (symbols.length === 0) return;
 
-    const provider = getProvider();
     let tickBuffer: Record<string, Tick> = {};
     let animationFrameId: number;
 

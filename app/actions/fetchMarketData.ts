@@ -18,17 +18,28 @@ export interface MarketData {
   name?: string;
 }
 
-export async function fetchMarketData(symbol: string): Promise<MarketData | null> {
+export async function fetchMarketData(symbol: string, interval: string = '15m'): Promise<MarketData | null> {
   if (!symbol) return null;
+
+  // Determine lookback period based on interval to ensure we get enough candles for math
+  let days = 10;
+  let yfInterval: any = '15m';
+
+  switch(interval) {
+    case '1m': days = 2; yfInterval = '1m'; break;
+    case '5m': days = 5; yfInterval = '5m'; break;
+    case '15m': days = 10; yfInterval = '15m'; break;
+    case '60m': days = 30; yfInterval = '60m'; break;
+    case '1d': days = 300; yfInterval = '1d'; break;
+    default: days = 10; yfInterval = '15m'; break;
+  }
 
   try {
     const quotePromise = yahooFinance.quote(symbol);
     
-    // DAY TRADER FOCUS: Fetching 15m intraday data over the last 5 days
-    // This feeds the ICT and Confluence engines with fast, actionable tick data
     const historyPromise = yahooFinance.chart(symbol, { 
-      period1: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // Last 5 days
-      interval: '15m' 
+      period1: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+      interval: yfInterval 
     }).catch(() => null);
 
     const [quote, chartData] = await Promise.all([quotePromise, historyPromise]);

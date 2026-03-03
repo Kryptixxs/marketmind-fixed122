@@ -29,4 +29,5 @@ export interface MarketDataProvider {
   disconnect(config: ProviderConfig): void;
   subscribe(symbols: string[]): void;
   unsubscribe(symbols: string[]): void;
+  setInterval?(interval: string): void;
 }

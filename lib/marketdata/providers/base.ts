@@ -3,6 +3,7 @@ import { MarketDataProvider, ProviderConfig, Tick } from '../types';
 export abstract class BaseProvider implements MarketDataProvider {
   protected symbols: Set<string> = new Set();
   protected listeners: Set<ProviderConfig> = new Set();
+  protected currentInterval: string = '15m';
 
   connect(config: ProviderConfig) {
     this.listeners.add(config);
@@ -24,8 +25,14 @@ export abstract class BaseProvider implements MarketDataProvider {
   }
 
   unsubscribe(symbols: string[]) {
-    // In a real app, you'd refcount subscriptions per symbol.
-    // For this implementation, we keep them active while the provider is connected.
+    // Keep active while provider is connected for simplicity
+  }
+
+  setInterval(interval: string) {
+    if (this.currentInterval !== interval) {
+      this.currentInterval = interval;
+      this.onIntervalChange(interval);
+    }
   }
 
   protected emitTick(tick: Tick) {
@@ -39,4 +46,5 @@ export abstract class BaseProvider implements MarketDataProvider {
   protected abstract onConnect(): void;
   protected abstract onDisconnect(): void;
   protected abstract onSubscribe(symbols: string[]): void;
+  protected abstract onIntervalChange(interval: string): void;
 }
