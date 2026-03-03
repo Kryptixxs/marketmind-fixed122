@@ -20,14 +20,22 @@ const TOOLS = [
     color: "text-orange-400",
     bg: "bg-orange-400/10"
   },
+  {
+    title: "Options Profit Calc",
+    desc: "Visualizer and payoff calculator for basic options strategies.",
+    icon: Percent,
+    href: "/tools/options",
+    color: "text-green-400",
+    bg: "bg-green-400/10"
+  },
 ];
 
 export default function ToolsPage() {
   return (
-    <div className="flex-1 p-6 bg-background overflow-y-auto">
+    <div className="flex-1 p-6 bg-background overflow-y-auto custom-scrollbar">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center gap-3 mb-8">
-           <div className="w-10 h-10 rounded-lg bg-surface border border-border flex items-center justify-center">
+           <div className="w-10 h-10 rounded-sm bg-surface border border-border flex items-center justify-center">
              <Calculator size={20} className="text-text-primary" />
            </div>
            <div>
@@ -41,10 +49,10 @@ export default function ToolsPage() {
             <Link 
               key={tool.href}
               href={tool.href}
-              className="group glass-card p-6 hover:border-accent/50 transition-all hover:shadow-xl hover:-translate-y-1"
+              className="group bg-surface border border-border p-6 rounded-sm hover:border-accent/50 transition-all hover:bg-surface-highlight"
             >
               <div className="flex justify-between items-start mb-4">
-                <div className={`w-10 h-10 rounded-lg ${tool.bg} flex items-center justify-center`}>
+                <div className={`w-10 h-10 rounded-sm ${tool.bg} flex items-center justify-center`}>
                   <tool.icon size={20} className={tool.color} />
                 </div>
                 <ArrowUpRight size={16} className="text-text-tertiary group-hover:text-accent transition-colors" />
@@ -58,16 +66,6 @@ export default function ToolsPage() {
               </p>
             </Link>
           ))}
-          
-          {/* Coming Soon Card */}
-          <div className="glass-card p-6 border-dashed border-border opacity-60">
-             <div className="w-10 h-10 rounded-lg bg-surface border border-border flex items-center justify-center mb-4">
-               <Percent size={20} className="text-text-tertiary" />
-             </div>
-             <h3 className="text-lg font-bold text-text-secondary mb-2">Options Profit Calc</h3>
-             <p className="text-sm text-text-tertiary">Visualizer for multi-leg option strategies.</p>
-             <span className="inline-block mt-4 px-2 py-1 bg-surface rounded text-[10px] font-bold uppercase text-text-tertiary">Coming Soon</span>
-          </div>
         </div>
       </div>
     </div>

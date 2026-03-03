@@ -3,15 +3,24 @@
 import { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { SettingsModal } from './SettingsModal';
+import { LayoutSettingsModal } from './LayoutSettingsModal';
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isLayoutOpen, setIsLayoutOpen] = useState(false);
 
   useEffect(() => {
-    // Listen for custom event emitted by Command Palette
+    // Listen for custom events
     const handleOpenSettings = () => setIsSettingsOpen(true);
+    const handleOpenLayout = () => setIsLayoutOpen(true);
+    
     window.addEventListener('vantage-open-settings', handleOpenSettings);
-    return () => window.removeEventListener('vantage-open-settings', handleOpenSettings);
+    window.addEventListener('vantage-open-layout', handleOpenLayout);
+    
+    return () => {
+      window.removeEventListener('vantage-open-settings', handleOpenSettings);
+      window.removeEventListener('vantage-open-layout', handleOpenLayout);
+    };
   }, []);
 
   return (
@@ -21,6 +30,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <LayoutSettingsModal isOpen={isLayoutOpen} onClose={() => setIsLayoutOpen(false)} />
     </>
   );
 }
