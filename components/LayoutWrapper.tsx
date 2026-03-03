@@ -1,11 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { SettingsModal } from './SettingsModal';
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    // Listen for custom event emitted by Command Palette
+    const handleOpenSettings = () => setIsSettingsOpen(true);
+    window.addEventListener('vantage-open-settings', handleOpenSettings);
+    return () => window.removeEventListener('vantage-open-settings', handleOpenSettings);
+  }, []);
 
   return (
     <>
