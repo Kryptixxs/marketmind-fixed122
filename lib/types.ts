@@ -11,36 +11,8 @@ export interface EconomicEvent {
   actual: string | null;
   forecast: string | null;
   previous: string | null;
-  surprise?: number | null;
+  surprise?: number | null; // Calculated % diff
   timestamp: number;
-}
-
-export interface EventAIIntelligence {
-  summary: string;
-  whyItMatters: string[];
-  marketLogic: string;
-  volatility: 'Low' | 'Moderate' | 'High' | 'Extreme';
-  macroImpact: number;
-  riskLevel: 'Standard' | 'Elevated' | 'Critical';
-  surpriseThresholdPct: number;
-  scenarios: {
-    name: 'Beat' | 'Inline' | 'Miss';
-    probability: number;
-    reaction: string;
-  }[];
-  impactedAssets: {
-    symbol: string;
-    direction: 'UP' | 'DOWN' | 'MIXED';
-    weight: number;
-    note: string;
-  }[];
-  tradeSetups: {
-    setup: string;
-    trigger: string;
-    risk: string;
-  }[];
-  confidence: number;
-  stale?: boolean;
 }
 
 export interface EarningsEvent {
@@ -48,14 +20,14 @@ export interface EarningsEvent {
   ticker: string;
   name: string;
   date: string;
-  time: 'bmo' | 'amc' | 'tbd';
+  time: 'bmo' | 'amc' | 'tbd'; // Before Market Open, After Market Close
   epsEst: number | null;
   epsAct: number | null;
-  revEst: number | null;
+  revEst: number | null; // In Billions
   revAct: number | null;
   surprise: number | null;
   sector: string;
-  marketCap: string;
+  marketCap: string; // e.g. "2.4T"
 }
 
 export interface NewsArticle {
@@ -66,4 +38,14 @@ export interface NewsArticle {
   publishedAt: number;
   sentiment: 'Bullish' | 'Bearish' | 'Neutral';
   symbols: string[];
+}
+
+export interface UserSettings {
+  theme: 'dark' | 'light';
+  notifications: boolean;
+  filters: {
+    minImpact: Impact;
+    countries: string[];
+    sectors: string[];
+  };
 }

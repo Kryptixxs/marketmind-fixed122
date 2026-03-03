@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
+import { fetchMarketData } from '@/app/actions/fetchMarketData';
 import { cn } from '@/lib/utils';
-import { useMarketData } from '@/lib/marketdata/useMarketData';
 
 const NON_USD_SYMBOLS = new Set([
   'EURUSD=X', 'GBPUSD=X', 'JPY=X', 'AUDUSD=X', 'CAD=X', 'CHF=X', 'DX-Y.NYB',
@@ -30,30 +30,48 @@ export function MiniChart({
   symbol: string;
   isCrypto?: boolean;
 }) {
-  const { data } = useMarketData([symbol]);
-  const tick = data[symbol];
-
+  const [price, setPrice] = useState<string | null>(null);
+  const [change, setChange] = useState<string | null>(null);
+  const [isPositive, setIsPositive] = useState(true);
+  const [history, setHistory] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [marketState, setMarketState] = useState('REGULAR');
   const [flash, setFlash] = useState(false);
-  const prevPrice = useRef<number | null>(null);
+  const prevPrice = useRef<string | null>(null);
+  const mountedRef = useRef(true);
   const idSafe = symbol.replace(/[^a-z0-9]/gi, '');
 
   useEffect(() => {
-    if (tick && prevPrice.current !== null && prevPrice.current !== tick.price) {
-      setFlash(true);
-      const timer = setTimeout(() => setFlash(false), 300);
-      return () => clearTimeout(timer);
-    }
-    if (tick) {
-      prevPrice.current = tick.price;
-    }
-  }, [tick?.price]);
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
-  const loading = !tick;
-  const priceStr = tick ? formatPrice(tick.price, symbol, isCrypto ?? false) : null;
-  const isPositive = tick ? tick.changePercent >= 0 : true;
-  const changeStr = tick ? Math.abs(tick.changePercent).toFixed(2) + '%' : null;
-  const history = tick?.history || [];
-  const marketState = tick?.marketState || 'REGULAR';
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const data = await fetchMarketData(symbol);
+        if (!mountedRef.current || !data) return;
+        const newPrice = formatPrice(data.price, symbol, isCrypto ?? false);
+        if (prevPrice.current && prevPrice.current !== newPrice) {
+          setFlash(true);
+          setTimeout(() => setFlash(false), 450);
+        }
+        prevPrice.current = newPrice;
+        setPrice(newPrice);
+        setChange(Math.abs(data.changePercent).toFixed(2) + '%');
+        setIsPositive(data.changePercent >= 0);
+        setHistory(data.history);
+        setMarketState(data.marketState);
+      } catch (e) {
+        console.error('MiniChart error', e);
+      } finally {
+        if (mountedRef.current) setLoading(false);
+      }
+    };
+    loadData();
+    const interval = setInterval(loadData, 60000);
+    return () => clearInterval(interval);
+  }, [symbol, isCrypto]);
 
   // SVG sparkline
   // Normalize history to 0-1 range

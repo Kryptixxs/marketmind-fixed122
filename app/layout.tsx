@@ -1,20 +1,19 @@
-"use client";
-
 import type { Metadata } from "next";
 import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { CommandPalette } from "@/components/CommandPalette";
-import { NotificationToast } from "@/components/NotificationToast";
-import { useTauriUpdater } from "@/hooks/use-tauri-updater";
+
+export const metadata: Metadata = {
+  title: "VANTAGE TERMINAL // v4.0",
+  description: "Institutional Intelligence",
+};
 
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  useTauriUpdater();
-
   return (
     <html lang="en">
       <body className="flex h-screen w-screen overflow-hidden bg-background text-text-primary antialiased">
@@ -24,7 +23,6 @@ export default function RootLayout({
             {children}
           </main>
           <CommandPalette />
-          <NotificationToast />
         </SettingsProvider>
       </body>
     </html>

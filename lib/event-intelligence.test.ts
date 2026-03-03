@@ -1,49 +1,29 @@
-import { getEventIntel, computeSurprise } from './event-intelligence';
-import { EconomicEvent } from './types';
-
-const mockEvent = (overrides: Partial<EconomicEvent>): EconomicEvent => ({
-  id: 'test',
-  date: '2024-01-01',
-  time: '08:30',
-  country: 'US',
-  currency: 'USD',
-  impact: 'High',
-  title: 'Test Event',
-  actual: null,
-  forecast: null,
-  previous: null,
-  timestamp: 0,
-  ...overrides
-});
+import { getEventIntel } from './event-intelligence';
 
 describe('Event Intelligence Rules Engine', () => {
-  test('identifies CPI correctly with hawkish polarity', () => {
-    const event = mockEvent({ title: 'Core CPI (MoM)' });
-    const intel = getEventIntel(event);
-    expect(intel.hawkishWhenHigher).toBe(true);
-    
-    const res = computeSurprise({ actual: '0.5%', forecast: '0.3%' }, intel);
-    expect(res.direction).toBe('ABOVE');
-    expect(res.interpretation).toBe('HAWKISH');
+  test('identifies Nonfarm Payrolls correctly', () => {
+    const intel = getEventIntel('Nonfarm Payrolls (Feb)', 'USD', 'High');
+    expect(intel.importanceScore).toBe(10);
+    expect(intel.volatility).toBe('Extreme');
+    expect(intel.impactedAssets).toContainEqual(expect.objectContaining({ symbol: 'DXY' }));
   });
 
-  test('identifies Jobless Claims correctly with bearish polarity', () => {
-    const event = mockEvent({ title: 'Initial Jobless Claims' });
-    const intel = getEventIntel(event);
-    expect(intel.goodWhenHigher).toBe(false);
-    
-    const res = computeSurprise({ actual: '250k', forecast: '200k' }, intel);
-    expect(res.direction).toBe('ABOVE');
-    expect(res.interpretation).toBe('BEARISH_RISK');
+  test('identifies CPI correctly', () => {
+    const intel = getEventIntel('Core CPI (MoM)', 'USD', 'High');
+    expect(intel.importanceScore).toBe(10);
+    expect(intel.volatility).toBe('High');
   });
 
-  test('identifies Nonfarm Payrolls correctly with bullish polarity', () => {
-    const event = mockEvent({ title: 'Nonfarm Payrolls' });
-    const intel = getEventIntel(event);
-    expect(intel.goodWhenHigher).toBe(true);
-    
-    const res = computeSurprise({ actual: '300k', forecast: '200k' }, intel);
-    expect(res.direction).toBe('ABOVE');
-    expect(res.interpretation).toBe('BULLISH_RISK');
+  test('provides fallback for unknown events', () => {
+    const intel = getEventIntel('Random Economic Data', 'EUR', 'Low');
+    expect(intel.importanceScore).toBe(3);
+    expect(intel.volatility).toBe('Moderate');
+    expect(intel.impactedAssets[0].symbol).toBe('EUR');
+  });
+
+  test('respects API impact level for fallbacks', () => {
+    const intel = getEventIntel('Unknown High Impact', 'GBP', 'High');
+    expect(intel.importanceScore).toBe(9);
+    expect(intel.volatility).toBe('High');
   });
 });

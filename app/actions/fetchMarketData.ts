@@ -1,17 +1,14 @@
 'use server';
 
-import yahooFinance from 'yahoo-finance2';
-import { resolveYahooSymbol } from '@/lib/instruments';
+import YahooFinance from 'yahoo-finance2';
 
-// Configure yahoo-finance2 globally for server actions
-yahooFinance.setGlobalConfig({
-  queue: { concurrency: 4 },
-  validation: { logErrors: false }
+const yahooFinance = new YahooFinance({ 
+  suppressNotices: ['yahooSurvey', 'ripHistorical'],
+  // Add a queue or delay if needed in a real high-volume app
 });
 
 export interface MarketData {
-  id: string;
-  yahooSymbol: string;
+  symbol: string;
   price: number;
   change: number;
   changePercent: number;
@@ -19,49 +16,46 @@ export interface MarketData {
   marketState: string;
   history: number[];
   name?: string;
-  timestamp: number;
-  stale: boolean;
-  source: 'YAHOO' | 'SIMULATED';
 }
 
-export async function fetchMarketData(instrumentId: string): Promise<MarketData | null> {
-  if (!instrumentId) return null;
-  const symbol = resolveYahooSymbol(instrumentId);
+export async function fetchMarketData(symbol: string): Promise<MarketData | null> {
+  if (!symbol) return null;
 
   try {
-    // Use a standard browser user-agent to avoid blocks
-    const quote = await yahooFinance.quote(symbol, {}, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-      }
-    });
+    const quotePromise = yahooFinance.quote(symbol);
+    
+    // We only need history for the sparkline, don't fail the whole request if this fails
+    const historyPromise = yahooFinance.chart(symbol, { 
+      period1: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days
+      interval: '1d' 
+    }).catch(() => null);
+
+    const [quote, chartData] = await Promise.all([quotePromise, historyPromise]);
     
     if (!quote) return null;
 
-    // Handle potential array response (though usually single object for string input)
-    const q = Array.isArray(quote) ? quote[0] : quote;
-    if (!q) return null;
-
-    // Validate change percent
-    let cp = q.regularMarketChangePercent || 0;
+    let history: number[] = [];
+    if (chartData?.quotes && Array.isArray(chartData.quotes)) {
+      history = chartData.quotes
+        .slice(-20) // Last 20 days for sparkline
+        .map((q: any) => q.close)
+        .filter((c: any) => typeof c === 'number');
+    }
     
-    if (Math.abs(cp) < 0.0001 && Math.abs(q.regularMarketChange || 0) > 0.01) {
-       cp = ((q.regularMarketChange || 0) / (q.regularMarketPreviousClose || 1)) * 100;
+    // Fill gaps if history is empty
+    if (history.length === 0 && quote.regularMarketPrice) {
+      history = [quote.regularMarketPrice, quote.regularMarketPrice];
     }
 
     return {
-      id: instrumentId,
-      yahooSymbol: symbol,
-      name: q.shortName || q.longName || instrumentId,
-      price: q.regularMarketPrice || 0,
-      change: q.regularMarketChange || 0,
-      changePercent: cp,
-      currency: q.currency || 'USD',
-      marketState: q.marketState || 'REGULAR',
-      history: [], 
-      timestamp: Date.now(),
-      stale: false,
-      source: 'YAHOO'
+      symbol,
+      name: quote.shortName || quote.longName || symbol,
+      price: quote.regularMarketPrice || 0,
+      change: quote.regularMarketChange || 0,
+      changePercent: quote.regularMarketChangePercent || 0,
+      currency: quote.currency || 'USD',
+      marketState: quote.marketState || 'REGULAR',
+      history
     };
 
   } catch (error) {

@@ -1,27 +1,14 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { resolveTradingViewSymbol } from '@/lib/instruments';
-import { AlertCircle } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
 
-interface TradingViewChartProps {
-  instrumentId: string;
-  interval?: string;
-}
-
-export default function TradingViewChart({ instrumentId, interval = "5" }: TradingViewChartProps) {
+export default function TradingViewChart({ symbol }: { symbol: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  const tvSymbol = resolveTradingViewSymbol(instrumentId);
 
   useEffect(() => {
     if (!containerRef.current) return;
-    if (!tvSymbol) {
-      setError("Advanced feed unavailable for this instrument");
-      return;
-    }
 
-    setError(null);
+    // Clear previous widget
     containerRef.current.innerHTML = '';
 
     const script = document.createElement('script');
@@ -29,10 +16,11 @@ export default function TradingViewChart({ instrumentId, interval = "5" }: Tradi
     script.type = 'text/javascript';
     script.async = true;
     
+    // Configuration for the Pepperstone Advanced Chart
     const config = {
       "autosize": true,
-      "symbol": tvSymbol,
-      "interval": interval,
+      "symbol": symbol,
+      "interval": "5",
       "timezone": "Etc/UTC",
       "theme": "dark",
       "style": "1",
@@ -40,8 +28,8 @@ export default function TradingViewChart({ instrumentId, interval = "5" }: Tradi
       "backgroundColor": "#000000",
       "gridColor": "rgba(242, 242, 242, 0.06)",
       "hide_side_toolbar": true,
-      "allow_symbol_change": false,
-      "save_image": false,
+      "allow_symbol_change": true,
+      "save_image": true,
       "details": false,
       "calendar": false,
       "support_host": "https://www.tradingview.com"
@@ -55,19 +43,7 @@ export default function TradingViewChart({ instrumentId, interval = "5" }: Tradi
         containerRef.current.innerHTML = '';
       }
     };
-  }, [tvSymbol, interval]);
-
-  if (error) {
-    return (
-      <div className="h-full w-full flex flex-col items-center justify-center bg-black gap-3 p-4 text-center">
-        <AlertCircle size={24} className="text-warning opacity-50" />
-        <div className="space-y-1">
-          <p className="text-xs font-bold text-text-primary uppercase tracking-widest">{error}</p>
-          <p className="text-[10px] text-text-tertiary">Switch to Standard view for native OHLC data.</p>
-        </div>
-      </div>
-    );
-  }
+  }, [symbol]);
 
   return (
     <div className="tradingview-widget-container h-full w-full" ref={containerRef}>

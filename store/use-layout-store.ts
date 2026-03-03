@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
 interface LayoutState {
   isSidebarOpen: boolean;
@@ -8,16 +7,9 @@ interface LayoutState {
   setActiveWorkspace: (id: string) => void;
 }
 
-export const useLayoutStore = create<LayoutState>()(
-  persist(
-    (set) => ({
-      isSidebarOpen: true,
-      activeWorkspace: 'default',
-      toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
-      setActiveWorkspace: (id) => set({ activeWorkspace: id }),
-    }),
-    {
-      name: 'marketmind-layout-storage',
-    }
-  )
-);
+export const useLayoutStore = create<LayoutState>((set) => ({
+  isSidebarOpen: true,
+  activeWorkspace: 'default',
+  toggleSidebar: () => set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  setActiveWorkspace: (id) => set({ activeWorkspace: id }),
+}));

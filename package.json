@@ -7,15 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "clean": "next clean",
-    "tauri": "tauri"
+    "clean": "next clean"
   },
   "dependencies": {
     "@google/genai": "^1.17.0",
     "@hookform/resolvers": "^5.2.1",
-    "@tauri-apps/api": "^2.10.1",
-    "@tauri-apps/plugin-process": "^2.3.1",
-    "@tauri-apps/plugin-updater": "^2.10.0",
     "autoprefixer": "^10.4.21",
     "cheerio": "^1.2.0",
     "class-variance-authority": "^0.7.1",
@@ -39,7 +35,6 @@
   "devDependencies": {
     "@tailwindcss/postcss": "4.1.11",
     "@tailwindcss/typography": "^0.5.19",
-    "@tauri-apps/cli": "^2.1.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

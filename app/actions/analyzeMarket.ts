@@ -1,86 +1,59 @@
 'use server';
 
-import { Type } from "@google/genai";
-import { callGeminiJSON } from "./ai";
+import { GoogleGenAI, Type } from "@google/genai";
 
-export interface MarketAnalysis {
-  bias: 'Bullish' | 'Bearish' | 'Neutral';
-  confidence: number;
-  levels: {
-    support: number[];
-    resistance: number[];
-  };
-  regime: 'Trend' | 'Range' | 'Volatile';
-  thesis: string;
-  invalidation: string;
-  nextSteps: string[];
-  risks: string[];
-}
-
-export async function analyzeMarket(
-  symbol: string, 
-  label: string, 
-  price: number, 
-  changePercent: number,
-  technicalData: {
-    rsi: number;
-    maSlope: number;
-    volatility: number;
-    high52w: number;
-    low52w: number;
-  }
-) {
-  const system = `You are a senior institutional market strategist. 
-  Provide a grounded, data-driven technical analysis based on the provided metrics. 
-  Avoid generic advice. Focus on price structure, momentum, and risk levels.
-  Return a strict JSON response.`;
-
-  const user = `
-    Asset: ${label} (${symbol})
-    Current Price: ${price}
-    24h Change: ${changePercent}%
-    
-    Technical Inputs:
-    - RSI (14): ${technicalData.rsi.toFixed(2)}
-    - MA Slope (20d): ${technicalData.maSlope.toFixed(4)}
-    - Volatility (ATR Proxy): ${technicalData.volatility.toFixed(4)}
-    - 52-Week Range: ${technicalData.low52w} - ${technicalData.high52w}
-    
-    Analyze the current market regime and provide tactical levels.
-  `;
+export async function analyzeMarket(symbol: string, label: string, price: number, changePercent: number) {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
   
-  const schema = {
-    type: Type.OBJECT,
-    properties: {
-      bias: { type: Type.STRING, enum: ["Bullish", "Bearish", "Neutral"] },
-      confidence: { type: Type.NUMBER },
-      levels: {
-        type: Type.OBJECT,
-        properties: {
-          support: { type: Type.ARRAY, items: { type: Type.NUMBER } },
-          resistance: { type: Type.ARRAY, items: { type: Type.NUMBER } },
-        },
-        required: ["support", "resistance"]
-      },
-      regime: { type: Type.STRING, enum: ["Trend", "Range", "Volatile"] },
-      thesis: { type: Type.STRING },
-      invalidation: { type: Type.STRING },
-      nextSteps: { type: Type.ARRAY, items: { type: Type.STRING } },
-      risks: { type: Type.ARRAY, items: { type: Type.STRING } },
-    },
-    required: ["bias", "confidence", "levels", "regime", "thesis", "invalidation", "nextSteps", "risks"],
+  // Fallback data if API key is missing or call fails
+  const fallback = {
+    sentiment: changePercent >= 0 ? 'Bullish' : 'Bearish',
+    strength: Math.min(Math.abs(changePercent) * 15 + 40, 95),
+    analysis: `The market for ${label} is currently showing ${changePercent >= 0 ? 'positive' : 'negative'} momentum at ${price.toLocaleString()}. Technical indicators suggest a ${Math.abs(changePercent) > 1 ? 'strong' : 'moderate'} ${changePercent >= 0 ? 'uptrend' : 'downtrend'} in the current session.`
   };
+
+  if (!apiKey) {
+    return {
+      ...fallback,
+      analysis: "(Demo Mode) " + fallback.analysis
+    };
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
-    const { data } = await callGeminiJSON<MarketAnalysis>({
-      system,
-      user,
-      schema,
-      cacheKey: `market-intel-v2-${symbol}`
+    const result = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: `Analyze the current market state for ${label} (${symbol}). 
+      Current Price: ${price}
+      Daily Change: ${changePercent}%
+      
+      Provide:
+      1. A trend strength score from 0 to 100.
+      2. Market sentiment (Bullish, Bearish, or Neutral).
+      3. A 2-sentence technical analysis of the current price action.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            strength: { type: Type.NUMBER },
+            sentiment: { type: Type.STRING },
+            analysis: { type: Type.STRING },
+          },
+          required: ["strength", "sentiment", "analysis"],
+        },
+      },
     });
-    return data;
+
+    // The SDK returns the text directly in the response object for this version
+    if (result && result.text) {
+      return JSON.parse(result.text);
+    }
+    
+    return fallback;
   } catch (error) {
     console.error("Market analysis error:", error);
-    return null;
+    return fallback;
   }
 }
