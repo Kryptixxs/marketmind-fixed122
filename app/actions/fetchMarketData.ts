@@ -1,11 +1,10 @@
 'use server';
 
-import YahooFinance from 'yahoo-finance2';
+import yahooFinance from 'yahoo-finance2';
 import { OHLCV } from '@/lib/marketdata/types';
 
-const yahooFinance = new YahooFinance({ 
-  suppressNotices: ['yahooSurvey', 'ripHistorical'],
-});
+// Configure the default instance safely
+yahooFinance.suppressNotices(['yahooSurvey', 'ripHistorical']);
 
 export interface MarketData {
   symbol: string;
@@ -18,7 +17,7 @@ export interface MarketData {
   name?: string;
 }
 
-// Generates mathematically plausible synthetic data if Yahoo API rejects us
+// Generates mathematically plausible synthetic data if Yahoo API rejects us or times out
 function generateFallbackData(symbol: string): MarketData {
   const isIndex = symbol.startsWith('^');
   const isCrypto = symbol.includes('-');
@@ -68,7 +67,7 @@ export async function fetchMarketData(symbol: string, interval: string = '15m'):
   let yfInterval: any = '15m';
 
   switch(interval) {
-    case '1m': days = 2; yfInterval = '1m'; break; // strictly under 7 days
+    case '1m': days = 2; yfInterval = '1m'; break;
     case '5m': days = 5; yfInterval = '5m'; break;
     case '15m': days = 10; yfInterval = '15m'; break;
     case '60m': days = 20; yfInterval = '60m'; break;
@@ -77,21 +76,28 @@ export async function fetchMarketData(symbol: string, interval: string = '15m'):
   }
 
   try {
-    // Fetch concurrently, but catch errors individually
-    const quotePromise = yahooFinance.quote(symbol).catch(() => null);
-    const historyPromise = yahooFinance.chart(symbol, { 
-      period1: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
-      interval: yfInterval 
-    }).catch((err) => {
-      console.warn(`[Chart Error for ${symbol}]:`, err.message);
-      return null;
-    });
+    const timeoutMs = 3000; // Strict 3 second timeout for ANY Yahoo request
+
+    // Race the quote promise against a 3s timeout
+    const quotePromise = Promise.race([
+      yahooFinance.quote(symbol).catch(() => null),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs))
+    ]);
+
+    // Race the chart promise against a 3s timeout
+    const historyPromise = Promise.race([
+      yahooFinance.chart(symbol, { 
+        period1: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+        interval: yfInterval 
+      }).catch(() => null),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs))
+    ]);
 
     const [quote, chartData] = await Promise.all([quotePromise, historyPromise]);
     
-    // Complete failure (rate limited or invalid symbol) -> Use Synthetic Engine
+    // Complete failure or timeout -> Use Synthetic Engine instantly
     if (!quote && !chartData) {
-      console.warn(`[MarketData] Yahoo Finance rejected ${symbol}, engaging synthetic engine.`);
+      console.warn(`[MarketData] Yahoo Finance timed out or rejected ${symbol}, engaging synthetic engine.`);
       return generateFallbackData(symbol);
     }
 
@@ -108,7 +114,7 @@ export async function fetchMarketData(symbol: string, interval: string = '15m'):
           volume: q.volume || 0
         }));
     } else {
-      // If we got the quote but history failed (e.g., interval rejected), generate a synthetic history anchored to the real quote price
+      // If we got the quote but history failed, generate a synthetic history anchored to the real quote price
       const fb = generateFallbackData(symbol);
       history = fb.history;
       const diff = (quote?.regularMarketPrice || fb.price) - history[history.length - 1].close;
@@ -147,12 +153,8 @@ export async function fetchMarketData(symbol: string, interval: string = '15m'):
   }
 }
 
-// Sequential Batching: Prevents network flood that triggers YF rate limits
 export async function fetchMarketDataBatch(symbols: string[], interval: string = '15m'): Promise<MarketData[]> {
-  const results: MarketData[] = [];
-  // Run sequentially to be polite to the API endpoint
-  for (const sym of symbols) {
-    results.push(await fetchMarketData(sym, interval));
-  }
-  return results;
+  // Execute in parallel. Because of our strict 3s timeout per request, 
+  // this whole batch is guaranteed to return in ~3 seconds max.
+  return Promise.all(symbols.map(sym => fetchMarketData(sym, interval)));
 }

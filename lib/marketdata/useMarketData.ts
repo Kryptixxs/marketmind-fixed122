@@ -7,6 +7,8 @@ import { getProvider } from './index';
 export function useMarketData(symbols: string[], interval: string = '15m') {
   const [data, setData] = useState<Record<string, Tick>>({});
   const [error, setError] = useState<string | null>(null);
+  
+  // Unique ID for this hook instance's subscription
   const subId = useRef(Math.random().toString(36).substring(7)).current;
   const provider = getProvider();
 
@@ -20,24 +22,12 @@ export function useMarketData(symbols: string[], interval: string = '15m') {
   useEffect(() => {
     if (symbols.length === 0) return;
 
-    let tickBuffer: Record<string, Tick> = {};
-    let animationFrameId: number;
-
-    const flushBuffer = () => {
-      if (Object.keys(tickBuffer).length > 0) {
-        setData(prev => ({ ...prev, ...tickBuffer }));
-        tickBuffer = {};
-      }
-      animationFrameId = requestAnimationFrame(flushBuffer);
-    };
-
-    animationFrameId = requestAnimationFrame(flushBuffer);
-
     const config = {
       id: subId,
       onTick: (tick: Tick) => {
         if (symbols.includes(tick.symbol)) {
-          tickBuffer[tick.symbol] = tick;
+          // Let React 18 auto-batch these rapid state updates
+          setData(prev => ({ ...prev, [tick.symbol]: tick }));
         }
       },
       onError: (err: Error) => {
@@ -49,7 +39,6 @@ export function useMarketData(symbols: string[], interval: string = '15m') {
     provider.subscribe(symbols);
 
     return () => {
-      cancelAnimationFrame(animationFrameId);
       provider.unsubscribe(symbols);
       provider.disconnect(config);
     };
