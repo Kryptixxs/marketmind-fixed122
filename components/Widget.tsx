@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Maximize2, Minimize2, MoreHorizontal, Download, Settings, Trash2, GripHorizontal, RotateCcw } from 'lucide-react';
+import { Maximize2, Minimize2, MoreHorizontal, Download, Settings, Trash2, GripHorizontal, RotateCcw, X } from 'lucide-react';
 
 interface WidgetProps {
   title: string;
@@ -66,7 +66,8 @@ export function Widget({ title, children, actions }: WidgetProps) {
       className={`
       flex flex-col border border-border bg-surface overflow-hidden transition-all duration-300
       ${isMaximized ? 'fixed inset-4 z-[200] shadow-2xl border-accent/50 rounded-lg' : 'h-full w-full'}
-    `}>
+    `}
+    >
       <div className="panel-header shrink-0 cursor-default group/header">
         <div className="flex items-center gap-2 overflow-hidden">
           <button className="text-text-tertiary hover:text-text-primary cursor-grab active:cursor-grabbing opacity-0 group-hover/header:opacity-100 transition-opacity">
@@ -122,19 +123,19 @@ export function Widget({ title, children, actions }: WidgetProps) {
              </div>
              <div className="flex flex-col gap-3 flex-1">
                 <label className="text-[10px] font-bold text-text-secondary uppercase">Refresh Rate</label>
-                <select className="bg-surface border border-border rounded p-1 text-xs outline-none">
+                <select className="bg-surface border border-border rounded p-1 text-xs outline-none text-text-primary">
                   <option>Real-time (Stream)</option>
                   <option>5 Seconds</option>
                   <option>30 Seconds</option>
                 </select>
                 
                 <label className="text-[10px] font-bold text-text-secondary uppercase mt-2">Display Theme</label>
-                <select className="bg-surface border border-border rounded p-1 text-xs outline-none">
+                <select className="bg-surface border border-border rounded p-1 text-xs outline-none text-text-primary">
                   <option>Dark (Default)</option>
                   <option>High Contrast</option>
                 </select>
              </div>
-             <button onClick={() => setShowSettings(false)} className="w-full py-2 bg-accent text-accent-text text-xs font-bold rounded mt-auto">Save Preferences</button>
+             <button onClick={() => setShowSettings(false)} className="w-full py-2 bg-accent text-accent-text text-xs font-bold rounded mt-auto hover:opacity-90">Save Preferences</button>
            </div>
         ) : children}
       </div>
