@@ -33,11 +33,11 @@
 html, body {
   height: 100%;
   width: 100%;
-  overflow: hidden; /* Terminal feel: no window scrolling */
+  overflow: hidden;
   background-color: var(--color-background);
   color: var(--color-text-primary);
-  font-family: var(--font-mono); /* Force mono everywhere */
-  font-size: 11px; /* Reduced base size for higher density */
+  font-family: var(--font-mono);
+  font-size: 11px;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -51,19 +51,15 @@ html, body {
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-border);
-  border-radius: 0;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-tertiary);
 }
 
-/* ── Utilities ── */
+/* ── Panel System ── */
 .panel-header {
-  height: 24px; /* More compact header */
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 6px;
+  padding: 0 8px;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   font-size: 9px;
@@ -71,7 +67,6 @@ html, body {
   font-weight: 700;
   letter-spacing: 0.05em;
   color: var(--color-text-secondary);
-  user-select: none;
 }
 
 .panel-content {
@@ -90,18 +85,4 @@ html, body {
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--color-border);
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-tertiary);
-}
-
-/* ── Animations ── */
-@keyframes liquid-fade {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-in {
-  animation: liquid-fade 0.3s ease-out forwards;
 }
