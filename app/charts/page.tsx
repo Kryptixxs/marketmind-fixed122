@@ -17,27 +17,29 @@ import {
 } from 'lucide-react';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 
-const DEFAULT_WATCHLIST = ['^NDX', '^GSPC', 'CL=F', 'GC=F', 'AAPL', 'NVDA', 'TSLA', 'BTC-USD'];
+const DEFAULT_WATCHLIST = ['NQ=F', 'ES=F', 'CL=F', 'GC=F', 'AAPL', 'NVDA', 'TSLA', 'BTC-USD'];
 
 const TIMEFRAMES = [
   { label: '1M', yf: '1m', tv: '1' },
   { label: '5M', yf: '5m', tv: '5' },
   { label: '15M', yf: '15m', tv: '15' },
   { label: '1H', yf: '60m', tv: '60' },
-  { label: '4H', yf: '60m', tv: '240' }, // YF doesn't support 4h well, mapping to 60m for math
+  { label: '4H', yf: '60m', tv: '240' },
   { label: '1D', yf: '1d', tv: 'D' },
 ];
 
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
-  '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
-  '^GSPC': { tv: 'BLACKBULL:SPX500', label: 'S&P 500' },
-  'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil' },
-  'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold' },
+  'NQ=F': { tv: 'CME_MINI:NQ1!', label: 'Nasdaq 100 Futures' },
+  'ES=F': { tv: 'CME_MINI:ES1!', label: 'S&P 500 Futures' },
+  'RTY=F': { tv: 'CME_MINI:RTY1!', label: 'Russell 2000 Futures' },
+  'CL=F': { tv: 'NYMEX:CL1!', label: 'Crude Oil' },
+  'GC=F': { tv: 'COMEX:GC1!', label: 'Gold' },
+  'EURUSD=X': { tv: 'FX:EURUSD', label: 'EUR/USD' },
   'BTC-USD': { tv: 'BINANCE:BTCUSDT', label: 'Bitcoin' },
 };
 
 export default function ChartsPage() {
-  const [activeSymbol, setActiveSymbol] = useState('^NDX');
+  const [activeSymbol, setActiveSymbol] = useState('NQ=F');
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]);
   
   const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
@@ -45,7 +47,6 @@ export default function ChartsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Load from local storage
   useEffect(() => {
     const saved = localStorage.getItem('vantage_charts_watchlist');
     if (saved) {
@@ -57,12 +58,10 @@ export default function ChartsPage() {
     localStorage.setItem('vantage_charts_watchlist', JSON.stringify(watchlist));
   }, [watchlist]);
 
-  // Connect to the unified market data provider
   const { data: marketData, error: streamError } = useMarketData(watchlist, timeframe.yf);
   const activeQuote = marketData[activeSymbol];
   const loading = Object.keys(marketData).length === 0 && !streamError;
 
-  // Listen to command palette events
   useEffect(() => {
     const handleSymbolChange = (e: any) => {
       const newSym = e.detail;
@@ -102,14 +101,13 @@ export default function ChartsPage() {
     if (SYMBOL_MAP[sym]) return SYMBOL_MAP[sym].tv;
     if (sym.includes('=')) return `FX:${sym.replace('=X', '')}`;
     if (sym.includes('-')) return `CRYPTO:${sym.replace('-', '')}`;
-    return sym;
+    return `NASDAQ:${sym}`;
   };
 
   const getLabel = (sym: string) => SYMBOL_MAP[sym]?.label || 'Equities/Crypto';
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden min-h-0">
-      {/* Toolbar */}
       <div className="h-auto min-h-[40px] py-2 border-b border-border bg-surface flex flex-wrap items-center px-4 justify-between shrink-0 z-20 gap-2">
         <div className="flex items-center gap-4 md:gap-6 relative flex-wrap">
           
@@ -165,7 +163,6 @@ export default function ChartsPage() {
 
       <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden min-h-0">
         
-        {/* Watchlist Sidebar (Left) */}
         <div className="w-full md:w-56 border-b md:border-b-0 md:border-r border-border bg-surface flex flex-col shrink-0 h-[200px] md:h-full min-h-[200px]">
           <div className="p-3 border-b border-border flex items-center justify-between shrink-0 bg-surface-highlight">
             <span className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">Watchlist</span>
@@ -200,7 +197,7 @@ export default function ChartsPage() {
                     ) : (
                       <>
                         <span className="text-[11px] font-mono font-bold text-text-primary">
-                          {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '---'}
+                          {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
                         </span>
                         <span className={`text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
                           {data ? `${isPositive ? '+' : ''}${data.changePercent.toFixed(2)}%` : '--'}
@@ -214,28 +211,10 @@ export default function ChartsPage() {
           </div>
         </div>
 
-        {/* Main Chart Area (Center) */}
         <div className="flex-1 bg-black relative min-h-[400px] md:min-h-0 flex flex-col border-b md:border-b-0 md:border-r border-border">
           <TradingViewChart symbol={getTVSymbol(activeSymbol)} interval={timeframe.tv} />
-          
-          <div className="absolute top-4 left-4 p-3 bg-surface/80 backdrop-blur border border-border rounded-sm pointer-events-none flex flex-col gap-1">
-            <div className="flex items-center gap-3">
-              <span className="text-lg font-bold text-text-primary">{activeSymbol}</span>
-              {activeQuote && (
-                <span className={`text-xs font-mono ${activeQuote.change >= 0 ? 'text-positive' : 'text-negative'}`}>
-                  {activeQuote.change >= 0 ? '+' : ''}{activeQuote.changePercent.toFixed(2)}%
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 text-[10px] text-text-tertiary uppercase font-bold">
-              <Clock size={10} />
-              <span>{timeframe.label} Interval</span>
-              {loading && <span className="text-accent animate-pulse">Syncing...</span>}
-            </div>
-          </div>
         </div>
 
-        {/* Trade Setup Panel (Right) */}
         <div className="w-full md:w-80 bg-surface flex flex-col shrink-0 h-auto min-h-[400px] md:h-full">
           <TradeSetupPanel tick={activeQuote} timeframeLabel={timeframe.label} />
         </div>

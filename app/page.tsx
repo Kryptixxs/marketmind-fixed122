@@ -12,18 +12,22 @@ import { MiniCalendar } from '@/components/widgets/MiniCalendar';
 import { Wifi, TrendingUp, TrendingDown, Plus, Search, X } from 'lucide-react';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 
-const DEFAULT_WATCHLIST = ['^NDX', '^GSPC', 'CL=F', 'GC=F', 'EURUSD=X', 'BTC-USD'];
-const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX', '^IRX'];
+// Using actual Futures symbols to match real pricing
+const DEFAULT_WATCHLIST = ['NQ=F', 'ES=F', 'CL=F', 'GC=F', 'EURUSD=X', 'BTC-USD'];
+const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX'];
 
+// Map Yahoo Finance symbols EXACTLY to TradingView official exchange feeds
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
-  '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
-  '^GSPC': { tv: 'BLACKBULL:SPX500', label: 'S&P 500' },
-  '^DJI': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones' },
-  '^RUT': { tv: 'IG:RUSSELL', label: 'Russell 2000' },
-  'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil' },
-  'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold' },
+  'NQ=F': { tv: 'CME_MINI:NQ1!', label: 'Nasdaq 100 Futures' },
+  'ES=F': { tv: 'CME_MINI:ES1!', label: 'S&P 500 Futures' },
+  'RTY=F': { tv: 'CME_MINI:RTY1!', label: 'Russell 2000 Futures' },
+  'CL=F': { tv: 'NYMEX:CL1!', label: 'Crude Oil' },
+  'GC=F': { tv: 'COMEX:GC1!', label: 'Gold' },
   'EURUSD=X': { tv: 'FX:EURUSD', label: 'EUR/USD' },
   'BTC-USD': { tv: 'BINANCE:BTCUSDT', label: 'Bitcoin' },
+  '^VIX': { tv: 'CBOE:VIX', label: 'Volatility Index' },
+  'DX-Y.NYB': { tv: 'CAPITALCOM:DXY', label: 'US Dollar Index' },
+  '^TNX': { tv: 'TVC:US10Y', label: '10Y Yield' },
 };
 
 const TIMEFRAMES = [
@@ -35,10 +39,9 @@ const TIMEFRAMES = [
 ];
 
 export default function TerminalPage() {
-  const [activeSymbol, setActiveSymbol] = useState("^NDX");
+  const [activeSymbol, setActiveSymbol] = useState("NQ=F");
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]); 
   
-  // Watchlist state management
   const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,12 +98,11 @@ export default function TerminalPage() {
 
   const activeQuote = marketData[activeSymbol];
   
-  // Resolve TV Symbol or fallback to standard
   const getTVSymbol = (sym: string) => {
     if (SYMBOL_MAP[sym]) return SYMBOL_MAP[sym].tv;
     if (sym.includes('=')) return `FX:${sym.replace('=X', '')}`;
     if (sym.includes('-')) return `CRYPTO:${sym.replace('-', '')}`;
-    return sym;
+    return `NASDAQ:${sym}`;
   };
 
   const getLabel = (sym: string) => SYMBOL_MAP[sym]?.label || 'Equities/Crypto';
@@ -131,7 +133,7 @@ export default function TerminalPage() {
                             ref={searchInputRef}
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Add ticker..."
+                            placeholder="Add ticker (e.g. NQ=F)"
                             className="flex-1 bg-transparent border-none outline-none text-[10px] py-1.5 text-text-primary"
                           />
                         </form>
@@ -161,7 +163,7 @@ export default function TerminalPage() {
                       </div>
                       <div className="flex flex-col items-end">
                         <span className="text-[10px] font-mono font-bold text-text-primary">
-                          {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '---'}
+                          {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
                         </span>
                         <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
                           {isPositive ? <TrendingUp size={8}/> : <TrendingDown size={8}/>}
@@ -177,12 +179,12 @@ export default function TerminalPage() {
           
           <div className="h-[250px] lg:h-[40%] min-h-0">
             <Widget title={`Cross-Asset Correlation (${timeframe.label})`}>
-              {activeQuote ? (
+              {activeQuote && activeQuote.history && activeQuote.history.length > 0 ? (
                 <div className="overflow-y-auto h-full custom-scrollbar">
                   <CorrelationMatrix activeTick={activeQuote} marketData={marketData} />
                 </div>
               ) : (
-                <div className="flex h-full items-center justify-center text-text-tertiary text-[10px]">Loading Math...</div>
+                <div className="flex h-full items-center justify-center text-text-tertiary text-[10px]">Loading Real Data...</div>
               )}
             </Widget>
           </div>
