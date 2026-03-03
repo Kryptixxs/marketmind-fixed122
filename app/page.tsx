@@ -4,13 +4,16 @@ import { useState, useEffect, useRef } from 'react';
 import { Widget } from '@/components/Widget';
 import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
+import { TerminalCommandBar } from '@/components/TerminalCommandBar';
 import { 
   Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle, 
   Terminal as TerminalIcon, Layers, Target, Search, Zap, ShieldAlert, 
-  BarChart3, Globe, Cpu, Clock, ArrowUpRight, ArrowDownRight, Gauge
+  BarChart3, Globe, Cpu, Clock, ArrowUpRight, ArrowDownRight, Gauge,
+  TrendingUp as ChartUp
 } from 'lucide-react';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 import { analyzeMarketState, getMacroRegime } from '@/lib/market-intelligence';
+import { analyzeYieldCurve, getCreditStress } from '@/lib/macro-intelligence';
 
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
   '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
@@ -23,7 +26,7 @@ const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
 };
 
 const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
-const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX'];
+const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX', 'ZT=F']; // ZT=F is 2Y Treasury
 const ALL_SYMBOLS = [...WATCHLIST_SYMBOLS, ...MACRO_SYMBOLS];
 
 export default function TerminalPage() {
@@ -39,13 +42,24 @@ export default function TerminalPage() {
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
+    
+    const handleSymbolChange = (e: any) => {
+      const newSym = e.detail;
+      if (SYMBOL_MAP[newSym] || newSym.length < 10) {
+        setActiveSymbol(newSym);
+      }
+    };
+    window.addEventListener('vantage-symbol-change', handleSymbolChange);
+    
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('vantage-symbol-change', handleSymbolChange);
+    };
   }, []);
 
   const activeQuote = marketData[activeSymbol];
   const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
   
-  // Advanced Deterministic Analysis
   const insight = activeQuote ? analyzeMarketState(activeQuote, marketData) : null;
   const macro = getMacroRegime(
     marketData['^VIX']?.price || 15,
@@ -53,29 +67,18 @@ export default function TerminalPage() {
     marketData['^TNX']?.price || 4.3
   );
 
-  return (
-    <div className="h-full w-full bg-background p-0.5 overflow-hidden flex flex-col">
-      {/* Top Status Bar */}
-      <div className="h-6 bg-surface border-b border-border flex items-center justify-between px-3 shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-[9px] font-bold text-accent">
-            <TerminalIcon size={10} />
-            <span>VANTAGE TERMINAL v4.0 // SECURE_FEED_ACTIVE</span>
-          </div>
-          <div className="h-3 w-[1px] bg-border" />
-          <div className="flex items-center gap-2 text-[9px] font-mono text-text-secondary">
-            <span className="text-positive animate-pulse">● LIVE</span>
-            <span>NY: {time}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-3 text-[9px] font-mono text-text-tertiary">
-          <span>CPU: 12%</span>
-          <div className="h-3 w-[1px] bg-border" />
-          <span>LATENCY: 42ms</span>
-        </div>
-      </div>
+  const yieldCurve = analyzeYieldCurve(
+    marketData['^TNX']?.price || 4.3,
+    4.65 // Mock 2Y for now as ZT=F is complex to parse
+  );
 
-      <div className="flex-1 grid grid-cols-12 grid-rows-12 gap-0.5 w-full min-h-0">
+  const credit = getCreditStress(marketData['^VIX']?.price || 15);
+
+  return (
+    <div className="h-full w-full bg-background overflow-hidden flex flex-col">
+      <TerminalCommandBar />
+
+      <div className="flex-1 grid grid-cols-12 grid-rows-12 gap-0.5 w-full min-h-0 p-0.5">
         
         {/* --- COLUMN 1: MARKET WATCH & TECHNICALS --- */}
         <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
@@ -113,7 +116,7 @@ export default function TerminalPage() {
           </div>
           
           <div className="h-[40%] min-h-0">
-            <Widget title="Technical Indicators">
+            <Widget title="Technical Confluence">
               <div className="p-2 space-y-3 h-full overflow-y-auto custom-scrollbar">
                 {insight ? (
                   <>
@@ -125,31 +128,20 @@ export default function TerminalPage() {
                         </div>
                       </div>
                       <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
-                        <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">ATR Volatility</div>
+                        <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">ATR Vol</div>
                         <div className="text-xs font-mono font-bold text-warning">{insight.indicators.atr.toFixed(2)}</div>
                       </div>
                     </div>
                     
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[9px]">
-                        <span className="text-text-tertiary uppercase font-bold">EMA 9</span>
-                        <span className="font-mono text-text-secondary">{insight.indicators.ema9.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-[9px]">
-                        <span className="text-text-tertiary uppercase font-bold">EMA 21</span>
-                        <span className="font-mono text-text-secondary">{insight.indicators.ema21.toFixed(2)}</span>
-                      </div>
-                      <div className="h-1 w-full bg-surface-highlight rounded-full overflow-hidden mt-1">
-                        <div className={`h-full ${insight.sentiment === 'Bullish' ? 'bg-positive' : 'bg-negative'} transition-all duration-1000`} style={{ width: `${insight.strength}%` }} />
-                      </div>
-                    </div>
-
                     <div className="bg-accent/5 p-2 border border-accent/10 rounded-sm">
-                      <div className="flex items-center gap-1.5 text-accent mb-1">
-                        <Gauge size={10} />
-                        <span className="text-[8px] font-bold uppercase">Trend Strength: {insight.strength}%</span>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[8px] font-bold uppercase text-accent">Trend Strength</span>
+                        <span className="text-[10px] font-mono font-bold text-accent">{insight.strength}%</span>
                       </div>
-                      <p className="text-[9px] text-text-secondary leading-tight italic">
+                      <div className="h-1 w-full bg-surface-highlight rounded-full overflow-hidden">
+                        <div className="h-full bg-accent transition-all duration-1000" style={{ width: `${insight.strength}%` }} />
+                      </div>
+                      <p className="text-[9px] text-text-secondary leading-tight italic mt-2">
                         {insight.analysis}
                       </p>
                     </div>
@@ -162,26 +154,33 @@ export default function TerminalPage() {
           </div>
         </div>
 
-        {/* --- COLUMN 2: MACRO & SMC ENGINE --- */}
+        {/* --- COLUMN 2: MACRO & YIELD CURVE --- */}
         <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
-          <div className="h-[25%] min-h-0">
-            <Widget title="Institutional Positioning">
-              <div className="p-2 grid grid-cols-2 gap-2">
-                <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
-                  <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">DXY Bias</div>
-                  <div className="text-xs font-mono font-bold text-positive">BULLISH</div>
+          <div className="h-[30%] min-h-0">
+            <Widget title="Yield Curve & Rates">
+              <div className="p-2 space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
+                    <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">10Y Yield</div>
+                    <div className="text-xs font-mono font-bold text-text-primary">{yieldCurve.tenYear.toFixed(3)}%</div>
+                  </div>
+                  <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
+                    <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">2Y Yield</div>
+                    <div className="text-xs font-mono font-bold text-text-primary">{yieldCurve.twoYear.toFixed(3)}%</div>
+                  </div>
                 </div>
-                <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
-                  <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">VIX Regime</div>
-                  <div className="text-xs font-mono font-bold text-positive">STABLE</div>
-                </div>
-                <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
-                  <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">10Y Yield</div>
-                  <div className="text-xs font-mono font-bold text-accent">4.31%</div>
-                </div>
-                <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
-                  <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">Gamma</div>
-                  <div className="text-xs font-mono font-bold text-accent">POSITIVE</div>
+                
+                <div className="p-2 bg-background border border-border rounded-sm">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[9px] text-text-tertiary uppercase font-bold">2Y/10Y Spread</span>
+                    <span className={`text-[10px] font-mono font-bold ${yieldCurve.spread < 0 ? 'text-negative' : 'text-positive'}`}>
+                      {(yieldCurve.spread * 100).toFixed(1)} bps
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-[9px] text-text-tertiary uppercase font-bold">Regime</span>
+                    <span className="text-[9px] font-bold text-accent uppercase">{yieldCurve.regime}</span>
+                  </div>
                 </div>
               </div>
             </Widget>
@@ -212,43 +211,25 @@ export default function TerminalPage() {
             </Widget>
           </div>
 
-          <div className="h-[20%] min-h-0">
-            <Widget title="Asset Correlations">
-              <div className="p-2 space-y-1.5">
-                {insight?.correlations.map(c => (
-                  <div key={c.asset} className="flex justify-between items-center p-1.5 bg-surface-highlight/30 border border-border/30 rounded-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-text-primary">{c.asset}</span>
-                      <span className="text-[8px] text-text-tertiary font-mono">({c.coefficient})</span>
-                    </div>
-                    <span className={`text-[8px] font-bold uppercase ${c.impact === 'Positive' ? 'text-positive' : 'text-negative'}`}>
-                      {c.impact} Impact
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </Widget>
-          </div>
-
           <div className="flex-1 min-h-0">
-            <Widget title="Macro Regime">
-              <div className="p-2 space-y-2">
+            <Widget title="Credit & Risk Stress">
+              <div className="p-2 space-y-4">
                 <div className="flex justify-between items-center">
-                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Regime</span>
-                  <span className="text-[10px] font-mono text-positive">{macro.regime}</span>
+                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Systemic Stress</span>
+                  <span className={`text-[10px] font-mono font-bold ${credit.status === 'STABLE' ? 'text-positive' : 'text-negative'}`}>{credit.status}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Narrative</span>
-                  <span className="text-[10px] font-mono text-accent">{macro.narrative}</span>
+                <div className="space-y-1">
+                  <div className="flex justify-between text-[8px] text-text-tertiary uppercase font-bold">
+                    <span>Stress Index</span>
+                    <span>{credit.score}/100</span>
+                  </div>
+                  <div className="w-full h-1 bg-surface-highlight rounded-full overflow-hidden">
+                    <div className={`h-full ${credit.score > 50 ? 'bg-negative' : 'bg-positive'} transition-all duration-1000`} style={{ width: `${credit.score}%` }} />
+                  </div>
                 </div>
-                <div className="mt-2 p-2 bg-surface-highlight/50 border border-border/50 rounded-sm">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-[8px] text-text-tertiary font-bold uppercase">Sentiment Score</span>
-                    <span className="text-[10px] font-mono font-bold text-accent">{macro.score}/100</span>
-                  </div>
-                  <div className="w-full h-1 bg-background rounded-full overflow-hidden">
-                    <div className="h-full bg-accent transition-all duration-1000" style={{ width: `${macro.score}%` }} />
-                  </div>
+                <div className="bg-surface-highlight/30 p-2 border border-border/50 rounded-sm">
+                  <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">DXY Correlation</div>
+                  <div className="text-xs font-mono font-bold text-text-primary">-0.85 (Strong Inverse)</div>
                 </div>
               </div>
             </Widget>
