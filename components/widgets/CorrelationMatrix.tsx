@@ -26,6 +26,7 @@ export function CorrelationMatrix({
           const driverTick = marketData[driver.sym];
           if (!driverTick || !activeTick.history || !driverTick.history) return null;
 
+          // Map the OHLCV objects to just their closing prices for the correlation calculation
           const activeCloses = activeTick.history.map(h => h.close).slice(-30);
           const driverCloses = driverTick.history.map(h => h.close).slice(-30);
 

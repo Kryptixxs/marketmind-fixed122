@@ -21,8 +21,6 @@ export function ConfluenceScanner({ symbol }: { symbol: string }) {
       quotes: tick.history
     });
     
-    // Calculate ALL 160+ confluences and filter only the mathematically TRUE ones
-    // ZERO limits. ZERO slicing. Show the raw truth.
     const results = engine.calculateAll()
       .filter(r => r.isActive)
       .sort((a, b) => b.score - a.score);

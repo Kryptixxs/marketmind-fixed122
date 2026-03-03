@@ -19,10 +19,9 @@ export function MiniCalendar() {
       const data = await fetchEconomicCalendarBatch([toISODateString(today), toISODateString(tomorrow)]);
       const allEvents = Object.values(data).flat();
       
-      // Filter for medium/high impact, sort by time
       const majorEvents = allEvents
         .filter(e => e.impact === 'High' || e.impact === 'Medium')
-        .slice(0, 4); // Take next 4
+        .slice(0, 4);
         
       setEvents(majorEvents);
       setLoading(false);
