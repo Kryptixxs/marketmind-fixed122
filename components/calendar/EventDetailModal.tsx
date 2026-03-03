@@ -21,7 +21,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 
   const metrics = [
     { label: 'Volatility', value: intel.volatility, icon: Zap },
-    { label: 'Macro Impact', value: `${intel.macroImpact}/10`, icon: Globe },
+    { label: 'Macro Impact', value: `${Math.round(intel.macroImpact)}/10`, icon: Globe },
     { label: 'Risk Level', value: event.impact === 'High' ? 'Elevated' : 'Standard', icon: AlertTriangle },
     { label: 'Surprise Threshold', value: `${intel.surpriseThresholdPct}%`, icon: Activity },
   ];
@@ -32,20 +32,20 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
         <div className="bg-surface border border-border w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl rounded-sm">
           
           {/* Header */}
-          <div className="panel-header shrink-0 flex justify-between items-center px-4 py-3 h-auto border-b border-border bg-surface-highlight">
-            <div className="flex flex-col">
+          <div className="shrink-0 flex justify-between items-center px-4 py-3 border-b border-border bg-surface-highlight">
+            <div className="flex flex-col min-w-0 flex-1 mr-4">
               <h2 className="text-lg font-bold text-text-primary leading-tight flex items-center gap-3">
-                {event.title}
+                <span className="line-clamp-2">{event.title}</span>
                 <button
                   onClick={() => setIsConfiguringAlert(true)}
-                  className="text-[10px] uppercase font-bold bg-accent/20 hover:bg-accent/30 text-accent px-2 py-1 rounded transition-colors flex items-center gap-1"
+                  className="shrink-0 text-[10px] uppercase font-bold bg-accent/20 hover:bg-accent/30 text-accent px-2 py-1 rounded transition-colors flex items-center gap-1"
                 >
                   <Zap size={10} /> Set Alert
                 </button>
               </h2>
               <span className="text-[10px] text-text-tertiary uppercase tracking-widest mt-1">Institutional Insight // v4.0</span>
             </div>
-            <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full transition-colors">
+            <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full transition-colors shrink-0">
               <X size={20} />
             </button>
           </div>
@@ -77,7 +77,14 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               <div className="space-y-1">
                 <span className="text-[10px] text-text-tertiary uppercase font-bold">Region</span>
                 <div className="flex items-center gap-2 text-xs font-mono text-text-primary">
-                  <img src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`} className="w-4 h-2.5 object-cover" alt="" />
+                  {event.country && (
+                    <img 
+                      src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`} 
+                      className="w-4 h-2.5 object-cover rounded-[1px]" 
+                      alt="" 
+                      onError={(e) => e.currentTarget.style.display = 'none'}
+                    />
+                  )}
                   {event.country} ({event.currency})
                 </div>
               </div>
@@ -128,7 +135,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                       <span className="text-xs font-bold text-text-primary">{s.label}</span>
                       <span className="text-[10px] text-text-secondary">{s.reaction}</span>
                     </div>
-                    <div className="text-xs font-mono font-bold text-accent">{s.probability}%</div>
+                    <div className="text-xs font-mono font-bold text-accent">{Math.round(s.probability)}%</div>
                   </div>
                 ))}
               </div>
