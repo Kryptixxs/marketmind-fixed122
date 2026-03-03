@@ -1,17 +1,10 @@
 'use server';
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateAIJSON } from "@/lib/ai-utils";
 import { fetchEconomicCalendarBatch } from "./fetchEconomicCalendar";
 import { toISODateString } from "@/lib/date-utils";
 
-const USER_KEY = "AIzaSyAX3dCFS5Yi8HryL9wC98IVAua71dki-zU";
-
 export async function analyzeEventScenarios() {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || USER_KEY;
-  
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
   try {
     const today = new Date();
     const tomorrow = new Date(today);
@@ -36,12 +29,7 @@ export async function analyzeEventScenarios() {
         - bias: "BULLISH" | "BEARISH" | "NEUTRAL"
       - tradeImplication: string`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    const jsonStr = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(jsonStr);
+    return await generateAIJSON(prompt);
   } catch (error) {
     console.error("Scenario analysis error:", error);
     return null;

@@ -1,20 +1,13 @@
 'use server';
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { generateAIJSON } from "@/lib/ai-utils";
 import YahooFinance from 'yahoo-finance2';
-
-const USER_KEY = "AIzaSyAX3dCFS5Yi8HryL9wC98IVAua71dki-zU";
 
 const yahooFinance = new YahooFinance({ 
   suppressNotices: ['yahooSurvey', 'ripHistorical'],
 });
 
 export async function analyzeAssetSensitivity() {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || USER_KEY;
-  
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
   try {
     const assets = ['GC=F', 'ES=F', 'NQ=F', 'DX-Y.NYB', '^TNX', 'BTC-USD'];
     const quotes = await Promise.all(assets.map(a => yahooFinance.quote(a)));
@@ -35,12 +28,7 @@ export async function analyzeAssetSensitivity() {
       - aggregateSensitivity: "HIGH" | "MODERATE" | "LOW"
       - aggregateScore: number`;
 
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text();
-    
-    const jsonStr = text.replace(/```json|```/g, '').trim();
-    return JSON.parse(jsonStr);
+    return await generateAIJSON(prompt);
   } catch (error) {
     console.error("Sensitivity analysis error:", error);
     return null;
