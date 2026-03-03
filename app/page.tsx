@@ -10,6 +10,7 @@ import { NarrativeTracker } from '@/components/macro/NarrativeTracker';
 import { SetupScanner } from '@/components/macro/SetupScanner';
 import { MarketPositioning } from '@/components/macro/MarketPositioning';
 import { ScenarioTree } from '@/components/macro/ScenarioTree';
+import { SessionTracker } from '@/components/widgets/SessionTracker';
 import { 
   Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle, 
   Terminal as TerminalIcon, Layers, Target, Search, Zap, ShieldAlert, 
@@ -148,9 +149,18 @@ export default function TerminalPage() {
             <Widget title="Scenario Tree (Next Event)">
               <ScenarioTree />
             </Widget>
-            <Widget title="Intelligence Wire">
-              <NewsFeed />
-            </Widget>
+            <div className="flex flex-col gap-0.5">
+              <div className="h-1/2">
+                <Widget title="Session Monitor">
+                  <SessionTracker />
+                </Widget>
+              </div>
+              <div className="flex-1">
+                <Widget title="Intelligence Wire">
+                  <NewsFeed />
+                </Widget>
+              </div>
+            </div>
           </div>
         </div>
 

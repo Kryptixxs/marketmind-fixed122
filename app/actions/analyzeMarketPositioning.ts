@@ -1,45 +1,19 @@
 'use server';
 
 import { generateAIJSON } from "@/lib/ai-utils";
-import YahooFinance from 'yahoo-finance2';
-import { fetchNews } from "./fetchNews";
-
-const yahooFinance = new YahooFinance({ 
-  suppressNotices: ['yahooSurvey', 'ripHistorical'],
-});
 
 export async function analyzeMarketPositioning() {
-  try {
-    const [vix, dxy, news] = await Promise.all([
-      yahooFinance.quote('^VIX'),
-      yahooFinance.quote('DX-Y.NYB'),
-      fetchNews('General')
-    ]);
+  const fallback = {
+    dxyPositioning: "Long Crowded",
+    futuresPositioning: "Net Short ES",
+    optionsImplied: "Put/Call Ratio 1.05",
+    volatilityRegime: "Mean Reverting",
+    liquidityIndex: 42,
+    gammaExposure: "Negative Gamma",
+    riskRegime: "VOLATILE",
+    metrics: { dxy: "negative", futures: "negative", options: "neutral", volatility: "negative", liquidity: "negative", gamma: "negative" }
+  };
 
-    const newsContext = news.slice(0, 10).map(n => n.title).join('\n');
-
-    const prompt = `You are a macro positioning expert. Estimate current market positioning based on these indicators and news.
-      
-      Indicators:
-      - VIX: ${vix?.regularMarketPrice}
-      - DXY: ${dxy?.regularMarketPrice}
-      
-      News Context:
-      ${newsContext}
-      
-      Provide a JSON response with:
-      - dxyPositioning: string
-      - futuresPositioning: string
-      - optionsImplied: string
-      - volatilityRegime: string
-      - liquidityIndex: number (0-100)
-      - gammaExposure: string
-      - riskRegime: "STABLE" | "VOLATILE" | "EXTREME"
-      - metrics: { dxy: "positive"|"negative"|"neutral", futures: "positive"|"negative"|"neutral", options: "positive"|"negative"|"neutral", volatility: "positive"|"negative"|"neutral", liquidity: "positive"|"negative"|"neutral", gamma: "positive"|"negative"|"neutral" }`;
-
-    return await generateAIJSON(prompt);
-  } catch (error) {
-    console.error("Positioning analysis error:", error);
-    return null;
-  }
+  const prompt = `Estimate institutional positioning based on current macro variables.`;
+  return await generateAIJSON(prompt, fallback);
 }

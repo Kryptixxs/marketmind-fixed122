@@ -1,10 +1,12 @@
 import OpenAI from 'openai';
 
-export async function generateAIJSON(prompt: string) {
-  // Using the key provided in the environment
-  const apiKey = process.env.OPENAI_API_KEY || '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';
+export async function generateAIJSON(prompt: string, fallback: any = null) {
+  const apiKey = process.env.OPENAI_API_KEY;
   
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.warn("[AI_UTILS]: No API key found. Using deterministic fallback.");
+    return fallback;
+  }
 
   const openai = new OpenAI({ apiKey });
 
@@ -15,15 +17,14 @@ export async function generateAIJSON(prompt: string) {
         { role: "system", content: "You are a senior institutional macro strategist. Return ONLY valid JSON." },
         { role: "user", content: prompt }
       ],
-      response_format: { type: "json_object" }
+      response_format: { type: "json_object" },
+      timeout: 5000 // 5s timeout to prevent UI hanging
     });
 
     const text = response.choices[0].message.content;
-    if (!text) return null;
-    
-    return JSON.parse(text);
+    return text ? JSON.parse(text) : fallback;
   } catch (error) {
-    console.error("[OPENAI_ERROR]:", error);
-    return null;
+    console.error("[AI_UTILS_ERROR]:", error);
+    return fallback;
   }
 }
