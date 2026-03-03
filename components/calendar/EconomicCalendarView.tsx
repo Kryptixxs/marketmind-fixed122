@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { fetchEconomicCalendarBatch } from '@/app/actions/fetchEconomicCalendar';
 import { EconomicEvent } from '@/lib/types';
-import { getFullWeek, toISODateString } from '@/lib/date-utils';
+import { getFullWeek, toISODateString, formatTime } from '@/lib/date-utils';
 import { EventDetailModal } from './EventDetailModal';
 import { exportToCSV } from '@/lib/utils';
 import { formatMaybeNumber } from '@/lib/format';
@@ -77,7 +77,7 @@ export function EconomicCalendarView() {
            const parts = e.time.split(':');
            const h = parseInt(parts[0]);
            if (!isNaN(h)) {
-             hourKey = `${parts[0].padStart(2, '0')}:00`;
+             hourKey = `${h.toString().padStart(2, '0')}:00`;
            }
         }
         if (!grid[day.dateStr][hourKey]) grid[day.dateStr][hourKey] = [];
@@ -179,7 +179,7 @@ export function EconomicCalendarView() {
                                   />
                                 )}
                                 <span className="text-[9px] font-mono text-text-secondary leading-none">
-                                  {event.time}
+                                  {formatTime(event.time)}
                                 </span>
                               </div>
                               <span className="text-[8px] font-bold text-text-tertiary">{event.currency}</span>

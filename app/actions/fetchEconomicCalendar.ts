@@ -53,11 +53,8 @@ function calculateImpact(title: string): Impact {
 
 function sanitizeValue(val: string | undefined): string | null {
   if (!val) return null;
-  // Strip HTML and entities
   const clean = val.replace(/<[^>]*>?/gm, '').replace(/&[a-z0-9#]+;/gi, '').trim();
-  // Normalize whitespace
   const normalized = clean.replace(/\s+/g, ' ');
-  // Validate numeric-ish (number, percent, k/m/b suffix)
   const isNumeric = /^-?[\d,.]+[kMB%]?$/i.test(normalized);
   return isNumeric ? normalized : null;
 }
@@ -66,6 +63,20 @@ function normalizeTime(time: string | undefined): string {
   const t = (time || '').trim().toUpperCase();
   if (!t || t === '24H' || t === 'ALL DAY') return 'All Day';
   if (t === 'TENTATIVE' || t === 'TBD') return 'TBD';
+  
+  // Handle "8:30 AM" or "2:15 PM" and convert to 24h "HH:mm"
+  const match = t.match(/(\d+):(\d+)\s*(AM|PM)?/);
+  if (match) {
+    let hours = parseInt(match[1]);
+    const minutes = match[2];
+    const ampm = match[3];
+    
+    if (ampm === 'PM' && hours < 12) hours += 12;
+    if (ampm === 'AM' && hours === 12) hours = 0;
+    
+    return `${hours.toString().padStart(2, '0')}:${minutes}`;
+  }
+  
   return t;
 }
 
@@ -122,7 +133,6 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
       const time = normalizeTime(row.time);
       const countryInfo = COUNTRY_MAP[row.country] || { code: row.country || 'UN', currency: '---' };
       
-      // Calculate timestamp
       let sortTime = "00:00";
       if (time !== 'All Day' && time !== 'TBD' && time.includes(':')) {
         sortTime = time;
