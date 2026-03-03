@@ -1,6 +1,6 @@
 'use server';
 
-import { EconomicEvent } from '@/lib/types';
+import { EconomicEvent, Impact } from '@/lib/types';
 
 const CACHE: Record<string, { data: EconomicEvent[], timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
@@ -45,7 +45,7 @@ const CURRENCY_MAP: Record<string, string> = {
   'Brazil': 'BRL', 'Mexico': 'MXN', 'South Korea': 'KRW'
 };
 
-function calculateImpact(title: string): 'High' | 'Medium' | 'Low' {
+function calculateImpact(title: string): Impact {
   const t = title.toLowerCase();
   if (HIGH_IMPACT_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return 'High';
   if (MEDIUM_IMPACT_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return 'Medium';
@@ -59,10 +59,7 @@ function shouldFilterOut(title: string): boolean {
 
 function sanitizeValue(val: string | undefined): string {
   if (!val) return '';
-  // Strip HTML and entities
   const clean = val.replace(/<[^>]*>?/gm, '').replace(/&[a-z0-9#]+;/gi, '').trim();
-  // Check if it's a reasonable numeric/percent string
-  // Matches: 1.2, -0.5%, 100k, 50.5M, 1.23B
   const isReasonable = /^-?[\d,.]+[kMB%]?$/i.test(clean);
   return isReasonable ? clean : '';
 }
@@ -145,7 +142,6 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
         d.setDate(d.getDate() - 1);
         const shiftedDateStr = d.toISOString().split('T')[0];
 
-        // Calculate real timestamp for sorting
         let sortTime = "00:00";
         if (time !== 'All Day' && time.includes(':')) {
           sortTime = time;
@@ -156,7 +152,6 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
         const countryCode = COUNTRY_CODES[row.country] || 'US'; 
         const currency = CURRENCY_MAP[row.country] || 'USD';
 
-        // Stable ID generation
         const stableId = `${shiftedDateStr}-${row.eventName}-${countryCode}-${time}`.replace(/\s+/g, '-').toLowerCase();
 
         return {
