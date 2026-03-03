@@ -35,10 +35,8 @@ const CURRENCY_MAP: Record<string, string> = {
   'Switzerland': 'CHF', 'New Zealand': 'NZD', 'Germany': 'EUR', 'France': 'EUR'
 };
 
-const MAJOR_COUNTRIES = [
-  'United States', 'Euro Zone', 'United Kingdom', 
-  'Japan', 'Canada', 'Australia', 'Switzerland', 'Germany', 'France'
-];
+// Use the exact country codes for filtering to avoid mismatching 'US' with 'United States'
+const MAJOR_COUNTRY_CODES = Object.values(COUNTRY_CODES);
 
 function cleanText(text: string): string {
   if (!text) return '';
@@ -56,14 +54,14 @@ function calculateImpact(title: string): 'High' | 'Medium' | 'Low' {
   return 'Medium'; 
 }
 
-function shouldKeepEvent(title: string, country: string): boolean {
+function shouldKeepEvent(title: string, countryCode: string): boolean {
   const t = title.toLowerCase();
   
   // 1. Reject obvious noise
   if (IGNORED_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return false;
   
-  // 2. Keep events if they belong to a major economy
-  if (!MAJOR_COUNTRIES.includes(country)) return false;
+  // 2. Keep events only if they belong to a major economy code (US, EU, GB, etc.)
+  if (!MAJOR_COUNTRY_CODES.includes(countryCode)) return false;
 
   return true;
 }
@@ -106,7 +104,8 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
         .map((row: any, i: number) => {
           const rawTitle = row.eventName || '';
           const cleanTitle = cleanText(rawTitle);
-          const countryCode = COUNTRY_CODES[row.country] || 'US'; 
+          // If the country isn't in our map, fall back to the raw string so it gets filtered out
+          const countryCode = COUNTRY_CODES[row.country] || row.country; 
           
           return {
             id: `${date}-${i}`,
