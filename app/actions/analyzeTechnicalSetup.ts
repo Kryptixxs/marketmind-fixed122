@@ -1,9 +1,7 @@
 'use server';
 
 import { generateAIJSON } from "@/lib/ai-utils";
-import YahooFinance from 'yahoo-finance2';
-
-const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] });
+import yahooFinance from 'yahoo-finance2';
 
 export async function analyzeTechnicalSetup(symbol: string) {
   try {
