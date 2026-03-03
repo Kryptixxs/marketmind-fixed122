@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { 
   ChevronLeft, ChevronRight, Download
 } from 'lucide-react';
@@ -9,6 +10,7 @@ import { EconomicEvent } from '@/lib/types';
 import { getFullWeek, toISODateString } from '@/lib/date-utils';
 import { EventDetailModal } from './EventDetailModal';
 import { computeSurprise, getEventIntel } from '@/lib/event-intelligence';
+import { makeEconomicEventId } from '@/lib/event-id';
 
 const IMPACT_COLORS: Record<string, string> = {
   High: 'border-l-4 border-l-red-500 bg-red-500/10',
@@ -30,17 +32,29 @@ function formatHourLabel(h: string) {
 }
 
 export function EconomicCalendarView() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [weekOffset, setWeekOffset] = useState(0);
   const [eventsData, setEventsData] = useState<Record<string, EconomicEvent[]>>({});
   const [loading, setLoading] = useState(true);
   const [showLowImpact, setShowLowImpact] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EconomicEvent | null>(null);
+  
+  // Real-time tracking
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
 
   const weekDates = useMemo(() => {
     const today = new Date();
     today.setDate(today.getDate() + (weekOffset * 7));
     return getFullWeek(today);
   }, [weekOffset]);
+
+  // Handle current time updates for the red line
+  useEffect(() => {
+    setCurrentTime(new Date());
+    const interval = setInterval(() => setCurrentTime(new Date()), 60000); // update every minute
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -57,6 +71,33 @@ export function EconomicCalendarView() {
     };
     load();
   }, [weekDates]);
+
+  // Handle deep linking from URL
+  useEffect(() => {
+    const eventId = searchParams.get('event');
+    if (eventId && !loading) {
+      const allEvents = Object.values(eventsData).flat();
+      const found = allEvents.find(e => makeEconomicEventId(e) === eventId);
+      if (found) {
+        setSelectedEvent(found);
+      }
+    }
+  }, [searchParams, eventsData, loading]);
+
+  const handleEventClick = (event: EconomicEvent) => {
+    const id = makeEconomicEventId(event);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('event', id);
+    router.push(`?${params.toString()}`, { scroll: false });
+    setSelectedEvent(event);
+  };
+
+  const handleCloseModal = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('event');
+    router.push(`?${params.toString()}`, { scroll: false });
+    setSelectedEvent(null);
+  };
 
   const schedule = useMemo(() => {
     const grid: Record<string, Record<string, EconomicEvent[]>> = {};
@@ -84,6 +125,9 @@ export function EconomicCalendarView() {
     return grid;
   }, [eventsData, weekDates, showLowImpact]);
 
+  const currentHourStr = currentTime ? `${currentTime.getHours().toString().padStart(2, '0')}:00` : null;
+  const currentMinute = currentTime ? currentTime.getMinutes() : 0;
+
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header Toolbar */}
@@ -107,7 +151,32 @@ export function EconomicCalendarView() {
           </div>
         </div>
 
-        <button className="p-2 text-text-tertiary hover:text-text-primary">
+        <button 
+          onClick={() => {
+            const allEvents = Object.values(eventsData).flat();
+            if (allEvents.length === 0) return alert('No data to export');
+            
+            const headers = ['Date', 'Time', 'Country', 'Event', 'Impact', 'Actual', 'Forecast'];
+            const csv = [
+              headers.join(','),
+              ...allEvents.map(e => [
+                e.date, e.time, e.country, `"${e.title}"`, e.impact, e.actual || '', e.forecast || ''
+              ].join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `vantage_calendar_${weekDates[0].dateStr}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          }}
+          className="p-2 text-text-tertiary hover:text-text-primary transition-colors"
+          title="Export to CSV"
+        >
           <Download size={16} />
         </button>
       </div>
@@ -122,9 +191,9 @@ export function EconomicCalendarView() {
               TIME
             </div>
             {weekDates.map(day => {
-               const isToday = day.dateStr === toISODateString(new Date());
+               const isToday = currentTime ? day.dateStr === toISODateString(currentTime) : false;
                return (
-                 <div key={day.dateStr} className={`p-2 border-r border-border text-center ${isToday ? 'bg-accent/5' : ''}`}>
+                 <div key={day.dateStr} className={`p-2 border-r border-border text-center ${isToday ? 'bg-accent/5 border-b-2 border-b-accent' : ''}`}>
                    <div className={`text-[10px] uppercase font-bold mb-1 ${isToday ? 'text-accent' : 'text-text-tertiary'}`}>
                      {day.dayName}
                    </div>
@@ -146,11 +215,24 @@ export function EconomicCalendarView() {
 
                 {weekDates.map(day => {
                   const dayEvents = schedule[day.dateStr]?.[hour] || [];
-                  const isToday = day.dateStr === toISODateString(new Date());
+                  const isToday = currentTime ? day.dateStr === toISODateString(currentTime) : false;
+                  const isThisHour = hour === currentHourStr;
                   
                   return (
                     <div key={`${day.dateStr}-${hour}`} className={`border-r border-border p-1 relative group ${isToday ? 'bg-accent/[0.02]' : ''}`}>
-                      <div className="flex flex-col gap-1.5 h-full">
+                      
+                      {/* Current Time Line Tracker */}
+                      {isToday && isThisHour && (
+                        <div 
+                          className="absolute left-0 right-0 flex items-center z-30 pointer-events-none"
+                          style={{ top: `${(currentMinute / 60) * 100}%`, transform: 'translateY(-50%)' }}
+                        >
+                          <div className="w-1.5 h-1.5 rounded-full bg-red-500 -ml-0.5 shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                          <div className="h-[1px] flex-1 bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                        </div>
+                      )}
+
+                      <div className="flex flex-col gap-1.5 h-full relative z-10">
                         {dayEvents.map((event) => {
                           const surprise = computeSurprise(event);
                           const intel = getEventIntel(event);
@@ -159,7 +241,7 @@ export function EconomicCalendarView() {
                           return (
                             <div 
                               key={event.id}
-                              onClick={() => setSelectedEvent(event)}
+                              onClick={() => handleEventClick(event)}
                               className={`
                                 relative p-1.5 rounded bg-surface border border-border/50 shadow-sm hover:border-accent/50 hover:bg-surface-highlight transition-all cursor-pointer
                                 ${IMPACT_COLORS[event.impact] || IMPACT_COLORS.Low}
@@ -221,7 +303,7 @@ export function EconomicCalendarView() {
       {selectedEvent && (
         <EventDetailModal 
           event={selectedEvent} 
-          onClose={() => setSelectedEvent(null)} 
+          onClose={handleCloseModal} 
         />
       )}
     </div>

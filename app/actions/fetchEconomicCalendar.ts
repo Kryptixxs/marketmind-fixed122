@@ -32,8 +32,13 @@ const COUNTRY_CODES: Record<string, string> = {
 const CURRENCY_MAP: Record<string, string> = {
   'United States': 'USD', 'Euro Zone': 'EUR', 'United Kingdom': 'GBP',
   'Japan': 'JPY', 'Canada': 'CAD', 'Australia': 'AUD', 'China': 'CNY',
-  'Switzerland': 'CHF', 'New Zealand': 'NZD'
+  'Switzerland': 'CHF', 'New Zealand': 'NZD', 'Germany': 'EUR', 'France': 'EUR'
 };
+
+const MAJOR_COUNTRIES = [
+  'United States', 'Euro Zone', 'United Kingdom', 
+  'Japan', 'Canada', 'Australia', 'Switzerland', 'Germany', 'France'
+];
 
 function cleanText(text: string): string {
   if (!text) return '';
@@ -48,7 +53,7 @@ function cleanText(text: string): string {
 function calculateImpact(title: string): 'High' | 'Medium' | 'Low' {
   const t = title.toLowerCase();
   if (HIGH_IMPACT_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return 'High';
-  return 'Medium'; // We filter out low impact anyway
+  return 'Medium'; 
 }
 
 function shouldKeepEvent(title: string, country: string): boolean {
@@ -57,15 +62,8 @@ function shouldKeepEvent(title: string, country: string): boolean {
   // 1. Reject obvious noise
   if (IGNORED_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return false;
   
-  // 2. Reject minor country PMIs/data (Keep US, major EU/UK/JP macro)
-  const isUS = country === 'United States';
-  const isMajorCB = t.includes('ecb') || t.includes('bank of england') || t.includes('boj');
-  const isTier1 = HIGH_IMPACT_KEYWORDS.some(k => t.includes(k.toLowerCase()));
-
-  // Strict inclusion: Must be US data, a major Central Bank, or a global Tier 1 event
-  if (!isUS && !isMajorCB && !isTier1) {
-    return false;
-  }
+  // 2. Keep events if they belong to a major economy
+  if (!MAJOR_COUNTRIES.includes(country)) return false;
 
   return true;
 }
@@ -112,7 +110,7 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
           
           return {
             id: `${date}-${i}`,
-            date: date, // FIXED: Removed the buggy -1 day shift
+            date: date,
             time: row.gmt || '00:00',
             country: countryCode, 
             currency: CURRENCY_MAP[row.country] || 'USD',
