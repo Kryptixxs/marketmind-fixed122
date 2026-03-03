@@ -35,6 +35,7 @@ export function TradeSetupPanel({ tick, timeframeLabel }: { tick?: Tick, timefra
 
   const isBuy = setup.signal.includes('BUY');
   const isSell = setup.signal.includes('SELL');
+  const isNeutral = !isBuy && !isSell;
 
   // Format precision based on price magnitude
   const formatPrice = (p: number) => p > 1000 ? p.toFixed(1) : p > 1 ? p.toFixed(2) : p.toFixed(4);
@@ -84,32 +85,44 @@ export function TradeSetupPanel({ tick, timeframeLabel }: { tick?: Tick, timefra
             <span className="text-[9px] font-bold uppercase tracking-wider">Trade Parameters</span>
           </div>
           
-          <div className="grid grid-cols-2 gap-1">
-            <div className="bg-surface-highlight/40 border border-border p-2 flex flex-col gap-1 rounded-sm">
-              <span className="text-[8px] text-text-tertiary uppercase font-bold">Entry Zone</span>
-              <span className="text-[11px] font-mono text-text-primary">{formatPrice(setup.entryZone[0])} - {formatPrice(setup.entryZone[1])}</span>
-            </div>
-            <div className="bg-negative/5 border border-negative/20 p-2 flex flex-col gap-1 rounded-sm">
-              <span className="text-[8px] text-negative uppercase font-bold">Hard Stop Loss</span>
-              <span className="text-[11px] font-mono text-negative font-bold">{setup.stopLoss > 0 ? formatPrice(setup.stopLoss) : '---'}</span>
-            </div>
-            <div className="bg-positive/5 border border-positive/20 p-2 flex flex-col gap-1 rounded-sm">
-              <span className="text-[8px] text-positive uppercase font-bold">Take Profit 1</span>
-              <span className="text-[11px] font-mono text-positive font-bold">{setup.takeProfit1 > 0 ? formatPrice(setup.takeProfit1) : '---'}</span>
-            </div>
-            <div className="bg-positive/5 border border-positive/20 p-2 flex flex-col gap-1 rounded-sm">
-              <span className="text-[8px] text-positive uppercase font-bold">Take Profit 2</span>
-              <span className="text-[11px] font-mono text-positive font-bold">{setup.takeProfit2 > 0 ? formatPrice(setup.takeProfit2) : '---'}</span>
-            </div>
-          </div>
-          
-          {setup.riskReward > 0 && (
-            <div className="bg-surface-highlight border border-border p-2 flex justify-between items-center rounded-sm mt-1">
-              <span className="text-[9px] font-bold uppercase text-text-secondary">Est. Risk/Reward</span>
-              <span className={`text-[12px] font-mono font-bold ${setup.riskReward >= 2 ? 'text-positive' : setup.riskReward < 1 ? 'text-negative' : 'text-warning'}`}>
-                1 : {setup.riskReward.toFixed(2)}
+          {isNeutral ? (
+            <div className="border border-dashed border-border bg-surface-highlight/30 rounded-sm p-4 flex flex-col items-center justify-center text-center">
+              <Activity size={16} className="text-text-tertiary mb-2 opacity-50" />
+              <span className="text-[10px] font-bold text-text-secondary uppercase tracking-widest">Awaiting Setup</span>
+              <span className="text-[8px] text-text-tertiary mt-1 max-w-[85%] leading-relaxed">
+                Price action lacks conviction. Wait for expansion from the current structural range.
               </span>
             </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-1">
+                <div className="bg-surface-highlight/40 border border-border p-2 flex flex-col gap-1 rounded-sm">
+                  <span className="text-[8px] text-text-tertiary uppercase font-bold">Entry Zone</span>
+                  <span className="text-[11px] font-mono text-text-primary">{formatPrice(setup.entryZone[0])} - {formatPrice(setup.entryZone[1])}</span>
+                </div>
+                <div className="bg-negative/5 border border-negative/20 p-2 flex flex-col gap-1 rounded-sm">
+                  <span className="text-[8px] text-negative uppercase font-bold">Hard Stop Loss</span>
+                  <span className="text-[11px] font-mono text-negative font-bold">{setup.stopLoss > 0 ? formatPrice(setup.stopLoss) : '---'}</span>
+                </div>
+                <div className="bg-positive/5 border border-positive/20 p-2 flex flex-col gap-1 rounded-sm">
+                  <span className="text-[8px] text-positive uppercase font-bold">Take Profit 1</span>
+                  <span className="text-[11px] font-mono text-positive font-bold">{setup.takeProfit1 > 0 ? formatPrice(setup.takeProfit1) : '---'}</span>
+                </div>
+                <div className="bg-positive/5 border border-positive/20 p-2 flex flex-col gap-1 rounded-sm">
+                  <span className="text-[8px] text-positive uppercase font-bold">Take Profit 2</span>
+                  <span className="text-[11px] font-mono text-positive font-bold">{setup.takeProfit2 > 0 ? formatPrice(setup.takeProfit2) : '---'}</span>
+                </div>
+              </div>
+              
+              {setup.riskReward > 0 && (
+                <div className="bg-surface-highlight border border-border p-2 flex justify-between items-center rounded-sm mt-1">
+                  <span className="text-[9px] font-bold uppercase text-text-secondary">Est. Risk/Reward</span>
+                  <span className={`text-[12px] font-mono font-bold ${setup.riskReward >= 2 ? 'text-positive' : setup.riskReward < 1 ? 'text-negative' : 'text-warning'}`}>
+                    1 : {setup.riskReward.toFixed(2)}
+                  </span>
+                </div>
+              )}
+            </>
           )}
         </div>
 
