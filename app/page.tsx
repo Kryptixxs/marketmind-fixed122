@@ -6,6 +6,8 @@ import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
 import { TerminalCommandBar } from '@/components/TerminalCommandBar';
 import { CorrelationMatrix } from '@/components/widgets/CorrelationMatrix';
+import { NarrativeTracker } from '@/components/macro/NarrativeTracker';
+import { SetupScanner } from '@/components/macro/SetupScanner';
 import { 
   Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle, 
   Terminal as TerminalIcon, Layers, Target, Search, Zap, ShieldAlert, 
@@ -14,7 +16,6 @@ import {
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 import { analyzeMarketState } from '@/lib/market-intelligence';
 import { analyzeYieldCurve, getCreditStress } from '@/lib/macro-intelligence';
-import { analyzeNewsSentiment } from '@/app/actions/analyzeNewsSentiment';
 
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
   '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
@@ -32,7 +33,6 @@ const ALL_SYMBOLS = [...WATCHLIST_SYMBOLS, ...MACRO_SYMBOLS];
 
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("^NDX");
-  const [newsSentiment, setNewsSentiment] = useState<any>(null);
   
   const { data: marketData, error: streamError } = useMarketData(ALL_SYMBOLS);
   const loading = Object.keys(marketData).length === 0 && !streamError;
@@ -46,24 +46,6 @@ export default function TerminalPage() {
     };
     window.addEventListener('vantage-symbol-change', handleSymbolChange);
     return () => window.removeEventListener('vantage-symbol-change', handleSymbolChange);
-  }, []);
-
-  // News Sentiment Synthesis
-  useEffect(() => {
-    const runSentiment = async () => {
-      // In a real app, we'd pass actual headlines from the NewsFeed state
-      // For now, we'll trigger it periodically
-      const result = await analyzeNewsSentiment([
-        "Fed officials signal caution on rate cuts",
-        "Tech earnings beat expectations across the board",
-        "Geopolitical tensions ease in Middle East",
-        "US Treasury yields hit 4-month highs"
-      ]);
-      setNewsSentiment(result);
-    };
-    runSentiment();
-    const interval = setInterval(runSentiment, 300000); // Every 5 mins
-    return () => clearInterval(interval);
   }, []);
 
   const activeQuote = marketData[activeSymbol];
@@ -83,7 +65,7 @@ export default function TerminalPage() {
 
       <div className="flex-1 grid grid-cols-12 grid-rows-12 gap-0.5 w-full min-h-0 p-0.5">
         
-        {/* --- COLUMN 1: MARKET WATCH & TECHNICALS --- */}
+        {/* --- COLUMN 1: MARKET WATCH & SCANNER --- */}
         <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
           <div className="flex-1 min-h-0">
             <Widget title="Market Watch // Institutional">
@@ -118,41 +100,9 @@ export default function TerminalPage() {
             </Widget>
           </div>
           
-          <div className="h-[40%] min-h-0">
-            <Widget title="Technical Confluence">
-              <div className="p-2 space-y-3 h-full overflow-y-auto custom-scrollbar">
-                {insight ? (
-                  <>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
-                        <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">RSI (14)</div>
-                        <div className={`text-xs font-mono font-bold ${insight.indicators.rsi > 70 ? 'text-negative' : insight.indicators.rsi < 30 ? 'text-positive' : 'text-text-primary'}`}>
-                          {insight.indicators.rsi.toFixed(2)}
-                        </div>
-                      </div>
-                      <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
-                        <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">ATR Vol</div>
-                        <div className="text-xs font-mono font-bold text-warning">{insight.indicators.atr.toFixed(2)}</div>
-                      </div>
-                    </div>
-                    
-                    <div className="bg-accent/5 p-2 border border-accent/10 rounded-sm">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-[8px] font-bold uppercase text-accent">Trend Strength</span>
-                        <span className="text-[10px] font-mono font-bold text-accent">{insight.strength}%</span>
-                      </div>
-                      <div className="h-1 w-full bg-surface-highlight rounded-full overflow-hidden">
-                        <div className="h-full bg-accent transition-all duration-1000" style={{ width: `${insight.strength}%` }} />
-                      </div>
-                      <p className="text-[9px] text-text-secondary leading-tight italic mt-2">
-                        {insight.analysis}
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex items-center justify-center h-full opacity-30"><Loader2 className="animate-spin" size={16} /></div>
-                )}
-              </div>
+          <div className="h-[45%] min-h-0">
+            <Widget title="Setup Scanner (15m)">
+              <SetupScanner activeSymbol={activeSymbol} />
             </Widget>
           </div>
         </div>
@@ -160,32 +110,8 @@ export default function TerminalPage() {
         {/* --- COLUMN 2: MACRO & CORRELATION --- */}
         <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
           <div className="h-[30%] min-h-0">
-            <Widget title="Yield Curve & Rates">
-              <div className="p-2 space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
-                    <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">10Y Yield</div>
-                    <div className="text-xs font-mono font-bold text-text-primary">{yieldCurve.tenYear.toFixed(3)}%</div>
-                  </div>
-                  <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
-                    <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">3M T-Bill</div>
-                    <div className="text-xs font-mono font-bold text-text-primary">{yieldCurve.twoYear.toFixed(3)}%</div>
-                  </div>
-                </div>
-                
-                <div className="p-2 bg-background border border-border rounded-sm">
-                  <div className="flex justify-between items-center mb-1">
-                    <span className="text-[9px] text-text-tertiary uppercase font-bold">3M/10Y Spread</span>
-                    <span className={`text-[10px] font-mono font-bold ${yieldCurve.spread < 0 ? 'text-negative' : 'text-positive'}`}>
-                      {(yieldCurve.spread * 100).toFixed(1)} bps
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[9px] text-text-tertiary uppercase font-bold">Regime</span>
-                    <span className="text-[9px] font-bold text-accent uppercase">{yieldCurve.regime}</span>
-                  </div>
-                </div>
-              </div>
+            <Widget title="Macro Narrative">
+              <NarrativeTracker activeSymbol={activeSymbol} price={activeQuote?.price || 0} />
             </Widget>
           </div>
           
@@ -200,28 +126,29 @@ export default function TerminalPage() {
           </div>
 
           <div className="flex-1 min-h-0">
-            <Widget title="Credit & Risk Stress">
+            <Widget title="Yield Curve & Stress">
               <div className="p-2 space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Systemic Stress</span>
-                  <span className={`text-[10px] font-mono font-bold ${credit.status === 'STABLE' ? 'text-positive' : 'text-negative'}`}>{credit.status}</span>
-                </div>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-[8px] text-text-tertiary uppercase font-bold">
-                    <span>Stress Index</span>
-                    <span>{credit.score}/100</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
+                    <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">3M/10Y Spread</div>
+                    <div className={`text-xs font-mono font-bold ${yieldCurve.spread < 0 ? 'text-negative' : 'text-positive'}`}>
+                      {(yieldCurve.spread * 100).toFixed(1)} bps
+                    </div>
                   </div>
-                  <div className="w-full h-1 bg-surface-highlight rounded-full overflow-hidden">
-                    <div className={`h-full ${credit.score > 50 ? 'bg-negative' : 'bg-positive'} transition-all duration-1000`} style={{ width: `${credit.score}%` }} />
+                  <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
+                    <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">Stress Index</div>
+                    <div className={`text-xs font-mono font-bold ${credit.score > 50 ? 'text-negative' : 'text-positive'}`}>
+                      {credit.score}/100
+                    </div>
                   </div>
                 </div>
                 <div className="bg-surface-highlight/30 p-2 border border-border/50 rounded-sm">
-                  <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">News Sentiment</div>
+                  <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">Regime Status</div>
                   <div className="flex items-center justify-between">
-                    <span className={`text-[10px] font-bold uppercase ${newsSentiment?.score > 0 ? 'text-positive' : 'text-negative'}`}>
-                      {newsSentiment?.label || 'Analyzing...'}
+                    <span className="text-[10px] font-bold uppercase text-accent">{yieldCurve.regime}</span>
+                    <span className={`text-[10px] font-bold uppercase ${credit.status === 'STABLE' ? 'text-positive' : 'text-negative'}`}>
+                      {credit.status}
                     </span>
-                    <span className="text-[10px] font-mono text-text-primary">{newsSentiment?.score || 0}</span>
                   </div>
                 </div>
               </div>
