@@ -1,64 +1,36 @@
 'use server';
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { Type } from "@google/genai";
+import { callGeminiJSON } from "./ai";
 
 export async function analyzeMarket(symbol: string, label: string, price: number, changePercent: number) {
-  // Strictly use server-side environment variable
-  const apiKey = process.env.GEMINI_API_KEY;
+  const system = "You are a professional financial analyst providing concise technical insights.";
+  const user = `Analyze ${label} (${symbol}). Price: ${price}, Change: ${changePercent}%. Provide trend strength (0-100), sentiment, and a 2-sentence analysis.`;
   
-  // Fallback data if API key is missing or call fails
-  const fallback = {
-    sentiment: changePercent >= 0 ? 'Bullish' : 'Bearish',
-    strength: Math.min(Math.abs(changePercent) * 15 + 40, 95),
-    analysis: `The market for ${label} is currently showing ${changePercent >= 0 ? 'positive' : 'negative'} momentum at ${price.toLocaleString()}. Technical indicators suggest a ${Math.abs(changePercent) > 1 ? 'strong' : 'moderate'} ${changePercent >= 0 ? 'uptrend' : 'downtrend'} in the current session.`
+  const schema = {
+    type: Type.OBJECT,
+    properties: {
+      strength: { type: Type.NUMBER },
+      sentiment: { type: Type.STRING },
+      analysis: { type: Type.STRING },
+    },
+    required: ["strength", "sentiment", "analysis"],
   };
 
-  if (!apiKey) {
-    console.warn("[AI] GEMINI_API_KEY is not set. Running in demo mode.");
-    return {
-      ...fallback,
-      analysis: "(Demo Mode) " + fallback.analysis
-    };
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
-
   try {
-    const result = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: `Analyze the current market state for ${label} (${symbol}). 
-      Current Price: ${price}
-      Daily Change: ${changePercent}%
-      
-      Provide:
-      1. A trend strength score from 0 to 100 (as an integer).
-      2. Market sentiment (Bullish, Bearish, or Neutral).
-      3. A 2-sentence technical analysis of the current price action.`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            strength: { type: Type.NUMBER },
-            sentiment: { type: Type.STRING },
-            analysis: { type: Type.STRING },
-          },
-          required: ["strength", "sentiment", "analysis"],
-        },
-      },
+    const { data } = await callGeminiJSON<any>({
+      system,
+      user,
+      schema,
+      cacheKey: `market-analysis-${symbol}`
     });
-
-    if (result && result.text) {
-      const parsed = JSON.parse(result.text);
-      return {
-        ...parsed,
-        strength: Math.round(parsed.strength) // Ensure integer
-      };
-    }
-    
-    return fallback;
+    return data;
   } catch (error) {
     console.error("Market analysis error:", error);
-    return fallback;
+    return {
+      sentiment: changePercent >= 0 ? 'Bullish' : 'Bearish',
+      strength: 50,
+      analysis: "AI analysis currently unavailable. Showing baseline technical sentiment."
+    };
   }
 }
