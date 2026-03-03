@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Widget } from '@/components/Widget';
 import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
@@ -9,8 +9,11 @@ import { CorrelationMatrix } from '@/components/widgets/CorrelationMatrix';
 import { ConfluenceScanner } from '@/components/widgets/ConfluenceScanner';
 import { ICTPanel } from '@/components/widgets/ICTPanel';
 import { MiniCalendar } from '@/components/widgets/MiniCalendar';
-import { Wifi, TrendingUp, TrendingDown } from 'lucide-react';
+import { Wifi, TrendingUp, TrendingDown, Plus, Search, X } from 'lucide-react';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
+
+const DEFAULT_WATCHLIST = ['^NDX', '^GSPC', 'CL=F', 'GC=F', 'EURUSD=X', 'BTC-USD'];
+const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX', '^IRX'];
 
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
   '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
@@ -22,10 +25,6 @@ const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
   'EURUSD=X': { tv: 'PEPPERSTONE:EURUSD', label: 'EUR/USD' },
   'BTC-USD': { tv: 'BINANCE:BTCUSDT', label: 'Bitcoin' },
 };
-
-const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
-const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX', '^IRX'];
-const ALL_SYMBOLS = [...WATCHLIST_SYMBOLS, ...MACRO_SYMBOLS];
 
 const TIMEFRAMES = [
   { label: '1M', yf: '1m', tv: '1' },
@@ -39,52 +38,126 @@ export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("^NDX");
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]); 
   
-  const { data: marketData } = useMarketData(ALL_SYMBOLS, timeframe.yf);
+  // Watchlist state management
+  const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('vantage_main_watchlist');
+    if (saved) {
+      try { setWatchlist(JSON.parse(saved)); } catch (e) {}
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('vantage_main_watchlist', JSON.stringify(watchlist));
+  }, [watchlist]);
+
+  const allSymbols = [...new Set([...watchlist, ...MACRO_SYMBOLS])];
+  const { data: marketData } = useMarketData(allSymbols, timeframe.yf);
 
   useEffect(() => {
     const handleSymbolChange = (e: any) => {
       const newSym = e.detail;
-      if (SYMBOL_MAP[newSym] || newSym.length < 10) {
-        setActiveSymbol(newSym);
+      if (!watchlist.includes(newSym)) {
+        setWatchlist(prev => [newSym, ...prev]);
       }
+      setActiveSymbol(newSym);
     };
     window.addEventListener('vantage-symbol-change', handleSymbolChange);
     return () => window.removeEventListener('vantage-symbol-change', handleSymbolChange);
-  }, []);
+  }, [watchlist]);
+
+  useEffect(() => {
+    if (isSearchOpen && searchInputRef.current) searchInputRef.current.focus();
+  }, [isSearchOpen]);
+
+  const handleAddSymbol = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery) return;
+    const sym = searchQuery.toUpperCase().trim();
+    if (!watchlist.includes(sym)) {
+      setWatchlist(prev => [sym, ...prev]);
+    }
+    setActiveSymbol(sym);
+    setSearchQuery('');
+    setIsSearchOpen(false);
+  };
+
+  const handleRemoveSymbol = (e: React.MouseEvent, sym: string) => {
+    e.stopPropagation();
+    const newList = watchlist.filter(s => s !== sym);
+    setWatchlist(newList);
+    if (activeSymbol === sym && newList.length > 0) setActiveSymbol(newList[0]);
+  };
 
   const activeQuote = marketData[activeSymbol];
-  const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
+  
+  // Resolve TV Symbol or fallback to standard
+  const getTVSymbol = (sym: string) => {
+    if (SYMBOL_MAP[sym]) return SYMBOL_MAP[sym].tv;
+    if (sym.includes('=')) return `FX:${sym.replace('=X', '')}`;
+    if (sym.includes('-')) return `CRYPTO:${sym.replace('-', '')}`;
+    return sym;
+  };
+
+  const getLabel = (sym: string) => SYMBOL_MAP[sym]?.label || 'Equities/Crypto';
 
   return (
     <div className="h-full w-full bg-background flex flex-col overflow-hidden min-h-0">
       <TerminalCommandBar />
 
-      {/* 
-        Responsive layout wrapper: 
-        - Mobile: flex-col with vertical scrolling
-        - Desktop (lg): CSS Grid, fixed height, no body scrolling 
-      */}
       <div className="flex-1 w-full p-0.5 flex flex-col lg:grid lg:grid-cols-12 lg:grid-rows-12 gap-1 overflow-y-auto lg:overflow-hidden custom-scrollbar touch-pan-y">
         
         {/* --- LEFT COLUMN --- */}
         <div className="lg:col-span-3 lg:row-span-12 flex flex-col gap-1 min-h-[400px] lg:h-full shrink-0">
           <div className="flex-1 min-h-0">
-            <Widget title="Market Watch // Realtime">
+            <Widget 
+              title="Market Watch // Realtime"
+              actions={
+                <div className="relative">
+                  <button onClick={() => setIsSearchOpen(true)} className="p-1 hover:bg-white/10 rounded transition-colors text-text-tertiary hover:text-text-primary" title="Add Ticker">
+                    <Plus size={12} />
+                  </button>
+                  {isSearchOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsSearchOpen(false)} />
+                      <div className="absolute top-full left-0 mt-1 w-48 bg-surface-highlight border border-border rounded shadow-xl z-50 p-1">
+                        <form onSubmit={handleAddSymbol} className="flex items-center gap-2 bg-background border border-border px-2 rounded">
+                          <Search size={10} className="text-text-tertiary" />
+                          <input 
+                            ref={searchInputRef}
+                            value={searchQuery}
+                            onChange={e => setSearchQuery(e.target.value)}
+                            placeholder="Add ticker..."
+                            className="flex-1 bg-transparent border-none outline-none text-[10px] py-1.5 text-text-primary"
+                          />
+                        </form>
+                      </div>
+                    </>
+                  )}
+                </div>
+              }
+            >
               <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
-                {WATCHLIST_SYMBOLS.map(sym => {
+                {watchlist.map(sym => {
                   const data = marketData[sym];
-                  const info = SYMBOL_MAP[sym];
                   const isPositive = data?.change >= 0;
                   
                   return (
                     <div 
                       key={sym} 
                       onClick={() => setActiveSymbol(sym)}
-                      className={`flex justify-between items-center px-3 py-2 border-b border-border/20 cursor-pointer transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
+                      className={`flex justify-between items-center px-3 py-2 border-b border-border/20 cursor-pointer group transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
                     >
                       <div className="flex flex-col">
-                        <span className="font-bold text-[10px] text-text-primary">{sym}</span>
-                        <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{info.label}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="font-bold text-[10px] text-text-primary">{sym}</span>
+                          <button onClick={(e) => handleRemoveSymbol(e, sym)} className="opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-negative"><X size={10}/></button>
+                        </div>
+                        <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{getLabel(sym)}</span>
                       </div>
                       <div className="flex flex-col items-end">
                         <span className="text-[10px] font-mono font-bold text-text-primary">
@@ -119,7 +192,7 @@ export default function TerminalPage() {
         <div className="lg:col-span-6 lg:row-span-12 flex flex-col gap-1 min-h-[600px] lg:h-full shrink-0">
           <div className="flex-1 lg:h-[70%] min-h-[350px] lg:min-h-0">
             <Widget 
-              title={`${activeSymbol} • ${SYMBOL_MAP[activeSymbol]?.label || ''}`} 
+              title={`${activeSymbol} • ${getLabel(activeSymbol)}`} 
               actions={
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="flex items-center gap-1 bg-background border border-border rounded-sm p-0.5 overflow-x-auto hide-scrollbar">
@@ -139,7 +212,7 @@ export default function TerminalPage() {
               }
             >
               <div className="w-full h-full bg-black">
-                <TradingViewChart symbol={activeTV} interval={timeframe.tv} />
+                <TradingViewChart symbol={getTVSymbol(activeSymbol)} interval={timeframe.tv} />
               </div>
             </Widget>
           </div>

@@ -62,25 +62,22 @@ export function CommandPalette() {
     return () => document.removeEventListener("keydown", down)
   }, [open])
 
-  const runCommand = React.useCallback((command: () => unknown) => {
-    setOpen(false)
-    command()
-  }, [])
+  // Wrap the navigation to ensure the dialog closes before pushing the route
+  const handleNav = (path: string) => {
+    setOpen(false);
+    setTimeout(() => {
+      router.push(path);
+    }, 50); // slight delay ensures DOM cleanup from dialog
+  }
 
   const handleSymbolSelect = (sym: string) => {
-    runCommand(() => {
+    setOpen(false);
+    setTimeout(() => {
       window.dispatchEvent(new CustomEvent('vantage-symbol-change', { detail: sym }));
-      // If we aren't on a page that handles charts (home or charts), push to charts
       if (pathname !== '/' && pathname !== '/charts') {
         router.push('/charts');
       }
-    });
-  }
-
-  const openSettings = () => {
-    runCommand(() => {
-      window.dispatchEvent(new CustomEvent('vantage-open-settings'));
-    });
+    }, 50);
   }
 
   return (
@@ -105,23 +102,23 @@ export function CommandPalette() {
         <CommandSeparator />
 
         <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => runCommand(() => router.push('/'))}>
+          <CommandItem onSelect={() => handleNav('/')} value="workspace dashboard home">
             <LineChart className="mr-2 h-4 w-4" />
             <span>Workspace / Dashboard</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push('/charts'))}>
+          <CommandItem onSelect={() => handleNav('/charts')} value="technical analysis charts">
             <Zap className="mr-2 h-4 w-4" />
             <span>Technical Analysis</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push('/calendar'))}>
+          <CommandItem onSelect={() => handleNav('/calendar')} value="economic calendar">
             <Calendar className="mr-2 h-4 w-4" />
             <span>Economic Calendar</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push('/news'))}>
+          <CommandItem onSelect={() => handleNav('/news')} value="intelligence wire news">
             <Newspaper className="mr-2 h-4 w-4" />
             <span>Intelligence Wire</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push('/algo'))}>
+          <CommandItem onSelect={() => handleNav('/algo')} value="algo backtester">
             <Cpu className="mr-2 h-4 w-4" />
             <span>Algo Backtester</span>
           </CommandItem>
@@ -130,17 +127,20 @@ export function CommandPalette() {
         <CommandSeparator />
 
         <CommandGroup heading="Settings">
-          <CommandItem onSelect={() => runCommand(() => router.push('/account'))}>
+          <CommandItem onSelect={() => handleNav('/account')} value="profile account">
             <User className="mr-2 h-4 w-4 text-text-secondary" />
             <span>Profile & Account</span>
             <CommandShortcut>⌘P</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => router.push('/billing'))}>
+          <CommandItem onSelect={() => handleNav('/billing')} value="billing subscription">
             <CreditCard className="mr-2 h-4 w-4 text-text-secondary" />
             <span>Billing & Subscription</span>
             <CommandShortcut>⌘B</CommandShortcut>
           </CommandItem>
-          <CommandItem onSelect={openSettings}>
+          <CommandItem onSelect={() => {
+            setOpen(false);
+            setTimeout(() => window.dispatchEvent(new CustomEvent('vantage-open-settings')), 50);
+          }} value="preferences settings">
             <Settings className="mr-2 h-4 w-4 text-text-secondary" />
             <span>Preferences</span>
             <CommandShortcut>⌘S</CommandShortcut>
