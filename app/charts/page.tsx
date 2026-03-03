@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 
-const DEFAULT_WATCHLIST = ['NQ=F', 'ES=F', 'CL=F', 'GC=F', 'AAPL', 'NVDA', 'TSLA', 'BTC-USD'];
+const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'CRUDE', 'GOLD', 'AAPL', 'NVDA', 'TSLA', 'BTCUSD'];
 
 const TIMEFRAMES = [
   { label: '1M', yf: '1m', tv: '1' },
@@ -28,18 +28,21 @@ const TIMEFRAMES = [
   { label: '1D', yf: '1d', tv: 'D' },
 ];
 
-const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
-  'NQ=F': { tv: 'CME_MINI:NQ1!', label: 'Nasdaq 100 Futures' },
-  'ES=F': { tv: 'CME_MINI:ES1!', label: 'S&P 500 Futures' },
-  'RTY=F': { tv: 'CME_MINI:RTY1!', label: 'Russell 2000 Futures' },
-  'CL=F': { tv: 'NYMEX:CL1!', label: 'Crude Oil' },
-  'GC=F': { tv: 'COMEX:GC1!', label: 'Gold' },
-  'EURUSD=X': { tv: 'FX:EURUSD', label: 'EUR/USD' },
-  'BTC-USD': { tv: 'BINANCE:BTCUSDT', label: 'Bitcoin' },
+const TV_WIDGET_MAP: Record<string, { tv: string, label: string }> = {
+  'NAS100': { tv: 'NASDAQ:NDX', label: 'Nasdaq 100' },
+  'SPX500': { tv: 'SP:SPX', label: 'S&P 500' },
+  'US30': { tv: 'DJ:DJI', label: 'Dow Jones' },
+  'CRUDE': { tv: 'TVC:USOIL', label: 'Crude Oil' },
+  'GOLD': { tv: 'TVC:GOLD', label: 'Gold' },
+  'EURUSD': { tv: 'FX:EURUSD', label: 'EUR/USD' },
+  'BTCUSD': { tv: 'BINANCE:BTCUSDT', label: 'Bitcoin' },
+  'AAPL': { tv: 'NASDAQ:AAPL', label: 'Apple Inc.' },
+  'TSLA': { tv: 'NASDAQ:TSLA', label: 'Tesla Inc.' },
+  'NVDA': { tv: 'NASDAQ:NVDA', label: 'Nvidia Corp.' },
 };
 
 export default function ChartsPage() {
-  const [activeSymbol, setActiveSymbol] = useState('NQ=F');
+  const [activeSymbol, setActiveSymbol] = useState('NAS100');
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]);
   
   const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
@@ -48,14 +51,14 @@ export default function ChartsPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('vantage_charts_watchlist');
+    const saved = localStorage.getItem('vantage_charts_watchlist_v3');
     if (saved) {
       try { setWatchlist(JSON.parse(saved)); } catch (e) {}
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('vantage_charts_watchlist', JSON.stringify(watchlist));
+    localStorage.setItem('vantage_charts_watchlist_v3', JSON.stringify(watchlist));
   }, [watchlist]);
 
   const { data: marketData, error: streamError } = useMarketData(watchlist, timeframe.yf);
@@ -97,14 +100,8 @@ export default function ChartsPage() {
     if (activeSymbol === sym && newList.length > 0) setActiveSymbol(newList[0]);
   };
 
-  const getTVSymbol = (sym: string) => {
-    if (SYMBOL_MAP[sym]) return SYMBOL_MAP[sym].tv;
-    if (sym.includes('=')) return `FX:${sym.replace('=X', '')}`;
-    if (sym.includes('-')) return `CRYPTO:${sym.replace('-', '')}`;
-    return `NASDAQ:${sym}`;
-  };
-
-  const getLabel = (sym: string) => SYMBOL_MAP[sym]?.label || 'Equities/Crypto';
+  const getTVSymbol = (sym: string) => TV_WIDGET_MAP[sym]?.tv || sym;
+  const getLabel = (sym: string) => TV_WIDGET_MAP[sym]?.label || 'Equities/Crypto';
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden min-h-0">
@@ -129,8 +126,8 @@ export default function ChartsPage() {
                     ref={searchInputRef}
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Enter ticker (e.g. AAPL, BTC-USD)"
-                    className="flex-1 bg-transparent border-none outline-none text-xs py-1.5 text-text-primary"
+                    placeholder="Enter ticker (e.g. AAPL, BTCUSD)"
+                    className="flex-1 bg-transparent border-none outline-none text-xs py-1.5 text-text-primary uppercase"
                   />
                 </form>
               </div>

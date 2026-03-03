@@ -1,9 +1,6 @@
 'use server';
 
-import yahooFinance from 'yahoo-finance2';
 import { OHLCV } from '@/lib/marketdata/types';
-
-yahooFinance.suppressNotices(['yahooSurvey', 'ripHistorical']);
 
 export interface MarketData {
   symbol: string;
@@ -16,47 +13,96 @@ export interface MarketData {
   name?: string;
 }
 
-export async function fetchMarketDataBatch(symbols: string[], interval: "1m"|"2m"|"5m"|"15m"|"30m"|"60m"|"1d" = '15m'): Promise<(MarketData | null)[]> {
+// Provided Institutional API Key
+const POLYGON_API_KEY = 'Educ3tK6ue_eC33G_3ERTMb0qc7wd3K6';
+
+// Mapping our clean UI symbols to Polygon.io strict ticker formats
+const POLY_MAP: Record<string, string> = {
+  'NAS100': 'I:NDX',
+  'SPX500': 'I:SPX',
+  'US30': 'I:DJI',
+  'CRUDE': 'USO',     // Oil ETF proxy (Futures require specific contract months on Polygon)
+  'GOLD': 'GLD',      // Gold ETF proxy
+  'EURUSD': 'C:EURUSD',
+  'BTCUSD': 'X:BTCUSD',
+  'AAPL': 'AAPL',
+  'TSLA': 'TSLA',
+  'NVDA': 'NVDA',
+  'VIX': 'I:VIX',
+  'DXY': 'UUP',
+};
+
+export async function fetchMarketDataBatch(symbols: string[], interval: string = '15m'): Promise<(MarketData | null)[]> {
   if (!symbols || symbols.length === 0) return [];
   
+  // Convert standard intervals to Polygon format (multiplier + timespan)
+  let multiplier = 15;
+  let timespan = 'minute';
+  if (interval === '1m') { multiplier = 1; timespan = 'minute'; }
+  if (interval === '5m') { multiplier = 5; timespan = 'minute'; }
+  if (interval === '60m' || interval === '1h') { multiplier = 1; timespan = 'hour'; }
+  if (interval === '1d' || interval === '1D') { multiplier = 1; timespan = 'day'; }
+
+  // Look back 5 days to ensure we have enough data to calculate changes and render charts (bypasses weekends)
+  const toDate = new Date();
+  const fromDate = new Date();
+  fromDate.setDate(toDate.getDate() - 5);
+
+  const fromStr = fromDate.toISOString().split('T')[0];
+  const toStr = toDate.toISOString().split('T')[0];
+
   try {
     const results = await Promise.all(symbols.map(async (sym) => {
       try {
-        // Fetch REAL historical candles so the AI has actual data to look at
-        const chart = await yahooFinance.chart(sym, { interval: interval as any, range: '5d' });
+        const polySym = POLY_MAP[sym] || sym;
         
-        if (!chart || !chart.quotes || chart.quotes.length === 0) return null;
+        // Fetch Aggregates (OHLCV) from Polygon.io
+        const url = `https://api.polygon.io/v2/aggs/ticker/${polySym}/range/${multiplier}/${timespan}/${fromStr}/${toStr}?adjusted=true&sort=asc&apiKey=${POLYGON_API_KEY}`;
+        
+        const res = await fetch(url, { next: { revalidate: 0 } });
+        
+        if (!res.ok) {
+          console.warn(`[Polygon] API rejected ${polySym}: ${res.status}`);
+          return null;
+        }
 
-        const meta = chart.meta;
-        const price = meta.regularMarketPrice;
-        const prevClose = meta.chartPreviousClose || price;
-        const change = price - prevClose;
+        const data = await res.json();
+        
+        if (!data.results || data.results.length === 0) return null;
+
+        const quotes = data.results;
+        const currentCandle = quotes[quotes.length - 1];
+        const currentPrice = currentCandle.c;
+
+        // Calculate change against a candle roughly 24 hours ago (or earliest available)
+        const lookbackBars = Math.floor((24 * 60) / multiplier);
+        const prevIndex = Math.max(0, quotes.length - lookbackBars);
+        const prevClose = quotes[prevIndex].c;
+        
+        const change = currentPrice - prevClose;
         const changePercent = (change / prevClose) * 100;
 
-        // Map real Yahoo Finance quotes to our internal OHLCV format
-        const history: OHLCV[] = chart.quotes
-          .filter(q => q.open !== null && q.close !== null)
-          .map(q => ({
-            timestamp: q.date.getTime(),
-            open: q.open as number,
-            high: q.high as number,
-            low: q.low as number,
-            close: q.close as number,
-            volume: q.volume || 0
-          }));
+        const history: OHLCV[] = quotes.map((q: any) => ({
+          timestamp: q.t,
+          open: q.o,
+          high: q.h,
+          low: q.l,
+          close: q.c,
+          volume: q.v || 0
+        }));
 
         return {
           symbol: sym,
-          name: meta.shortName || meta.symbol || sym,
-          price,
+          name: sym,
+          price: currentPrice,
           change,
           changePercent,
-          currency: meta.currency || 'USD',
+          currency: 'USD',
           marketState: 'REGULAR',
           history
         };
       } catch (e) {
-        console.error(`[MarketData] Failed to fetch real data for ${sym}:`, e);
+        console.error(`[MarketData] Exception fetching ${sym}:`, e);
         return null;
       }
     }));
@@ -69,6 +115,6 @@ export async function fetchMarketDataBatch(symbols: string[], interval: "1m"|"2m
 }
 
 export async function fetchMarketData(symbol: string, interval: string = '15m'): Promise<MarketData | null> {
-  const batch = await fetchMarketDataBatch([symbol], interval as any);
+  const batch = await fetchMarketDataBatch([symbol], interval);
   return batch.length > 0 ? batch[0] : null;
 }

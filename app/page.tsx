@@ -12,22 +12,24 @@ import { MiniCalendar } from '@/components/widgets/MiniCalendar';
 import { Wifi, TrendingUp, TrendingDown, Plus, Search, X } from 'lucide-react';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 
-// Using actual Futures symbols to match real pricing
-const DEFAULT_WATCHLIST = ['NQ=F', 'ES=F', 'CL=F', 'GC=F', 'EURUSD=X', 'BTC-USD'];
-const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX'];
+// Clean UI Symbols mapped for Polygon
+const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'CRUDE', 'GOLD', 'EURUSD', 'BTCUSD'];
+const MACRO_SYMBOLS = ['VIX', 'DXY'];
 
-// Map Yahoo Finance symbols EXACTLY to TradingView official exchange feeds
-const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
-  'NQ=F': { tv: 'CME_MINI:NQ1!', label: 'Nasdaq 100 Futures' },
-  'ES=F': { tv: 'CME_MINI:ES1!', label: 'S&P 500 Futures' },
-  'RTY=F': { tv: 'CME_MINI:RTY1!', label: 'Russell 2000 Futures' },
-  'CL=F': { tv: 'NYMEX:CL1!', label: 'Crude Oil' },
-  'GC=F': { tv: 'COMEX:GC1!', label: 'Gold' },
-  'EURUSD=X': { tv: 'FX:EURUSD', label: 'EUR/USD' },
-  'BTC-USD': { tv: 'BINANCE:BTCUSDT', label: 'Bitcoin' },
-  '^VIX': { tv: 'CBOE:VIX', label: 'Volatility Index' },
-  'DX-Y.NYB': { tv: 'CAPITALCOM:DXY', label: 'US Dollar Index' },
-  '^TNX': { tv: 'TVC:US10Y', label: '10Y Yield' },
+// Map the clean symbols to the visual TradingView Widget symbols
+const TV_WIDGET_MAP: Record<string, { tv: string, label: string }> = {
+  'NAS100': { tv: 'NASDAQ:NDX', label: 'Nasdaq 100' },
+  'SPX500': { tv: 'SP:SPX', label: 'S&P 500' },
+  'US30': { tv: 'DJ:DJI', label: 'Dow Jones' },
+  'CRUDE': { tv: 'TVC:USOIL', label: 'Crude Oil' },
+  'GOLD': { tv: 'TVC:GOLD', label: 'Gold' },
+  'EURUSD': { tv: 'FX:EURUSD', label: 'EUR/USD' },
+  'BTCUSD': { tv: 'BINANCE:BTCUSDT', label: 'Bitcoin' },
+  'VIX': { tv: 'CBOE:VIX', label: 'Volatility Index' },
+  'DXY': { tv: 'TVC:DXY', label: 'US Dollar Index' },
+  'AAPL': { tv: 'NASDAQ:AAPL', label: 'Apple Inc.' },
+  'TSLA': { tv: 'NASDAQ:TSLA', label: 'Tesla Inc.' },
+  'NVDA': { tv: 'NASDAQ:NVDA', label: 'Nvidia Corp.' },
 };
 
 const TIMEFRAMES = [
@@ -39,7 +41,7 @@ const TIMEFRAMES = [
 ];
 
 export default function TerminalPage() {
-  const [activeSymbol, setActiveSymbol] = useState("NQ=F");
+  const [activeSymbol, setActiveSymbol] = useState("NAS100");
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]); 
   
   const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
@@ -48,14 +50,14 @@ export default function TerminalPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('vantage_main_watchlist');
+    const saved = localStorage.getItem('vantage_main_watchlist_v3');
     if (saved) {
       try { setWatchlist(JSON.parse(saved)); } catch (e) {}
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('vantage_main_watchlist', JSON.stringify(watchlist));
+    localStorage.setItem('vantage_main_watchlist_v3', JSON.stringify(watchlist));
   }, [watchlist]);
 
   const allSymbols = [...new Set([...watchlist, ...MACRO_SYMBOLS])];
@@ -98,14 +100,8 @@ export default function TerminalPage() {
 
   const activeQuote = marketData[activeSymbol];
   
-  const getTVSymbol = (sym: string) => {
-    if (SYMBOL_MAP[sym]) return SYMBOL_MAP[sym].tv;
-    if (sym.includes('=')) return `FX:${sym.replace('=X', '')}`;
-    if (sym.includes('-')) return `CRYPTO:${sym.replace('-', '')}`;
-    return `NASDAQ:${sym}`;
-  };
-
-  const getLabel = (sym: string) => SYMBOL_MAP[sym]?.label || 'Equities/Crypto';
+  const getTVSymbol = (sym: string) => TV_WIDGET_MAP[sym]?.tv || sym;
+  const getLabel = (sym: string) => TV_WIDGET_MAP[sym]?.label || 'Equities/Crypto';
 
   return (
     <div className="h-full w-full bg-background flex flex-col overflow-hidden min-h-0">
@@ -117,7 +113,7 @@ export default function TerminalPage() {
         <div className="lg:col-span-3 lg:row-span-12 flex flex-col gap-1 min-h-[400px] lg:h-full shrink-0">
           <div className="flex-1 min-h-0">
             <Widget 
-              title="Market Watch // Realtime"
+              title="Market Watch // Institutional"
               actions={
                 <div className="relative">
                   <button onClick={() => setIsSearchOpen(true)} className="p-1 hover:bg-white/10 rounded transition-colors text-text-tertiary hover:text-text-primary" title="Add Ticker">
@@ -133,8 +129,8 @@ export default function TerminalPage() {
                             ref={searchInputRef}
                             value={searchQuery}
                             onChange={e => setSearchQuery(e.target.value)}
-                            placeholder="Add ticker (e.g. NQ=F)"
-                            className="flex-1 bg-transparent border-none outline-none text-[10px] py-1.5 text-text-primary"
+                            placeholder="Add ticker (e.g. AAPL)"
+                            className="flex-1 bg-transparent border-none outline-none text-[10px] py-1.5 text-text-primary uppercase"
                           />
                         </form>
                       </div>
@@ -184,7 +180,7 @@ export default function TerminalPage() {
                   <CorrelationMatrix activeTick={activeQuote} marketData={marketData} />
                 </div>
               ) : (
-                <div className="flex h-full items-center justify-center text-text-tertiary text-[10px]">Loading Real Data...</div>
+                <div className="flex h-full items-center justify-center text-text-tertiary text-[10px]">Loading Math...</div>
               )}
             </Widget>
           </div>
@@ -208,8 +204,7 @@ export default function TerminalPage() {
                        </button>
                      ))}
                   </div>
-                  <span className="text-positive flex items-center gap-1 text-[8px] whitespace-nowrap"><Wifi size={8}/> Live</span>
-                  <span className="hidden sm:inline-block px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase font-mono text-[8px]">{activeQuote?.marketState || 'REGULAR'}</span>
+                  <span className="text-positive flex items-center gap-1 text-[8px] whitespace-nowrap"><Wifi size={8}/> Polygon Feed</span>
                 </div>
               }
             >
