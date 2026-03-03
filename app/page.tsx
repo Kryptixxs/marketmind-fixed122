@@ -16,6 +16,7 @@ import { formatPrice, formatPercent, formatInt } from '@/lib/format';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { fetchHistoricalBars, Bar } from '@/app/actions/fetchHistoricalBars';
 import { getInstrument, resolveYahooSymbol } from '@/lib/instruments';
+import { fetchGlobalVitals, GlobalVitals } from '@/app/actions/fetchGlobalVitals';
 
 const VITALS_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX'];
 
@@ -40,13 +41,27 @@ export default function TerminalPage() {
   const [historicalData, setHistoricalData] = useState<Bar[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   
+  // Global Vitals State
+  const [vitals, setVitals] = useState<GlobalVitals | null>(null);
+  
   const allRequiredYahooSymbols = [
-    ...symbols.map(id => resolveYahooSymbol(id)),
-    ...VITALS_SYMBOLS
+    ...symbols.map(id => resolveYahooSymbol(id))
   ];
   
   const { data: marketData } = useMarketData(allRequiredYahooSymbols);
   const lastAnalyzedRef = useRef<string | null>(null);
+
+  // Fetch Vitals
+  const loadVitals = useCallback(async () => {
+    const data = await fetchGlobalVitals();
+    setVitals(data);
+  }, []);
+
+  useEffect(() => {
+    loadVitals();
+    const intervalId = setInterval(loadVitals, 30000); // Poll every 30s
+    return () => clearInterval(intervalId);
+  }, [loadVitals]);
 
   // Auto-select first symbol if none active
   useEffect(() => {
@@ -145,17 +160,6 @@ export default function TerminalPage() {
       setIsAdding(false);
     }
   };
-
-  const vix = marketData['^VIX'];
-  const dxy = marketData['DX-Y.NYB'];
-  const tnx = marketData['^TNX'];
-
-  const getLiquidity = (v: number) => {
-    if (v < 15) return { label: 'High', color: 'text-positive' };
-    if (v <= 25) return { label: 'Normal', color: 'text-warning' };
-    return { label: 'Risk-off', color: 'text-negative' };
-  };
-  const liquidity = vix ? getLiquidity(vix.price) : { label: '---', color: 'text-text-tertiary' };
 
   const activeInstrument = getInstrument(activeSymbol);
 
@@ -303,26 +307,26 @@ export default function TerminalPage() {
               <div className="p-2 grid grid-cols-2 gap-x-4 gap-y-2 h-full content-start">
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">VIX Index</div>
-                  <div className={`text-sm font-bold mono-num ${vix ? (vix.change >= 0 ? 'text-negative' : 'text-positive') : 'text-text-primary'}`}>
-                    {vix ? formatPrice(vix.price, 'index') : '---'}
+                  <div className={`text-sm font-bold mono-num ${vitals?.vix ? (vitals.vix > 25 ? 'text-negative' : 'text-positive') : 'text-text-primary'}`}>
+                    {vitals?.vix ? vitals.vix.toFixed(2) : '---'}
                   </div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">DXY Dollar</div>
-                  <div className={`text-sm font-bold mono-num ${dxy ? (dxy.change >= 0 ? 'text-positive' : 'text-negative') : 'text-text-primary'}`}>
-                    {dxy ? formatPrice(dxy.price, 'index') : '---'}
+                  <div className="text-sm font-bold mono-num text-text-primary">
+                    {vitals?.dxy ? vitals.dxy.toFixed(2) : '---'}
                   </div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">10Y Yield</div>
-                  <div className={`text-sm font-bold mono-num ${tnx ? (tnx.change >= 0 ? 'text-negative' : 'text-positive') : 'text-text-primary'}`}>
-                    {tnx ? `${formatPrice(tnx.price / 10, 'index')}%` : '---'}
+                  <div className="text-sm font-bold mono-num text-text-primary">
+                    {vitals?.us10y ? `${vitals.us10y.toFixed(2)}%` : '---'}
                   </div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">Liquidity</div>
-                  <div className={`text-sm font-bold ${liquidity.color}`}>
-                    {liquidity.label}
+                  <div className={`text-sm font-bold ${vitals?.liquidityLabel === 'High' ? 'text-positive' : vitals?.liquidityLabel === 'Normal' ? 'text-warning' : 'text-negative'}`}>
+                    {vitals?.liquidityLabel || '---'}
                   </div>
                 </div>
               </div>
