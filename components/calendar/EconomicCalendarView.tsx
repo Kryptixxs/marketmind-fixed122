@@ -9,6 +9,7 @@ import { EconomicEvent } from '@/lib/types';
 import { getFullWeek, toISODateString } from '@/lib/date-utils';
 import { EventDetailModal } from './EventDetailModal';
 import { computeSurprise, getEventIntel } from '@/lib/event-intelligence';
+import { exportToCSV } from '@/lib/utils';
 
 const IMPACT_COLORS: Record<string, string> = {
   High: 'border-l-4 border-l-red-500 bg-red-500/10',
@@ -57,6 +58,13 @@ export function EconomicCalendarView() {
     };
     load();
   }, [weekDates]);
+
+  const handleDownload = () => {
+    const allEvents = Object.values(eventsData).flat();
+    if (allEvents.length > 0) {
+      exportToCSV(allEvents, `economic_calendar_${weekDates[0].dateStr}`);
+    }
+  };
 
   const schedule = useMemo(() => {
     const grid: Record<string, Record<string, EconomicEvent[]>> = {};
@@ -107,7 +115,11 @@ export function EconomicCalendarView() {
           </div>
         </div>
 
-        <button className="p-2 text-text-tertiary hover:text-text-primary">
+        <button 
+          onClick={handleDownload}
+          className="p-2 text-text-tertiary hover:text-text-primary"
+          title="Export Week to CSV"
+        >
           <Download size={16} />
         </button>
       </div>
