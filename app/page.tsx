@@ -25,7 +25,9 @@ const SYMBOL_MAP: Record<string, { tv: string, label: string, category: string }
   'ETH-USD': { tv: 'BINANCE:ETHUSDT', label: 'Ethereum', category: 'crypto' },
 };
 
-const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
+// Macro symbols required for the regime engine
+const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX'];
+const ALL_SYMBOLS = [...Object.keys(SYMBOL_MAP), ...MACRO_SYMBOLS];
 
 export default function TerminalPage() {
   const searchParams = useSearchParams();
@@ -34,7 +36,7 @@ export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("^NDX");
   const [time, setTime] = useState<string>('--:--:--');
   
-  const { data: marketData, error: streamError } = useMarketData(WATCHLIST_SYMBOLS);
+  const { data: marketData, error: streamError } = useMarketData(ALL_SYMBOLS);
   const loading = Object.keys(marketData).length === 0 && !streamError;
 
   useEffect(() => {
@@ -49,11 +51,16 @@ export default function TerminalPage() {
   const activeQuote = marketData[activeSymbol];
   const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
   
-  // Advanced Deterministic Analysis
-  const insight = activeQuote ? analyzeMarketState(activeQuote, marketData) : null;
-  const macro = getMacroRegime(14.5, 104.2, 4.31); // VIX, DXY, 10Y
+  // Real Macro Data
+  const vix = marketData['^VIX']?.price || 15;
+  const dxy = marketData['DX-Y.NYB']?.price || 104;
+  const yields = marketData['^TNX']?.price || 4.3;
 
-  const filteredSymbols = WATCHLIST_SYMBOLS.filter(sym => {
+  // Advanced Deterministic Analysis using REAL data
+  const insight = activeQuote ? analyzeMarketState(activeQuote, marketData) : null;
+  const macro = getMacroRegime(vix, dxy, yields);
+
+  const filteredSymbols = Object.keys(SYMBOL_MAP).filter(sym => {
     if (tab === 'indices') return SYMBOL_MAP[sym].category === 'indices';
     if (tab === 'crypto') return SYMBOL_MAP[sym].category === 'crypto';
     if (tab === 'forex') return SYMBOL_MAP[sym].category === 'forex';
@@ -67,7 +74,7 @@ export default function TerminalPage() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-[9px] font-bold text-accent">
             <TerminalIcon size={10} />
-            <span>VANTAGE TERMINAL v4.0 // MULTI_CONFLUENCE_ENGINE</span>
+            <span>VANTAGE TERMINAL v4.0 // REALTIME_CONFLUENCE_ENGINE</span>
           </div>
           <div className="h-3 w-[1px] bg-border" />
           <div className="flex items-center gap-2 text-[9px] font-mono text-text-secondary">
@@ -76,9 +83,9 @@ export default function TerminalPage() {
           </div>
         </div>
         <div className="flex items-center gap-3 text-[9px] font-mono text-text-tertiary">
-          <span className="text-accent">CPU_LOAD: 12%</span>
+          <span className="text-accent">VIX: {vix.toFixed(2)}</span>
           <div className="h-3 w-[1px] bg-border" />
-          <span className="text-text-secondary">LATENCY: 42ms</span>
+          <span className="text-text-secondary">DXY: {dxy.toFixed(2)}</span>
         </div>
       </div>
 
@@ -176,15 +183,15 @@ export default function TerminalPage() {
               <div className="p-2 grid grid-cols-2 gap-2">
                 <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
                   <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">DXY Bias</div>
-                  <div className="text-xs font-mono font-bold text-positive">BULLISH</div>
+                  <div className={`text-xs font-mono font-bold ${dxy > 104 ? 'text-positive' : 'text-negative'}`}>{dxy > 104 ? 'BULLISH' : 'BEARISH'}</div>
                 </div>
                 <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
                   <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">VIX Regime</div>
-                  <div className="text-xs font-mono font-bold text-text-secondary">STABLE</div>
+                  <div className={`text-xs font-mono font-bold ${vix > 20 ? 'text-negative' : 'text-positive'}`}>{vix > 20 ? 'VOLATILE' : 'STABLE'}</div>
                 </div>
                 <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
-                  <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">Liquidity</div>
-                  <div className="text-xs font-mono font-bold text-positive">HIGH</div>
+                  <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">10Y Yield</div>
+                  <div className="text-xs font-mono font-bold text-accent">{yields.toFixed(2)}%</div>
                 </div>
                 <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
                   <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">Gamma</div>
