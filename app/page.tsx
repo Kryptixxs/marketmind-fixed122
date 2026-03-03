@@ -5,6 +5,7 @@ import { Widget } from '@/components/Widget';
 import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
 import { TerminalCommandBar } from '@/components/TerminalCommandBar';
+import { CorrelationMatrix } from '@/components/widgets/CorrelationMatrix';
 import { 
   Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle, 
   Terminal as TerminalIcon, Layers, Target, Search, Zap, ShieldAlert, 
@@ -13,6 +14,7 @@ import {
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 import { analyzeMarketState } from '@/lib/market-intelligence';
 import { analyzeYieldCurve, getCreditStress } from '@/lib/macro-intelligence';
+import { analyzeNewsSentiment } from '@/app/actions/analyzeNewsSentiment';
 
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
   '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
@@ -25,23 +27,17 @@ const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
 };
 
 const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
-const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX', '^IRX']; // ^IRX is 13-week T-Bill
+const MACRO_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX', '^IRX'];
 const ALL_SYMBOLS = [...WATCHLIST_SYMBOLS, ...MACRO_SYMBOLS];
 
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("^NDX");
-  const [time, setTime] = useState<string>('--:--:--');
+  const [newsSentiment, setNewsSentiment] = useState<any>(null);
   
   const { data: marketData, error: streamError } = useMarketData(ALL_SYMBOLS);
   const loading = Object.keys(marketData).length === 0 && !streamError;
 
   useEffect(() => {
-    const updateTime = () => {
-      setTime(new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false }));
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    
     const handleSymbolChange = (e: any) => {
       const newSym = e.detail;
       if (SYMBOL_MAP[newSym] || newSym.length < 10) {
@@ -49,19 +45,31 @@ export default function TerminalPage() {
       }
     };
     window.addEventListener('vantage-symbol-change', handleSymbolChange);
-    
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener('vantage-symbol-change', handleSymbolChange);
+    return () => window.removeEventListener('vantage-symbol-change', handleSymbolChange);
+  }, []);
+
+  // News Sentiment Synthesis
+  useEffect(() => {
+    const runSentiment = async () => {
+      // In a real app, we'd pass actual headlines from the NewsFeed state
+      // For now, we'll trigger it periodically
+      const result = await analyzeNewsSentiment([
+        "Fed officials signal caution on rate cuts",
+        "Tech earnings beat expectations across the board",
+        "Geopolitical tensions ease in Middle East",
+        "US Treasury yields hit 4-month highs"
+      ]);
+      setNewsSentiment(result);
     };
+    runSentiment();
+    const interval = setInterval(runSentiment, 300000); // Every 5 mins
+    return () => clearInterval(interval);
   }, []);
 
   const activeQuote = marketData[activeSymbol];
   const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
-  
   const insight = activeQuote ? analyzeMarketState(activeQuote) : null;
   
-  // Real Yield Curve Analysis (10Y vs 3M)
   const yieldCurve = analyzeYieldCurve(
     marketData['^TNX']?.price || 4.3,
     marketData['^IRX']?.price || 5.2
@@ -149,7 +157,7 @@ export default function TerminalPage() {
           </div>
         </div>
 
-        {/* --- COLUMN 2: MACRO & YIELD CURVE --- */}
+        {/* --- COLUMN 2: MACRO & CORRELATION --- */}
         <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
           <div className="h-[30%] min-h-0">
             <Widget title="Yield Curve & Rates">
@@ -182,27 +190,12 @@ export default function TerminalPage() {
           </div>
           
           <div className="h-[35%] min-h-0">
-            <Widget title="SMC / ICT Levels">
-              <div className="p-2 space-y-3 h-full overflow-y-auto custom-scrollbar">
-                <div className="space-y-1">
-                  <div className="text-[8px] text-text-tertiary uppercase font-bold">Order Blocks (Live)</div>
-                  {insight?.levels.orderBlocks.length ? insight.levels.orderBlocks.map((ob, i) => (
-                    <div key={i} className={`flex justify-between items-center p-1 rounded-sm border ${ob.type === 'Bullish' ? 'bg-positive/5 border-positive/20 text-positive' : 'bg-negative/5 border-negative/20 text-negative'}`}>
-                      <span className="text-[9px] font-bold">{ob.type} OB</span>
-                      <span className="text-[10px] font-mono">{ob.price.toFixed(2)}</span>
-                    </div>
-                  )) : <div className="text-[8px] text-text-tertiary italic">Scanning for OBs...</div>}
-                </div>
-                <div className="space-y-1">
-                  <div className="text-[8px] text-text-tertiary uppercase font-bold">Fair Value Gaps (Live)</div>
-                  {insight?.levels.fvgs.length ? insight.levels.fvgs.map((fvg, i) => (
-                    <div key={i} className="flex justify-between items-center p-1 rounded-sm border bg-warning/5 border-warning/20 text-warning">
-                      <span className="text-[9px] font-bold">FVG (30D)</span>
-                      <span className="text-[10px] font-mono">{fvg.bottom.toFixed(2)} - {fvg.top.toFixed(2)}</span>
-                    </div>
-                  )) : <div className="text-[8px] text-text-tertiary italic">Scanning for FVGs...</div>}
-                </div>
-              </div>
+            <Widget title="Cross-Asset Correlation">
+              {activeQuote ? (
+                <CorrelationMatrix activeTick={activeQuote} marketData={marketData} />
+              ) : (
+                <div className="flex items-center justify-center h-full opacity-30"><Loader2 className="animate-spin" size={16} /></div>
+              )}
             </Widget>
           </div>
 
@@ -223,9 +216,12 @@ export default function TerminalPage() {
                   </div>
                 </div>
                 <div className="bg-surface-highlight/30 p-2 border border-border/50 rounded-sm">
-                  <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">DXY Correlation</div>
-                  <div className="text-xs font-mono font-bold text-text-primary">
-                    {marketData['DX-Y.NYB'] ? (marketData['DX-Y.NYB'].changePercent > 0 ? 'Inverse Pressure' : 'Risk-On Tailwinds') : 'Syncing...'}
+                  <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">News Sentiment</div>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-[10px] font-bold uppercase ${newsSentiment?.score > 0 ? 'text-positive' : 'text-negative'}`}>
+                      {newsSentiment?.label || 'Analyzing...'}
+                    </span>
+                    <span className="text-[10px] font-mono text-text-primary">{newsSentiment?.score || 0}</span>
                   </div>
                 </div>
               </div>
@@ -252,22 +248,25 @@ export default function TerminalPage() {
           </div>
 
           <div className="h-[35%] grid grid-cols-2 gap-0.5 min-h-0">
-            <Widget title="Volume Profile & Liquidity">
-              <div className="p-2 h-full flex flex-col">
-                <div className="flex-1 space-y-1.5">
-                  {insight?.indicators.volumeProfile.map((vp, i) => (
-                    <div key={i} className="relative h-4 bg-surface-highlight/20 border border-border/10 rounded-sm overflow-hidden">
-                      <div className="absolute inset-y-0 left-0 bg-accent/10 transition-all duration-1000" style={{ width: `${(vp.volume / 1000) * 100}%` }} />
-                      <div className="absolute inset-0 flex justify-between items-center px-2 text-[8px] font-mono">
-                        <span className="text-text-secondary">{vp.price.toFixed(2)}</span>
-                        <span className="text-text-tertiary">{vp.volume.toFixed(0)} lots</span>
-                      </div>
+            <Widget title="SMC / ICT Levels">
+              <div className="p-2 space-y-3 h-full overflow-y-auto custom-scrollbar">
+                <div className="space-y-1">
+                  <div className="text-[8px] text-text-tertiary uppercase font-bold">Order Blocks (Live)</div>
+                  {insight?.levels.orderBlocks.length ? insight.levels.orderBlocks.map((ob, i) => (
+                    <div key={i} className={`flex justify-between items-center p-1 rounded-sm border ${ob.type === 'Bullish' ? 'bg-positive/5 border-positive/20 text-positive' : 'bg-negative/5 border-negative/20 text-negative'}`}>
+                      <span className="text-[9px] font-bold">{ob.type} OB</span>
+                      <span className="text-[10px] font-mono">{ob.price.toFixed(2)}</span>
                     </div>
-                  ))}
+                  )) : <div className="text-[8px] text-text-tertiary italic">Scanning for OBs...</div>}
                 </div>
-                <div className="mt-2 pt-2 border-t border-border/50 flex justify-between items-center">
-                  <span className="text-[8px] text-text-tertiary uppercase font-bold">Point of Control (POC)</span>
-                  <span className="text-[10px] font-mono text-accent">{activeQuote?.price.toFixed(2)}</span>
+                <div className="space-y-1">
+                  <div className="text-[8px] text-text-tertiary uppercase font-bold">Fair Value Gaps (Live)</div>
+                  {insight?.levels.fvgs.length ? insight.levels.fvgs.map((fvg, i) => (
+                    <div key={i} className="flex justify-between items-center p-1 rounded-sm border bg-warning/5 border-warning/20 text-warning">
+                      <span className="text-[9px] font-bold">FVG (30D)</span>
+                      <span className="text-[10px] font-mono">{fvg.bottom.toFixed(2)} - {fvg.top.toFixed(2)}</span>
+                    </div>
+                  )) : <div className="text-[8px] text-text-tertiary italic">Scanning for FVGs...</div>}
                 </div>
               </div>
             </Widget>
