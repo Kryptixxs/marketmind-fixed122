@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ShieldAlert, Zap, Activity, Target } from 'lucide-react';
+import { X, ShieldAlert, Zap, Activity, Target, Globe } from 'lucide-react';
 import { useSettings, type ImpactFilter, type Strategy, type VolatilityPreference, type RiskTolerance } from '@/context/SettingsContext';
 
 type Tab = 'filters' | 'personalization' | 'account';
