@@ -49,6 +49,7 @@ export default function TerminalPage() {
 
   // Fetch historical data for the standard chart
   const loadHistory = useCallback(async (sym: string) => {
+    if (!sym) return;
     setLoadingHistory(true);
     try {
       const bars = await fetchHistoricalBars(sym, '6m');
@@ -95,6 +96,7 @@ export default function TerminalPage() {
     e.preventDefault();
     if (newSymbol) {
       addSymbol(newSymbol);
+      setActiveSymbol(newSymbol);
       setNewSymbol('');
       setIsAdding(false);
     }

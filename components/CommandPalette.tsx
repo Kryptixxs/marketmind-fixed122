@@ -2,20 +2,13 @@
 
 import * as React from "react"
 import {
-  Calculator,
   Calendar,
-  CreditCard,
-  Settings,
-  User,
-  LineChart,
-  TrendingUp,
   Search,
-  Globe,
-  Zap,
   Plus,
   LayoutGrid,
   Newspaper,
-  Cpu
+  Cpu,
+  Trash2
 } from "lucide-react"
 
 import {
@@ -33,10 +26,10 @@ import { useWatchlistStore } from "@/store/useWatchlistStore"
 
 export function CommandPalette() {
   const [open, setOpen] = React.useState(false)
-  const [prompt, setPrompt] = React.useState<'symbol' | 'watchlist' | null>(null)
+  const [prompt, setPrompt] = React.useState<'open' | 'add' | 'remove' | null>(null)
   const [inputValue, setInputValue] = React.useState("")
   const router = useRouter()
-  const { addSymbol, setActiveSymbol } = useWatchlistStore()
+  const { symbols, addSymbol, removeSymbol, setActiveSymbol } = useWatchlistStore()
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -61,12 +54,12 @@ export function CommandPalette() {
   const handlePromptSubmit = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && inputValue) {
       const ticker = inputValue.toUpperCase().trim();
-      if (prompt === 'symbol') {
+      if (prompt === 'open') {
         runCommand(() => {
           setActiveSymbol(ticker);
           router.push('/');
         });
-      } else if (prompt === 'watchlist') {
+      } else if (prompt === 'add') {
         runCommand(() => {
           addSymbol(ticker);
           setActiveSymbol(ticker);
@@ -81,7 +74,12 @@ export function CommandPalette() {
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput 
-        placeholder={prompt === 'symbol' ? "Enter ticker to open..." : prompt === 'watchlist' ? "Enter ticker to add..." : "Type a command or search..."} 
+        placeholder={
+          prompt === 'open' ? "Enter ticker to open..." : 
+          prompt === 'add' ? "Enter ticker to add to watchlist..." : 
+          prompt === 'remove' ? "Select ticker to remove..." :
+          "Type a command or search..."
+        } 
         value={inputValue}
         onValueChange={setInputValue}
         onKeyDown={handlePromptSubmit}
@@ -112,23 +110,36 @@ export function CommandPalette() {
             
             <CommandSeparator />
             
-            <CommandGroup heading="Terminal Commands">
-              <CommandItem onSelect={() => { setPrompt('symbol'); setInputValue(""); }}>
+            <CommandGroup heading="Watchlist Management">
+              <CommandItem onSelect={() => { setPrompt('open'); setInputValue(""); }}>
                 <Search className="mr-2 h-4 w-4" />
                 <span>Open Symbol...</span>
                 <CommandShortcut>S</CommandShortcut>
               </CommandItem>
-              <CommandItem onSelect={() => { setPrompt('watchlist'); setInputValue(""); }}>
+              <CommandItem onSelect={() => { setPrompt('add'); setInputValue(""); }}>
                 <Plus className="mr-2 h-4 w-4" />
                 <span>Add to Watchlist...</span>
                 <CommandShortcut>A</CommandShortcut>
               </CommandItem>
+              <CommandItem onSelect={() => { setPrompt('remove'); setInputValue(""); }}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                <span>Remove from Watchlist...</span>
+              </CommandItem>
             </CommandGroup>
           </>
+        ) : prompt === 'remove' ? (
+          <CommandGroup heading="Remove from Watchlist">
+            {symbols.map(sym => (
+              <CommandItem key={sym} onSelect={() => runCommand(() => removeSymbol(sym))}>
+                <Trash2 className="mr-2 h-4 w-4 text-negative" />
+                <span>{sym}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
         ) : (
-          <CommandGroup heading={prompt === 'symbol' ? "Open Symbol" : "Add to Watchlist"}>
+          <CommandGroup heading={prompt === 'open' ? "Open Symbol" : "Add to Watchlist"}>
             <div className="p-4 text-xs text-text-tertiary">
-              Press <kbd className="bg-surface-highlight px-1 rounded">Enter</kbd> to confirm ticker.
+              Type ticker and press <kbd className="bg-surface-highlight px-1 rounded">Enter</kbd> to confirm.
             </div>
           </CommandGroup>
         )}
