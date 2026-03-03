@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  ChevronLeft, ChevronRight, Download, Loader2
+  ChevronLeft, ChevronRight, Download, Loader2, Clock
 } from 'lucide-react';
 import { fetchEconomicCalendarBatch } from '@/app/actions/fetchEconomicCalendar';
 import { EconomicEvent } from '@/lib/types';
@@ -62,26 +62,29 @@ export function EconomicCalendarView() {
   };
 
   const schedule = useMemo(() => {
-    const grid: Record<string, Record<string, EconomicEvent[]>> = {};
+    const grid: Record<string, { hours: Record<string, EconomicEvent[]>, allDay: EconomicEvent[] }> = {};
 
     weekDates.forEach(day => {
-      grid[day.dateStr] = {};
-      HOURS.forEach(h => grid[day.dateStr][h] = []);
+      grid[day.dateStr] = { hours: {}, allDay: [] };
+      HOURS.forEach(h => grid[day.dateStr].hours[h] = []);
       
       const dayEvents = eventsData[day.dateStr] || [];
       dayEvents.forEach(e => {
         if (!showLowImpact && e.impact === 'Low') return;
         
-        let hourKey = '00:00';
-        if (e.time !== 'All Day' && e.time !== 'TBD' && e.time.includes(':')) {
-           const parts = e.time.split(':');
-           const h = parseInt(parts[0]);
-           if (!isNaN(h)) {
-             hourKey = `${h.toString().padStart(2, '0')}:00`;
-           }
+        if (e.time === 'All Day' || e.time === 'TBD' || !e.time.includes(':')) {
+          grid[day.dateStr].allDay.push(e);
+        } else {
+          const parts = e.time.split(':');
+          const h = parseInt(parts[0]);
+          if (!isNaN(h)) {
+            const hourKey = `${h.toString().padStart(2, '0')}:00`;
+            if (!grid[day.dateStr].hours[hourKey]) grid[day.dateStr].hours[hourKey] = [];
+            grid[day.dateStr].hours[hourKey].push(e);
+          } else {
+            grid[day.dateStr].allDay.push(e);
+          }
         }
-        if (!grid[day.dateStr][hourKey]) grid[day.dateStr][hourKey] = [];
-        grid[day.dateStr][hourKey].push(e);
       });
     });
     return grid;
@@ -125,7 +128,7 @@ export function EconomicCalendarView() {
         <div className="min-w-[1000px]">
           
           {/* Header Row (Days) */}
-          <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border sticky top-0 bg-surface/95 backdrop-blur z-20">
+          <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border sticky top-0 bg-surface/95 backdrop-blur z-30">
             <div className="p-2 border-r border-border text-[10px] text-text-tertiary font-bold flex items-end justify-center">
               TIME
             </div>
@@ -144,6 +147,25 @@ export function EconomicCalendarView() {
             })}
           </div>
 
+          {/* All Day Row */}
+          <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border bg-surface-highlight/30 sticky top-[45px] z-20">
+            <div className="border-r border-border p-2 text-[9px] font-bold text-text-tertiary text-center flex items-center justify-center">
+              ALL DAY
+            </div>
+            {weekDates.map(day => {
+              const allDayEvents = schedule[day.dateStr]?.allDay || [];
+              return (
+                <div key={`allday-${day.dateStr}`} className="border-r border-border p-1 min-h-[40px]">
+                  <div className="flex flex-col gap-1">
+                    {allDayEvents.map(event => (
+                      <EventCard key={event.id} event={event} onClick={() => setSelectedEvent(event)} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           {/* Body Rows (Hours) */}
           <div className="divide-y divide-border">
             {HOURS.map(hour => (
@@ -153,55 +175,14 @@ export function EconomicCalendarView() {
                 </div>
 
                 {weekDates.map(day => {
-                  const dayEvents = schedule[day.dateStr]?.[hour] || [];
+                  const dayEvents = schedule[day.dateStr]?.hours[hour] || [];
                   const isToday = day.dateStr === toISODateString(new Date());
                   
                   return (
                     <div key={`${day.dateStr}-${hour}`} className={`border-r border-border p-1 relative group ${isToday ? 'bg-accent/[0.02]' : ''}`}>
                       <div className="flex flex-col gap-1.5 h-full">
                         {dayEvents.map((event) => (
-                          <div 
-                            key={event.id}
-                            onClick={() => setSelectedEvent(event)}
-                            className={`
-                              relative p-1.5 rounded bg-surface border border-border/50 shadow-sm hover:border-accent/50 hover:bg-surface-highlight transition-all cursor-pointer
-                              ${IMPACT_COLORS[event.impact] || IMPACT_COLORS.Low}
-                            `}
-                          >
-                            <div className="flex items-center justify-between gap-2 mb-1">
-                              <div className="flex items-center gap-1.5">
-                                {event.country && (
-                                  <img 
-                                    src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`}
-                                    alt={event.country}
-                                    className="w-3 h-2 object-cover rounded-[1px] opacity-80"
-                                    onError={(e) => e.currentTarget.style.display = 'none'}
-                                  />
-                                )}
-                                <span className="text-[9px] font-mono text-text-secondary leading-none">
-                                  {formatTime(event.time)}
-                                </span>
-                              </div>
-                              <span className="text-[8px] font-bold text-text-tertiary">{event.currency}</span>
-                            </div>
-                            
-                            <div className="text-[10px] font-medium leading-tight text-text-primary line-clamp-2 mb-1">
-                              {event.title}
-                            </div>
-
-                            {(event.actual || event.forecast) && (
-                              <div className="flex items-center gap-2 text-[9px] font-mono border-t border-black/10 pt-1 mt-1 opacity-80">
-                                {event.actual && (
-                                  <span className="text-text-primary font-bold">
-                                    {formatMaybeNumber(event.actual)}
-                                  </span>
-                                )}
-                                {event.forecast && (
-                                  <span className="text-text-tertiary">/ {formatMaybeNumber(event.forecast)}</span>
-                                )}
-                              </div>
-                            )}
-                          </div>
+                          <EventCard key={event.id} event={event} onClick={() => setSelectedEvent(event)} />
                         ))}
                       </div>
                     </div>
@@ -219,6 +200,53 @@ export function EconomicCalendarView() {
           event={selectedEvent} 
           onClose={() => setSelectedEvent(null)} 
         />
+      )}
+    </div>
+  );
+}
+
+function EventCard({ event, onClick }: { event: EconomicEvent, onClick: () => void }) {
+  return (
+    <div 
+      onClick={onClick}
+      className={`
+        relative p-1.5 rounded bg-surface border border-border/50 shadow-sm hover:border-accent/50 hover:bg-surface-highlight transition-all cursor-pointer
+        ${IMPACT_COLORS[event.impact] || IMPACT_COLORS.Low}
+      `}
+    >
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <div className="flex items-center gap-1.5">
+          {event.country && (
+            <img 
+              src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`}
+              alt={event.country}
+              className="w-3 h-2 object-cover rounded-[1px] opacity-80"
+              onError={(e) => e.currentTarget.style.display = 'none'}
+            />
+          )}
+          <span className="text-[9px] font-mono text-text-secondary leading-none flex items-center gap-1">
+            {event.time === 'All Day' ? <Clock size={8} /> : null}
+            {formatTime(event.time)}
+          </span>
+        </div>
+        <span className="text-[8px] font-bold text-text-tertiary">{event.currency}</span>
+      </div>
+      
+      <div className="text-[10px] font-medium leading-tight text-text-primary line-clamp-2 mb-1">
+        {event.title}
+      </div>
+
+      {(event.actual || event.forecast) && (
+        <div className="flex items-center gap-2 text-[9px] font-mono border-t border-black/10 pt-1 mt-1 opacity-80">
+          {event.actual && (
+            <span className="text-text-primary font-bold">
+              {formatMaybeNumber(event.actual)}
+            </span>
+          )}
+          {event.forecast && (
+            <span className="text-text-tertiary">/ {formatMaybeNumber(event.forecast)}</span>
+          )}
+        </div>
       )}
     </div>
   );

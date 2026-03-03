@@ -60,15 +60,17 @@ function sanitizeValue(val: string | undefined): string | null {
 }
 
 function normalizeTime(time: string | undefined): string {
-  const t = (time || '').trim().toUpperCase();
-  if (!t || t === '24H' || t === 'ALL DAY') return 'All Day';
-  if (t === 'TENTATIVE' || t === 'TBD') return 'TBD';
+  // Strip HTML tags first as Nasdaq often wraps times in <span> or similar
+  const cleanTime = (time || '').replace(/<[^>]*>?/gm, '').trim().toUpperCase();
+  
+  if (!cleanTime || cleanTime === '24H' || cleanTime === 'ALL DAY') return 'All Day';
+  if (cleanTime === 'TENTATIVE' || cleanTime === 'TBD') return 'TBD';
   
   // Handle "8:30 AM" or "2:15 PM" and convert to 24h "HH:mm"
-  const match = t.match(/(\d+):(\d+)\s*(AM|PM)?/);
+  const match = cleanTime.match(/(\d+):(\d+)\s*(AM|PM)?/);
   if (match) {
     let hours = parseInt(match[1]);
-    const minutes = match[2];
+    const minutes = match[2].padStart(2, '0');
     const ampm = match[3];
     
     if (ampm === 'PM' && hours < 12) hours += 12;
@@ -77,7 +79,7 @@ function normalizeTime(time: string | undefined): string {
     return `${hours.toString().padStart(2, '0')}:${minutes}`;
   }
   
-  return t;
+  return cleanTime;
 }
 
 function generateStableId(date: string, time: string, title: string, country: string): string {
@@ -137,7 +139,9 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
       if (time !== 'All Day' && time !== 'TBD' && time.includes(':')) {
         sortTime = time;
       }
-      const timestamp = new Date(`${dateStr}T${sortTime}:00Z`).getTime();
+      
+      // Ensure we create a valid ISO-like timestamp for sorting
+      const timestamp = new Date(`${dateStr}T${sortTime}:00`).getTime();
 
       return {
         id: generateStableId(dateStr, time, row.eventName, countryInfo.code),
@@ -150,7 +154,7 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
         actual: sanitizeValue(row.actual),
         forecast: sanitizeValue(row.consensus),
         previous: sanitizeValue(row.previous),
-        timestamp: timestamp
+        timestamp: isNaN(timestamp) ? 0 : timestamp
       };
     }).sort((a: EconomicEvent, b: EconomicEvent) => a.timestamp - b.timestamp);
   } catch {
