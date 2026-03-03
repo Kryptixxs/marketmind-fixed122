@@ -143,11 +143,11 @@ export default function ChartsPage() {
           
           <div className="flex items-center gap-1 overflow-x-auto hide-scrollbar max-w-full">
             {TIMEFRAMES.map(tf => (
-              <button 
-                key={tf.value}
+              <button
+                key={tf.label}
                 onClick={() => setTimeframe(tf)}
                 className={`px-2 py-1 text-[10px] font-bold rounded transition-colors whitespace-nowrap
-                  ${timeframe.value === tf.value ? 'bg-accent/10 text-accent border border-accent/30' : 'text-text-tertiary hover:text-text-primary'}`}
+                  ${timeframe.label === tf.label ? 'bg-accent/10 text-accent border border-accent/30' : 'text-text-tertiary hover:text-text-primary'}`}
               >
                 {tf.label}
               </button>
