@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import TradingViewChart from '@/components/TradingViewChart';
+import { TradeSetupPanel } from '@/components/widgets/TradeSetupPanel';
 import { 
   Plus, 
   Layout, 
@@ -14,73 +15,68 @@ import {
   Loader2,
   AlertCircle
 } from 'lucide-react';
-import { fetchMarketData } from '@/app/actions/fetchMarketData';
+import { useMarketData } from '@/lib/marketdata/useMarketData';
 
-const DEFAULT_WATCHLIST = ['AAPL', 'TSLA', 'NVDA', 'MSFT', 'BTC-USD', 'GC=F'];
+const DEFAULT_WATCHLIST = ['^NDX', '^GSPC', 'CL=F', 'GC=F', 'AAPL', 'NVDA', 'TSLA', 'BTC-USD'];
 
 const TIMEFRAMES = [
-  { label: '1M', value: '1' },
-  { label: '5M', value: '5' },
-  { label: '15M', value: '15' },
-  { label: '1H', value: '60' },
-  { label: '4H', value: '240' },
-  { label: '1D', value: 'D' },
-  { label: '1W', value: 'W' },
+  { label: '1M', yf: '1m', tv: '1' },
+  { label: '5M', yf: '5m', tv: '5' },
+  { label: '15M', yf: '15m', tv: '15' },
+  { label: '1H', yf: '60m', tv: '60' },
+  { label: '4H', yf: '60m', tv: '240' }, // YF doesn't support 4h well, mapping to 60m for math
+  { label: '1D', yf: '1d', tv: 'D' },
 ];
 
-export default function ChartsPage() {
-  const [activeSymbol, setActiveSymbol] = useState('AAPL');
-  const [timeframe, setTimeframe] = useState(TIMEFRAMES[3]);
-  const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
-  const [quotes, setQuotes] = useState<Record<string, any>>({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
+  '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
+  '^GSPC': { tv: 'BLACKBULL:SPX500', label: 'S&P 500' },
+  'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil' },
+  'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold' },
+  'BTC-USD': { tv: 'BINANCE:BTCUSDT', label: 'Bitcoin' },
+};
 
+export default function ChartsPage() {
+  const [activeSymbol, setActiveSymbol] = useState('^NDX');
+  const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]);
+  
+  const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Load from local storage
   useEffect(() => {
-    const saved = localStorage.getItem('vantage_watchlist');
+    const saved = localStorage.getItem('vantage_charts_watchlist');
     if (saved) {
-      try {
-        setWatchlist(JSON.parse(saved));
-      } catch (e) {
-        setWatchlist(DEFAULT_WATCHLIST);
-      }
+      try { setWatchlist(JSON.parse(saved)); } catch (e) {}
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('vantage_watchlist', JSON.stringify(watchlist));
+    localStorage.setItem('vantage_charts_watchlist', JSON.stringify(watchlist));
   }, [watchlist]);
 
-  const loadData = useCallback(async () => {
-    setError(null);
-    try {
-      const results: Record<string, any> = {};
-      await Promise.all(watchlist.map(async (sym) => {
-        const data = await fetchMarketData(sym);
-        if (data) results[sym] = data;
-      }));
-      setQuotes(results);
-    } catch (err) {
-      setError('Failed to sync market data');
-    } finally {
-      setLoading(false);
-    }
+  // Connect to the unified market data provider
+  const { data: marketData, error: streamError } = useMarketData(watchlist, timeframe.yf);
+  const activeQuote = marketData[activeSymbol];
+  const loading = Object.keys(marketData).length === 0 && !streamError;
+
+  // Listen to command palette events
+  useEffect(() => {
+    const handleSymbolChange = (e: any) => {
+      const newSym = e.detail;
+      if (!watchlist.includes(newSym)) {
+        setWatchlist(prev => [newSym, ...prev]);
+      }
+      setActiveSymbol(newSym);
+    };
+    window.addEventListener('vantage-symbol-change', handleSymbolChange);
+    return () => window.removeEventListener('vantage-symbol-change', handleSymbolChange);
   }, [watchlist]);
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 30000);
-    return () => clearInterval(interval);
-  }, [loadData]);
-
-  useEffect(() => {
-    if (isSearchOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
+    if (isSearchOpen && searchInputRef.current) searchInputRef.current.focus();
   }, [isSearchOpen]);
 
   const handleAddSymbol = (e: React.FormEvent) => {
@@ -99,24 +95,21 @@ export default function ChartsPage() {
     e.stopPropagation();
     const newList = watchlist.filter(s => s !== sym);
     setWatchlist(newList);
-    if (activeSymbol === sym && newList.length > 0) {
-      setActiveSymbol(newList[0]);
-    }
+    if (activeSymbol === sym && newList.length > 0) setActiveSymbol(newList[0]);
   };
 
   const getTVSymbol = (sym: string) => {
-    if (sym === 'GC=F') return 'COMEX:GC1!';
-    if (sym === 'CL=F') return 'NYMEX:CL1!';
+    if (SYMBOL_MAP[sym]) return SYMBOL_MAP[sym].tv;
     if (sym.includes('=')) return `FX:${sym.replace('=X', '')}`;
     if (sym.includes('-')) return `CRYPTO:${sym.replace('-', '')}`;
     return sym;
   };
 
-  const activeQuote = quotes[activeSymbol];
+  const getLabel = (sym: string) => SYMBOL_MAP[sym]?.label || 'Equities/Crypto';
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden min-h-0">
-      {/* Toolbar - Wraps on mobile */}
+      {/* Toolbar */}
       <div className="h-auto min-h-[40px] py-2 border-b border-border bg-surface flex flex-wrap items-center px-4 justify-between shrink-0 z-20 gap-2">
         <div className="flex items-center gap-4 md:gap-6 relative flex-wrap">
           
@@ -154,7 +147,7 @@ export default function ChartsPage() {
                 key={tf.value}
                 onClick={() => setTimeframe(tf)}
                 className={`px-2 py-1 text-[10px] font-bold rounded transition-colors whitespace-nowrap
-                  ${timeframe.value === tf.value ? 'bg-accent/10 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
+                  ${timeframe.value === tf.value ? 'bg-accent/10 text-accent border border-accent/30' : 'text-text-tertiary hover:text-text-primary'}`}
               >
                 {tf.label}
               </button>
@@ -164,59 +157,52 @@ export default function ChartsPage() {
 
         <div className="flex items-center gap-4 ml-auto">
           {loading && <Loader2 size={14} className="animate-spin text-text-tertiary" />}
-          {error && <AlertCircle size={14} className="text-negative" title={error} />}
+          {streamError && <AlertCircle size={14} className="text-negative" title={streamError} />}
           <button className="hidden sm:block p-1.5 text-text-tertiary hover:text-text-primary" title="Layout Settings (Coming Soon)"><Layout size={16} /></button>
-          <button className="p-1.5 text-text-tertiary hover:text-text-primary" title="Chart Settings (Coming Soon)"><Settings size={16} /></button>
           <button className="p-1.5 text-text-tertiary hover:text-text-primary" title="Fullscreen" onClick={() => document.documentElement.requestFullscreen()}><Maximize2 size={16} /></button>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden min-h-0">
-        {/* Watchlist Sidebar - Stacks to top on mobile */}
-        <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border bg-surface flex flex-col shrink-0 h-[250px] md:h-full min-h-[250px]">
-          <div className="p-3 border-b border-border flex items-center justify-between shrink-0">
+        
+        {/* Watchlist Sidebar (Left) */}
+        <div className="w-full md:w-56 border-b md:border-b-0 md:border-r border-border bg-surface flex flex-col shrink-0 h-[200px] md:h-full min-h-[200px]">
+          <div className="p-3 border-b border-border flex items-center justify-between shrink-0 bg-surface-highlight">
             <span className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">Watchlist</span>
-            <button 
-              onClick={() => setIsSearchOpen(true)}
-              className="p-1 hover:bg-white/5 rounded text-text-tertiary hover:text-text-primary"
-              title="Add Symbol"
-            >
+            <button onClick={() => setIsSearchOpen(true)} className="p-1 hover:bg-white/5 rounded text-text-tertiary hover:text-text-primary">
               <Plus size={14} />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             {watchlist.map(sym => {
-              const data = quotes[sym];
+              const data = marketData[sym];
               const isPositive = data?.change >= 0;
 
               return (
                 <div 
                   key={sym}
                   onClick={() => setActiveSymbol(sym)}
-                  className={`p-3 border-b border-border/50 flex items-center justify-between cursor-pointer transition-colors group
+                  className={`p-2 border-b border-border/50 flex items-center justify-between cursor-pointer transition-colors group
                     ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'hover:bg-white/5 border-l-2 border-l-transparent'}`}
                 >
                   <div className="flex flex-col">
                     <div className="flex items-center gap-1">
-                      <span className="text-xs font-bold text-text-primary">{sym}</span>
-                      <button 
-                        onClick={(e) => handleRemoveSymbol(e, sym)}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 text-text-tertiary hover:text-negative transition-opacity"
-                      >
+                      <span className="text-[11px] font-bold text-text-primary">{sym}</span>
+                      <button onClick={(e) => handleRemoveSymbol(e, sym)} className="opacity-0 group-hover:opacity-100 p-0.5 text-text-tertiary hover:text-negative transition-opacity">
                         <X size={10} />
                       </button>
                     </div>
-                    <span className="text-[9px] text-text-tertiary truncate max-w-[80px]">{data?.name || '---'}</span>
+                    <span className="text-[8px] text-text-tertiary truncate max-w-[70px] uppercase">{getLabel(sym)}</span>
                   </div>
                   <div className="flex flex-col items-end">
-                    {loading && !data ? (
+                    {!data && !streamError ? (
                       <Loader2 size={10} className="animate-spin text-text-tertiary" />
                     ) : (
                       <>
-                        <span className="text-xs font-mono font-bold text-text-primary">
+                        <span className="text-[11px] font-mono font-bold text-text-primary">
                           {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '---'}
                         </span>
-                        <span className={`text-[10px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
+                        <span className={`text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
                           {data ? `${isPositive ? '+' : ''}${data.changePercent.toFixed(2)}%` : '--'}
                         </span>
                       </>
@@ -228,11 +214,10 @@ export default function ChartsPage() {
           </div>
         </div>
 
-        {/* Main Chart Area */}
-        <div className="flex-1 bg-black relative min-h-[450px] md:min-h-0 flex flex-col">
-          <TradingViewChart symbol={getTVSymbol(activeSymbol)} interval={timeframe.value} />
+        {/* Main Chart Area (Center) */}
+        <div className="flex-1 bg-black relative min-h-[400px] md:min-h-0 flex flex-col border-b md:border-b-0 md:border-r border-border">
+          <TradingViewChart symbol={getTVSymbol(activeSymbol)} interval={timeframe.tv} />
           
-          {/* Floating Info Overlay */}
           <div className="absolute top-4 left-4 p-3 bg-surface/80 backdrop-blur border border-border rounded-sm pointer-events-none flex flex-col gap-1">
             <div className="flex items-center gap-3">
               <span className="text-lg font-bold text-text-primary">{activeSymbol}</span>
@@ -249,6 +234,12 @@ export default function ChartsPage() {
             </div>
           </div>
         </div>
+
+        {/* Trade Setup Panel (Right) */}
+        <div className="w-full md:w-80 bg-surface flex flex-col shrink-0 h-auto min-h-[400px] md:h-full">
+          <TradeSetupPanel tick={activeQuote} timeframeLabel={timeframe.label} />
+        </div>
+
       </div>
     </div>
   );

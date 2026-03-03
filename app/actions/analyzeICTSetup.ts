@@ -4,7 +4,6 @@ import { generateAIJSON } from "@/lib/ai-utils";
 import { fetchNews } from "./fetchNews";
 
 export async function analyzeICTSetup(symbol: string, currentPrice: number, candles: any[], mathData: any) {
-  // 1. Fetch real-time news for context
   const symName = symbol.split('=')[0].split('-')[0];
   const news = await fetchNews('General');
   const relevantNews = news.filter(n => n.title.includes(symName)).slice(0, 5);
@@ -46,10 +45,11 @@ export async function analyzeICTSetup(symbol: string, currentPrice: number, cand
     "customAnalysis": "string" // A 2-sentence highly specific breakdown of the chart + news. Mention exact liquidity levels, sweeps, or FVGs.
   }`;
 
+  // If AI fails due to rate limits, use the highly complex mathematical bias calculated locally!
   const fallback = {
-    algoBias: "WAIT / NEUTRAL",
-    biasColor: "text-text-secondary",
-    customAnalysis: "Awaiting clear structural shifts. Current price action is heavily bound within internal liquidity pools."
+    algoBias: mathData.algoBias || "DATA SYNCING",
+    biasColor: mathData.biasColor || "text-text-secondary",
+    customAnalysis: `(System Override) AI unavailable. Algorithmic bias derived strictly from local execution engine. Structure is ${mathData.structure} in a ${mathData.isDiscount ? 'Discount' : 'Premium'} array.`
   };
 
   return await generateAIJSON(prompt, fallback);
