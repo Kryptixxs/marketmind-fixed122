@@ -4,38 +4,39 @@ import { useState, useEffect, useRef } from 'react';
 import { Widget } from '@/components/Widget';
 import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
-import { Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle } from 'lucide-react';
+import { Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle, Plus, X, Search } from 'lucide-react';
 import { analyzeMarket } from '@/app/actions/analyzeMarket';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 import { formatPrice, formatPercent, formatInt } from '@/lib/format';
+import { useWatchlistStore } from '@/store/useWatchlistStore';
 
-// Mapping Yahoo symbols to specific TradingView broker symbols
-const SYMBOL_MAP: Record<string, { tv: string, label: string, type: any }> = {
-  '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100', type: 'index' },
-  '^GSPC': { tv: 'BLACKBULL:SPX500', label: 'S&P 500', type: 'index' },
-  '^DJI': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones', type: 'index' },
-  '^RUT': { tv: 'IG:RUSSELL', label: 'Russell 2000', type: 'index' },
-  'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil', type: 'commodity' },
-  'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold', type: 'commodity' },
-  'EURUSD=X': { tv: 'PEPPERSTONE:EURUSD', label: 'EUR/USD', type: 'fx' },
+// Metadata lookup for common symbols
+const SYMBOL_METADATA: Record<string, { label: string, type: any }> = {
+  '^NDX': { label: 'Nasdaq 100', type: 'index' },
+  '^GSPC': { label: 'S&P 500', type: 'index' },
+  '^DJI': { label: 'Dow Jones', type: 'index' },
+  '^RUT': { label: 'Russell 2000', type: 'index' },
+  'CL=F': { label: 'Crude Oil', type: 'commodity' },
+  'GC=F': { label: 'Gold', type: 'commodity' },
+  'EURUSD=X': { label: 'EUR/USD', type: 'fx' },
+  'BTC-USD': { label: 'Bitcoin', type: 'crypto' },
 };
 
-const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
 const VITALS_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX'];
-const ALL_SYMBOLS = [...WATCHLIST_SYMBOLS, ...VITALS_SYMBOLS];
 
 export default function TerminalPage() {
-  const [activeSymbol, setActiveSymbol] = useState("^NDX");
+  const { symbols, activeSymbol, setActiveSymbol, addSymbol, removeSymbol } = useWatchlistStore();
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+  const [newSymbol, setNewSymbol] = useState('');
   
-  // Use the streaming market data hook for all required symbols
-  const { data: marketData, error: streamError } = useMarketData(ALL_SYMBOLS);
+  const allRequiredSymbols = [...symbols, ...VITALS_SYMBOLS];
+  const { data: marketData } = useMarketData(allRequiredSymbols);
   
   const lastAnalyzedRef = useRef<string | null>(null);
 
-  // Trigger AI analysis when active symbol or its data changes
   useEffect(() => {
     const data = marketData[activeSymbol];
     if (!data) return;
@@ -47,21 +48,14 @@ export default function TerminalPage() {
       setAnalyzing(true);
       setError(null);
       try {
-        const result = await analyzeMarket(
-          activeSymbol, 
-          SYMBOL_MAP[activeSymbol].label, 
-          data.price, 
-          data.changePercent
-        );
+        const label = SYMBOL_METADATA[activeSymbol]?.label || activeSymbol;
+        const result = await analyzeMarket(activeSymbol, label, data.price, data.changePercent);
         if (result) {
           setAiAnalysis(result);
           lastAnalyzedRef.current = analysisKey;
-        } else {
-          setError("Analysis failed.");
         }
       } catch (err) {
         setError("AI Offline.");
-        console.error(err);
       } finally {
         setAnalyzing(false);
       }
@@ -70,15 +64,20 @@ export default function TerminalPage() {
     runAnalysis();
   }, [activeSymbol, marketData[activeSymbol]?.price]);
 
-  const activeQuote = marketData[activeSymbol];
-  const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
+  const handleAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newSymbol) {
+      addSymbol(newSymbol);
+      setNewSymbol('');
+      setIsAdding(false);
+    }
+  };
 
   // Vitals Data
   const vix = marketData['^VIX'];
   const dxy = marketData['DX-Y.NYB'];
   const tnx = marketData['^TNX'];
 
-  // Liquidity Logic
   const getLiquidity = (v: number) => {
     if (v < 15) return { label: 'High', color: 'text-positive' };
     if (v <= 25) return { label: 'Normal', color: 'text-warning' };
@@ -93,26 +92,52 @@ export default function TerminalPage() {
         {/* --- COLUMN 1: MARKET WATCH & AI --- */}
         <div className="col-span-3 row-span-12 flex flex-col gap-0.5">
           <div className="flex-1 min-h-0">
-            <Widget title="Market Watch // Institutional">
+            <Widget 
+              title="Market Watch // Institutional"
+              actions={
+                <button 
+                  onClick={() => setIsAdding(!isAdding)}
+                  className="text-text-tertiary hover:text-accent transition-colors"
+                >
+                  <Plus size={12} />
+                </button>
+              }
+            >
               <div className="flex flex-col">
-                {WATCHLIST_SYMBOLS.map(sym => {
+                {isAdding && (
+                  <form onSubmit={handleAdd} className="p-2 border-b border-border bg-surface-highlight flex gap-2">
+                    <input 
+                      autoFocus
+                      value={newSymbol}
+                      onChange={(e) => setNewSymbol(e.target.value)}
+                      placeholder="Enter Ticker..."
+                      className="flex-1 bg-background border border-border rounded px-2 py-1 text-[10px] outline-none focus:border-accent"
+                    />
+                    <button type="submit" className="text-accent"><Plus size={14}/></button>
+                  </form>
+                )}
+                {symbols.map(sym => {
                   const data = marketData[sym];
-                  const info = SYMBOL_MAP[sym];
+                  const meta = SYMBOL_METADATA[sym] || { label: sym, type: sym.includes('=') ? 'fx' : 'equity' };
                   const isPositive = data?.change >= 0;
                   
                   return (
                     <div 
                       key={sym} 
                       onClick={() => setActiveSymbol(sym)}
-                      className={`flex justify-between items-center px-2 py-1.5 border-b border-border/30 cursor-pointer hover:bg-surface-highlight transition-colors ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        if (confirm(`Remove ${sym} from watchlist?`)) removeSymbol(sym);
+                      }}
+                      className={`flex justify-between items-center px-2 py-1.5 border-b border-border/30 cursor-pointer hover:bg-surface-highlight transition-colors group ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
                     >
                       <div className="flex flex-col">
                         <span className="font-bold text-[10px] text-text-primary">{sym}</span>
-                        <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{info.label}</span>
+                        <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{meta.label}</span>
                       </div>
                       <div className="flex flex-col items-end">
                         <span className="text-[10px] font-mono font-bold text-text-primary">
-                          {data ? formatPrice(data.price, info.type) : '---'}
+                          {data ? formatPrice(data.price, meta.type) : '---'}
                         </span>
                         <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
                           <span>{data ? `${isPositive ? '+' : ''}${formatPercent(data.changePercent)}` : '--'}</span>
@@ -207,16 +232,16 @@ export default function TerminalPage() {
         {/* --- COLUMN 3: MAIN CHART --- */}
         <div className="col-span-6 row-span-12 overflow-hidden relative">
           <Widget 
-            title={`${activeSymbol} • ${SYMBOL_MAP[activeSymbol]?.label || ''}`} 
+            title={`${activeSymbol} • ${SYMBOL_METADATA[activeSymbol]?.label || ''}`} 
             actions={
               <div className="flex items-center gap-2 text-[8px]">
                 <span className="text-positive flex items-center gap-1"><Wifi size={8}/> Live</span>
-                <span className="px-1 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase">{activeQuote?.marketState || 'REGULAR'}</span>
+                <span className="px-1 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase">{marketData[activeSymbol]?.marketState || 'REGULAR'}</span>
               </div>
             }
           >
             <div className="w-full h-full bg-black">
-              <TradingViewChart symbol={activeTV} />
+              <TradingViewChart symbol={activeSymbol} />
             </div>
           </Widget>
         </div>
