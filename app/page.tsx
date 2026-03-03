@@ -11,6 +11,7 @@ import { SetupScanner } from '@/components/macro/SetupScanner';
 import { MarketPositioning } from '@/components/macro/MarketPositioning';
 import { ScenarioTree } from '@/components/macro/ScenarioTree';
 import { SessionTracker } from '@/components/widgets/SessionTracker';
+import { ConfluenceScanner } from '@/components/widgets/ConfluenceScanner';
 import { 
   Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle, 
   Terminal as TerminalIcon, Layers, Target, Search, Zap, ShieldAlert, 
@@ -94,8 +95,8 @@ export default function TerminalPage() {
           </div>
           
           <div className="h-[45%] min-h-0">
-            <Widget title={`Setup Scanner // ${activeSymbol}`}>
-              <SetupScanner activeSymbol={activeSymbol} />
+            <Widget title={`Confluence Scanner // ${activeSymbol}`}>
+              <ConfluenceScanner symbol={activeSymbol} />
             </Widget>
           </div>
         </div>

@@ -25,8 +25,9 @@ const NAV_ITEMS = [
   { href: '/', icon: LayoutGrid, label: 'Workspace', key: '1' },
   { href: '/calendar', icon: Calendar, label: 'Calendar', key: '2' },
   { href: '/charts', icon: LineChart, label: 'Technical', key: '3' },
-  { href: '/news', icon: Newspaper, label: 'Wire', key: '4' },
-  { href: '/algo', icon: Cpu, label: 'Algos', key: '5' },
+  { href: '/confluences', icon: Zap, label: 'Confluences', key: '4' },
+  { href: '/news', icon: Newspaper, label: 'Wire', key: '5' },
+  { href: '/algo', icon: Cpu, label: 'Algos', key: '6' },
 ];
 
 export function Sidebar() {
@@ -37,7 +38,6 @@ export function Sidebar() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Only trigger if not in an input/textarea
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       
       const item = NAV_ITEMS.find(i => i.key === e.key);
