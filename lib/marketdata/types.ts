@@ -1,10 +1,19 @@
+export interface OHLCV {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
 export interface Tick {
   symbol: string;
   price: number;
   change: number;
   changePercent: number;
   marketState: string;
-  history?: number[];
+  history?: OHLCV[];
   timestamp: number;
   name?: string;
 }

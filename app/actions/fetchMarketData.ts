@@ -1,10 +1,10 @@
 'use server';
 
 import YahooFinance from 'yahoo-finance2';
+import { OHLCV } from '@/lib/marketdata/types';
 
 const yahooFinance = new YahooFinance({ 
   suppressNotices: ['yahooSurvey', 'ripHistorical'],
-  // Add a queue or delay if needed in a real high-volume app
 });
 
 export interface MarketData {
@@ -14,7 +14,7 @@ export interface MarketData {
   changePercent: number;
   currency: string;
   marketState: string;
-  history: number[];
+  history: OHLCV[];
   name?: string;
 }
 
@@ -24,9 +24,9 @@ export async function fetchMarketData(symbol: string): Promise<MarketData | null
   try {
     const quotePromise = yahooFinance.quote(symbol);
     
-    // We only need history for the sparkline, don't fail the whole request if this fails
+    // Fetching 300 days to properly calculate the 200 EMA/SMA and deep market structure
     const historyPromise = yahooFinance.chart(symbol, { 
-      period1: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days
+      period1: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000),
       interval: '1d' 
     }).catch(() => null);
 
@@ -34,17 +34,18 @@ export async function fetchMarketData(symbol: string): Promise<MarketData | null
     
     if (!quote) return null;
 
-    let history: number[] = [];
+    let history: OHLCV[] = [];
     if (chartData?.quotes && Array.isArray(chartData.quotes)) {
       history = chartData.quotes
-        .slice(-20) // Last 20 days for sparkline
-        .map((q: any) => q.close)
-        .filter((c: any) => typeof c === 'number');
-    }
-    
-    // Fill gaps if history is empty
-    if (history.length === 0 && quote.regularMarketPrice) {
-      history = [quote.regularMarketPrice, quote.regularMarketPrice];
+        .filter((q: any) => q.close !== null)
+        .map((q: any) => ({
+          timestamp: new Date(q.date).getTime(),
+          open: q.open || q.close,
+          high: q.high || q.close,
+          low: q.low || q.close,
+          close: q.close,
+          volume: q.volume || 0
+        }));
     }
 
     return {

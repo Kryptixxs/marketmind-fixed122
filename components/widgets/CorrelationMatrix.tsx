@@ -26,7 +26,13 @@ export function CorrelationMatrix({
           const driverTick = marketData[driver.sym];
           if (!driverTick || !activeTick.history || !driverTick.history) return null;
 
-          const correlation = calculateCorrelation(activeTick.history, driverTick.history);
+          // Map the OHLCV objects to just their closing prices for the correlation calculation
+          const activeCloses = activeTick.history.map(h => h.close).slice(-30);
+          const driverCloses = driverTick.history.map(h => h.close).slice(-30);
+
+          if (activeCloses.length < 2 || driverCloses.length < 2) return null;
+
+          const correlation = calculateCorrelation(activeCloses, driverCloses);
           const isPositive = correlation > 0;
           const strength = Math.abs(correlation);
 

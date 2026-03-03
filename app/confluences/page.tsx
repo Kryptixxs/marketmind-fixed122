@@ -1,42 +1,42 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, CheckCircle2, XCircle, Info, Loader2, Zap } from 'lucide-react';
+import { Search, Filter, CheckCircle2, XCircle, Loader2, Zap, AlertTriangle } from 'lucide-react';
 import { ConfluenceEngine } from '@/lib/confluence/engine';
 import { ConfluenceResult, ConfluenceCategory } from '@/lib/confluence/types';
-import { fetchMarketData } from '@/app/actions/fetchMarketData';
-import YahooFinance from 'yahoo-finance2';
+import { useMarketData } from '@/lib/marketdata/useMarketData';
+import { TerminalCommandBar } from '@/components/TerminalCommandBar';
 
 export default function ConfluencePage() {
   const [activeSymbol, setActiveSymbol] = useState('NQ=F');
   const [results, setResults] = useState<ConfluenceResult[]>([]);
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<ConfluenceCategory | 'ALL'>('ALL');
 
+  // Fetch real data
+  const { data } = useMarketData([activeSymbol]);
+  const tick = data[activeSymbol];
+
   useEffect(() => {
-    async function runEngine() {
-      setLoading(true);
-      // In a real app, we'd fetch full OHLCV here. 
-      // For this demo, we'll simulate the engine run with the active symbol.
-      const engine = new ConfluenceEngine({
-        symbol: activeSymbol,
-        interval: '15m',
-        quotes: Array.from({ length: 200 }, (_, i) => ({
-          timestamp: Date.now() - i * 900000,
-          open: 18000 + Math.random() * 100,
-          high: 18100 + Math.random() * 100,
-          low: 17900 + Math.random() * 100,
-          close: 18050 + Math.random() * 100,
-          volume: 5000 + Math.random() * 5000
-        }))
-      });
-      
-      setResults(engine.calculateAll());
-      setLoading(false);
-    }
-    runEngine();
-  }, [activeSymbol]);
+    const handleSymbolChange = (e: any) => setActiveSymbol(e.detail);
+    window.addEventListener('vantage-symbol-change', handleSymbolChange);
+    return () => window.removeEventListener('vantage-symbol-change', handleSymbolChange);
+  }, []);
+
+  useEffect(() => {
+    if (!tick || !tick.history || tick.history.length < 50) return;
+
+    const engine = new ConfluenceEngine({
+      symbol: activeSymbol,
+      interval: '1D',
+      quotes: tick.history
+    });
+    
+    // Calculate all 160+ metrics
+    setResults(engine.calculateAll());
+  }, [tick]);
+
+  const loading = !tick || !tick.history || tick.history.length < 50;
 
   const filteredResults = useMemo(() => {
     return results.filter(r => {
@@ -48,11 +48,13 @@ export default function ConfluencePage() {
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden">
+      <TerminalCommandBar />
+      
       <div className="h-12 border-b border-border bg-surface flex items-center px-4 justify-between shrink-0">
         <div className="flex items-center gap-4">
           <h1 className="text-sm font-bold text-text-primary uppercase tracking-widest flex items-center gap-2">
             <Zap size={16} className="text-accent" />
-            Confluence Terminal
+            Terminal Engine // {activeSymbol}
           </h1>
           <div className="h-4 w-[1px] bg-border" />
           <div className="flex items-center gap-2 bg-background border border-border px-2 py-1 rounded-sm">
@@ -60,18 +62,18 @@ export default function ConfluencePage() {
             <input 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search 100+ confluences..."
-              className="bg-transparent border-none outline-none text-[10px] font-mono w-48 uppercase"
+              placeholder="Search 160+ indicators..."
+              className="bg-transparent border-none outline-none text-[10px] font-mono w-48 uppercase text-text-primary"
             />
           </div>
         </div>
         
-        <div className="flex items-center gap-2">
-          {['ALL', 'STRUCTURE', 'SMC', 'VOLUME', 'MOMENTUM', 'TIME'].map(cat => (
+        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
+          {['ALL', 'STRUCTURE', 'SMC', 'SR', 'MA', 'MOMENTUM', 'VOLUME', 'CANDLE', 'QUANT', 'DERIVATIVES'].map(cat => (
             <button
               key={cat}
               onClick={() => setFilter(cat as any)}
-              className={`px-2 py-1 text-[9px] font-bold rounded-sm border transition-all ${filter === cat ? 'bg-accent/10 border-accent/50 text-accent' : 'bg-surface-highlight border-border text-text-tertiary'}`}
+              className={`px-2 py-1 text-[9px] font-bold rounded-sm border transition-all whitespace-nowrap ${filter === cat ? 'bg-accent/10 border-accent/50 text-accent' : 'bg-surface-highlight border-border text-text-tertiary hover:text-text-secondary'}`}
             >
               {cat}
             </button>
@@ -81,26 +83,39 @@ export default function ConfluencePage() {
 
       <div className="flex-1 overflow-y-auto custom-scrollbar p-4">
         {loading ? (
-          <div className="h-full flex flex-col items-center justify-center gap-2 opacity-50">
-            <Loader2 size={24} className="animate-spin text-accent" />
-            <span className="text-[10px] font-bold uppercase tracking-widest">Running Vantage Engine...</span>
+          <div className="h-full flex flex-col items-center justify-center gap-3 opacity-50">
+            <Loader2 size={32} className="animate-spin text-accent" />
+            <span className="text-[12px] font-bold uppercase tracking-widest text-text-primary">Loading live OHLCV for {activeSymbol}...</span>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
             {filteredResults.map(res => (
               <div key={res.id} className={`p-3 border rounded-sm transition-all ${res.isActive ? 'bg-accent/5 border-accent/30' : 'bg-surface border-border opacity-60'}`}>
                 <div className="flex justify-between items-start mb-2">
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-text-primary uppercase">{res.label}</span>
+                    <span className={`text-[10px] font-bold uppercase ${res.isActive ? 'text-text-primary' : 'text-text-secondary'}`}>{res.label}</span>
                     <span className="text-[8px] text-text-tertiary font-mono">{res.category}</span>
                   </div>
-                  {res.isActive ? <CheckCircle2 size={14} className="text-positive" /> : <XCircle size={14} className="text-text-tertiary" />}
+                  {res.isActive ? <CheckCircle2 size={14} className="text-positive shrink-0" /> : <XCircle size={14} className="text-text-tertiary shrink-0" />}
                 </div>
-                <p className="text-[9px] text-text-secondary leading-tight mb-3">{res.description}</p>
-                {res.isActive && (
+                <p className="text-[9px] text-text-secondary leading-tight mb-3 h-6 overflow-hidden">{res.description}</p>
+                
+                {/* Footer status row */}
+                {res.isActive ? (
                   <div className="flex items-center justify-between pt-2 border-t border-accent/10">
                     <span className="text-[8px] font-bold text-accent uppercase">Confidence</span>
                     <span className="text-[10px] font-mono font-bold text-accent">{res.score}%</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 pt-2 border-t border-border/50">
+                     {res.description.includes('Requires') ? (
+                       <>
+                         <AlertTriangle size={10} className="text-warning" />
+                         <span className="text-[8px] font-bold text-warning uppercase">Missing Feed</span>
+                       </>
+                     ) : (
+                       <span className="text-[8px] font-bold text-text-tertiary uppercase">Inactive</span>
+                     )}
                   </div>
                 )}
               </div>

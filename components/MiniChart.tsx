@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Loader2 } from 'lucide-react';
-import { fetchMarketData } from '@/app/actions/fetchMarketData';
 import { cn } from '@/lib/utils';
+import { useMarketData } from '@/lib/marketdata/useMarketData';
 
 const NON_USD_SYMBOLS = new Set([
   'EURUSD=X', 'GBPUSD=X', 'JPY=X', 'AUDUSD=X', 'CAD=X', 'CHF=X', 'DX-Y.NYB',
@@ -30,51 +30,33 @@ export function MiniChart({
   symbol: string;
   isCrypto?: boolean;
 }) {
-  const [price, setPrice] = useState<string | null>(null);
-  const [change, setChange] = useState<string | null>(null);
-  const [isPositive, setIsPositive] = useState(true);
-  const [history, setHistory] = useState<number[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [marketState, setMarketState] = useState('REGULAR');
+  const { data } = useMarketData([symbol]);
+  const tick = data[symbol];
+
   const [flash, setFlash] = useState(false);
-  const prevPrice = useRef<string | null>(null);
-  const mountedRef = useRef(true);
+  const prevPrice = useRef<number | null>(null);
   const idSafe = symbol.replace(/[^a-z0-9]/gi, '');
 
   useEffect(() => {
-    mountedRef.current = true;
-    return () => { mountedRef.current = false; };
-  }, []);
+    if (tick && prevPrice.current !== null && prevPrice.current !== tick.price) {
+      setFlash(true);
+      const timer = setTimeout(() => setFlash(false), 300);
+      return () => clearTimeout(timer);
+    }
+    if (tick) {
+      prevPrice.current = tick.price;
+    }
+  }, [tick?.price]);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const data = await fetchMarketData(symbol);
-        if (!mountedRef.current || !data) return;
-        const newPrice = formatPrice(data.price, symbol, isCrypto ?? false);
-        if (prevPrice.current && prevPrice.current !== newPrice) {
-          setFlash(true);
-          setTimeout(() => setFlash(false), 450);
-        }
-        prevPrice.current = newPrice;
-        setPrice(newPrice);
-        setChange(Math.abs(data.changePercent).toFixed(2) + '%');
-        setIsPositive(data.changePercent >= 0);
-        setHistory(data.history);
-        setMarketState(data.marketState);
-      } catch (e) {
-        console.error('MiniChart error', e);
-      } finally {
-        if (mountedRef.current) setLoading(false);
-      }
-    };
-    loadData();
-    const interval = setInterval(loadData, 60000);
-    return () => clearInterval(interval);
-  }, [symbol, isCrypto]);
+  const loading = !tick;
+  const priceStr = tick ? formatPrice(tick.price, symbol, isCrypto ?? false) : null;
+  const isPositive = tick ? tick.changePercent >= 0 : true;
+  const changeStr = tick ? Math.abs(tick.changePercent).toFixed(2) + '%' : null;
+  
+  // Extract closing prices from the new OHLCV format for the sparkline
+  const history = tick?.history?.map(h => h.close).slice(-20) || [];
+  const marketState = tick?.marketState || 'REGULAR';
 
-  // SVG sparkline
-  // Normalize history to 0-1 range
   let points = '';
   let areaPoints = '';
   
@@ -82,11 +64,6 @@ export function MiniChart({
     const min = Math.min(...history);
     const max = Math.max(...history);
     const range = max - min || 1;
-    
-    // SVG viewBox is 0 0 100 40. 
-    // X goes 0->100
-    // Y goes 40->0 (inverted because SVG y=0 is top)
-    // We leave some padding: top 5, bottom 5. Height available = 30.
     
     points = history.map((val, i) => {
       const x = (i / (history.length - 1)) * 100;
@@ -106,7 +83,6 @@ export function MiniChart({
 
   return (
     <div className="glass-card glass-interactive flex flex-col relative h-full w-full p-3 overflow-hidden">
-      {/* Top row: Header & Price */}
       <div className="flex justify-between items-start z-10 relative mb-1">
         <div className="flex flex-col min-w-0 flex-1">
           <div className="flex items-center gap-1.5 mb-0.5">
@@ -122,16 +98,15 @@ export function MiniChart({
               "text-sm font-mono font-bold text-text-primary transition-opacity duration-300",
               flash && "opacity-50"
             )}>
-              {showPrefix && '$'}{price || 'N/A'}
+              {showPrefix && '$'}{priceStr || 'N/A'}
             </span>
           )}
         </div>
 
-        {/* Change badge */}
         <div className="flex flex-col items-end shrink-0 ml-2">
           {loading ? (
             <div className="h-4 w-12 rounded-full bg-surface animate-pulse" />
-          ) : change ? (
+          ) : changeStr ? (
             <div className="flex flex-col items-end">
                <span className={cn(
                  "text-[10px] font-bold px-1.5 py-0.5 rounded-full border",
@@ -139,7 +114,7 @@ export function MiniChart({
                    ? "bg-positive/10 text-positive border-positive/20"
                    : "bg-negative/10 text-negative border-negative/20"
                )}>
-                 {isPositive ? '+' : '-'}{change}
+                 {isPositive ? '+' : '-'}{changeStr}
                </span>
                {isAfterHours && (
                  <span className="text-[9px] text-text-tertiary mt-0.5">{marketState === 'POST' ? 'AH' : 'Pre'}</span>
@@ -149,7 +124,6 @@ export function MiniChart({
         </div>
       </div>
 
-      {/* Sparkline Area */}
       <div className="absolute inset-x-0 bottom-0 h-[60%] opacity-80 pointer-events-none">
          {points && (
             <svg
