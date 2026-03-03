@@ -7,8 +7,9 @@ import { generateTradeSetup } from '@/lib/trade-setup-math';
 
 export function TradeSetupPanel({ tick, timeframeLabel }: { tick?: Tick, timeframeLabel: string }) {
   const setup = useMemo(() => {
-    if (!tick || !tick.history || tick.history.length === 0) return null;
-    return generateTradeSetup(tick.history);
+    if (!tick) return null;
+    // Generate setup even if history is empty (will trigger the graceful fallback)
+    return generateTradeSetup(tick.history || []);
   }, [tick]);
 
   // High quality terminal loading state
@@ -24,7 +25,7 @@ export function TradeSetupPanel({ tick, timeframeLabel }: { tick?: Tick, timefra
         <div className="flex-1 flex flex-col items-center justify-center gap-3 opacity-50">
           <Loader2 size={24} className="animate-spin text-accent" />
           <div className="flex flex-col items-center gap-1">
-            <span className="text-[10px] uppercase font-bold tracking-widest text-text-primary">Ingesting OHLCV Data</span>
+            <span className="text-[10px] uppercase font-bold tracking-widest text-text-primary">Ingesting Data</span>
             <span className="text-[9px] font-mono text-text-tertiary">Connecting to institutional feed...</span>
           </div>
         </div>
@@ -62,6 +63,19 @@ export function TradeSetupPanel({ tick, timeframeLabel }: { tick?: Tick, timefra
           </div>
           <span className="text-[10px] font-mono text-text-primary mt-2">Mark Price: {formatPrice(tick.price)}</span>
         </div>
+
+        {/* WARNINGS - Moved up if history is missing */}
+        {setup.warnings.length > 0 && (
+          <div className="bg-warning/10 border border-warning/30 rounded-sm p-3 flex gap-2">
+            <AlertTriangle size={14} className="text-warning shrink-0 mt-0.5" />
+            <div className="flex flex-col gap-1">
+              <span className="text-[9px] font-bold text-warning uppercase">Algorithmic Warnings</span>
+              <ul className="list-disc pl-3 text-[10px] text-text-primary space-y-1">
+                {setup.warnings.map((w, i) => <li key={i}>{w}</li>)}
+              </ul>
+            </div>
+          </div>
+        )}
 
         {/* TRADE PARAMETERS */}
         <div className="space-y-2">
@@ -127,7 +141,7 @@ export function TradeSetupPanel({ tick, timeframeLabel }: { tick?: Tick, timefra
           </div>
         </div>
 
-        {/* CONTEXT & WARNINGS */}
+        {/* CONTEXT */}
         <div className="pt-4 border-t border-border space-y-3">
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="bg-background border border-border py-2 rounded-sm">
@@ -143,18 +157,6 @@ export function TradeSetupPanel({ tick, timeframeLabel }: { tick?: Tick, timefra
               <div className="text-[10px] font-mono text-text-primary">{setup.context.atr.toFixed(2)}</div>
             </div>
           </div>
-
-          {setup.warnings.length > 0 && (
-            <div className="bg-warning/10 border border-warning/30 rounded-sm p-3 flex gap-2">
-              <AlertTriangle size={14} className="text-warning shrink-0 mt-0.5" />
-              <div className="flex flex-col gap-1">
-                <span className="text-[9px] font-bold text-warning uppercase">Algorithmic Warnings</span>
-                <ul className="list-disc pl-3 text-[10px] text-text-primary space-y-1">
-                  {setup.warnings.map((w, i) => <li key={i}>{w}</li>)}
-                </ul>
-              </div>
-            </div>
-          )}
         </div>
 
       </div>

@@ -1,4 +1,4 @@
-import { fetchMarketData } from '@/app/actions/fetchMarketData';
+import { fetchMarketDataBatch } from '@/app/actions/fetchMarketData';
 import { BaseProvider } from './base';
 
 export class YahooPollingProvider extends BaseProvider {
@@ -44,12 +44,11 @@ export class YahooPollingProvider extends BaseProvider {
     if (symbolsToFetch.length === 0) return;
 
     try {
-      const promises = symbolsToFetch.map(sym => fetchMarketData(sym, this.currentInterval));
-      const results = await Promise.allSettled(promises);
+      // Use the batched server action to prevent HTTP connection limits
+      const results = await fetchMarketDataBatch(symbolsToFetch, this.currentInterval);
 
-      results.forEach((res) => {
-        if (res.status === 'fulfilled' && res.value) {
-          const data = res.value;
+      results.forEach((data) => {
+        if (data) {
           this.emitTick({
             symbol: data.symbol,
             name: data.name,
