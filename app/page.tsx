@@ -221,7 +221,7 @@ export default function TerminalPage() {
 
           <div className="flex-1 min-h-0">
             <Widget title="Macro Narrative Tracker">
-              <NarrativeTracker />
+              <NarrativeTracker activeSymbol={activeSymbol} price={activeQuote?.price || 0} />
             </Widget>
           </div>
         </div>
