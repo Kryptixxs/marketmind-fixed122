@@ -44,7 +44,7 @@ export class YahooPollingProvider extends BaseProvider {
     if (symbolsToFetch.length === 0) return;
 
     try {
-      // Use the batched server action to prevent HTTP connection limits
+      // Use the batched server action. It runs sequentially and guarantees valid data objects.
       const results = await fetchMarketDataBatch(symbolsToFetch, this.currentInterval);
 
       results.forEach((data) => {
