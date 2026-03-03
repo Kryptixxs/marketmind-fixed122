@@ -41,6 +41,10 @@ export async function fetchHistoricalBars(
     const result = await yahooFinance.chart(symbol, {
       period1,
       interval: interval as any,
+    }, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      }
     });
 
     if (!result || !result.quotes) return [];
