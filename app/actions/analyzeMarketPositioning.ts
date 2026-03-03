@@ -10,30 +10,27 @@ export async function analyzeMarketPositioning(symbol: string) {
     const quote = await yahooFinance.quote(symbol);
     if (!quote) return null;
 
+    // Real Math: Volume Ratio & Volatility
     const volRatio = (quote.regularMarketVolume || 0) / (quote.averageDailyVolume3Month || 1);
+    const dayRange = (quote.regularMarketDayHigh || 0) - (quote.regularMarketDayLow || 0);
+    const volRegime = dayRange / (quote.regularMarketPrice || 1) > 0.02 ? 'Expansion' : 'Contraction';
 
-    const fallback = {
-      dxyPositioning: "Neutral",
-      futuresPositioning: quote.regularMarketChangePercent! > 0 ? "Net Long" : "Net Short",
-      optionsImplied: "Balanced",
-      volatilityRegime: quote.regularMarketChangePercent! > 1 ? "Expansion" : "Contraction",
-      liquidityIndex: 65,
-      gammaExposure: "Positive",
-      riskRegime: "STABLE",
-      metrics: { 
-        dxy: "neutral", 
-        futures: quote.regularMarketChangePercent! > 0 ? "positive" : "negative", 
-        options: "neutral", 
-        volatility: "neutral", 
-        liquidity: "positive", 
-        gamma: "positive" 
-      }
-    };
+    const prompt = `Analyze institutional positioning for ${symbol}. 
+      Price: ${quote.regularMarketPrice}
+      Volume Ratio: ${volRatio.toFixed(2)}x (Relative to 3M Avg)
+      Volatility Regime: ${volRegime}
+      
+      Provide a JSON response with:
+      - dxyPositioning: string
+      - futuresPositioning: string
+      - optionsImplied: string
+      - volatilityRegime: string
+      - liquidityIndex: number (0-100)
+      - gammaExposure: string
+      - riskRegime: "STABLE" | "VOLATILE" | "CRITICAL"
+      - metrics: { dxy: string, futures: string, options: string, volatility: string, liquidity: string, gamma: string }`;
 
-    const prompt = `Analyze institutional positioning for ${symbol}. Price: ${quote.regularMarketPrice}. Vol Ratio: ${volRatio}.
-      Provide a JSON response with positioning details and risk metrics.`;
-
-    return await generateAIJSON(prompt, fallback);
+    return await generateAIJSON(prompt);
   } catch (error) {
     return null;
   }

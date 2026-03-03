@@ -12,6 +12,8 @@ export async function analyzeEventScenarios() {
     
     const calendar = await fetchEconomicCalendarBatch([toISODateString(today), toISODateString(tomorrow)]);
     const allEvents = Object.values(calendar).flat();
+    
+    // Find the next High Impact event
     const nextHighImpact = allEvents
       .filter(e => e.impact === 'High')
       .sort((a, b) => a.time.localeCompare(b.time))[0];
