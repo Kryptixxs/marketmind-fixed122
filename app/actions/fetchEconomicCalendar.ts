@@ -1,6 +1,7 @@
 'use server';
 
 import { EconomicEvent } from '@/lib/types';
+import { toISODateString } from '@/lib/date-utils';
 
 const CACHE: Record<string, { data: EconomicEvent[], timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
@@ -97,7 +98,13 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
 
 async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
   try {
-    const url = `https://api.nasdaq.com/api/calendar/economicevents?date=${dateStr}`;
+    // NASDAQ API often returns data for the day AFTER the requested date in UTC.
+    // We shift the query date forward by 1 to align with the intended display date.
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + 1);
+    const queryDate = toISODateString(d);
+
+    const url = `https://api.nasdaq.com/api/calendar/economicevents?date=${queryDate}`;
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0',
