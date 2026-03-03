@@ -1,17 +1,18 @@
 'use server';
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { fetchEconomicCalendarBatch } from "./fetchEconomicCalendar";
 import { toISODateString } from "@/lib/date-utils";
 
-export async function analyzeEventScenarios() {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  if (!apiKey) return null;
+const USER_KEY = "AIzaSyAX3dCFS5Yi8HryL9wC98IVAua71dki-zU";
 
-  const ai = new GoogleGenAI({ apiKey });
+export async function analyzeEventScenarios() {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || USER_KEY;
+  
+  const ai = new GoogleGenAI(apiKey);
+  const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   try {
-    // Fetch today's and tomorrow's events to find the next high-impact one
     const today = new Date();
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
@@ -24,47 +25,23 @@ export async function analyzeEventScenarios() {
 
     if (!nextHighImpact) return null;
 
-    const result = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: `Analyze the upcoming economic event: ${nextHighImpact.title} (${nextHighImpact.country}).
+    const prompt = `Analyze the upcoming economic event: ${nextHighImpact.title} (${nextHighImpact.country}).
       
-      Provide a JSON object with:
+      Provide a JSON response with:
       - eventName: string
-      - scenarios: array of 3 scenarios (Hot, In-Line, Cool or similar)
+      - scenarios: array of 3 scenarios
         - label: string
-        - probability: number (0-100)
-        - reaction: string (market impact)
+        - probability: number
+        - reaction: string
         - bias: "BULLISH" | "BEARISH" | "NEUTRAL"
-      - tradeImplication: string (detailed trade advice)`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            eventName: { type: Type.STRING },
-            scenarios: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  label: { type: Type.STRING },
-                  probability: { type: Type.NUMBER },
-                  reaction: { type: Type.STRING },
-                  bias: { type: Type.STRING },
-                }
-              }
-            },
-            tradeImplication: { type: Type.STRING },
-          },
-          required: ["eventName", "scenarios", "tradeImplication"],
-        },
-      },
-    });
+      - tradeImplication: string`;
 
-    if (result && result.text) {
-      return JSON.parse(result.text);
-    }
-    return null;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    const jsonStr = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(jsonStr);
   } catch (error) {
     console.error("Scenario analysis error:", error);
     return null;

@@ -1,20 +1,21 @@
 'use server';
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import YahooFinance from 'yahoo-finance2';
+
+const USER_KEY = "AIzaSyAX3dCFS5Yi8HryL9wC98IVAua71dki-zU";
 
 const yahooFinance = new YahooFinance({ 
   suppressNotices: ['yahooSurvey', 'ripHistorical'],
 });
 
 export async function analyzeTechnicalSetup(symbol: string) {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  if (!apiKey) return null;
-
-  const ai = new GoogleGenAI({ apiKey });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || USER_KEY;
+  
+  const ai = new GoogleGenAI(apiKey);
+  const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   try {
-    // Fetch 15m data for the last 3 days to detect intraday patterns
     const chartData = await yahooFinance.chart(symbol, { 
       period1: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
       interval: '15m' 
@@ -28,11 +29,9 @@ export async function analyzeTechnicalSetup(symbol: string) {
       h: q.high,
       l: q.low,
       c: q.close,
-    })).slice(-100); // Last 100 candles
+    })).slice(-100);
 
-    const result = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: `You are a professional ICT/SMC (Inner Circle Trader / Smart Money Concepts) analyst. 
+    const prompt = `You are a professional ICT/SMC (Inner Circle Trader / Smart Money Concepts) analyst. 
       Analyze the following 15m OHLC data for ${symbol} and identify key technical setups.
       
       Data (Last 100 candles):
@@ -45,42 +44,21 @@ export async function analyzeTechnicalSetup(symbol: string) {
       4. Key Levels: Immediate Support and Resistance.
       5. Setup: What is the high-probability trade setup right now?
       
-      Provide a JSON object with:
+      Provide a JSON response with:
       - bias: "BULLISH" | "BEARISH" | "NEUTRAL"
-      - structure: string (e.g., "Bullish Trend with MSS")
-      - liquiditySweeps: string[] (list of recent sweeps)
-      - fvgs: string[] (list of active FVGs)
+      - structure: string
+      - liquiditySweeps: string[]
+      - fvgs: string[]
       - levels: { support: number[], resistance: number[] }
-      - setup: string (detailed trade setup)
-      - confidence: number (0-100)`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            bias: { type: Type.STRING },
-            structure: { type: Type.STRING },
-            liquiditySweeps: { type: Type.ARRAY, items: { type: Type.STRING } },
-            fvgs: { type: Type.ARRAY, items: { type: Type.STRING } },
-            levels: {
-              type: Type.OBJECT,
-              properties: {
-                support: { type: Type.ARRAY, items: { type: Type.NUMBER } },
-                resistance: { type: Type.ARRAY, items: { type: Type.NUMBER } },
-              }
-            },
-            setup: { type: Type.STRING },
-            confidence: { type: Type.NUMBER },
-          },
-          required: ["bias", "structure", "liquiditySweeps", "fvgs", "levels", "setup", "confidence"],
-        },
-      },
-    });
+      - setup: string
+      - confidence: number`;
 
-    if (result && result.text) {
-      return JSON.parse(result.text);
-    }
-    return null;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    const jsonStr = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(jsonStr);
   } catch (error) {
     console.error("Technical analysis error:", error);
     return null;

@@ -1,24 +1,24 @@
 'use server';
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { EconomicEvent } from "@/lib/types";
 
-export async function analyzeEventIntel(event: EconomicEvent) {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  if (!apiKey) return null;
+const USER_KEY = "AIzaSyAX3dCFS5Yi8HryL9wC98IVAua71dki-zU";
 
-  const ai = new GoogleGenAI({ apiKey });
+export async function analyzeEventIntel(event: EconomicEvent) {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || USER_KEY;
+  
+  const ai = new GoogleGenAI(apiKey);
+  const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   try {
-    const result = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: `Analyze the economic event: ${event.title} (${event.country}).
+    const prompt = `Analyze the economic event: ${event.title} (${event.country}).
       
-      Provide a JSON object with:
+      Provide a JSON response with:
       - volatility: "Low" | "Moderate" | "High" | "Extreme"
-      - macroImpact: number (1-10)
-      - narrative: string (detailed context)
-      - positioning: string (estimated market positioning)
+      - macroImpact: number
+      - narrative: string
+      - positioning: string
       - surpriseThresholdPct: number
       - sensitivities: array of objects
         - symbol: string
@@ -29,51 +29,14 @@ export async function analyzeEventIntel(event: EconomicEvent) {
         - label: string
         - probability: number
         - reaction: string
-        - bias: "BULLISH" | "BEARISH" | "NEUTRAL"`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            volatility: { type: Type.STRING },
-            macroImpact: { type: Type.NUMBER },
-            narrative: { type: Type.STRING },
-            positioning: { type: Type.STRING },
-            surpriseThresholdPct: { type: Type.NUMBER },
-            sensitivities: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  symbol: { type: Type.STRING },
-                  sensitivity: { type: Type.STRING },
-                  expectedMove: { type: Type.STRING },
-                  weight: { type: Type.NUMBER },
-                }
-              }
-            },
-            scenarios: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  label: { type: Type.STRING },
-                  probability: { type: Type.NUMBER },
-                  reaction: { type: Type.STRING },
-                  bias: { type: Type.STRING },
-                }
-              }
-            },
-          },
-          required: ["volatility", "macroImpact", "narrative", "positioning", "surpriseThresholdPct", "sensitivities", "scenarios"],
-        },
-      },
-    });
+        - bias: "BULLISH" | "BEARISH" | "NEUTRAL"`;
 
-    if (result && result.text) {
-      return JSON.parse(result.text);
-    }
-    return null;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    const jsonStr = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(jsonStr);
   } catch (error) {
     console.error("Event intel analysis error:", error);
     return null;

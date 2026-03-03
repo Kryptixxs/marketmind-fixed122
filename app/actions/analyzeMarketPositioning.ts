@@ -1,21 +1,22 @@
 'use server';
 
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import YahooFinance from 'yahoo-finance2';
 import { fetchNews } from "./fetchNews";
+
+const USER_KEY = "AIzaSyAX3dCFS5Yi8HryL9wC98IVAua71dki-zU";
 
 const yahooFinance = new YahooFinance({ 
   suppressNotices: ['yahooSurvey', 'ripHistorical'],
 });
 
 export async function analyzeMarketPositioning() {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  if (!apiKey) return null;
-
-  const ai = new GoogleGenAI({ apiKey });
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || USER_KEY;
+  
+  const ai = new GoogleGenAI(apiKey);
+  const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   try {
-    // Fetch key macro indicators
     const [vix, dxy, news] = await Promise.all([
       yahooFinance.quote('^VIX'),
       yahooFinance.quote('DX-Y.NYB'),
@@ -24,9 +25,7 @@ export async function analyzeMarketPositioning() {
 
     const newsContext = news.slice(0, 10).map(n => n.title).join('\n');
 
-    const result = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: `You are a macro positioning expert. Estimate current market positioning based on these indicators and news.
+    const prompt = `You are a macro positioning expert. Estimate current market positioning based on these indicators and news.
       
       Indicators:
       - VIX: ${vix?.regularMarketPrice}
@@ -35,48 +34,22 @@ export async function analyzeMarketPositioning() {
       News Context:
       ${newsContext}
       
-      Provide a JSON object with:
-      - dxyPositioning: string (e.g., "Net Long (82nd Pctl)")
-      - futuresPositioning: string (e.g., "ES: +12.4k Contracts")
-      - optionsImplied: string (e.g., "Straddle: +/- 1.2%")
-      - volatilityRegime: string (e.g., "Mean Reverting")
-      - liquidityIndex: number (0-1)
-      - gammaExposure: string (e.g., "+$2.4B (Long Gamma)")
+      Provide a JSON response with:
+      - dxyPositioning: string
+      - futuresPositioning: string
+      - optionsImplied: string
+      - volatilityRegime: string
+      - liquidityIndex: number
+      - gammaExposure: string
       - riskRegime: "STABLE" | "VOLATILE" | "EXTREME"
-      - status: "positive" | "negative" | "neutral" | "warning" (for each metric)`,
-      config: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            dxyPositioning: { type: Type.STRING },
-            futuresPositioning: { type: Type.STRING },
-            optionsImplied: { type: Type.STRING },
-            volatilityRegime: { type: Type.STRING },
-            liquidityIndex: { type: Type.NUMBER },
-            gammaExposure: { type: Type.STRING },
-            riskRegime: { type: Type.STRING },
-            metrics: {
-              type: Type.OBJECT,
-              properties: {
-                dxy: { type: Type.STRING },
-                futures: { type: Type.STRING },
-                options: { type: Type.STRING },
-                volatility: { type: Type.STRING },
-                liquidity: { type: Type.STRING },
-                gamma: { type: Type.STRING },
-              }
-            }
-          },
-          required: ["dxyPositioning", "futuresPositioning", "optionsImplied", "volatilityRegime", "liquidityIndex", "gammaExposure", "riskRegime", "metrics"],
-        },
-      },
-    });
+      - metrics: { dxy: string, futures: string, options: string, volatility: string, liquidity: string, gamma: string }`;
 
-    if (result && result.text) {
-      return JSON.parse(result.text);
-    }
-    return null;
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    const jsonStr = text.replace(/```json|```/g, '').trim();
+    return JSON.parse(jsonStr);
   } catch (error) {
     console.error("Positioning analysis error:", error);
     return null;
