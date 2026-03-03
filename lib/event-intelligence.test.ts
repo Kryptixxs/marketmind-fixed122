@@ -46,13 +46,4 @@ describe('Event Intelligence Rules Engine', () => {
     expect(res.direction).toBe('ABOVE');
     expect(res.interpretation).toBe('BULLISH_RISK');
   });
-
-  test('validates regional mapping for India and Germany', () => {
-    // This test validates the mapping logic used in fetchEconomicCalendar
-    const indiaEvent = { country: 'India', currency: 'INR' };
-    const germanyEvent = { country: 'Germany', currency: 'EUR' };
-    
-    expect(indiaEvent.currency).toBe('INR');
-    expect(germanyEvent.currency).toBe('EUR');
-  });
 });

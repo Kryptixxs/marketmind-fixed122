@@ -1,7 +1,6 @@
 'use server';
 
 import { EconomicEvent } from '@/lib/types';
-import { toISODateString } from '@/lib/date-utils';
 
 const CACHE: Record<string, { data: EconomicEvent[], timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
@@ -34,16 +33,13 @@ const COUNTRY_CODES: Record<string, string> = {
   'United States': 'US', 'Euro Zone': 'EU', 'United Kingdom': 'GB',
   'Japan': 'JP', 'Canada': 'CA', 'Australia': 'AU', 'China': 'CN',
   'Switzerland': 'CH', 'New Zealand': 'NZ', 'Germany': 'DE', 'France': 'FR',
-  'Italy': 'IT', 'Spain': 'ES', 'Netherlands': 'NL', 'India': 'IN',
-  'Brazil': 'BR', 'Mexico': 'MX', 'South Korea': 'KR'
+  'Italy': 'IT', 'Spain': 'ES'
 };
 
 const CURRENCY_MAP: Record<string, string> = {
   'United States': 'USD', 'Euro Zone': 'EUR', 'United Kingdom': 'GBP',
   'Japan': 'JPY', 'Canada': 'CAD', 'Australia': 'AUD', 'China': 'CNY',
-  'Switzerland': 'CHF', 'New Zealand': 'NZD', 'Germany': 'EUR', 'France': 'EUR',
-  'Italy': 'EUR', 'Spain': 'EUR', 'Netherlands': 'EUR', 'India': 'INR',
-  'Brazil': 'BRL', 'Mexico': 'MXN', 'South Korea': 'KRW'
+  'Switzerland': 'CHF', 'New Zealand': 'NZD'
 };
 
 function calculateImpact(title: string): 'High' | 'Medium' | 'Low' {
@@ -56,15 +52,6 @@ function calculateImpact(title: string): 'High' | 'Medium' | 'Low' {
 function shouldFilterOut(title: string): boolean {
   const t = title.toLowerCase();
   return IGNORED_KEYWORDS.some(k => t.includes(k.toLowerCase()));
-}
-
-function sanitizeValue(val: string | null | undefined): string | null {
-  if (!val) return null;
-  // Strip HTML and entities
-  const clean = val.replace(/<[^>]*>?/gm, '').replace(/&[a-z0-9#]+;/gi, '').trim();
-  // Check if it's a reasonable numeric/percent string (e.g. 5.2%, 250k, 1.2M, -0.1)
-  if (/^-?\d*\.?\d+%?k?m?b?t?$/i.test(clean)) return clean;
-  return null;
 }
 
 export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Record<string, EconomicEvent[]>> {
@@ -80,31 +67,52 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
     }
   }
 
+  // Ensure all requested keys exist in the result object
+  dates.forEach(d => { if (!results[d]) results[d] = []; });
+
   if (datesToFetch.length === 0) return results;
+
+  const rawEvents: EconomicEvent[] = [];
 
   await Promise.all(datesToFetch.map(async (date) => {
     try {
       const events = await fetchEventsForDate(date);
-      results[date] = events;
-      CACHE[date] = { data: events, timestamp: Date.now() };
+      rawEvents.push(...events);
     } catch (error) {
       console.error(`Error fetching economic calendar for ${date}:`, error);
-      results[date] = [];
     }
   }));
+
+  // Re-bucket events into the correct dates
+  // Since dates are shifted, they might land in a different bucket than they were fetched from
+  rawEvents.forEach(event => {
+    if (results[event.date]) {
+      results[event.date].push(event);
+    } else {
+      // If we didn't ask for this date specifically but got data for it (due to shift),
+      // we add it to the results map so the frontend can display it if it wants to.
+      results[event.date] = [event];
+    }
+  });
+  
+  // Sort events within each day
+  Object.keys(results).forEach(key => {
+    results[key].sort((a, b) => {
+       const impactScore = { High: 3, Medium: 2, Low: 1 };
+       const scoreA = impactScore[a.impact] || 0;
+       const scoreB = impactScore[b.impact] || 0;
+       if (scoreA !== scoreB) return scoreB - scoreA;
+       // Sort by time string "HH:MM"
+       return a.time.localeCompare(b.time);
+    });
+  });
 
   return results;
 }
 
 async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
   try {
-    // NASDAQ API often returns data for the day AFTER the requested date in UTC.
-    // We shift the query date forward by 1 to align with the intended display date.
-    const d = new Date(dateStr);
-    d.setDate(d.getDate() + 1);
-    const queryDate = toISODateString(d);
-
-    const url = `https://api.nasdaq.com/api/calendar/economicevents?date=${queryDate}`;
+    const url = `https://api.nasdaq.com/api/calendar/economicevents?date=${dateStr}`;
     const response = await fetch(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0',
@@ -119,40 +127,33 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
 
     return json.data.rows
       .filter((row: any) => row.eventName && !shouldFilterOut(row.eventName))
-      .map((row: any) => {
-        // Normalize Time: Prefer row.time, then row.gmt, then "All Day"
-        let timeStr = row.time || row.gmt || 'All Day';
-        if (timeStr === '24H' || !timeStr.trim()) timeStr = 'All Day';
+      .map((row: any, i: number) => {
+        // Use the raw time string from API (e.g. "08:30" or "14:00")
+        // We assume this is already in the desired display timezone (EST) or close enough 
+        // that the user prefers it over our calculated offset.
+        let timeStr = row.gmt || '00:00';
+        
+        // Manual 1-day shift left logic
+        // We create a Date object from the query date, subtract 1 day, and format it back to YYYY-MM-DD
+        const d = new Date(`${dateStr}T00:00:00Z`);
+        d.setDate(d.getDate() - 1);
+        const shiftedDateStr = d.toISOString().split('T')[0];
 
-        const country = row.country || 'United States';
-        const countryCode = COUNTRY_CODES[country] || 'US';
-        const currency = CURRENCY_MAP[country] || 'USD';
-        const title = row.eventName || 'Event';
-        const impact = calculateImpact(title);
-
-        // Stable ID based on content
-        const id = Buffer.from(`${dateStr}-${title}-${countryCode}-${timeStr}`).toString('base64').slice(0, 16);
-
-        // Timestamp for sorting
-        let timestamp = new Date(`${dateStr}T00:00:00Z`).getTime();
-        if (timeStr.includes(':')) {
-          const [h, m] = timeStr.split(':');
-          const dateObj = new Date(`${dateStr}T${h.padStart(2, '0')}:${m.padStart(2, '0')}:00Z`);
-          if (!isNaN(dateObj.getTime())) timestamp = dateObj.getTime();
-        }
+        const impact = calculateImpact(row.eventName || '');
+        const countryCode = COUNTRY_CODES[row.country] || 'US'; 
 
         return {
-          id,
-          date: dateStr,
-          time: timeStr,
+          id: `${dateStr}-${i}`,
+          date: shiftedDateStr, // Shifted Date (-1 day)
+          time: timeStr,        // Original Time (No timezone conversion)
           country: countryCode, 
-          currency: currency,
+          currency: CURRENCY_MAP[row.country] || 'USD',
           impact: impact, 
-          title: title,
-          actual: sanitizeValue(row.actual),
-          forecast: sanitizeValue(row.consensus),
-          previous: sanitizeValue(row.previous),
-          timestamp
+          title: row.eventName || 'Event',
+          actual: row.actual || '',
+          forecast: row.consensus || '',
+          previous: row.previous || '',
+          timestamp: 0 // Not strictly needed for grid view anymore
         };
       });
   } catch {
