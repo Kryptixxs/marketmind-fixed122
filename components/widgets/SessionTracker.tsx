@@ -4,14 +4,18 @@ import React, { useState, useEffect } from 'react';
 import { Clock } from 'lucide-react';
 
 export function SessionTracker() {
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState<Date | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    setTime(new Date());
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
   const getSessionStatus = (start: number, end: number) => {
+    if (!time) return false;
     const hour = time.getUTCHours();
     if (start < end) return hour >= start && hour < end;
     return hour >= start || hour < end; // Over midnight
@@ -27,7 +31,9 @@ export function SessionTracker() {
     <div className="p-2 h-full flex flex-col gap-2">
       <div className="flex justify-between items-center">
         <div className="text-[8px] text-text-tertiary uppercase font-bold">Global Session Monitor</div>
-        <div className="text-[10px] font-mono text-accent">{time.toUTCString().split(' ')[4]} UTC</div>
+        <div className="text-[10px] font-mono text-accent min-w-[60px] text-right">
+          {mounted && time ? time.toUTCString().split(' ')[4] : '--:--:--'} UTC
+        </div>
       </div>
       
       <div className="space-y-2">
@@ -40,7 +46,10 @@ export function SessionTracker() {
                 <span className={`text-[8px] font-mono ${isActive ? 'text-positive' : 'text-text-tertiary'}`}>{isActive ? 'ACTIVE' : 'CLOSED'}</span>
               </div>
               <div className="h-1 w-full bg-surface-highlight rounded-full overflow-hidden">
-                <div className={`h-full ${s.color} transition-all duration-1000 ${isActive ? 'opacity-100' : 'opacity-10'}`} style={{ width: isActive ? '100%' : '0%' }} />
+                <div 
+                  className={`h-full ${s.color} transition-all duration-1000 ${isActive ? 'opacity-100' : 'opacity-10'}`} 
+                  style={{ width: isActive ? '100%' : '0%' }} 
+                />
               </div>
             </div>
           );
