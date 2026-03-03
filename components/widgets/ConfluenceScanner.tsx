@@ -7,43 +7,43 @@ import { ConfluenceResult } from '@/lib/confluence/types';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 import { useSettings } from '@/context/SettingsContext';
 import { fetchNews } from '@/app/actions/fetchNews';
+import { analyzeNewsSentiment } from '@/app/actions/analyzeNewsSentiment';
 
 export function ConfluenceScanner({ symbol, timeframeLabel = '15m' }: { symbol: string, timeframeLabel?: string }) {
   const [bullish, setBullish] = useState<ConfluenceResult[]>([]);
   const [bearish, setBearish] = useState<ConfluenceResult[]>([]);
-  const [newsScore, setNewsScore] = useState(0);
+  const [newsData, setNewsData] = useState<{score: number, label: string} | null>(null);
   const { settings } = useSettings();
   
   const { data } = useMarketData([symbol]);
   const tick = data[symbol];
 
-  // Asynchronously fetch news to feed the engine
+  // Asynchronously fetch news and use REAL AI to determine sentiment score
   useEffect(() => {
     const getNews = async () => {
-      const symName = symbol.split('=')[0].split('-')[0];
-      const news = await fetchNews('General');
-      let score = 0;
-      let count = 0;
-      news.forEach(n => {
-        if (n.title.toLowerCase().includes(symName.toLowerCase())) {
-          count++;
-          if (n.title.match(/soar|jump|buy|bull|beat|growth|high|up/i)) score += 40;
-          if (n.title.match(/plunge|drop|sell|bear|miss|shrink|low|down|risk/i)) score -= 40;
-        }
-      });
-      setNewsScore(count > 0 ? score / count : 0);
+      try {
+        const symName = symbol.split('=')[0].split('-')[0];
+        const news = await fetchNews('General');
+        const headlines = news.slice(0, 10).map(n => n.title);
+        const sentimentResult = await analyzeNewsSentiment(headlines, symName);
+        setNewsData(sentimentResult);
+      } catch (e) {
+        console.error(e);
+        setNewsData({ score: 0, label: 'Neutral' });
+      }
     };
     getNews();
   }, [symbol]);
 
   useEffect(() => {
-    if (!tick || !tick.history || tick.history.length < 50) return;
+    if (!tick || !tick.history || tick.history.length < 50 || !newsData) return;
 
+    // Pass the real AI news score into the technical confluence engine
     const engine = new ConfluenceEngine({
       symbol,
       interval: timeframeLabel,
       quotes: tick.history
-    }, newsScore); // Inject news score here
+    }, newsData.score); 
     
     const allActive = engine.calculateAll().filter(r => r.isActive);
     
@@ -70,9 +70,9 @@ export function ConfluenceScanner({ symbol, timeframeLabel = '15m' }: { symbol: 
 
     setBullish(bulls.sort((a, b) => b.score - a.score));
     setBearish(bears.sort((a, b) => b.score - a.score));
-  }, [tick, timeframeLabel, settings.strategy, newsScore]);
+  }, [tick, timeframeLabel, settings.strategy, newsData]);
 
-  const loading = !tick || !tick.history || tick.history.length < 50;
+  const loading = !tick || !tick.history || tick.history.length < 50 || !newsData;
 
   if (loading) return <div className="flex flex-col items-center justify-center h-full text-text-tertiary gap-2"><Loader2 size={14} className="animate-spin text-accent" /><span className="text-[10px] font-bold tracking-widest uppercase">Computing Confluences...</span></div>;
 
@@ -84,7 +84,7 @@ export function ConfluenceScanner({ symbol, timeframeLabel = '15m' }: { symbol: 
       <div className="flex items-center justify-between shrink-0 mb-2">
         <div className="text-[8px] text-text-tertiary uppercase font-bold flex items-center gap-1">
           {timeframeLabel} Matrix 
-          <span className="bg-accent/10 text-accent px-1 py-0.5 rounded-sm flex items-center gap-1"><Sparkles size={8}/> {settings.strategy} Weighted</span>
+          <span className="bg-accent/10 text-accent px-1 py-0.5 rounded-sm flex items-center gap-1"><Sparkles size={8}/> AI Weighted</span>
         </div>
         <span className="text-[9px] text-text-secondary font-mono font-bold">
           <span className="text-positive">{bullish.length}</span> vs <span className="text-negative">{bearish.length}</span>

@@ -1,28 +1,29 @@
-import OpenAI from 'openai';
+import { GoogleGenAI } from '@google/genai';
 
 export async function generateAIJSON(prompt: string, fallback: any = null) {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
   
   if (!apiKey) {
-    console.warn("[AI_UTILS]: No API key found. Using deterministic fallback.");
+    console.warn("[AI_UTILS]: No Gemini API key found. Using deterministic fallback.");
     return fallback;
   }
 
-  const openai = new OpenAI({ apiKey });
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
-    const response = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: "You are a senior institutional macro strategist. Return ONLY valid JSON." },
-        { role: "user", content: prompt }
-      ],
-      response_format: { type: "json_object" },
-      timeout: 5000 // 5s timeout to prevent UI hanging
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        temperature: 0.2 // Low temperature for more analytical/deterministic outputs
+      }
     });
 
-    const text = response.choices[0].message.content;
-    return text ? JSON.parse(text) : fallback;
+    const text = response.text;
+    if (!text) return fallback;
+
+    return JSON.parse(text);
   } catch (error) {
     console.error("[AI_UTILS_ERROR]:", error);
     return fallback;

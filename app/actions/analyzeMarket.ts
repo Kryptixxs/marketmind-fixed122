@@ -3,14 +3,22 @@
 import { generateAIJSON } from "@/lib/ai-utils";
 
 export async function analyzeMarket(symbol: string, label: string, price: number, changePercent: number) {
-  const prompt = `Analyze the current market state for ${label} (${symbol}). 
+  const prompt = `You are an elite quantitative analyst. Analyze the current market state for ${label} (${symbol}). 
     Current Price: ${price}
     Daily Change: ${changePercent}%
     
-    Provide a JSON response with:
-    1. strength: A trend strength score from 0 to 100.
-    2. sentiment: Market sentiment (Bullish, Bearish, or Neutral).
-    3. analysis: A 2-sentence technical analysis of the current price action, factoring in ICT concepts like liquidity and FVGs if applicable.`;
+    Provide a JSON response strictly matching this structure:
+    {
+      "strength": number, // A trend strength score from 0 to 100
+      "sentiment": string, // "Bullish", "Bearish", or "Neutral"
+      "analysis": string // A highly customized, 2-sentence technical/macro analysis of the current price action for THIS specific asset. Mention key liquidity concepts if applicable.
+    }`;
 
-  return await generateAIJSON(prompt);
+  const fallback = {
+    strength: 50,
+    sentiment: changePercent >= 0 ? "Bullish" : "Bearish",
+    analysis: `${symbol} is trading at ${price} with a daily change of ${changePercent}%. Market structure is currently developing.`
+  };
+
+  return await generateAIJSON(prompt, fallback);
 }
