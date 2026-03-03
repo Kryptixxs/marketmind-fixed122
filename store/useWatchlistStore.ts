@@ -2,36 +2,36 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 interface WatchlistState {
-  symbols: string[];
+  symbols: string[]; // These are now instrumentIds (e.g., 'NDX', 'EURUSD')
   activeSymbol: string;
-  addSymbol: (symbol: string) => void;
-  removeSymbol: (symbol: string) => void;
-  setActiveSymbol: (symbol: string) => void;
+  addSymbol: (id: string) => void;
+  removeSymbol: (id: string) => void;
+  setActiveSymbol: (id: string) => void;
 }
 
-const DEFAULT_SYMBOLS = ['^NDX', '^GSPC', 'CL=F', 'GC=F', 'EURUSD=X', 'BTC-USD'];
+const DEFAULT_INSTRUMENTS = ['NDX', 'SPX', 'CL', 'GC', 'EURUSD', 'BTCUSD'];
 
 export const useWatchlistStore = create<WatchlistState>()(
   persist(
     (set) => ({
-      symbols: DEFAULT_SYMBOLS,
-      activeSymbol: '^NDX',
-      addSymbol: (symbol) => set((state) => {
-        const upperSymbol = symbol.toUpperCase().trim();
-        if (!upperSymbol || state.symbols.includes(upperSymbol)) return state;
-        return { symbols: [upperSymbol, ...state.symbols] };
+      symbols: DEFAULT_INSTRUMENTS,
+      activeSymbol: 'NDX',
+      addSymbol: (id) => set((state) => {
+        const upperId = id.toUpperCase().trim();
+        if (!upperId || state.symbols.includes(upperId)) return state;
+        return { symbols: [upperId, ...state.symbols] };
       }),
-      removeSymbol: (symbol) => set((state) => {
-        const newSymbols = state.symbols.filter((s) => s !== symbol);
+      removeSymbol: (id) => set((state) => {
+        const newSymbols = state.symbols.filter((s) => s !== id);
         return {
           symbols: newSymbols,
-          activeSymbol: state.activeSymbol === symbol ? (newSymbols[0] || '') : state.activeSymbol
+          activeSymbol: state.activeSymbol === id ? (newSymbols[0] || '') : state.activeSymbol
         };
       }),
-      setActiveSymbol: (symbol) => set({ activeSymbol: symbol.toUpperCase().trim() }),
+      setActiveSymbol: (id) => set({ activeSymbol: id.toUpperCase().trim() }),
     }),
     {
-      name: 'vantage_watchlist_v1',
+      name: 'vantage_watchlist_v2',
     }
   )
 );

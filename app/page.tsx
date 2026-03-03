@@ -15,17 +15,7 @@ import { useMarketData } from '@/lib/marketdata/useMarketData';
 import { formatPrice, formatPercent, formatInt } from '@/lib/format';
 import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { fetchHistoricalBars, Bar } from '@/app/actions/fetchHistoricalBars';
-
-const SYMBOL_METADATA: Record<string, { label: string, type: any }> = {
-  '^NDX': { label: 'Nasdaq 100', type: 'index' },
-  '^GSPC': { label: 'S&P 500', type: 'index' },
-  '^DJI': { label: 'Dow Jones', type: 'index' },
-  '^RUT': { label: 'Russell 2000', type: 'index' },
-  'CL=F': { label: 'Crude Oil', type: 'commodity' },
-  'GC=F': { label: 'Gold', type: 'commodity' },
-  'EURUSD=X': { label: 'EUR/USD', type: 'fx' },
-  'BTC-USD': { label: 'Bitcoin', type: 'crypto' },
-};
+import { getInstrument, resolveYahooSymbol } from '@/lib/instruments';
 
 const VITALS_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX'];
 
@@ -42,16 +32,21 @@ export default function TerminalPage() {
   const [historicalData, setHistoricalData] = useState<Bar[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   
-  const allRequiredSymbols = [...symbols, ...VITALS_SYMBOLS];
-  const { data: marketData } = useMarketData(allRequiredSymbols);
+  // Resolve all required Yahoo symbols for the data hook
+  const allRequiredYahooSymbols = [
+    ...symbols.map(id => resolveYahooSymbol(id)),
+    ...VITALS_SYMBOLS
+  ];
+  
+  const { data: marketData } = useMarketData(allRequiredYahooSymbols);
   
   const lastAnalyzedRef = useRef<string | null>(null);
 
-  const loadHistory = useCallback(async (sym: string, range: string) => {
-    if (!sym) return;
+  const loadHistory = useCallback(async (id: string, range: string) => {
+    if (!id) return;
     setLoadingHistory(true);
     try {
-      const bars = await fetchHistoricalBars(sym, range);
+      const bars = await fetchHistoricalBars(id, range);
       setHistoricalData(bars);
     } catch (err) {
       console.error("Failed to load history", err);
@@ -64,14 +59,11 @@ export default function TerminalPage() {
     loadHistory(activeSymbol, timeframe);
   }, [activeSymbol, timeframe, loadHistory]);
 
-  // Calculate technicals for AI grounding
   const calculateTechnicals = (bars: Bar[]) => {
     if (bars.length < 20) return null;
-    
     const closes = bars.map(b => b.close);
     const last20 = closes.slice(-20);
     
-    // Simple RSI (14)
     let gains = 0, losses = 0;
     for (let i = closes.length - 14; i < closes.length; i++) {
       const diff = closes[i] - closes[i-1];
@@ -80,12 +72,10 @@ export default function TerminalPage() {
     }
     const rsi = 100 - (100 / (1 + (gains / 14) / (losses / 14 || 1)));
     
-    // MA Slope (20d)
     const ma20 = last20.reduce((a, b) => a + b, 0) / 20;
     const prevMa20 = closes.slice(-21, -1).reduce((a, b) => a + b, 0) / 20;
     const maSlope = (ma20 - prevMa20) / prevMa20;
     
-    // Volatility (ATR Proxy)
     const trs = bars.slice(-14).map((b, i, arr) => {
       if (i === 0) return b.high - b.low;
       return Math.max(b.high - b.low, Math.abs(b.high - arr[i-1].close), Math.abs(b.low - arr[i-1].close));
@@ -102,7 +92,8 @@ export default function TerminalPage() {
   };
 
   useEffect(() => {
-    const data = marketData[activeSymbol];
+    const yahooSym = resolveYahooSymbol(activeSymbol);
+    const data = marketData[yahooSym];
     if (!data || historicalData.length < 20) return;
 
     const analysisKey = `${activeSymbol}-${data.price}`;
@@ -115,7 +106,8 @@ export default function TerminalPage() {
         const technicals = calculateTechnicals(historicalData);
         if (!technicals) return;
 
-        const label = SYMBOL_METADATA[activeSymbol]?.label || activeSymbol;
+        const inst = getInstrument(activeSymbol);
+        const label = inst?.label || activeSymbol;
         const result = await analyzeMarket(activeSymbol, label, data.price, data.changePercent, technicals);
         if (result) {
           setAiAnalysis(result);
@@ -129,13 +121,13 @@ export default function TerminalPage() {
     };
 
     runAnalysis();
-  }, [activeSymbol, marketData[activeSymbol]?.price, historicalData]);
+  }, [activeSymbol, marketData, historicalData]);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (newSymbol) {
-      addSymbol(newSymbol);
-      setActiveSymbol(newSymbol);
+      addSymbol(newSymbol.toUpperCase());
+      setActiveSymbol(newSymbol.toUpperCase());
       setNewSymbol('');
       setIsAdding(false);
     }
@@ -180,23 +172,25 @@ export default function TerminalPage() {
                     <button type="submit" className="text-accent"><Plus size={14}/></button>
                   </form>
                 )}
-                {symbols.map(sym => {
-                  const data = marketData[sym];
-                  const meta = SYMBOL_METADATA[sym] || { label: sym, type: sym.includes('=') ? 'fx' : 'equity' };
+                {symbols.map(id => {
+                  const inst = getInstrument(id);
+                  const yahooSym = resolveYahooSymbol(id);
+                  const data = marketData[yahooSym];
                   const isPositive = data?.change >= 0;
+                  
                   return (
                     <div 
-                      key={sym} 
-                      onClick={() => setActiveSymbol(sym)}
-                      className={`flex justify-between items-center px-2 py-1.5 border-b border-border/30 cursor-pointer hover:bg-surface-highlight transition-colors group ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
+                      key={id} 
+                      onClick={() => setActiveSymbol(id)}
+                      className={`flex justify-between items-center px-2 py-1.5 border-b border-border/30 cursor-pointer hover:bg-surface-highlight transition-colors group ${activeSymbol === id ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
                     >
                       <div className="flex flex-col">
-                        <span className="font-bold text-[10px] text-text-primary">{sym}</span>
-                        <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{meta.label}</span>
+                        <span className="font-bold text-[10px] text-text-primary">{id}</span>
+                        <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{inst?.label || id}</span>
                       </div>
                       <div className="flex flex-col items-end">
                         <span className="text-[10px] font-mono font-bold text-text-primary mono-num">
-                          {data ? formatPrice(data.price, meta.type) : '---'}
+                          {data ? formatPrice(data.price, inst?.assetType.toLowerCase() as any) : '---'}
                         </span>
                         <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
                           <span>{data ? `${isPositive ? '+' : ''}${formatPercent(data.changePercent)}` : '--'}</span>
@@ -224,7 +218,6 @@ export default function TerminalPage() {
                   </div>
                 ) : aiAnalysis ? (
                   <div className="space-y-4 animate-in">
-                    {/* Header Metrics */}
                     <div className="flex items-center justify-between border-b border-border pb-2">
                       <div className="flex items-center gap-2">
                         <div className={`w-2 h-2 rounded-full ${aiAnalysis.bias === 'Bullish' ? 'bg-positive' : aiAnalysis.bias === 'Bearish' ? 'bg-negative' : 'bg-warning'}`} />
@@ -236,7 +229,6 @@ export default function TerminalPage() {
                       </div>
                     </div>
 
-                    {/* Regime & Thesis */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Zap size={12} className="text-accent" />
@@ -245,7 +237,6 @@ export default function TerminalPage() {
                       <p className="text-text-primary leading-relaxed italic">"{aiAnalysis.thesis}"</p>
                     </div>
 
-                    {/* Levels */}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-surface-highlight/50 p-2 rounded border border-border">
                         <span className="text-[8px] font-bold text-text-tertiary uppercase block mb-1">Resistance</span>
@@ -261,7 +252,6 @@ export default function TerminalPage() {
                       </div>
                     </div>
 
-                    {/* Risk & Invalidation */}
                     <div className="space-y-2 pt-2 border-t border-border">
                       <div className="flex items-center gap-2 text-negative">
                         <ShieldAlert size={12} />
@@ -270,7 +260,6 @@ export default function TerminalPage() {
                       <p className="text-text-secondary">{aiAnalysis.invalidation}</p>
                     </div>
 
-                    {/* Next Steps */}
                     <div className="space-y-1.5">
                       <span className="text-[8px] font-bold text-text-tertiary uppercase block">Tactical Steps</span>
                       {aiAnalysis.nextSteps.map((step, i) => (
@@ -335,7 +324,7 @@ export default function TerminalPage() {
         {/* --- COLUMN 3: MAIN CHART --- */}
         <div className="col-span-6 row-span-12 overflow-hidden relative">
           <Widget 
-            title={`${activeSymbol} • ${SYMBOL_METADATA[activeSymbol]?.label || ''}`} 
+            title={`${activeSymbol} • ${getInstrument(activeSymbol)?.label || ''}`} 
             actions={
               <div className="flex items-center gap-3">
                 <div className="flex bg-surface border border-border rounded p-0.5">
@@ -365,7 +354,7 @@ export default function TerminalPage() {
                 </div>
                 <div className="flex items-center gap-2 text-[8px]">
                   <span className="text-positive flex items-center gap-1"><Wifi size={8}/> Live</span>
-                  <span className="px-1 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase">{marketData[activeSymbol]?.marketState || 'REGULAR'}</span>
+                  <span className="px-1 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase">{marketData[resolveYahooSymbol(activeSymbol)]?.marketState || 'REGULAR'}</span>
                 </div>
               </div>
             }
@@ -385,7 +374,7 @@ export default function TerminalPage() {
                   </div>
                 )
               ) : (
-                <TradingViewChart symbol={activeSymbol} />
+                <TradingViewChart instrumentId={activeSymbol} />
               )}
             </div>
           </Widget>
