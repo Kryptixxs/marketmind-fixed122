@@ -24,7 +24,7 @@ export async function analyzeEventScenarios() {
       - eventName: string
       - scenarios: array of 3 scenarios
         - label: string
-        - probability: number
+        - probability: number (0-100)
         - reaction: string
         - bias: "BULLISH" | "BEARISH" | "NEUTRAL"
       - tradeImplication: string`;

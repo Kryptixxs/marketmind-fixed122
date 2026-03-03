@@ -32,10 +32,10 @@ export async function analyzeMarketPositioning() {
       - futuresPositioning: string
       - optionsImplied: string
       - volatilityRegime: string
-      - liquidityIndex: number
+      - liquidityIndex: number (0-100)
       - gammaExposure: string
       - riskRegime: "STABLE" | "VOLATILE" | "EXTREME"
-      - metrics: { dxy: string, futures: string, options: string, volatility: string, liquidity: string, gamma: string }`;
+      - metrics: { dxy: "positive"|"negative"|"neutral", futures: "positive"|"negative"|"neutral", options: "positive"|"negative"|"neutral", volatility: "positive"|"negative"|"neutral", liquidity: "positive"|"negative"|"neutral", gamma: "positive"|"negative"|"neutral" }`;
 
     return await generateAIJSON(prompt);
   } catch (error) {
