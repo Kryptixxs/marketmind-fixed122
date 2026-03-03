@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Sidebar } from "@/components/Sidebar";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { CommandPalette } from "@/components/CommandPalette";
 import { LayoutWrapper } from "@/components/LayoutWrapper";
@@ -17,7 +16,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="flex h-screen w-screen overflow-hidden bg-background text-text-primary antialiased">
+      {/* Changed to flex-col-reverse on mobile so sidebar sits at the bottom, md:flex-row for desktop left-side */}
+      <body className="flex flex-col-reverse md:flex-row h-screen w-screen overflow-hidden bg-background text-text-primary antialiased">
         <SettingsProvider>
           <LayoutWrapper>
             {children}

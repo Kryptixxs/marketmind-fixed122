@@ -20,11 +20,10 @@ export default function AlgoPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<StrategyResult | null>(null);
 
-  // Fetch REAL market data for the backtester
   const fetchRealHistory = async () => {
     setIsLoading(true);
     try {
-      const data = await fetchMarketData(targetSymbol);
+      const data = await fetchMarketData(targetSymbol, '1d');
       if (data && data.history) {
         setRealData(data.history);
         setResult(runBacktest(data.history, params));
@@ -38,7 +37,7 @@ export default function AlgoPage() {
 
   useEffect(() => {
     fetchRealHistory();
-  }, []); // Run once on mount for SPY
+  }, []);
 
   const run = () => {
     if (realData.length > 0) {
@@ -49,13 +48,13 @@ export default function AlgoPage() {
   };
 
   return (
-    <div className="h-full w-full bg-background p-2 grid grid-cols-12 gap-2">
+    <div className="h-full w-full bg-background p-2 flex flex-col lg:grid lg:grid-cols-12 gap-2 overflow-y-auto lg:overflow-hidden custom-scrollbar">
       {/* Sidebar: Config */}
-      <div className="col-span-3 flex flex-col gap-2 h-full">
+      <div className="lg:col-span-3 flex flex-col gap-2 shrink-0">
         <Widget title="Strategy Parameters">
           <div className="p-4 flex flex-col gap-4">
             <div>
-              <label className="text-xs font-bold text-text-secondary">Target Asset (Real Data)</label>
+              <label className="text-xs font-bold text-text-secondary">Target Asset</label>
               <div className="flex gap-2 mt-1">
                 <input 
                   type="text" 
@@ -117,12 +116,12 @@ export default function AlgoPage() {
       </div>
 
       {/* Main: Results */}
-      <div className="col-span-9 flex flex-col gap-2 h-full">
-        <div className="h-1/2">
-           <Widget title={`Equity Curve: ${targetSymbol} (${realData.length} Real Daily Bars)`}>
+      <div className="lg:col-span-9 flex flex-col gap-2 shrink-0 h-[800px] lg:h-full">
+        <div className="h-1/2 min-h-[300px]">
+           <Widget title={`Equity Curve: ${targetSymbol} (${realData.length} Real Bars)`}>
              {result ? (
                <TradingChart data={result.equityCurve.map(p => ({
-                 time: p.time / 1000, // Lightweight charts needs seconds
+                 time: p.time / 1000,
                  open: p.value, high: p.value, low: p.value, close: p.value
                }))} />
              ) : (
@@ -132,10 +131,10 @@ export default function AlgoPage() {
              )}
            </Widget>
         </div>
-        <div className="h-1/2">
+        <div className="h-1/2 min-h-[300px]">
            <Widget title="Performance Metrics (Real Data)">
              {result ? (
-               <div className="grid grid-cols-4 gap-4 p-4 h-full content-center">
+               <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 p-4 h-full content-center">
                   <MetricCard label="Net Profit" value={`${result.netProfit.toFixed(2)}%`} color={result.netProfit > 0 ? 'text-positive' : 'text-negative'} />
                   <MetricCard label="Win Rate" value={`${result.winRate.toFixed(1)}%`} />
                   <MetricCard label="Max Drawdown" value={`-${result.maxDrawdown.toFixed(2)}%`} color="text-negative" />
@@ -153,7 +152,7 @@ function MetricCard({ label, value, color = 'text-text-primary' }: { label: stri
   return (
     <div className="bg-surface border border-border rounded p-4 text-center flex flex-col justify-center">
       <div className="text-[10px] text-text-tertiary uppercase font-bold mb-2 tracking-wider">{label}</div>
-      <div className={`text-3xl font-mono font-bold ${color}`}>{value}</div>
+      <div className={`text-2xl lg:text-3xl font-mono font-bold ${color}`}>{value}</div>
     </div>
   );
 }

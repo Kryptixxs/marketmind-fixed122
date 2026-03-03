@@ -37,9 +37,8 @@ const TIMEFRAMES = [
 
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("^NDX");
-  const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]); // Default 15M
+  const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]); 
   
-  // Dynamic Pipeline: Passes the selected timeframe to fetch the correct candles
   const { data: marketData } = useMarketData(ALL_SYMBOLS, timeframe.yf);
 
   useEffect(() => {
@@ -57,16 +56,21 @@ export default function TerminalPage() {
   const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
 
   return (
-    <div className="h-full w-full bg-background overflow-hidden flex flex-col">
+    <div className="h-full w-full bg-background flex flex-col overflow-hidden">
       <TerminalCommandBar />
 
-      <div className="flex-1 w-full min-h-0 p-0.5 grid grid-cols-12 grid-rows-12 gap-0.5">
+      {/* 
+        Responsive layout wrapper: 
+        - Mobile: flex-col with vertical scrolling
+        - Desktop (lg): CSS Grid, fixed height, no body scrolling 
+      */}
+      <div className="flex-1 w-full p-0.5 flex flex-col lg:grid lg:grid-cols-12 lg:grid-rows-12 gap-1 overflow-y-auto lg:overflow-hidden custom-scrollbar">
         
         {/* --- LEFT COLUMN --- */}
-        <div className="col-span-3 row-span-12 flex flex-col gap-0.5 h-full overflow-hidden">
-          <div className="h-[60%] min-h-0">
+        <div className="lg:col-span-3 lg:row-span-12 flex flex-col gap-1 h-[500px] lg:h-full shrink-0">
+          <div className="flex-1 min-h-0">
             <Widget title="Market Watch // Realtime">
-              <div className="flex flex-col">
+              <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
                 {WATCHLIST_SYMBOLS.map(sym => {
                   const data = marketData[sym];
                   const info = SYMBOL_MAP[sym];
@@ -98,10 +102,12 @@ export default function TerminalPage() {
             </Widget>
           </div>
           
-          <div className="h-[40%] min-h-0">
+          <div className="h-[200px] lg:h-[40%] min-h-0">
             <Widget title={`Cross-Asset Correlation (${timeframe.label})`}>
               {activeQuote ? (
-                <CorrelationMatrix activeTick={activeQuote} marketData={marketData} />
+                <div className="overflow-y-auto h-full custom-scrollbar">
+                  <CorrelationMatrix activeTick={activeQuote} marketData={marketData} />
+                </div>
               ) : (
                 <div className="flex h-full items-center justify-center text-text-tertiary text-[10px]">Loading Math...</div>
               )}
@@ -109,27 +115,26 @@ export default function TerminalPage() {
           </div>
         </div>
 
-        {/* --- CENTER COLUMN (Main Chart & Math) --- */}
-        <div className="col-span-6 row-span-12 flex flex-col gap-0.5 h-full overflow-hidden">
-          <div className="h-[70%] min-h-0">
+        {/* --- CENTER COLUMN --- */}
+        <div className="lg:col-span-6 lg:row-span-12 flex flex-col gap-1 h-[800px] lg:h-full shrink-0">
+          <div className="flex-1 lg:h-[70%] min-h-[400px] lg:min-h-0">
             <Widget 
               title={`${activeSymbol} • ${SYMBOL_MAP[activeSymbol]?.label || ''}`} 
               actions={
-                <div className="flex items-center gap-2">
-                  {/* Timeframe Selector UI */}
-                  <div className="flex items-center gap-1 bg-background border border-border rounded-sm p-0.5 mr-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-1 bg-background border border-border rounded-sm p-0.5 overflow-x-auto hide-scrollbar">
                      {TIMEFRAMES.map(tf => (
                        <button
                          key={tf.label}
                          onClick={() => setTimeframe(tf)}
-                         className={`px-1.5 py-0.5 text-[9px] font-bold rounded-sm transition-colors ${timeframe.label === tf.label ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
+                         className={`px-1.5 py-0.5 text-[9px] font-bold rounded-sm transition-colors whitespace-nowrap ${timeframe.label === tf.label ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
                        >
                          {tf.label}
                        </button>
                      ))}
                   </div>
-                  <span className="text-positive flex items-center gap-1 text-[8px]"><Wifi size={8}/> Live</span>
-                  <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase font-mono text-[8px]">{activeQuote?.marketState || 'REGULAR'}</span>
+                  <span className="text-positive flex items-center gap-1 text-[8px] whitespace-nowrap"><Wifi size={8}/> Live</span>
+                  <span className="hidden sm:inline-block px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase font-mono text-[8px]">{activeQuote?.marketState || 'REGULAR'}</span>
                 </div>
               }
             >
@@ -139,13 +144,13 @@ export default function TerminalPage() {
             </Widget>
           </div>
           
-          <div className="h-[30%] min-h-0 flex gap-0.5">
-            <div className="w-1/2 h-full">
+          <div className="h-[300px] lg:h-[30%] min-h-0 flex flex-col sm:flex-row gap-1">
+            <div className="w-full sm:w-1/2 h-full">
               <Widget title="ICT Structure Engine">
                 <ICTPanel tick={activeQuote} timeframeLabel={timeframe.label} />
               </Widget>
             </div>
-            <div className="w-1/2 h-full">
+            <div className="w-full sm:w-1/2 h-full">
               <Widget title="Terminal Confluences">
                 <ConfluenceScanner symbol={activeSymbol} timeframeLabel={timeframe.label} />
               </Widget>
@@ -153,15 +158,15 @@ export default function TerminalPage() {
           </div>
         </div>
 
-        {/* --- RIGHT COLUMN (News & Macro) --- */}
-        <div className="col-span-3 row-span-12 flex flex-col gap-0.5 h-full overflow-hidden">
-          <div className="h-[50%] min-h-0">
+        {/* --- RIGHT COLUMN --- */}
+        <div className="lg:col-span-3 lg:row-span-12 flex flex-col gap-1 h-[500px] lg:h-full shrink-0">
+          <div className="h-[250px] lg:h-[50%] min-h-0">
             <Widget title="Filtered Economic Calendar">
               <MiniCalendar />
             </Widget>
           </div>
 
-          <div className="h-[50%] min-h-0">
+          <div className="flex-1 lg:h-[50%] min-h-0">
             <Widget title="Live Intelligence Wire">
               <NewsFeed activeSymbol={activeSymbol} />
             </Widget>
