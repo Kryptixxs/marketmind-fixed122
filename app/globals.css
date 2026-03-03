@@ -31,14 +31,15 @@
 }
 
 html, body {
-  height: 100%;
+  height: 100dvh; /* Dynamic viewport height fixes iOS/Android address bar issues */
   width: 100%;
-  overflow: hidden;
   background-color: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-mono);
   font-size: 11px;
   -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none; /* Prevents pull-to-refresh so it feels like an app */
+  touch-action: pan-x pan-y pinch-zoom; /* Explicitly allow scrolling and zooming */
 }
 
 /* ── Scrollbars ── */

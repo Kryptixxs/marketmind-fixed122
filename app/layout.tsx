@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { CommandPalette } from "@/components/CommandPalette";
@@ -9,6 +9,15 @@ export const metadata: Metadata = {
   description: "Institutional Intelligence",
 };
 
+// Explicitly define the viewport to allow zooming and ensure proper mobile scaling
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: "#000000",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -16,8 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      {/* Changed to flex-col-reverse on mobile so sidebar sits at the bottom, md:flex-row for desktop left-side */}
-      <body className="flex flex-col-reverse md:flex-row h-screen w-screen overflow-hidden bg-background text-text-primary antialiased">
+      <body className="flex flex-col-reverse md:flex-row h-[100dvh] w-full overflow-hidden bg-background text-text-primary antialiased">
         <SettingsProvider>
           <LayoutWrapper>
             {children}

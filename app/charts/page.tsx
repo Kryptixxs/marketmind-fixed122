@@ -115,7 +115,7 @@ export default function ChartsPage() {
   const activeQuote = quotes[activeSymbol];
 
   return (
-    <div className="h-full flex flex-col bg-background overflow-hidden">
+    <div className="h-full flex flex-col bg-background overflow-hidden min-h-0">
       {/* Toolbar - Wraps on mobile */}
       <div className="h-auto min-h-[40px] py-2 border-b border-border bg-surface flex flex-wrap items-center px-4 justify-between shrink-0 z-20 gap-2">
         <div className="flex items-center gap-4 md:gap-6 relative flex-wrap">
@@ -171,9 +171,9 @@ export default function ChartsPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden min-h-0">
         {/* Watchlist Sidebar - Stacks to top on mobile */}
-        <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border bg-surface flex flex-col shrink-0 h-[200px] md:h-full">
+        <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-border bg-surface flex flex-col shrink-0 h-[250px] md:h-full min-h-[250px]">
           <div className="p-3 border-b border-border flex items-center justify-between shrink-0">
             <span className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">Watchlist</span>
             <button 
@@ -229,7 +229,7 @@ export default function ChartsPage() {
         </div>
 
         {/* Main Chart Area */}
-        <div className="flex-1 bg-black relative min-h-[400px] md:min-h-0">
+        <div className="flex-1 bg-black relative min-h-[450px] md:min-h-0 flex flex-col">
           <TradingViewChart symbol={getTVSymbol(activeSymbol)} interval={timeframe.value} />
           
           {/* Floating Info Overlay */}

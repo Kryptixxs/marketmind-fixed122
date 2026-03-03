@@ -56,7 +56,7 @@ export default function TerminalPage() {
   const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
 
   return (
-    <div className="h-full w-full bg-background flex flex-col overflow-hidden">
+    <div className="h-full w-full bg-background flex flex-col overflow-hidden min-h-0">
       <TerminalCommandBar />
 
       {/* 
@@ -64,10 +64,10 @@ export default function TerminalPage() {
         - Mobile: flex-col with vertical scrolling
         - Desktop (lg): CSS Grid, fixed height, no body scrolling 
       */}
-      <div className="flex-1 w-full p-0.5 flex flex-col lg:grid lg:grid-cols-12 lg:grid-rows-12 gap-1 overflow-y-auto lg:overflow-hidden custom-scrollbar">
+      <div className="flex-1 w-full p-0.5 flex flex-col lg:grid lg:grid-cols-12 lg:grid-rows-12 gap-1 overflow-y-auto lg:overflow-hidden custom-scrollbar touch-pan-y">
         
         {/* --- LEFT COLUMN --- */}
-        <div className="lg:col-span-3 lg:row-span-12 flex flex-col gap-1 h-[500px] lg:h-full shrink-0">
+        <div className="lg:col-span-3 lg:row-span-12 flex flex-col gap-1 min-h-[400px] lg:h-full shrink-0">
           <div className="flex-1 min-h-0">
             <Widget title="Market Watch // Realtime">
               <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
@@ -102,7 +102,7 @@ export default function TerminalPage() {
             </Widget>
           </div>
           
-          <div className="h-[200px] lg:h-[40%] min-h-0">
+          <div className="h-[250px] lg:h-[40%] min-h-0">
             <Widget title={`Cross-Asset Correlation (${timeframe.label})`}>
               {activeQuote ? (
                 <div className="overflow-y-auto h-full custom-scrollbar">
@@ -116,8 +116,8 @@ export default function TerminalPage() {
         </div>
 
         {/* --- CENTER COLUMN --- */}
-        <div className="lg:col-span-6 lg:row-span-12 flex flex-col gap-1 h-[800px] lg:h-full shrink-0">
-          <div className="flex-1 lg:h-[70%] min-h-[400px] lg:min-h-0">
+        <div className="lg:col-span-6 lg:row-span-12 flex flex-col gap-1 min-h-[600px] lg:h-full shrink-0">
+          <div className="flex-1 lg:h-[70%] min-h-[350px] lg:min-h-0">
             <Widget 
               title={`${activeSymbol} • ${SYMBOL_MAP[activeSymbol]?.label || ''}`} 
               actions={
@@ -144,13 +144,13 @@ export default function TerminalPage() {
             </Widget>
           </div>
           
-          <div className="h-[300px] lg:h-[30%] min-h-0 flex flex-col sm:flex-row gap-1">
-            <div className="w-full sm:w-1/2 h-full">
+          <div className="h-auto min-h-[300px] lg:h-[30%] lg:min-h-0 flex flex-col sm:flex-row gap-1">
+            <div className="w-full sm:w-1/2 min-h-[250px] sm:min-h-0 h-full">
               <Widget title="ICT Structure Engine">
                 <ICTPanel tick={activeQuote} timeframeLabel={timeframe.label} />
               </Widget>
             </div>
-            <div className="w-full sm:w-1/2 h-full">
+            <div className="w-full sm:w-1/2 min-h-[250px] sm:min-h-0 h-full">
               <Widget title="Terminal Confluences">
                 <ConfluenceScanner symbol={activeSymbol} timeframeLabel={timeframe.label} />
               </Widget>
@@ -159,14 +159,14 @@ export default function TerminalPage() {
         </div>
 
         {/* --- RIGHT COLUMN --- */}
-        <div className="lg:col-span-3 lg:row-span-12 flex flex-col gap-1 h-[500px] lg:h-full shrink-0">
+        <div className="lg:col-span-3 lg:row-span-12 flex flex-col gap-1 min-h-[400px] lg:h-full shrink-0">
           <div className="h-[250px] lg:h-[50%] min-h-0">
             <Widget title="Filtered Economic Calendar">
               <MiniCalendar />
             </Widget>
           </div>
 
-          <div className="flex-1 lg:h-[50%] min-h-0">
+          <div className="flex-1 lg:h-[50%] min-h-[250px] lg:min-h-0">
             <Widget title="Live Intelligence Wire">
               <NewsFeed activeSymbol={activeSymbol} />
             </Widget>

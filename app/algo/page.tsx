@@ -49,16 +49,13 @@ export default function AlgoPage() {
     }
   };
 
-  // Complex System: Auto-tune algorithm based on global user profile settings
   const applyProfilePresets = () => {
     let f = 9, s = 21, sl = 2.0, tp = 5.0;
     
-    // Base Strategy Tuning
     if (settings.strategy === 'Scalper') { f = 5; s = 15; sl = 0.5; tp = 1.5; }
     else if (settings.strategy === 'Swing') { f = 10; s = 30; sl = 2.0; tp = 6.0; }
     else if (settings.strategy === 'Macro') { f = 50; s = 200; sl = 5.0; tp = 15.0; }
     
-    // Risk Tolerance Adjustments
     if (settings.riskTolerance === 'Aggressive') { sl *= 1.5; tp *= 1.5; }
     else if (settings.riskTolerance === 'Conservative') { sl *= 0.5; tp *= 0.5; }
 
@@ -71,7 +68,7 @@ export default function AlgoPage() {
   };
 
   return (
-    <div className="h-full w-full bg-background p-2 flex flex-col lg:grid lg:grid-cols-12 gap-2 overflow-y-auto lg:overflow-hidden custom-scrollbar">
+    <div className="h-full w-full bg-background p-2 flex flex-col lg:grid lg:grid-cols-12 gap-2 overflow-y-auto lg:overflow-hidden custom-scrollbar min-h-0">
       {/* Sidebar: Config */}
       <div className="lg:col-span-3 flex flex-col gap-2 shrink-0">
         <Widget title="Strategy Parameters">
@@ -149,7 +146,7 @@ export default function AlgoPage() {
       </div>
 
       {/* Main: Results */}
-      <div className="lg:col-span-9 flex flex-col gap-2 shrink-0 h-[800px] lg:h-full">
+      <div className="lg:col-span-9 flex flex-col gap-2 shrink-0 min-h-[600px] lg:h-full">
         <div className="h-1/2 min-h-[300px]">
            <Widget title={`Equity Curve: ${targetSymbol} (${realData.length} Real Bars)`}>
              {result ? (
