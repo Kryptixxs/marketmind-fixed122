@@ -21,41 +21,37 @@
   --font-mono: var(--font-monospace);
 }
 
-/* ── Theme 1: The Modern Architect (Default) ── */
+/* ── Theme 1: The Modern Architect (Spatial Workspace) ── */
 :root, .theme-architect {
-  --bg: #08090A;
+  --bg: #08090A; /* Deep Space with 2% blue saturation */
   --surface: rgba(22, 25, 30, 0.4);
-  --surface-highlight: rgba(255, 255, 255, 0.05);
+  --surface-highlight: rgba(255, 255, 255, 0.03);
   --border: rgba(255, 255, 255, 0.05);
   --border-hover: rgba(255, 255, 255, 0.15);
   
   --text-main: #ffffff;
-  --text-muted: #94a3b8; /* slate-400 */
-  --text-dim: #475569;   /* slate-600 */
+  --text-muted: #94a3b8; 
+  --text-dim: #475569;   
   
-  --accent: #2dd4bf;     /* teal-400 */
+  --accent: #2dd4bf;     
   --accent-text: #000000;
   
   --positive: #2dd4bf;
-  --negative: #fb7185;   /* rose-400 */
-  --warning: #fbbf24;    /* amber-400 */
+  --negative: #fb7185;   
+  --warning: #fbbf24;    
 
   --font-base: "Geist Sans", "Inter", system-ui, sans-serif;
   --font-monospace: "JetBrains Mono", "SF Mono", monospace;
   
-  --transition-base: all 400ms cubic-bezier(0.23, 1, 0.32, 1);
-  --panel-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
-  --panel-blur: blur(24px);
-  --panel-radius: 0.75rem;
-  --grid-gap: 0.5rem;
+  --transition-base: all 400ms cubic-bezier(0.23, 1, 0.32, 1); /* Power Curve */
 }
 
-/* ── Theme 2: The Terminal (Mainframe) ── */
+/* ── Theme 2: The Terminal (Institutional Machine) ── */
 .theme-terminal {
-  --bg: #000000;
+  --bg: #000000; /* Dead Black */
   --surface: transparent;
   --surface-highlight: #FFB000;
-  --border: #222222;
+  --border: #222222; /* Machine Grey */
   --border-hover: #222222;
   
   --text-main: #FFB000;
@@ -72,33 +68,23 @@
   --font-base: "JetBrains Mono", "Fira Code", monospace;
   --font-monospace: "JetBrains Mono", "Fira Code", monospace;
   
-  --transition-base: none;
-  --panel-shadow: none;
-  --panel-blur: none;
-  --panel-radius: 0px;
-  --grid-gap: 0px;
+  --transition-base: none; /* Zero Latency */
 }
 
-/* Scanline Overlay for Terminal */
+/* Scanline Overlay */
 .theme-terminal::after {
   content: "";
   position: fixed;
-  top: 0; left: 0; width: 100vw; height: 100vh;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  inset: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+              linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
   background-size: 100% 2px, 3px 100%;
   pointer-events: none;
   z-index: 9999;
 }
 
-/* Force uppercase in terminal */
-.theme-terminal body {
-  text-transform: uppercase;
-}
-
 /* ── Reset & Base ── */
-*, *::before, *::after {
-  box-sizing: border-box;
-}
+*, *::before, *::after { box-sizing: border-box; }
 
 html, body {
   height: 100dvh;
@@ -111,56 +97,58 @@ html, body {
   overscroll-behavior-y: none;
 }
 
-/* ── Custom Scrollbars ── */
+.theme-terminal body { text-transform: uppercase; }
+
+/* ── Scrollbars ── */
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--color-border); }
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* ── Dynamic Utilities ── */
-.panel-container {
+/* ── Architect Layout Physics ── */
+.theme-architect .panel-container {
   background: var(--color-surface);
-  backdrop-filter: var(--panel-blur);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--color-border);
-  border-radius: var(--panel-radius);
-  box-shadow: var(--panel-shadow);
+  border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02), 0 4px 24px -8px rgba(0,0,0,0.5);
   transition: var(--transition-base);
 }
-
-.panel-container:hover {
-  border-color: var(--border-hover);
-  /* Use !important here to override dynamic inline styles if needed, or rely on cascading */
-}
 .theme-architect .panel-container:hover {
+  border-color: var(--border-hover);
   backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
 }
 
-.panel-header {
-  min-height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 12px;
-  border-bottom: 1px solid var(--color-border);
-  font-weight: 500;
-  color: var(--color-text-secondary);
+.theme-architect .btn-haptic:active {
+  transform: scale(0.96);
 }
 
-/* Value Flash Animation (Architect) */
-@keyframes flash-text {
+/* ── Terminal Layout Physics ── */
+.theme-terminal .panel-container {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: 0px;
+  transition: none;
+}
+
+/* Value Updates - Architect (Color Fade) */
+@keyframes fluid-color {
   0% { color: var(--accent); }
-  100% { color: var(--text-main); }
+  100% { color: inherit; }
 }
 .theme-architect .value-flash {
-  animation: flash-text 300ms var(--transition-base);
+  animation: fluid-color 400ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-/* Value Flicker Animation (Terminal) */
-@keyframes flicker-text {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+/* Value Updates - Terminal (Phosphor Persistence) */
+@keyframes phosphor-ghost {
+  0% { opacity: 1; text-shadow: 0 0 8px var(--accent); }
+  50% { opacity: 0.6; }
+  100% { opacity: 1; text-shadow: none; }
 }
 .theme-terminal .value-flash {
-  animation: flicker-text 100ms linear;
+  animation: phosphor-ghost 100ms step-end;
 }

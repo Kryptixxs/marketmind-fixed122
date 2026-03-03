@@ -22,7 +22,7 @@ export function NewsFeed({ activeSymbol }: { activeSymbol?: string }) {
     setLoading(true);
     try {
       const data = await fetchNews('General');
-      setNews(data.slice(0, 15));
+      setNews(data.slice(0, 20));
     } catch (e) {} finally {
       setLoading(false);
     }
@@ -30,30 +30,30 @@ export function NewsFeed({ activeSymbol }: { activeSymbol?: string }) {
 
   useEffect(() => { loadNews(); }, [loadNews]);
 
-  if (loading) return <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-text-tertiary" size={16}/></div>;
+  if (loading) return <div className="flex h-full items-center justify-center font-mono text-[10px]">[SYSLOG] POLLING_WIRE...</div>;
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto custom-scrollbar p-2">
+    <div className={`flex flex-col h-full overflow-y-auto hide-scrollbar ${isTerminal ? 'p-1' : 'p-2'}`}>
       {news.map((item, i) => {
         if (isTerminal) {
-          // TERMINAL MODE: [14:32] SOURCE > HEADLINE
+          // TERMINAL MODE: [HH:MM] SOURCE_WIRE: HEADLINE (Pure text density)
           return (
-            <a key={i} href={item.link} target="_blank" className="flex items-start gap-2 py-1.5 hover:bg-accent hover:text-accent-text cursor-pointer leading-tight group">
-              <span className="opacity-70 shrink-0">[{item.time.padStart(6, ' ')}]</span>
-              <span className="shrink-0">{item.source.substring(0, 8).toUpperCase().padEnd(8, ' ')} {'>'}</span>
-              <span className="truncate group-hover:font-bold">{item.title}</span>
+            <a key={i} href={item.link} target="_blank" className="flex items-start py-1 hover:bg-[#111111] hover:text-white cursor-pointer leading-tight">
+              <span className="opacity-60 shrink-0 w-20">[{item.time.padStart(6, ' ')}]</span>
+              <span className="shrink-0 w-24">{item.source.substring(0, 8).toUpperCase()}_WIRE:</span>
+              <span className="truncate ml-2">{item.title.toUpperCase()}</span>
             </a>
           );
         }
 
-        // ARCHITECT MODE: Sleek titles and sources
+        // ARCHITECT MODE: High contrast, elegant spacing
         return (
-          <a key={i} href={item.link} target="_blank" className="flex flex-col gap-1 py-3 px-2 border-b border-border/50 hover:bg-surface-highlight/50 transition-colors">
+          <a key={i} href={item.link} target="_blank" className="flex flex-col gap-1.5 py-4 px-3 border-b border-border/50 hover:bg-white/[0.02] transition-all rounded-xl cursor-pointer">
              <div className="flex justify-between items-center">
-               <span className="text-[10px] font-bold text-accent">{item.source}</span>
+               <span className="text-[10px] font-bold text-accent tracking-wide">{item.source}</span>
                <span className="text-[10px] text-text-tertiary">{item.time}</span>
              </div>
-             <span className="text-xs text-text-primary leading-snug line-clamp-2">{item.title}</span>
+             <span className="text-[13px] text-text-primary font-medium leading-snug">{item.title}</span>
           </a>
         );
       })}
