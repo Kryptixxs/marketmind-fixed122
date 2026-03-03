@@ -19,10 +19,10 @@ const POLYGON_API_KEY = 'Educ3tK6ue_eC33G_3ERTMb0qc7wd3K6';
 // Mapping our clean UI symbols to Polygon.io strict ticker formats
 const POLY_MAP: Record<string, string> = {
   'NAS100': 'I:NDX',
-  'SPX500': 'I:SPX',
-  'US30': 'I:DJI',
-  'CRUDE': 'USO',     // Oil ETF proxy for pricing
-  'GOLD': 'GLD',      // Gold ETF proxy for pricing
+  'SPX500': 'SPY',    // S&P 500 ETF proxy (avoids premium index restrictions)
+  'US30': 'DIA',      // Dow Jones ETF proxy (avoids premium index restrictions)
+  'CRUDE': 'USO',     // Oil ETF proxy
+  'GOLD': 'GLD',      // Gold ETF proxy
   'EURUSD': 'C:EURUSD',
   'BTCUSD': 'X:BTCUSD',
   'ETHUSD': 'X:ETHUSD',
@@ -71,24 +71,29 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
         
         if (!data.results || data.results.length === 0) return null;
 
+        // If we used an ETF proxy for an index, scale the price back up so the UI looks correct
+        let priceMultiplier = 1;
+        if (sym === 'SPX500') priceMultiplier = 10;  // SPY is ~1/10th of SPX
+        if (sym === 'US30') priceMultiplier = 100;   // DIA is ~1/100th of DJI
+
         const quotes = data.results;
         const currentCandle = quotes[quotes.length - 1];
-        let currentPrice = currentCandle.c;
+        const currentPrice = currentCandle.c * priceMultiplier;
 
         // Calculate change against a candle roughly 24 hours ago
         const lookbackBars = Math.floor((24 * 60) / multiplier);
         const prevIndex = Math.max(0, quotes.length - lookbackBars);
-        const prevClose = quotes[prevIndex].c;
+        const prevClose = quotes[prevIndex].c * priceMultiplier;
         
-        let change = currentPrice - prevClose;
-        let changePercent = (change / prevClose) * 100;
+        const change = currentPrice - prevClose;
+        const changePercent = (change / prevClose) * 100;
 
         const history: OHLCV[] = quotes.map((q: any) => ({
           timestamp: q.t,
-          open: q.o,
-          high: q.h,
-          low: q.l,
-          close: q.c,
+          open: q.o * priceMultiplier,
+          high: q.h * priceMultiplier,
+          low: q.l * priceMultiplier,
+          close: q.c * priceMultiplier,
           volume: q.v || 0
         }));
 
