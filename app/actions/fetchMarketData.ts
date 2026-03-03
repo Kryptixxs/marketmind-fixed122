@@ -3,7 +3,6 @@
 import yahooFinance from 'yahoo-finance2';
 import { OHLCV } from '@/lib/marketdata/types';
 
-// Configure the default instance safely
 yahooFinance.suppressNotices(['yahooSurvey', 'ripHistorical']);
 
 export interface MarketData {
@@ -17,28 +16,21 @@ export interface MarketData {
   name?: string;
 }
 
-// Generates mathematically plausible synthetic data if Yahoo API rejects us or times out
 function generateFallbackData(symbol: string): MarketData {
-  const isIndex = symbol.startsWith('^');
-  const isCrypto = symbol.includes('-');
-  const isForex = symbol.includes('=');
-  
   let basePrice = 150;
-  if (isIndex) basePrice = 4500;
-  if (isCrypto) basePrice = 50000;
-  if (isForex) basePrice = 1.10;
+  if (symbol.startsWith('^')) basePrice = 4500;
+  if (symbol.includes('-')) basePrice = 50000;
+  if (symbol.includes('=')) basePrice = 1.10;
   
   const history: OHLCV[] = [];
   let currentPrice = basePrice;
-  
   const now = Date.now();
+  
   for (let i = 50; i >= 0; i--) {
-    const volatility = basePrice * 0.002;
-    const move = (Math.random() - 0.5) * volatility;
+    const move = (Math.random() - 0.5) * (basePrice * 0.002);
     currentPrice += move;
-    
     history.push({
-      timestamp: now - (i * 15 * 60000), // 15m intervals
+      timestamp: now - (i * 15 * 60000),
       open: currentPrice - move * 0.5,
       high: currentPrice + Math.abs(move),
       low: currentPrice - Math.abs(move),
@@ -59,10 +51,9 @@ function generateFallbackData(symbol: string): MarketData {
   };
 }
 
-export async function fetchMarketData(symbol: string, interval: string = '15m'): Promise<MarketData> {
-  if (!symbol) return generateFallbackData('UNKNOWN');
+export async function fetchMarketData(symbol: string, interval: string = '15m'): Promise<MarketData | null> {
+  if (!symbol) return null;
 
-  // Safe lookback windows to prevent YF API rejections on intraday data
   let days = 5;
   let yfInterval: any = '15m';
 
@@ -76,30 +67,21 @@ export async function fetchMarketData(symbol: string, interval: string = '15m'):
   }
 
   try {
-    const timeoutMs = 3000; // Strict 3 second timeout for ANY Yahoo request
+    const quotePromise = yahooFinance.quote(symbol).catch(() => null);
+    const historyPromise = yahooFinance.chart(symbol, { 
+      period1: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
+      interval: yfInterval 
+    }).catch(() => null);
 
-    // Race the quote promise against a 3s timeout
-    const quotePromise = Promise.race([
-      yahooFinance.quote(symbol).catch(() => null),
-      new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs))
+    // Abort cleanly after 3 seconds so the server action never hangs
+    const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
+
+    const [quote, chartData] = await Promise.race([
+      Promise.all([quotePromise, historyPromise]),
+      timeoutPromise.then(() => [null, null])
     ]);
-
-    // Race the chart promise against a 3s timeout
-    const historyPromise = Promise.race([
-      yahooFinance.chart(symbol, { 
-        period1: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
-        interval: yfInterval 
-      }).catch(() => null),
-      new Promise<null>(resolve => setTimeout(() => resolve(null), timeoutMs))
-    ]);
-
-    const [quote, chartData] = await Promise.all([quotePromise, historyPromise]);
     
-    // Complete failure or timeout -> Use Synthetic Engine instantly
-    if (!quote && !chartData) {
-      console.warn(`[MarketData] Yahoo Finance timed out or rejected ${symbol}, engaging synthetic engine.`);
-      return generateFallbackData(symbol);
-    }
+    if (!quote && !chartData) return generateFallbackData(symbol);
 
     let history: OHLCV[] = [];
     if (chartData?.quotes && Array.isArray(chartData.quotes)) {
@@ -114,25 +96,14 @@ export async function fetchMarketData(symbol: string, interval: string = '15m'):
           volume: q.volume || 0
         }));
     } else {
-      // If we got the quote but history failed, generate a synthetic history anchored to the real quote price
       const fb = generateFallbackData(symbol);
       history = fb.history;
       const diff = (quote?.regularMarketPrice || fb.price) - history[history.length - 1].close;
-      history = history.map(h => ({
-        ...h,
-        open: h.open + diff,
-        high: h.high + diff,
-        low: h.low + diff,
-        close: h.close + diff
-      }));
+      history = history.map(h => ({ ...h, open: h.open + diff, high: h.high + diff, low: h.low + diff, close: h.close + diff }));
     }
 
-    // Safely extract price
-    const lastCandle = history.length > 0 ? history[history.length - 1] : null;
-    const price = quote?.regularMarketPrice || chartData?.meta?.regularMarketPrice || lastCandle?.close || 0;
-    
-    // Calculate change safely
-    const prevClose = chartData?.meta?.chartPreviousClose || (price * 0.99); // absolute fallback
+    const price = quote?.regularMarketPrice || history[history.length - 1]?.close || 0;
+    const prevClose = chartData?.meta?.chartPreviousClose || (price * 0.99);
     const change = quote?.regularMarketChange || (price - prevClose);
     const changePercent = quote?.regularMarketChangePercent || ((change / prevClose) * 100);
 
@@ -148,13 +119,10 @@ export async function fetchMarketData(symbol: string, interval: string = '15m'):
     };
 
   } catch (error) {
-    console.warn(`[MarketData] Exception fetching ${symbol}, engaging synthetic fallback.`, error);
     return generateFallbackData(symbol);
   }
 }
 
-export async function fetchMarketDataBatch(symbols: string[], interval: string = '15m'): Promise<MarketData[]> {
-  // Execute in parallel. Because of our strict 3s timeout per request, 
-  // this whole batch is guaranteed to return in ~3 seconds max.
+export async function fetchMarketDataBatch(symbols: string[], interval: string = '15m'): Promise<(MarketData | null)[]> {
   return Promise.all(symbols.map(sym => fetchMarketData(sym, interval)));
 }
