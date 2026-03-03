@@ -1,10 +1,9 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Loader2, RefreshCw, ExternalLink } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { fetchNews } from '@/app/actions/fetchNews';
 
-// Simplified types for the new view
 interface NewsItem {
   title: string;
   source: string;
@@ -13,7 +12,7 @@ interface NewsItem {
   link: string;
 }
 
-export function NewsFeed() {
+export function NewsFeed({ activeSymbol }: { activeSymbol?: string }) {
   const [activeTab, setActiveTab] = useState('General');
   const [news, setNews] = useState<NewsItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,19 +21,29 @@ export function NewsFeed() {
     setLoading(true);
     try {
       const data = await fetchNews(tab);
-      setNews(data);
+      
+      // If we have an active symbol, prioritize news that mentions it
+      let filtered = data;
+      if (activeSymbol) {
+        const sym = activeSymbol.split('-')[0].split('=')[0].replace('^', '');
+        filtered = [
+          ...data.filter(item => item.title.toUpperCase().includes(sym)),
+          ...data.filter(item => !item.title.toUpperCase().includes(sym))
+        ].slice(0, 20);
+      }
+      
+      setNews(filtered);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeSymbol]);
 
   useEffect(() => { loadNews(activeTab); }, [activeTab, loadNews]);
 
   return (
     <div className="flex flex-col h-full bg-background">
-      {/* Mini Tabs */}
       <div className="flex border-b border-border bg-surface">
         {['General', 'Stock', 'Crypto', 'Forex'].map(tab => (
           <button
@@ -50,7 +59,6 @@ export function NewsFeed() {
         ))}
       </div>
 
-      {/* Feed List */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-0">
         {loading ? (
           <div className="flex justify-center p-4"><Loader2 className="animate-spin text-text-tertiary" size={16}/></div>

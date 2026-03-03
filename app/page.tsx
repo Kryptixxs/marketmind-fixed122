@@ -52,7 +52,6 @@ export default function TerminalPage() {
 
   const activeQuote = marketData[activeSymbol];
   const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
-  const insight = activeQuote ? analyzeMarketState(activeQuote) : null;
 
   return (
     <div className="h-full w-full bg-background overflow-hidden flex flex-col">
@@ -96,7 +95,7 @@ export default function TerminalPage() {
           </div>
           
           <div className="h-[45%] min-h-0">
-            <Widget title="Setup Scanner (15m)">
+            <Widget title={`Setup Scanner // ${activeSymbol}`}>
               <SetupScanner activeSymbol={activeSymbol} />
             </Widget>
           </div>
@@ -105,14 +104,14 @@ export default function TerminalPage() {
         {/* --- COLUMN 2: MACRO & POSITIONING --- */}
         <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
           <div className="h-[30%] min-h-0">
-            <Widget title="Macro Narrative">
+            <Widget title={`Macro Narrative // ${activeSymbol}`}>
               <NarrativeTracker activeSymbol={activeSymbol} price={activeQuote?.price || 0} />
             </Widget>
           </div>
           
           <div className="h-[35%] min-h-0">
-            <Widget title="Market Positioning">
-              <MarketPositioning />
+            <Widget title={`Market Positioning // ${activeSymbol}`}>
+              <MarketPositioning symbol={activeSymbol} />
             </Widget>
           </div>
 
@@ -157,7 +156,7 @@ export default function TerminalPage() {
               </div>
               <div className="flex-1">
                 <Widget title="Intelligence Wire">
-                  <NewsFeed />
+                  <NewsFeed activeSymbol={activeSymbol} />
                 </Widget>
               </div>
             </div>
