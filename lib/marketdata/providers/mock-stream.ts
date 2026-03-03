@@ -2,6 +2,26 @@ import { Tick, OHLCV } from '../types';
 import { BaseProvider } from './base';
 import { fetchMarketDataBatch } from '@/app/actions/fetchMarketData';
 
+const BASE_PRICES: Record<string, number> = {
+  '^NDX': 17950.25,
+  '^GSPC': 5085.50,
+  '^DJI': 39131.53,
+  '^RUT': 2016.69,
+  'CL=F': 78.45,
+  'GC=F': 2035.80,
+  'EURUSD=X': 1.0850,
+  'BTC-USD': 51240.00,
+  'ETH-USD': 2950.50,
+  'AAPL': 182.52,
+  'MSFT': 404.06,
+  'NVDA': 726.13,
+  'TSLA': 202.64,
+  '^VIX': 14.52,
+  'DX-Y.NYB': 104.20,
+  '^TNX': 4.31,
+  '^IRX': 5.23
+};
+
 export class MockStreamingProvider extends BaseProvider {
   private intervalId: NodeJS.Timeout | null = null;
   private syncIntervalId: NodeJS.Timeout | null = null;
@@ -43,10 +63,7 @@ export class MockStreamingProvider extends BaseProvider {
   }
 
   private initFallback(s: string) {
-    // Basic fallback so UI doesn't crash before the 1st network request finishes
-    let base = 150;
-    if (s === '^NDX') base = 17950;
-    if (s.includes('BTC')) base = 51200;
+    const base = BASE_PRICES[s] || 150.00;
     
     this.basePrices[s] = base;
     this.trueData[s] = { change: 0, changePercent: 0, marketState: 'SYNCING' };
@@ -70,8 +87,8 @@ export class MockStreamingProvider extends BaseProvider {
       const results = await fetchMarketDataBatch(symbols, this.currentInterval || '15m');
       
       results.forEach(res => {
-        if (res && res.price) {
-          // Lock onto the real Yahoo Finance data!
+        if (res && res.price && res.marketState !== 'SYNTHETIC') {
+          // Lock onto the real Yahoo Finance data ONLY if it succeeded
           this.basePrices[res.symbol] = res.price;
           this.trueData[res.symbol] = { 
             change: res.change, 
@@ -83,22 +100,24 @@ export class MockStreamingProvider extends BaseProvider {
           if (res.history && res.history.length > 10) {
              this.histories[res.symbol] = [...res.history];
           }
+        }
 
-          // Fire exact tick immediately to UI
+        // Fire exact tick immediately to UI (using either real or the fallback we just checked)
+        if (res) {
           this.emitTick({
             symbol: res.symbol,
-            price: res.price,
-            change: res.change,
-            changePercent: res.changePercent,
-            marketState: res.marketState,
+            price: this.basePrices[res.symbol] || res.price,
+            change: this.trueData[res.symbol]?.change || res.change,
+            changePercent: this.trueData[res.symbol]?.changePercent || res.changePercent,
+            marketState: this.trueData[res.symbol]?.marketState || res.marketState,
             timestamp: Date.now(),
-            history: this.histories[res.symbol],
-            name: res.name
+            history: this.histories[res.symbol] || res.history,
+            name: this.trueData[res.symbol]?.name || res.name
           });
         }
       });
     } catch (e) {
-      console.warn("Real data sync failed", e);
+      console.warn("[MarketData] Real data sync failed, maintaining simulated stream", e);
     }
   }
 
@@ -126,7 +145,7 @@ export class MockStreamingProvider extends BaseProvider {
       const base = this.basePrices[sym];
       if (!base) return;
 
-      // Micro-vibration around the REAL base price (0.005% max variance)
+      // Micro-vibration around the baseline price (0.005% max variance)
       const volatility = base * 0.00005; 
       const move = (Math.random() - 0.5) * volatility;
       const newPrice = base + move;
@@ -144,8 +163,8 @@ export class MockStreamingProvider extends BaseProvider {
       this.emitTick({
         symbol: sym,
         price: newPrice,
-        change: trueInfo.change, // Keep true daily change
-        changePercent: trueInfo.changePercent, // Keep true daily percent
+        change: trueInfo.change, 
+        changePercent: trueInfo.changePercent, 
         marketState: trueInfo.marketState,
         timestamp: Date.now(),
         history: hist ? [...hist] : undefined,
