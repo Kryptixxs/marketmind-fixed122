@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Widget } from '@/components/Widget';
 import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
@@ -52,121 +51,102 @@ export default function TerminalPage() {
     <div className="h-full w-full bg-background overflow-hidden flex flex-col">
       <TerminalCommandBar />
 
-      <div className="flex-1 w-full min-h-0 p-0.5">
-        <PanelGroup direction="horizontal" className="h-full w-full">
-          
-          {/* --- LEFT PANEL: WATCHLIST & CORRELATION --- */}
-          <Panel defaultSize={20} minSize={15} className="flex flex-col gap-0.5">
-            <PanelGroup direction="vertical">
-              <Panel defaultSize={60} minSize={30} className="pb-0.5">
-                <Widget title="Market Watch // Realtime">
-                  <div className="flex flex-col">
-                    {WATCHLIST_SYMBOLS.map(sym => {
-                      const data = marketData[sym];
-                      const info = SYMBOL_MAP[sym];
-                      const isPositive = data?.change >= 0;
-                      
-                      return (
-                        <div 
-                          key={sym} 
-                          onClick={() => setActiveSymbol(sym)}
-                          className={`flex justify-between items-center px-3 py-2 border-b border-border/20 cursor-pointer transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
-                        >
-                          <div className="flex flex-col">
-                            <span className="font-bold text-[10px] text-text-primary">{sym}</span>
-                            <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{info.label}</span>
-                          </div>
-                          <div className="flex flex-col items-end">
-                            <span className="text-[10px] font-mono font-bold text-text-primary">
-                              {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '---'}
-                            </span>
-                            <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
-                              {isPositive ? <TrendingUp size={8}/> : <TrendingDown size={8}/>}
-                              <span>{data ? `${Math.abs(data.changePercent).toFixed(2)}%` : '--'}</span>
-                            </div>
-                          </div>
+      {/* Bulletproof Native CSS Grid Layout */}
+      <div className="flex-1 w-full min-h-0 p-0.5 grid grid-cols-1 lg:grid-cols-12 gap-0.5">
+        
+        {/* --- LEFT COLUMN: WATCHLIST & CORRELATION --- */}
+        <div className="col-span-1 lg:col-span-3 flex flex-col gap-0.5 h-full overflow-hidden">
+          <div className="h-[60%] min-h-0">
+            <Widget title="Market Watch // Realtime">
+              <div className="flex flex-col">
+                {WATCHLIST_SYMBOLS.map(sym => {
+                  const data = marketData[sym];
+                  const info = SYMBOL_MAP[sym];
+                  const isPositive = data?.change >= 0;
+                  
+                  return (
+                    <div 
+                      key={sym} 
+                      onClick={() => setActiveSymbol(sym)}
+                      className={`flex justify-between items-center px-3 py-2 border-b border-border/20 cursor-pointer transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-bold text-[10px] text-text-primary">{sym}</span>
+                        <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{info.label}</span>
+                      </div>
+                      <div className="flex flex-col items-end">
+                        <span className="text-[10px] font-mono font-bold text-text-primary">
+                          {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2 }) : '---'}
+                        </span>
+                        <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
+                          {isPositive ? <TrendingUp size={8}/> : <TrendingDown size={8}/>}
+                          <span>{data ? `${Math.abs(data.changePercent).toFixed(2)}%` : '--'}</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                </Widget>
-              </Panel>
-              
-              <PanelResizeHandle className="h-1 bg-background hover:bg-accent/30 transition-colors cursor-row-resize" />
-              
-              <Panel defaultSize={40} minSize={20} className="pt-0.5">
-                <Widget title="Cross-Asset Correlation">
-                  {activeQuote ? (
-                    <CorrelationMatrix activeTick={activeQuote} marketData={marketData} />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-text-tertiary text-[10px]">Loading Correlation...</div>
-                  )}
-                </Widget>
-              </Panel>
-            </PanelGroup>
-          </Panel>
-
-          <PanelResizeHandle className="w-1 bg-background hover:bg-accent/30 transition-colors cursor-col-resize" />
-
-          {/* --- CENTER PANEL: CHART & CONFLUENCE MATH --- */}
-          <Panel defaultSize={55} minSize={30} className="flex flex-col gap-0.5">
-            <PanelGroup direction="vertical">
-              <Panel defaultSize={70} minSize={40} className="pb-0.5">
-                <Widget 
-                  title={`${activeSymbol} • ${SYMBOL_MAP[activeSymbol]?.label || ''}`} 
-                  actions={
-                    <div className="flex items-center gap-2 text-[8px]">
-                      <span className="text-positive flex items-center gap-1"><Wifi size={8}/> Live</span>
-                      <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase font-mono">{activeQuote?.marketState || 'REGULAR'}</span>
+                      </div>
                     </div>
-                  }
-                >
-                  <div className="w-full h-full bg-black">
-                    <TradingViewChart symbol={activeTV} />
-                  </div>
-                </Widget>
-              </Panel>
-              
-              <PanelResizeHandle className="h-1 bg-background hover:bg-accent/30 transition-colors cursor-row-resize" />
-              
-              <Panel defaultSize={30} minSize={20} className="pt-0.5">
-                <Widget title={`Terminal Engine // ${activeSymbol}`}>
-                  <ConfluenceScanner symbol={activeSymbol} />
-                </Widget>
-              </Panel>
-            </PanelGroup>
-          </Panel>
+                  );
+                })}
+              </div>
+            </Widget>
+          </div>
+          
+          <div className="h-[40%] min-h-0">
+            <Widget title="Cross-Asset Correlation">
+              {activeQuote ? (
+                <CorrelationMatrix activeTick={activeQuote} marketData={marketData} />
+              ) : (
+                <div className="flex h-full items-center justify-center text-text-tertiary text-[10px]">Loading Correlation...</div>
+              )}
+            </Widget>
+          </div>
+        </div>
 
-          <PanelResizeHandle className="w-1 bg-background hover:bg-accent/30 transition-colors cursor-col-resize" />
+        {/* --- CENTER COLUMN: CHART & CONFLUENCE MATH --- */}
+        <div className="col-span-1 lg:col-span-6 flex flex-col gap-0.5 h-full overflow-hidden">
+          <div className="h-[70%] min-h-0">
+            <Widget 
+              title={`${activeSymbol} • ${SYMBOL_MAP[activeSymbol]?.label || ''}`} 
+              actions={
+                <div className="flex items-center gap-2 text-[8px]">
+                  <span className="text-positive flex items-center gap-1"><Wifi size={8}/> Live</span>
+                  <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase font-mono">{activeQuote?.marketState || 'REGULAR'}</span>
+                </div>
+              }
+            >
+              <div className="w-full h-full bg-black">
+                <TradingViewChart symbol={activeTV} />
+              </div>
+            </Widget>
+          </div>
+          
+          <div className="h-[30%] min-h-0">
+            <Widget title={`Terminal Engine // ${activeSymbol}`}>
+              <ConfluenceScanner symbol={activeSymbol} />
+            </Widget>
+          </div>
+        </div>
 
-          {/* --- RIGHT PANEL: INTERNALS, CALENDAR, NEWS --- */}
-          <Panel defaultSize={25} minSize={15} className="flex flex-col gap-0.5">
-            <PanelGroup direction="vertical">
-              <Panel defaultSize={20} minSize={15} className="pb-0.5">
-                <Widget title="Market Internals">
-                  <MarketInternals tick={activeQuote} />
-                </Widget>
-              </Panel>
-              
-              <PanelResizeHandle className="h-1 bg-background hover:bg-accent/30 transition-colors cursor-row-resize" />
-              
-              <Panel defaultSize={30} minSize={20} className="py-0.5">
-                <Widget title="Economic Calendar">
-                  <MiniCalendar />
-                </Widget>
-              </Panel>
+        {/* --- RIGHT COLUMN: INTERNALS, CALENDAR, NEWS --- */}
+        <div className="col-span-1 lg:col-span-3 flex flex-col gap-0.5 h-full overflow-hidden">
+          <div className="h-[25%] min-h-0">
+            <Widget title="Market Internals">
+              <MarketInternals tick={activeQuote} />
+            </Widget>
+          </div>
+          
+          <div className="h-[30%] min-h-0">
+            <Widget title="Economic Calendar">
+              <MiniCalendar />
+            </Widget>
+          </div>
 
-              <PanelResizeHandle className="h-1 bg-background hover:bg-accent/30 transition-colors cursor-row-resize" />
-              
-              <Panel defaultSize={50} minSize={30} className="pt-0.5">
-                <Widget title="Intelligence Wire">
-                  <NewsFeed activeSymbol={activeSymbol} />
-                </Widget>
-              </Panel>
-            </PanelGroup>
-          </Panel>
+          <div className="h-[45%] min-h-0">
+            <Widget title="Intelligence Wire">
+              <NewsFeed activeSymbol={activeSymbol} />
+            </Widget>
+          </div>
+        </div>
 
-        </PanelGroup>
       </div>
     </div>
   );
