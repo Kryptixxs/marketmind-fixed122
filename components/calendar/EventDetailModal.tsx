@@ -2,11 +2,11 @@
 
 import React, { useMemo } from 'react';
 import { 
-  X, Bell, TrendingUp, Globe, Zap, BarChart3, AlertTriangle, Eye 
+  X, TrendingUp, Globe, Zap, BarChart3, AlertTriangle, Activity, Layers, Target, Info
 } from 'lucide-react';
 import { EconomicEvent } from '@/lib/types';
 import { formatTime } from '@/lib/date-utils';
-import { getEventIntel } from '@/lib/event-intelligence';
+import { getEventIntel, computeSurprise } from '@/lib/event-intelligence';
 
 interface EventDetailModalProps {
   event: EconomicEvent;
@@ -14,130 +14,143 @@ interface EventDetailModalProps {
 }
 
 export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
-  // Use the rules engine to get deterministic intelligence
-  const intel = useMemo(() => 
-    getEventIntel(event.title, event.currency, event.impact), 
-    [event.title, event.currency, event.impact]
-  );
-
-  const metrics = [
-    { label: 'Volatility', value: intel.volatility, icon: Zap },
-    { label: 'Macro Impact', value: event.impact === 'High' ? 'Systemic' : 'Localized', icon: Globe },
-    { label: 'Risk Level', value: event.impact === 'High' ? 'Elevated' : 'Standard', icon: AlertTriangle },
-    { label: 'Popularity', value: event.impact === 'High' ? 'Institutional' : 'Retail', icon: Eye },
-  ];
+  const intel = useMemo(() => getEventIntel(event), [event]);
+  const surprise = useMemo(() => computeSurprise(event), [event]);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-surface border border-border w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl rounded-sm">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-2">
+      <div className="bg-surface border border-border w-full max-w-3xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl rounded-sm">
         
         {/* Header */}
-        <div className="panel-header shrink-0 flex justify-between items-center px-4 py-3 h-auto border-b border-border bg-surface-highlight">
-          <div className="flex flex-col">
-            <h2 className="text-lg font-bold text-text-primary leading-tight">
-              {event.title}
-            </h2>
-            <span className="text-[10px] text-text-tertiary uppercase tracking-widest">Institutional Insight // v4.0</span>
+        <div className="panel-header shrink-0 flex justify-between items-center px-3 py-2 h-auto border-b border-border bg-surface-highlight">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-accent animate-pulse" />
+            <div className="flex flex-col">
+              <h2 className="text-sm font-bold text-text-primary uppercase tracking-tight">
+                {event.title}
+              </h2>
+              <span className="text-[8px] text-text-tertiary uppercase tracking-widest font-mono">Terminal ID: {event.id} // v4.0.2</span>
+            </div>
           </div>
-          <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full transition-colors">
-            <X size={20} />
+          <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-sm transition-colors">
+            <X size={16} />
           </button>
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
           
-          {/* Event Meta */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="space-y-1">
-              <span className="text-[10px] text-text-tertiary uppercase font-bold">Date & Time</span>
-              <div className="text-xs font-mono text-text-primary">{event.date} @ {formatTime(event.time)}</div>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[10px] text-text-tertiary uppercase font-bold">Region</span>
-              <div className="flex items-center gap-2 text-xs font-mono text-text-primary">
-                <img src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`} className="w-4 h-2.5 object-cover" alt="" />
-                {event.country} ({event.currency})
-              </div>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[10px] text-text-tertiary uppercase font-bold">Impact Level</span>
-              <div className={`text-xs font-mono font-bold ${event.impact === 'High' ? 'text-negative' : event.impact === 'Medium' ? 'text-warning' : 'text-positive'}`}>
-                {event.impact}
-              </div>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[10px] text-text-tertiary uppercase font-bold">Status</span>
-              <div className="text-xs font-mono text-accent">Upcoming</div>
-            </div>
-          </div>
-
-          {/* Importance & Effect */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-background border border-border p-4 rounded-sm">
-              <div className="flex items-center gap-2 mb-4 text-text-tertiary">
-                <BarChart3 size={14} />
-                <span className="text-[10px] font-bold uppercase">Importance Score</span>
-              </div>
-              <div className="flex items-end gap-2">
-                <span className="text-4xl font-mono font-bold text-accent">{intel.importanceScore}</span>
-                <span className="text-text-tertiary text-xs mb-1">/ 10</span>
-              </div>
-              <div className="flex gap-1 mt-4">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className={`h-1 flex-1 rounded-full ${i <= (intel.importanceScore / 2) ? 'bg-accent' : 'bg-surface-highlight'}`} />
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-background border border-border p-4 rounded-sm">
-              <div className="flex items-center gap-2 mb-4 text-text-tertiary">
-                <TrendingUp size={14} />
-                <span className="text-[10px] font-bold uppercase">Market Logic</span>
-              </div>
-              <p className="text-xs text-text-primary leading-relaxed">
-                {intel.logic}
-              </p>
-            </div>
-          </div>
-
-          {/* Metrics Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            {metrics.map(m => (
-              <div key={m.label} className="bg-surface-highlight/30 border border-border p-3 rounded-sm flex flex-col items-center text-center">
-                <m.icon size={16} className="text-text-tertiary mb-2" />
-                <span className="text-[9px] text-text-tertiary uppercase font-bold mb-1">{m.label}</span>
-                <span className="text-xs font-bold text-text-primary">{m.value}</span>
+          {/* Top Stats Bar */}
+          <div className="grid grid-cols-4 gap-0.5 bg-border border border-border">
+            {[
+              { label: 'Volatility', value: intel.volatility, color: 'text-accent' },
+              { label: 'Macro Impact', value: `${intel.macroImpact}/10`, color: 'text-text-primary' },
+              { label: 'Positioning', value: intel.positioning, color: 'text-warning' },
+              { label: 'Surprise Threshold', value: `${intel.surpriseThresholdPct}%`, color: 'text-text-secondary' }
+            ].map(s => (
+              <div key={s.label} className="bg-background p-2 flex flex-col gap-1">
+                <span className="text-[8px] text-text-tertiary uppercase font-bold">{s.label}</span>
+                <span className={`text-[10px] font-mono font-bold ${s.color}`}>{s.value}</span>
               </div>
             ))}
           </div>
 
-          {/* Impacted Assets */}
-          <div className="space-y-4">
+          {/* Narrative Section */}
+          <div className="space-y-2">
             <div className="flex items-center gap-2 text-text-tertiary">
-              <Globe size={14} />
-              <span className="text-[10px] font-bold uppercase">Impacted Assets</span>
+              <Info size={12} />
+              <span className="text-[9px] font-bold uppercase tracking-wider">Macro Narrative</span>
             </div>
-            <div className="grid grid-cols-1 gap-2">
-              {intel.impactedAssets.map(asset => (
-                <div key={asset.symbol} className="bg-background border border-border p-4 rounded-sm group hover:border-accent/30 transition-colors">
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-bold text-text-primary">{asset.symbol}</span>
-                      <span className="text-[10px] px-1.5 py-0.5 bg-surface-highlight rounded text-text-tertiary font-mono">Weight: {asset.weight}</span>
-                    </div>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded ${asset.correlation === 'Positive' ? 'bg-positive/10 text-positive' : asset.correlation === 'Negative' ? 'bg-negative/10 text-negative' : 'bg-surface-highlight text-text-secondary'}`}>
-                      {asset.correlation}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-text-secondary leading-relaxed">
-                    {asset.description}
-                  </p>
-                </div>
-              ))}
-            </div>
+            <p className="text-[11px] text-text-secondary leading-relaxed bg-surface-highlight/30 p-3 border-l-2 border-accent">
+              {intel.narrative}
+            </p>
           </div>
 
+          {/* Scenario Tree & Impact Heatmap Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            {/* Scenario Tree */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-text-tertiary">
+                <Layers size={12} />
+                <span className="text-[9px] font-bold uppercase tracking-wider">Scenario Tree</span>
+              </div>
+              <div className="space-y-1">
+                {intel.scenarios.map(s => (
+                  <div key={s.label} className="bg-background border border-border p-2 flex flex-col gap-1 group hover:border-accent/30 transition-colors">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-bold text-text-primary">{s.label}</span>
+                      <span className="text-[10px] font-mono text-accent">{s.probability}%</span>
+                    </div>
+                    <p className="text-[9px] text-text-tertiary leading-tight">{s.reaction}</p>
+                    <div className="w-full h-0.5 bg-surface-highlight mt-1">
+                      <div className="h-full bg-accent/40" style={{ width: `${s.probability}%` }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Impact Heatmap */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-text-tertiary">
+                <Target size={12} />
+                <span className="text-[9px] font-bold uppercase tracking-wider">Asset Sensitivity Heatmap</span>
+              </div>
+              <div className="space-y-1">
+                {intel.sensitivities.map(asset => (
+                  <div key={asset.symbol} className="bg-background border border-border p-2 flex items-center justify-between">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] font-bold text-text-primary">{asset.symbol}</span>
+                      <span className="text-[8px] text-text-tertiary uppercase">{asset.expectedMove}</span>
+                    </div>
+                    <div className={`px-2 py-0.5 rounded-sm text-[8px] font-bold uppercase ${
+                      asset.sensitivity === 'HIGH' ? 'bg-negative/20 text-negative border border-negative/30' :
+                      asset.sensitivity === 'MODERATE' ? 'bg-warning/20 text-warning border border-warning/30' :
+                      'bg-positive/20 text-positive border border-positive/30'
+                    }`}>
+                      {asset.sensitivity}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Live Reaction Engine (If data printed) */}
+          {surprise.classification !== 'N/A' && (
+            <div className="pt-4 border-t border-border space-y-3">
+              <div className="flex items-center gap-2 text-text-tertiary">
+                <Activity size={12} />
+                <span className="text-[9px] font-bold uppercase tracking-wider">Live Reaction Engine</span>
+              </div>
+              <div className="bg-accent/5 border border-accent/20 p-3 flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold text-accent uppercase">Surprise Magnitude: {surprise.surprisePct?.toFixed(2)}%</span>
+                  <span className="text-[9px] text-text-secondary">Classification: <span className="text-text-primary font-bold">{surprise.classification}</span></span>
+                </div>
+                <div className="text-right">
+                  <div className="text-[14px] font-mono font-bold text-text-primary">REACTION: {surprise.classification === 'HOT' ? 'HAWKISH' : 'DOVISH'}</div>
+                  <div className="text-[8px] text-text-tertiary uppercase">Historical Analog: 88th Percentile</div>
+                </div>
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* Footer Actions */}
+        <div className="p-3 border-t border-border bg-surface-highlight flex justify-between items-center">
+          <div className="flex gap-2">
+            <button className="px-3 py-1.5 bg-accent text-accent-text text-[10px] font-bold uppercase rounded-sm hover:opacity-90 transition-opacity">
+              Set Alert
+            </button>
+            <button className="px-3 py-1.5 bg-surface border border-border text-text-secondary text-[10px] font-bold uppercase rounded-sm hover:text-text-primary transition-colors">
+              Historical Data
+            </button>
+          </div>
+          <span className="text-[9px] font-mono text-text-tertiary">VANTAGE TERMINAL // SECURE_FEED_ACTIVE</span>
         </div>
       </div>
     </div>

@@ -1,84 +1,118 @@
-import { Impact } from './types';
+import { EconomicEvent } from './types';
 
-export interface EventAsset {
+export interface ScenarioRow {
+  label: string;
+  probability: number; // 0-100
+  reaction: string;
+  bias: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+}
+
+export interface AssetSensitivity {
   symbol: string;
-  correlation: 'Positive' | 'Negative' | 'Neutral';
-  weight: number; // 1-10 importance for this specific asset
-  description: string;
+  sensitivity: 'HIGH' | 'MODERATE' | 'LOW';
+  expectedMove: string;
+  weight: number; // 1-10
 }
 
 export interface EventIntel {
-  importanceScore: number; // 1-10
   volatility: 'Low' | 'Moderate' | 'High' | 'Extreme';
-  logic: string;
-  impactedAssets: EventAsset[];
-  surpriseThreshold: number; // % deviation to trigger a 'Major Surprise'
+  macroImpact: number; // 1-10
+  narrative: string;
+  positioning: string;
+  scenarios: ScenarioRow[];
+  sensitivities: AssetSensitivity[];
+  surpriseThresholdPct: number;
+}
+
+export function computeSurprise(event: { actual: string | null, forecast: string | null }) {
+  if (!event.actual || !event.forecast) return { classification: 'N/A' as const };
+  
+  const act = parseFloat(event.actual.replace(/[^0-9.-]/g, ''));
+  const est = parseFloat(event.forecast.replace(/[^0-9.-]/g, ''));
+  
+  if (isNaN(act) || isNaN(est) || est === 0) return { classification: 'N/A' as const };
+  
+  const diff = act - est;
+  const surprisePct = (diff / Math.abs(est)) * 100;
+  
+  let classification: 'HOT' | 'COOL' | 'INLINE' = 'INLINE';
+  if (Math.abs(surprisePct) < 0.5) classification = 'INLINE';
+  else if (surprisePct > 0) classification = 'HOT';
+  else classification = 'COOL';
+  
+  return { surprisePct, classification };
 }
 
 const RULES: Record<string, Partial<EventIntel>> = {
-  "Nonfarm Payrolls": {
-    importanceScore: 10,
-    volatility: 'Extreme',
-    logic: "Primary labor market indicator. Higher than forecast is typically Bullish for the Currency and Bearish for Gold/Bonds due to rate hike expectations.",
-    surpriseThreshold: 0.15,
-    impactedAssets: [
-      { symbol: 'DXY', correlation: 'Positive', weight: 10, description: 'Directly impacts USD strength and Fed policy path.' },
-      { symbol: 'Gold', correlation: 'Negative', weight: 9, description: 'Inversely correlated with USD strength and yields.' },
-      { symbol: 'S&P 500', correlation: 'Negative', weight: 7, description: 'High wage growth can signal inflation, hurting equities.' }
-    ]
-  },
   "CPI": {
-    importanceScore: 10,
     volatility: 'High',
-    logic: "Core inflation gauge. Deviations from consensus directly shift the 'higher for longer' interest rate narrative.",
-    surpriseThreshold: 0.05,
-    impactedAssets: [
-      { symbol: 'USD/JPY', correlation: 'Positive', weight: 9, description: 'Highly sensitive to US-Japan yield differentials.' },
-      { symbol: 'Nasdaq 100', correlation: 'Negative', weight: 8, description: 'Growth stocks are sensitive to inflation-driven rate hikes.' }
+    macroImpact: 10,
+    narrative: "Core inflation remains the primary driver of Fed terminal rate expectations. Markets are hyper-sensitive to any deviation that challenges the 'disinflation' trend.",
+    positioning: "Crowded long in front-end yields; Neutral equities.",
+    surpriseThresholdPct: 5,
+    sensitivities: [
+      { symbol: 'DXY', sensitivity: 'HIGH', expectedMove: '+0.8% on Hot', weight: 10 },
+      { symbol: 'NQ', sensitivity: 'HIGH', expectedMove: '-1.5% on Hot', weight: 9 },
+      { symbol: '2Y Yield', sensitivity: 'HIGH', expectedMove: '+12bps on Hot', weight: 10 },
+      { symbol: 'Gold', sensitivity: 'MODERATE', expectedMove: '-1.0% on Hot', weight: 7 }
+    ],
+    scenarios: [
+      { label: 'Hot (>Forecast)', probability: 35, reaction: 'Hawkish pivot, aggressive USD buying, Tech sell-off.', bias: 'BEARISH' },
+      { label: 'In-Line', probability: 40, reaction: 'Relief rally in bonds, equities chop.', bias: 'NEUTRAL' },
+      { label: 'Cool (<Forecast)', probability: 25, reaction: 'Soft landing narrative fuels risk-on rally.', bias: 'BULLISH' }
     ]
   },
-  "GDP": {
-    importanceScore: 8,
-    volatility: 'Moderate',
-    logic: "Broadest measure of economic activity. Strong growth supports the currency but may fuel inflation concerns.",
-    surpriseThreshold: 0.20,
-    impactedAssets: [
-      { symbol: 'S&P 500', correlation: 'Positive', weight: 6, description: 'Reflects corporate earnings environment.' },
-      { symbol: 'DXY', correlation: 'Positive', weight: 7, description: 'Stronger economy attracts foreign capital.' }
-    ]
-  },
-  "Interest Rate Decision": {
-    importanceScore: 10,
+  "Nonfarm Payrolls": {
     volatility: 'Extreme',
-    logic: "The single most important driver of currency value. Watch the statement for 'forward guidance' on future moves.",
-    surpriseThreshold: 0.01,
-    impactedAssets: [
-      { symbol: 'All Pairs', correlation: 'Neutral', weight: 10, description: 'Global liquidity re-pricing event.' }
+    macroImpact: 10,
+    narrative: "Labor market resilience is the last pillar of the 'higher for longer' argument. A significant miss would trigger immediate recession re-pricing.",
+    positioning: "Short Gamma in ES; Long USD.",
+    surpriseThresholdPct: 15,
+    sensitivities: [
+      { symbol: 'ES', sensitivity: 'HIGH', expectedMove: '+1.2% on Miss', weight: 9 },
+      { symbol: 'DXY', sensitivity: 'HIGH', expectedMove: '-0.9% on Miss', weight: 10 },
+      { symbol: 'Gold', sensitivity: 'HIGH', expectedMove: '+$25 on Miss', weight: 8 },
+      { symbol: 'USD/JPY', sensitivity: 'HIGH', expectedMove: '-120 pips on Miss', weight: 9 }
+    ],
+    scenarios: [
+      { label: 'Beat (>250k)', probability: 30, reaction: 'Yields spike, USD strength, Stocks pressured.', bias: 'BEARISH' },
+      { label: 'In-Line (150k-200k)', probability: 45, reaction: 'Status quo maintained.', bias: 'NEUTRAL' },
+      { label: 'Miss (<100k)', probability: 25, reaction: 'Aggressive rate cut bets, USD dump, Gold rally.', bias: 'BULLISH' }
     ]
   }
 };
 
-export function getEventIntel(title: string, currency: string, impact: Impact): EventIntel {
-  // 1. Find specific rule by keyword match
-  const ruleKey = Object.keys(RULES).find(k => title.toLowerCase().includes(k.toLowerCase()));
-  const rule = ruleKey ? RULES[ruleKey] : {};
+export function getEventIntel(event: EconomicEvent): EventIntel {
+  const title = event.title.toLowerCase();
+  const ruleKey = Object.keys(RULES).find(k => title.includes(k.toLowerCase()));
+  const rule = ruleKey ? RULES[ruleKey] : null;
 
-  // 2. Determine base importance from the API impact level if not in rules
-  const baseImportance = impact === 'High' ? 9 : impact === 'Medium' ? 6 : 3;
+  if (rule) {
+    return {
+      volatility: rule.volatility || 'Moderate',
+      macroImpact: rule.macroImpact || 5,
+      narrative: rule.narrative || '',
+      positioning: rule.positioning || 'Neutral / Balanced',
+      scenarios: rule.scenarios || [],
+      sensitivities: rule.sensitivities || [],
+      surpriseThresholdPct: rule.surpriseThresholdPct || 10
+    };
+  }
 
-  // 3. Construct the intelligence object with fallbacks
+  // Fallback
   return {
-    importanceScore: rule.importanceScore || baseImportance,
-    volatility: rule.volatility || (impact === 'High' ? 'High' : 'Moderate'),
-    logic: rule.logic || `Standard ${currency} economic release. Higher than expected values typically strengthen the ${currency}.`,
-    surpriseThreshold: rule.surpriseThreshold || 0.10,
-    impactedAssets: rule.impactedAssets || [
-      { 
-        symbol: currency, 
-        correlation: 'Positive', 
-        weight: 8, 
-        description: `Primary impact on ${currency} pairs and local sovereign bond yields.` 
-      }
-    ]
+    volatility: event.impact === 'High' ? 'High' : 'Moderate',
+    macroImpact: event.impact === 'High' ? 8 : 4,
+    narrative: `Standard ${event.currency} release. Focus is on deviation from consensus to gauge local economic momentum.`,
+    positioning: "Retail-heavy; Institutional neutral.",
+    scenarios: [
+      { label: 'Beat', probability: 33, reaction: `Positive for ${event.currency}.`, bias: 'BULLISH' },
+      { label: 'In-Line', probability: 34, reaction: 'Neutral reaction.', bias: 'NEUTRAL' },
+      { label: 'Miss', probability: 33, reaction: `Negative for ${event.currency}.`, bias: 'BEARISH' }
+    ],
+    sensitivities: [
+      { symbol: event.currency, sensitivity: 'MODERATE', expectedMove: 'Directional', weight: 8 }
+    ],
+    surpriseThresholdPct: 10
   };
 }

@@ -1,14 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Widget } from '@/components/Widget';
 import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
-import { Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle } from 'lucide-react';
-import { fetchMarketData } from '@/app/actions/fetchMarketData';
+import { Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle, Terminal as TerminalIcon } from 'lucide-react';
 import { analyzeMarket } from '@/app/actions/analyzeMarket';
+import { useMarketData } from '@/lib/marketdata/useMarketData';
 
-// Mapping Yahoo symbols to specific TradingView broker symbols
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
   '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
   '^GSPC': { tv: 'BLACKBULL:SPX500', label: 'S&P 500' },
@@ -23,35 +22,15 @@ const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
 
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("^NDX");
-  const [marketData, setMarketData] = useState<Record<string, any>>({});
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
+  const { data: marketData, error: streamError } = useMarketData(WATCHLIST_SYMBOLS);
+  const loading = Object.keys(marketData).length === 0 && !streamError;
+
   const lastAnalyzedRef = useRef<string | null>(null);
 
-  const refreshWatchlist = useCallback(async () => {
-    try {
-      const results: Record<string, any> = {};
-      await Promise.all(WATCHLIST_SYMBOLS.map(async (sym) => {
-        const data = await fetchMarketData(sym);
-        if (data) results[sym] = data;
-      }));
-      setMarketData(results);
-      setLoading(false);
-    } catch (err) {
-      console.error("Failed to refresh watchlist:", err);
-    }
-  }, []);
-
-  useEffect(() => {
-    refreshWatchlist();
-    const interval = setInterval(refreshWatchlist, 30000);
-    return () => clearInterval(interval);
-  }, [refreshWatchlist]);
-
-  // Trigger AI analysis when active symbol or its data changes
   useEffect(() => {
     const data = marketData[activeSymbol];
     if (!data) return;
@@ -63,21 +42,13 @@ export default function TerminalPage() {
       setAnalyzing(true);
       setError(null);
       try {
-        const result = await analyzeMarket(
-          activeSymbol, 
-          SYMBOL_MAP[activeSymbol].label, 
-          data.price, 
-          data.changePercent
-        );
+        const result = await analyzeMarket(activeSymbol, SYMBOL_MAP[activeSymbol].label, data.price, data.changePercent);
         if (result) {
           setAiAnalysis(result);
           lastAnalyzedRef.current = analysisKey;
-        } else {
-          setError("Analysis failed.");
         }
       } catch (err) {
         setError("AI Offline.");
-        console.error(err);
       } finally {
         setAnalyzing(false);
       }
@@ -90,11 +61,31 @@ export default function TerminalPage() {
   const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
 
   return (
-    <div className="h-full w-full bg-background p-0.5 overflow-hidden">
-      <div className="grid grid-cols-12 grid-rows-12 gap-0.5 h-full w-full">
+    <div className="h-full w-full bg-background p-0.5 overflow-hidden flex flex-col">
+      {/* Top Status Bar */}
+      <div className="h-6 bg-surface border-b border-border flex items-center justify-between px-3 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-[9px] font-bold text-accent">
+            <TerminalIcon size={10} />
+            <span>VANTAGE TERMINAL v4.0</span>
+          </div>
+          <div className="h-3 w-[1px] bg-border" />
+          <div className="flex items-center gap-2 text-[9px] font-mono text-text-secondary">
+            <span className="text-positive">● LIVE</span>
+            <span>NY: {new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false })}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-[9px] font-mono text-text-tertiary">
+          <span>CPU: 12%</span>
+          <span>MEM: 1.2GB</span>
+          <span className="text-accent">LATENCY: 42ms</span>
+        </div>
+      </div>
+
+      <div className="flex-1 grid grid-cols-12 grid-rows-12 gap-0.5 w-full min-h-0">
         
         {/* --- COLUMN 1: MARKET WATCH & AI --- */}
-        <div className="col-span-3 row-span-12 flex flex-col gap-0.5">
+        <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
           <div className="flex-1 min-h-0">
             <Widget title="Market Watch // Institutional">
               <div className="flex flex-col">
@@ -107,7 +98,7 @@ export default function TerminalPage() {
                     <div 
                       key={sym} 
                       onClick={() => setActiveSymbol(sym)}
-                      className={`flex justify-between items-center px-2 py-1.5 border-b border-border/30 cursor-pointer hover:bg-surface-highlight transition-colors ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
+                      className={`flex justify-between items-center px-2 py-1 border-b border-border/20 cursor-pointer hover:bg-surface-highlight transition-colors ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
                     >
                       <div className="flex flex-col">
                         <span className="font-bold text-[10px] text-text-primary">{sym}</span>
@@ -129,7 +120,7 @@ export default function TerminalPage() {
           </div>
           
           <div className="h-1/3 min-h-0">
-            <Widget title="AI Intelligence">
+            <Widget title="AI Intelligence // Sentiment">
               <div className="p-2 text-[10px] text-text-secondary leading-tight h-full flex flex-col">
                 {analyzing ? (
                   <div className="flex-1 flex flex-col items-center justify-center gap-1 opacity-50">
@@ -150,7 +141,7 @@ export default function TerminalPage() {
                       </div>
                       <span className={aiAnalysis.strength > 50 ? 'text-positive' : 'text-negative'}>{aiAnalysis.strength}%</span>
                     </div>
-                    <p className="text-text-primary leading-snug line-clamp-4">
+                    <p className="text-[10px] text-text-primary leading-snug line-clamp-4 font-medium">
                       {aiAnalysis.analysis}
                     </p>
                     <div className="w-full h-0.5 bg-surface-highlight rounded-full overflow-hidden">
@@ -168,25 +159,25 @@ export default function TerminalPage() {
         </div>
 
         {/* --- COLUMN 2: VITALS & NEWS --- */}
-        <div className="col-span-3 row-span-12 flex flex-col gap-0.5">
+        <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
           <div className="h-1/4 min-h-0">
             <Widget title="Global Vitals">
               <div className="p-2 grid grid-cols-2 gap-x-4 gap-y-2 h-full content-start">
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">VIX Index</div>
-                  <div className="text-sm font-bold text-warning">14.52</div>
+                  <div className="text-sm font-bold text-warning font-mono">14.52</div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">DXY Dollar</div>
-                  <div className="text-sm font-bold text-text-primary">104.20</div>
+                  <div className="text-sm font-bold text-text-primary font-mono">104.20</div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">10Y Yield</div>
-                  <div className="text-sm font-bold text-negative">4.31%</div>
+                  <div className="text-sm font-bold text-negative font-mono">4.31%</div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">Liquidity</div>
-                  <div className="text-sm font-bold text-positive">High</div>
+                  <div className="text-sm font-bold text-positive uppercase">High</div>
                 </div>
               </div>
             </Widget>
@@ -200,13 +191,13 @@ export default function TerminalPage() {
         </div>
 
         {/* --- COLUMN 3: MAIN CHART --- */}
-        <div className="col-span-6 row-span-12 overflow-hidden relative">
+        <div className="col-span-6 row-span-12 overflow-hidden relative min-h-0">
           <Widget 
             title={`${activeSymbol} • ${SYMBOL_MAP[activeSymbol]?.label || ''}`} 
             actions={
               <div className="flex items-center gap-2 text-[8px]">
                 <span className="text-positive flex items-center gap-1"><Wifi size={8}/> Live</span>
-                <span className="px-1 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase">{activeQuote?.marketState || 'REGULAR'}</span>
+                <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase font-mono">{activeQuote?.marketState || 'REGULAR'}</span>
               </div>
             }
           >
