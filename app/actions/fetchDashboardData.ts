@@ -1,8 +1,16 @@
+'use server';
+
 import { GoogleGenAI, Type } from '@google/genai';
 
 export async function fetchDashboardData() {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.error("[AI] GEMINI_API_KEY is missing.");
+    return null;
+  }
+
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     
     const response = await ai.models.generateContent({
       model: 'gemini-2.0-flash',
@@ -12,7 +20,7 @@ export async function fetchDashboardData() {
 3. The top 5 most important economic events happening this week (include date, time, event name, impact level, and forecast).
 4. The top 5 major company earnings reports happening this week (include date, company name, symbol, and estimated EPS).
 
-Return the data strictly as a JSON object matching this schema. Do not include markdown formatting like \`\`\`json.`,
+Return the data strictly as a JSON object matching this schema.`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",

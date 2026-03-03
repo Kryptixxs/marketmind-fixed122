@@ -3,15 +3,14 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 export async function analyzeEconomicEvent(eventTitle: string, eventCountry: string) {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new Error('Gemini API key is not configured. Set GEMINI_API_KEY in your .env.local file.');
+    throw new Error('Gemini API key is not configured on the server.');
   }
 
   const ai = new GoogleGenAI({ apiKey });
 
   const response = await ai.models.generateContent({
-    // Use a valid, available model name
     model: "gemini-2.0-flash",
     contents: `You are a professional financial analyst. Analyze the economic event: "${eventTitle}" for country "${eventCountry}". 
     

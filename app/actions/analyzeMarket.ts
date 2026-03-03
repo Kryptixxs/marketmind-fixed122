@@ -3,7 +3,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 export async function analyzeMarket(symbol: string, label: string, price: number, changePercent: number) {
-  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  // Strictly use server-side environment variable
+  const apiKey = process.env.GEMINI_API_KEY;
   
   // Fallback data if API key is missing or call fails
   const fallback = {
@@ -13,6 +14,7 @@ export async function analyzeMarket(symbol: string, label: string, price: number
   };
 
   if (!apiKey) {
+    console.warn("[AI] GEMINI_API_KEY is not set. Running in demo mode.");
     return {
       ...fallback,
       analysis: "(Demo Mode) " + fallback.analysis
@@ -29,7 +31,7 @@ export async function analyzeMarket(symbol: string, label: string, price: number
       Daily Change: ${changePercent}%
       
       Provide:
-      1. A trend strength score from 0 to 100.
+      1. A trend strength score from 0 to 100 (as an integer).
       2. Market sentiment (Bullish, Bearish, or Neutral).
       3. A 2-sentence technical analysis of the current price action.`,
       config: {
@@ -46,9 +48,12 @@ export async function analyzeMarket(symbol: string, label: string, price: number
       },
     });
 
-    // The SDK returns the text directly in the response object for this version
     if (result && result.text) {
-      return JSON.parse(result.text);
+      const parsed = JSON.parse(result.text);
+      return {
+        ...parsed,
+        strength: Math.round(parsed.strength) // Ensure integer
+      };
     }
     
     return fallback;
