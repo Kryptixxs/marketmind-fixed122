@@ -3,6 +3,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/Sidebar";
 import { SettingsProvider } from "@/context/SettingsContext";
 import { CommandPalette } from "@/components/CommandPalette";
+import { LayoutWrapper } from "@/components/LayoutWrapper";
 
 export const metadata: Metadata = {
   title: "VANTAGE TERMINAL // v4.0",
@@ -18,10 +19,9 @@ export default function RootLayout({
     <html lang="en">
       <body className="flex h-screen w-screen overflow-hidden bg-background text-text-primary antialiased">
         <SettingsProvider>
-          <Sidebar />
-          <main className="flex-1 flex flex-col min-w-0 bg-background relative">
+          <LayoutWrapper>
             {children}
-          </main>
+          </LayoutWrapper>
           <CommandPalette />
         </SettingsProvider>
       </body>

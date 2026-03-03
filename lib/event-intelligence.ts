@@ -79,6 +79,41 @@ const RULES: Record<string, Partial<EventIntel>> = {
       { label: 'In-Line (150k-200k)', probability: 45, reaction: 'Status quo maintained.', bias: 'NEUTRAL' },
       { label: 'Miss (<100k)', probability: 25, reaction: 'Aggressive rate cut bets, USD dump, Gold rally.', bias: 'BULLISH' }
     ]
+  },
+  "FOMC": {
+    volatility: 'Extreme',
+    macroImpact: 10,
+    narrative: "The Fed's forward guidance is the single most important variable for global liquidity. Focus is on the 'Dot Plot' and Powell's tone regarding the neutral rate.",
+    positioning: "Short Volatility; Long Duration.",
+    surpriseThresholdPct: 2,
+    sensitivities: [
+      { symbol: 'DXY', sensitivity: 'HIGH', expectedMove: '+1.5% on Hawkish', weight: 10 },
+      { symbol: 'NQ', sensitivity: 'HIGH', expectedMove: '-2.5% on Hawkish', weight: 10 },
+      { symbol: '2Y Yield', sensitivity: 'HIGH', expectedMove: '+20bps on Hawkish', weight: 10 },
+      { symbol: 'BTC', sensitivity: 'HIGH', expectedMove: '-5.0% on Hawkish', weight: 8 }
+    ],
+    scenarios: [
+      { label: 'Hawkish Hold', probability: 20, reaction: 'Yields moon, Equities dump, USD king.', bias: 'BEARISH' },
+      { label: 'Dovish Hold', probability: 60, reaction: 'Relief rally, USD weakness, Gold spike.', bias: 'BULLISH' },
+      { label: 'Surprise Cut', probability: 20, reaction: 'Chaos, Volatility spike, Risk-on explosion.', bias: 'BULLISH' }
+    ]
+  },
+  "Retail Sales": {
+    volatility: 'Moderate',
+    macroImpact: 7,
+    narrative: "Consumer spending is 70% of US GDP. This is the ultimate 'real-time' health check for the economy.",
+    positioning: "Neutral; Retail-heavy.",
+    surpriseThresholdPct: 10,
+    sensitivities: [
+      { symbol: 'ES', sensitivity: 'MODERATE', expectedMove: '+0.5% on Beat', weight: 7 },
+      { symbol: 'DXY', sensitivity: 'MODERATE', expectedMove: '+0.3% on Beat', weight: 6 },
+      { symbol: 'XLY', sensitivity: 'HIGH', expectedMove: '+1.2% on Beat', weight: 9 }
+    ],
+    scenarios: [
+      { label: 'Strong Beat', probability: 30, reaction: 'Soft landing narrative reinforced.', bias: 'BULLISH' },
+      { label: 'In-Line', probability: 50, reaction: 'No change in macro bias.', bias: 'NEUTRAL' },
+      { label: 'Weak Miss', probability: 20, reaction: 'Recession fears resurface.', bias: 'BEARISH' }
+    ]
   }
 };
 

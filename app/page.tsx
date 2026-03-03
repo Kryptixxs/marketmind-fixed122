@@ -4,23 +4,38 @@ import { useState, useEffect, useRef } from 'react';
 import { Widget } from '@/components/Widget';
 import TradingViewChart from '@/components/TradingViewChart';
 import { NewsFeed } from '@/components/NewsFeed';
-import { Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle, Terminal as TerminalIcon } from 'lucide-react';
+import { 
+  Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle, 
+  Terminal as TerminalIcon, Layers, Target, Search, Zap, ShieldAlert, 
+  BarChart3, Globe, Cpu, Bell, Settings, Maximize2, MoreHorizontal
+} from 'lucide-react';
 import { analyzeMarket } from '@/app/actions/analyzeMarket';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
+import { MarketPositioning } from '@/components/macro/MarketPositioning';
+import { ScenarioTree } from '@/components/macro/ScenarioTree';
+import { ImpactHeatmap } from '@/components/macro/ImpactHeatmap';
+import { SetupScanner } from '@/components/macro/SetupScanner';
+import { NarrativeTracker } from '@/components/macro/NarrativeTracker';
+import { useSearchParams } from 'next/navigation';
 
-const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
-  '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
-  '^GSPC': { tv: 'BLACKBULL:SPX500', label: 'S&P 500' },
-  '^DJI': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones' },
-  '^RUT': { tv: 'IG:RUSSELL', label: 'Russell 2000' },
-  'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil' },
-  'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold' },
-  'EURUSD=X': { tv: 'PEPPERSTONE:EURUSD', label: 'EUR/USD' },
+const SYMBOL_MAP: Record<string, { tv: string, label: string, category: string }> = {
+  '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100', category: 'indices' },
+  '^GSPC': { tv: 'BLACKBULL:SPX500', label: 'S&P 500', category: 'indices' },
+  '^DJI': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones', category: 'indices' },
+  '^RUT': { tv: 'IG:RUSSELL', label: 'Russell 2000', category: 'indices' },
+  'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil', category: 'commodities' },
+  'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold', category: 'commodities' },
+  'EURUSD=X': { tv: 'PEPPERSTONE:EURUSD', label: 'EUR/USD', category: 'forex' },
+  'BTC-USD': { tv: 'BINANCE:BTCUSDT', label: 'Bitcoin', category: 'crypto' },
+  'ETH-USD': { tv: 'BINANCE:ETHUSDT', label: 'Ethereum', category: 'crypto' },
 };
 
 const WATCHLIST_SYMBOLS = Object.keys(SYMBOL_MAP);
 
 export default function TerminalPage() {
+  const searchParams = useSearchParams();
+  const tab = searchParams.get('tab') || 'indices';
+  
   const [activeSymbol, setActiveSymbol] = useState("^NDX");
   const [aiAnalysis, setAiAnalysis] = useState<any>(null);
   const [analyzing, setAnalyzing] = useState(false);
@@ -60,6 +75,13 @@ export default function TerminalPage() {
   const activeQuote = marketData[activeSymbol];
   const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
 
+  const filteredSymbols = WATCHLIST_SYMBOLS.filter(sym => {
+    if (tab === 'indices') return SYMBOL_MAP[sym].category === 'indices';
+    if (tab === 'crypto') return SYMBOL_MAP[sym].category === 'crypto';
+    if (tab === 'forex') return SYMBOL_MAP[sym].category === 'forex';
+    return true;
+  });
+
   return (
     <div className="h-full w-full bg-background p-0.5 overflow-hidden flex flex-col">
       {/* Top Status Bar */}
@@ -67,11 +89,11 @@ export default function TerminalPage() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-[9px] font-bold text-accent">
             <TerminalIcon size={10} />
-            <span>VANTAGE TERMINAL v4.0</span>
+            <span>VANTAGE TERMINAL v4.0 // MACRO_INTELLIGENCE_ENGINE</span>
           </div>
           <div className="h-3 w-[1px] bg-border" />
           <div className="flex items-center gap-2 text-[9px] font-mono text-text-secondary">
-            <span className="text-positive">● LIVE</span>
+            <span className="text-positive animate-pulse">● LIVE_FEED</span>
             <span>NY: {new Date().toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false })}</span>
           </div>
         </div>
@@ -79,17 +101,26 @@ export default function TerminalPage() {
           <span>CPU: 12%</span>
           <span>MEM: 1.2GB</span>
           <span className="text-accent">LATENCY: 42ms</span>
+          <div className="h-3 w-[1px] bg-border" />
+          <span className="text-text-secondary">SECURE_FEED: ACTIVE</span>
         </div>
       </div>
 
       <div className="flex-1 grid grid-cols-12 grid-rows-12 gap-0.5 w-full min-h-0">
         
-        {/* --- COLUMN 1: MARKET WATCH & AI --- */}
+        {/* --- COLUMN 1: MARKET WATCH & AI (3/12) --- */}
         <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
           <div className="flex-1 min-h-0">
-            <Widget title="Market Watch // Institutional">
+            <Widget 
+              title={`Market Watch // ${tab.toUpperCase()}`}
+              actions={
+                <div className="flex items-center gap-1">
+                  <button className="p-1 text-text-tertiary hover:text-text-primary"><Search size={10} /></button>
+                </div>
+              }
+            >
               <div className="flex flex-col">
-                {WATCHLIST_SYMBOLS.map(sym => {
+                {filteredSymbols.map(sym => {
                   const data = marketData[sym];
                   const info = SYMBOL_MAP[sym];
                   const isPositive = data?.change >= 0;
@@ -98,7 +129,7 @@ export default function TerminalPage() {
                     <div 
                       key={sym} 
                       onClick={() => setActiveSymbol(sym)}
-                      className={`flex justify-between items-center px-2 py-1 border-b border-border/20 cursor-pointer hover:bg-surface-highlight transition-colors ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
+                      className={`flex justify-between items-center px-2 py-1.5 border-b border-border/20 cursor-pointer hover:bg-surface-highlight transition-colors ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
                     >
                       <div className="flex flex-col">
                         <span className="font-bold text-[10px] text-text-primary">{sym}</span>
@@ -119,7 +150,7 @@ export default function TerminalPage() {
             </Widget>
           </div>
           
-          <div className="h-1/3 min-h-0">
+          <div className="h-[30%] min-h-0">
             <Widget title="AI Intelligence // Sentiment">
               <div className="p-2 text-[10px] text-text-secondary leading-tight h-full flex flex-col">
                 {analyzing ? (
@@ -158,53 +189,59 @@ export default function TerminalPage() {
           </div>
         </div>
 
-        {/* --- COLUMN 2: VITALS & NEWS --- */}
+        {/* --- COLUMN 2: MACRO INTELLIGENCE ENGINE (3/12) --- */}
         <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
-          <div className="h-1/4 min-h-0">
-            <Widget title="Global Vitals">
-              <div className="p-2 grid grid-cols-2 gap-x-4 gap-y-2 h-full content-start">
-                <div>
-                  <div className="text-[8px] text-text-tertiary uppercase mb-0.5">VIX Index</div>
-                  <div className="text-sm font-bold text-warning font-mono">14.52</div>
-                </div>
-                <div>
-                  <div className="text-[8px] text-text-tertiary uppercase mb-0.5">DXY Dollar</div>
-                  <div className="text-sm font-bold text-text-primary font-mono">104.20</div>
-                </div>
-                <div>
-                  <div className="text-[8px] text-text-tertiary uppercase mb-0.5">10Y Yield</div>
-                  <div className="text-sm font-bold text-negative font-mono">4.31%</div>
-                </div>
-                <div>
-                  <div className="text-[8px] text-text-tertiary uppercase mb-0.5">Liquidity</div>
-                  <div className="text-sm font-bold text-positive uppercase">High</div>
-                </div>
-              </div>
+          <div className="h-[25%] min-h-0">
+            <Widget title="Market Positioning // Real-Time">
+              <MarketPositioning />
             </Widget>
           </div>
           
+          <div className="h-[25%] min-h-0">
+            <Widget title="Scenario Tree // CPI Analysis">
+              <ScenarioTree />
+            </Widget>
+          </div>
+
+          <div className="h-[25%] min-h-0">
+            <Widget title="Pre-Event Setup Scanner">
+              <SetupScanner />
+            </Widget>
+          </div>
+
           <div className="flex-1 min-h-0">
-            <Widget title="Intelligence Wire">
-              <NewsFeed />
+            <Widget title="Macro Narrative Tracker">
+              <NarrativeTracker />
             </Widget>
           </div>
         </div>
 
-        {/* --- COLUMN 3: MAIN CHART --- */}
-        <div className="col-span-6 row-span-12 overflow-hidden relative min-h-0">
-          <Widget 
-            title={`${activeSymbol} • ${SYMBOL_MAP[activeSymbol]?.label || ''}`} 
-            actions={
-              <div className="flex items-center gap-2 text-[8px]">
-                <span className="text-positive flex items-center gap-1"><Wifi size={8}/> Live</span>
-                <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase font-mono">{activeQuote?.marketState || 'REGULAR'}</span>
+        {/* --- COLUMN 3: MAIN CHART & HEATMAP (6/12) --- */}
+        <div className="col-span-6 row-span-12 flex flex-col gap-0.5 min-h-0">
+          <div className="flex-1 min-h-0 relative">
+            <Widget 
+              title={`${activeSymbol} • ${SYMBOL_MAP[activeSymbol]?.label || ''}`} 
+              actions={
+                <div className="flex items-center gap-2 text-[8px]">
+                  <span className="text-positive flex items-center gap-1"><Wifi size={8}/> Live</span>
+                  <span className="px-1.5 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase font-mono">{activeQuote?.marketState || 'REGULAR'}</span>
+                </div>
+              }
+            >
+              <div className="w-full h-full bg-black">
+                <TradingViewChart symbol={activeTV} />
               </div>
-            }
-          >
-            <div className="w-full h-full bg-black">
-              <TradingViewChart symbol={activeTV} />
-            </div>
-          </Widget>
+            </Widget>
+          </div>
+
+          <div className="h-[35%] grid grid-cols-2 gap-0.5 min-h-0">
+            <Widget title="Asset Sensitivity Heatmap">
+              <ImpactHeatmap />
+            </Widget>
+            <Widget title="Intelligence Wire // Live Reaction">
+              <NewsFeed />
+            </Widget>
+          </div>
         </div>
 
       </div>

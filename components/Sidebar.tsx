@@ -1,29 +1,55 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { 
-  LayoutGrid, 
-  LineChart, 
-  Newspaper, 
-  Settings, 
-  Terminal, 
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import {
+  LayoutGrid,
+  LineChart,
+  Newspaper,
+  Settings,
+  Terminal,
   Cpu,
   Search,
   Bell,
-  Calendar
+  Calendar,
+  Activity,
+  Zap,
+  ShieldAlert
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { href: '/', icon: LayoutGrid, label: 'Workspace' },
-  { href: '/calendar', icon: Calendar, label: 'Calendar' },
-  { href: '/charts', icon: LineChart, label: 'Technical' },
-  { href: '/news', icon: Newspaper, label: 'Wire' },
-  { href: '/algo', icon: Cpu, label: 'Algos' },
+  { href: '/', icon: LayoutGrid, label: 'Workspace', key: '1' },
+  { href: '/calendar', icon: Calendar, label: 'Calendar', key: '2' },
+  { href: '/charts', icon: LineChart, label: 'Technical', key: '3' },
+  { href: '/news', icon: Newspaper, label: 'Wire', key: '4' },
+  { href: '/algo', icon: Cpu, label: 'Algos', key: '5' },
 ];
 
-export function Sidebar() {
+export function Sidebar({ onOpenSettings }: { onOpenSettings: () => void }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only trigger if not in an input/textarea
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      
+      const item = NAV_ITEMS.find(i => i.key === e.key);
+      if (item) {
+        e.preventDefault();
+        router.push(item.href);
+      }
+
+      if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        onOpenSettings();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [router, onOpenSettings]);
 
   return (
     <div className="w-12 h-full bg-surface border-r border-border flex flex-col items-center py-3 z-50">
@@ -41,39 +67,47 @@ export function Sidebar() {
               key={item.href}
               href={item.href}
               className={`
-                flex items-center justify-center w-8 h-8 rounded-[2px] transition-colors
-                ${isActive 
-                  ? 'bg-accent/10 text-accent border border-accent/20' 
+                group relative flex items-center justify-center w-8 h-8 rounded-[2px] transition-colors
+                ${isActive
+                  ? 'bg-accent/10 text-accent border border-accent/20'
                   : 'text-text-tertiary hover:text-text-primary hover:bg-surface-highlight'}
               `}
-              title={item.label}
+              title={`${item.label} (${item.key})`}
             >
               <item.icon size={16} strokeWidth={1.5} />
+              <span className="absolute left-full ml-2 px-1.5 py-0.5 bg-surface border border-border text-[8px] text-text-secondary rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[100]">
+                {item.label} <span className="text-accent ml-1">{item.key}</span>
+              </span>
             </Link>
           );
         })}
       </nav>
 
       <div className="mt-auto flex flex-col gap-2 w-full px-2">
-         <button 
+         <button
            onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
            className="flex items-center justify-center w-8 h-8 text-text-secondary hover:text-text-primary transition-colors"
            title="Search (Cmd+K)"
          >
            <Search size={16} />
          </button>
-         <button className="flex items-center justify-center w-8 h-8 text-text-secondary hover:text-text-primary transition-colors">
+         <button className="flex items-center justify-center w-8 h-8 text-text-secondary hover:text-text-primary transition-colors" title="Notifications">
            <Bell size={16} />
          </button>
-         <button className="flex items-center justify-center w-8 h-8 text-text-secondary hover:text-text-primary transition-colors">
+         <button
+           onClick={onOpenSettings}
+           className="flex items-center justify-center w-8 h-8 text-text-secondary hover:text-text-primary transition-colors"
+           title="Settings (Cmd+S)"
+         >
            <Settings size={16} />
          </button>
          
          <div className="w-full h-[1px] bg-border my-1"></div>
          
          {/* Connection Status */}
-         <div className="w-full flex justify-center py-2" title="System Status: Connected">
-            <div className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse"></div>
+         <div className="w-full flex flex-col items-center gap-2 py-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse" title="System Status: Connected"></div>
+            <div className="text-[8px] font-mono text-text-tertiary rotate-90 mt-2">V4.0</div>
          </div>
       </div>
     </div>
