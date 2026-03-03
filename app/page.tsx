@@ -7,7 +7,7 @@ import { NewsFeed } from '@/components/NewsFeed';
 import { TerminalCommandBar } from '@/components/TerminalCommandBar';
 import { CorrelationMatrix } from '@/components/widgets/CorrelationMatrix';
 import { ConfluenceScanner } from '@/components/widgets/ConfluenceScanner';
-import { MarketInternals } from '@/components/widgets/MarketInternals';
+import { ICTPanel } from '@/components/widgets/ICTPanel';
 import { MiniCalendar } from '@/components/widgets/MiniCalendar';
 import { Wifi, TrendingUp, TrendingDown } from 'lucide-react';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
@@ -51,11 +51,11 @@ export default function TerminalPage() {
     <div className="h-full w-full bg-background overflow-hidden flex flex-col">
       <TerminalCommandBar />
 
-      {/* Bulletproof Native CSS Grid Layout */}
-      <div className="flex-1 w-full min-h-0 p-0.5 grid grid-cols-1 lg:grid-cols-12 gap-0.5">
+      {/* Maximized CSS Grid for Zero Wasted Space */}
+      <div className="flex-1 w-full min-h-0 p-0.5 grid grid-cols-12 grid-rows-12 gap-0.5">
         
-        {/* --- LEFT COLUMN: WATCHLIST & CORRELATION --- */}
-        <div className="col-span-1 lg:col-span-3 flex flex-col gap-0.5 h-full overflow-hidden">
+        {/* --- LEFT COLUMN --- */}
+        <div className="col-span-3 row-span-12 flex flex-col gap-0.5 h-full overflow-hidden">
           <div className="h-[60%] min-h-0">
             <Widget title="Market Watch // Realtime">
               <div className="flex flex-col">
@@ -95,14 +95,14 @@ export default function TerminalPage() {
               {activeQuote ? (
                 <CorrelationMatrix activeTick={activeQuote} marketData={marketData} />
               ) : (
-                <div className="flex h-full items-center justify-center text-text-tertiary text-[10px]">Loading Correlation...</div>
+                <div className="flex h-full items-center justify-center text-text-tertiary text-[10px]">Loading Math...</div>
               )}
             </Widget>
           </div>
         </div>
 
-        {/* --- CENTER COLUMN: CHART & CONFLUENCE MATH --- */}
-        <div className="col-span-1 lg:col-span-6 flex flex-col gap-0.5 h-full overflow-hidden">
+        {/* --- CENTER COLUMN (Main Chart & Math) --- */}
+        <div className="col-span-6 row-span-12 flex flex-col gap-0.5 h-full overflow-hidden">
           <div className="h-[70%] min-h-0">
             <Widget 
               title={`${activeSymbol} • ${SYMBOL_MAP[activeSymbol]?.label || ''}`} 
@@ -119,29 +119,30 @@ export default function TerminalPage() {
             </Widget>
           </div>
           
-          <div className="h-[30%] min-h-0">
-            <Widget title={`Terminal Engine // ${activeSymbol}`}>
-              <ConfluenceScanner symbol={activeSymbol} />
-            </Widget>
+          <div className="h-[30%] min-h-0 flex gap-0.5">
+            <div className="w-1/2 h-full">
+              <Widget title="ICT Structure Engine">
+                <ICTPanel tick={activeQuote} />
+              </Widget>
+            </div>
+            <div className="w-1/2 h-full">
+              <Widget title={`Terminal Confluences`}>
+                <ConfluenceScanner symbol={activeSymbol} />
+              </Widget>
+            </div>
           </div>
         </div>
 
-        {/* --- RIGHT COLUMN: INTERNALS, CALENDAR, NEWS --- */}
-        <div className="col-span-1 lg:col-span-3 flex flex-col gap-0.5 h-full overflow-hidden">
-          <div className="h-[25%] min-h-0">
-            <Widget title="Market Internals">
-              <MarketInternals tick={activeQuote} />
-            </Widget>
-          </div>
-          
-          <div className="h-[30%] min-h-0">
-            <Widget title="Economic Calendar">
+        {/* --- RIGHT COLUMN (News & Macro) --- */}
+        <div className="col-span-3 row-span-12 flex flex-col gap-0.5 h-full overflow-hidden">
+          <div className="h-[50%] min-h-0">
+            <Widget title="Filtered Economic Calendar">
               <MiniCalendar />
             </Widget>
           </div>
 
-          <div className="h-[45%] min-h-0">
-            <Widget title="Intelligence Wire">
+          <div className="h-[50%] min-h-0">
+            <Widget title="Live Intelligence Wire">
               <NewsFeed activeSymbol={activeSymbol} />
             </Widget>
           </div>
