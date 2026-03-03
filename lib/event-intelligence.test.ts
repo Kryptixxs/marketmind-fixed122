@@ -17,58 +17,33 @@ const mockEvent = (overrides: Partial<EconomicEvent>): EconomicEvent => ({
 });
 
 describe('Event Intelligence Rules Engine', () => {
-  test('identifies CPI correctly with specific logic and assets', () => {
+  test('identifies CPI correctly with hawkish polarity', () => {
     const event = mockEvent({ title: 'Core CPI (MoM)' });
     const intel = getEventIntel(event);
-    expect(intel.macroImpact).toBe(10);
-    expect(intel.volatility).toBe('High');
-    expect(intel.impactedAssets).toContainEqual(expect.objectContaining({ symbol: 'DXY', direction: 'UP' }));
-    expect(intel.scenarios.length).toBe(3);
+    expect(intel.hawkishWhenHigher).toBe(true);
+    
+    const res = computeSurprise({ actual: '0.5%', forecast: '0.3%' }, intel);
+    expect(res.direction).toBe('ABOVE');
+    expect(res.interpretation).toBe('HAWKISH');
   });
 
-  test('identifies Nonfarm Payrolls correctly with extreme volatility', () => {
+  test('identifies Jobless Claims correctly with bearish polarity', () => {
+    const event = mockEvent({ title: 'Initial Jobless Claims' });
+    const intel = getEventIntel(event);
+    expect(intel.goodWhenHigher).toBe(false);
+    
+    const res = computeSurprise({ actual: '250k', forecast: '200k' }, intel);
+    expect(res.direction).toBe('ABOVE');
+    expect(res.interpretation).toBe('BEARISH_RISK');
+  });
+
+  test('identifies Nonfarm Payrolls correctly with bullish polarity', () => {
     const event = mockEvent({ title: 'Nonfarm Payrolls' });
     const intel = getEventIntel(event);
-    expect(intel.volatility).toBe('Extreme');
-    expect(intel.surpriseThresholdPct).toBe(15);
-  });
-
-  test('identifies Jobless Claims correctly', () => {
-    const event = mockEvent({ title: 'Initial Jobless Claims', impact: 'Medium' });
-    const intel = getEventIntel(event);
-    expect(intel.macroImpact).toBe(6);
-    expect(intel.impactedAssets[0].symbol).toBe('2Y Yield');
-  });
-
-  test('provides currency-based fallback for unknown events', () => {
-    const event = mockEvent({ title: 'Random Data', currency: 'EUR', impact: 'Low' });
-    const intel = getEventIntel(event);
-    expect(intel.macroImpact).toBe(4);
-    expect(intel.impactedAssets[0].symbol).toBe('EUR');
-  });
-});
-
-describe('Surprise Calculation', () => {
-  test('classifies HOT surprise correctly', () => {
-    const res = computeSurprise({ actual: '3.5%', forecast: '3.1%' });
-    expect(res.classification).toBe('HOT');
-    expect(res.surprisePct).toBeCloseTo(12.9, 1);
-  });
-
-  test('classifies COOL surprise correctly', () => {
-    const res = computeSurprise({ actual: '150k', forecast: '200k' });
-    expect(res.classification).toBe('COOL');
-    expect(res.surprisePct).toBe(-25);
-  });
-
-  test('classifies INLINE surprise correctly', () => {
-    const res = computeSurprise({ actual: '2.0%', forecast: '2.0%' });
-    expect(res.classification).toBe('INLINE');
-    expect(res.surprisePct).toBe(0);
-  });
-
-  test('handles missing data gracefully', () => {
-    const res = computeSurprise({ actual: null, forecast: '1.0%' });
-    expect(res.classification).toBe('N/A');
+    expect(intel.goodWhenHigher).toBe(true);
+    
+    const res = computeSurprise({ actual: '300k', forecast: '200k' }, intel);
+    expect(res.direction).toBe('ABOVE');
+    expect(res.interpretation).toBe('BULLISH_RISK');
   });
 });

@@ -164,9 +164,17 @@ export function EconomicCalendarView() {
                     <div key={`${day.dateStr}-${hour}`} className={`border-r border-border p-1 relative group ${isToday ? 'bg-accent/[0.02]' : ''}`}>
                       <div className="flex flex-col gap-1.5 h-full">
                         {dayEvents.map((event) => {
-                          const surprise = computeSurprise(event);
                           const intel = getEventIntel(event);
+                          const surprise = computeSurprise(event, intel);
                           const isMajorSurprise = surprise.surprisePct && Math.abs(surprise.surprisePct) >= intel.surpriseThresholdPct;
+
+                          // Determine color based on interpretation
+                          let actualColor = 'text-text-secondary';
+                          if (surprise.interpretation === 'BULLISH_RISK' || surprise.interpretation === 'HAWKISH') {
+                            actualColor = 'text-positive';
+                          } else if (surprise.interpretation === 'BEARISH_RISK' || surprise.interpretation === 'DOVISH') {
+                            actualColor = 'text-negative';
+                          }
 
                           return (
                             <div 
@@ -204,10 +212,7 @@ export function EconomicCalendarView() {
                               {(event.actual || event.forecast) && (
                                 <div className="flex items-center gap-2 text-[9px] font-mono border-t border-black/10 pt-1 mt-1 opacity-80">
                                   {event.actual && (
-                                    <span className={
-                                      surprise.classification === 'HOT' ? 'text-negative' : 
-                                      surprise.classification === 'COOL' ? 'text-positive' : 'text-text-secondary'
-                                    }>
+                                    <span className={actualColor}>
                                       {event.actual}
                                     </span>
                                   )}

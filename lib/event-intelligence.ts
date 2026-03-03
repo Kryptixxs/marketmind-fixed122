@@ -20,32 +20,74 @@ export interface EventIntel {
   scenarios: ScenarioRow[];
   impactedAssets: AssetImpact[];
   surpriseThresholdPct: number;
+  goodWhenHigher?: boolean;
+  hawkishWhenHigher?: boolean;
 }
 
-export function computeSurprise(event: { actual: string | null, forecast: string | null }) {
-  if (!event.actual || !event.forecast) return { classification: 'N/A' as const };
+export type SurpriseResult = {
+  surprisePct?: number;
+  classification: 'HOT' | 'COOL' | 'INLINE' | 'N/A';
+  direction: 'ABOVE' | 'BELOW' | 'INLINE' | 'N/A';
+  interpretation: 'BULLISH_RISK' | 'BEARISH_RISK' | 'HAWKISH' | 'DOVISH' | 'NEUTRAL' | 'N/A';
+};
+
+export function computeSurprise(
+  event: { actual: string | null, forecast: string | null },
+  intel?: EventIntel
+): SurpriseResult {
+  if (!event.actual || !event.forecast) {
+    return { classification: 'N/A', direction: 'N/A', interpretation: 'N/A' };
+  }
   
   const act = parseFloat(event.actual.replace(/[^0-9.-]/g, ''));
   const est = parseFloat(event.forecast.replace(/[^0-9.-]/g, ''));
   
-  if (isNaN(act) || isNaN(est) || est === 0) return { classification: 'N/A' as const };
+  if (isNaN(act) || isNaN(est) || est === 0) {
+    return { classification: 'N/A', direction: 'N/A', interpretation: 'N/A' };
+  }
   
   const diff = act - est;
   const surprisePct = (diff / Math.abs(est)) * 100;
   
   let classification: 'HOT' | 'COOL' | 'INLINE' = 'INLINE';
-  if (Math.abs(surprisePct) < 0.5) classification = 'INLINE';
-  else if (surprisePct > 0) classification = 'HOT';
-  else classification = 'COOL';
+  let direction: 'ABOVE' | 'BELOW' | 'INLINE' = 'INLINE';
   
-  return { surprisePct, classification };
+  if (Math.abs(surprisePct) < 0.1) {
+    classification = 'INLINE';
+    direction = 'INLINE';
+  } else if (surprisePct > 0) {
+    classification = 'HOT';
+    direction = 'ABOVE';
+  } else {
+    classification = 'COOL';
+    direction = 'BELOW';
+  }
+
+  // Determine Interpretation based on polarity
+  let interpretation: SurpriseResult['interpretation'] = 'NEUTRAL';
+  
+  if (direction === 'INLINE') {
+    interpretation = 'NEUTRAL';
+  } else if (intel?.hawkishWhenHigher !== undefined) {
+    if (direction === 'ABOVE') interpretation = intel.hawkishWhenHigher ? 'HAWKISH' : 'DOVISH';
+    else interpretation = intel.hawkishWhenHigher ? 'DOVISH' : 'HAWKISH';
+  } else if (intel?.goodWhenHigher !== undefined) {
+    if (direction === 'ABOVE') interpretation = intel.goodWhenHigher ? 'BULLISH_RISK' : 'BEARISH_RISK';
+    else interpretation = intel.goodWhenHigher ? 'BEARISH_RISK' : 'BULLISH_RISK';
+  } else {
+    // Default fallback: Higher is Bullish
+    interpretation = direction === 'ABOVE' ? 'BULLISH_RISK' : 'BEARISH_RISK';
+  }
+  
+  return { surprisePct, classification, direction, interpretation };
 }
 
 const RULES: Record<string, Partial<EventIntel>> = {
   "CPI": {
     volatility: 'High',
     macroImpact: 10,
-    logic: "Core inflation gauge. Higher than forecast is Bullish for USD (rate hike expectations) and Bearish for Equities/Bonds.",
+    hawkishWhenHigher: true,
+    logic: "Core inflation gauge. Higher than forecast is Hawkish for USD (rate hike expectations) and Bearish for Equities/Bonds.",
     surpriseThresholdPct: 5,
     impactedAssets: [
       { symbol: 'DXY', direction: 'UP', weight: 10, description: 'USD strength on hawkish Fed pivot.' },
@@ -61,6 +103,7 @@ const RULES: Record<string, Partial<EventIntel>> = {
   "Nonfarm Payrolls": {
     volatility: 'Extreme',
     macroImpact: 10,
+    goodWhenHigher: true,
     logic: "Primary labor market health indicator. Stronger NFP suggests a resilient economy, supporting USD but potentially delaying rate cuts.",
     surpriseThresholdPct: 15,
     impactedAssets: [
@@ -91,6 +134,7 @@ const RULES: Record<string, Partial<EventIntel>> = {
   "GDP": {
     volatility: 'Moderate',
     macroImpact: 8,
+    goodWhenHigher: true,
     logic: "Broadest measure of economic activity. Strong growth supports the currency but may fuel inflation concerns.",
     surpriseThresholdPct: 10,
     impactedAssets: [
@@ -106,6 +150,7 @@ const RULES: Record<string, Partial<EventIntel>> = {
   "Jobless Claims": {
     volatility: 'Moderate',
     macroImpact: 6,
+    goodWhenHigher: false, // Higher claims = Bad for economy
     logic: "High-frequency labor market data. Rising claims signal cooling, which markets currently view as 'good news' for rate cuts.",
     surpriseThresholdPct: 5,
     impactedAssets: [
@@ -132,7 +177,9 @@ export function getEventIntel(event: EconomicEvent): EventIntel {
       logic: rule.logic || '',
       scenarios: rule.scenarios || [],
       impactedAssets: rule.impactedAssets || [],
-      surpriseThresholdPct: rule.surpriseThresholdPct || 10
+      surpriseThresholdPct: rule.surpriseThresholdPct || 10,
+      goodWhenHigher: rule.goodWhenHigher,
+      hawkishWhenHigher: rule.hawkishWhenHigher
     };
   }
 
@@ -150,6 +197,7 @@ export function getEventIntel(event: EconomicEvent): EventIntel {
     impactedAssets: [
       { symbol: event.currency, direction: 'UP', weight: 8, description: `Primary impact on ${event.currency} crosses.` }
     ],
-    surpriseThresholdPct: 10
+    surpriseThresholdPct: 10,
+    goodWhenHigher: true // Default assumption
   };
 }
