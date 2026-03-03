@@ -39,6 +39,7 @@ export default function TerminalPage() {
   
   // Chart State
   const [chartMode, setChartMode] = useState<'standard' | 'advanced'>('standard');
+  const [timeframe, setTimeframe] = useState('6m');
   const [historicalData, setHistoricalData] = useState<Bar[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   
@@ -48,11 +49,11 @@ export default function TerminalPage() {
   const lastAnalyzedRef = useRef<string | null>(null);
 
   // Fetch historical data for the standard chart
-  const loadHistory = useCallback(async (sym: string) => {
+  const loadHistory = useCallback(async (sym: string, range: string) => {
     if (!sym) return;
     setLoadingHistory(true);
     try {
-      const bars = await fetchHistoricalBars(sym, '6m');
+      const bars = await fetchHistoricalBars(sym, range);
       setHistoricalData(bars);
     } catch (err) {
       console.error("Failed to load history", err);
@@ -62,8 +63,8 @@ export default function TerminalPage() {
   }, []);
 
   useEffect(() => {
-    loadHistory(activeSymbol);
-  }, [activeSymbol, loadHistory]);
+    loadHistory(activeSymbol, timeframe);
+  }, [activeSymbol, timeframe, loadHistory]);
 
   useEffect(() => {
     const data = marketData[activeSymbol];
@@ -165,7 +166,7 @@ export default function TerminalPage() {
                         <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{meta.label}</span>
                       </div>
                       <div className="flex flex-col items-end">
-                        <span className="text-[10px] font-mono font-bold text-text-primary">
+                        <span className="text-[10px] font-mono font-bold text-text-primary mono-num">
                           {data ? formatPrice(data.price, meta.type) : '---'}
                         </span>
                         <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
@@ -225,19 +226,19 @@ export default function TerminalPage() {
               <div className="p-2 grid grid-cols-2 gap-x-4 gap-y-2 h-full content-start">
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">VIX Index</div>
-                  <div className={`text-sm font-bold ${vix ? (vix.change >= 0 ? 'text-negative' : 'text-positive') : 'text-text-primary'}`}>
+                  <div className={`text-sm font-bold mono-num ${vix ? (vix.change >= 0 ? 'text-negative' : 'text-positive') : 'text-text-primary'}`}>
                     {vix ? formatPrice(vix.price, 'index') : '---'}
                   </div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">DXY Dollar</div>
-                  <div className={`text-sm font-bold ${dxy ? (dxy.change >= 0 ? 'text-positive' : 'text-negative') : 'text-text-primary'}`}>
+                  <div className={`text-sm font-bold mono-num ${dxy ? (dxy.change >= 0 ? 'text-positive' : 'text-negative') : 'text-text-primary'}`}>
                     {dxy ? formatPrice(dxy.price, 'index') : '---'}
                   </div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">10Y Yield</div>
-                  <div className={`text-sm font-bold ${tnx ? (tnx.change >= 0 ? 'text-negative' : 'text-positive') : 'text-text-primary'}`}>
+                  <div className={`text-sm font-bold mono-num ${tnx ? (tnx.change >= 0 ? 'text-negative' : 'text-positive') : 'text-text-primary'}`}>
                     {tnx ? `${formatPrice(tnx.price / 10, 'index')}%` : '---'}
                   </div>
                 </div>
@@ -265,6 +266,17 @@ export default function TerminalPage() {
             actions={
               <div className="flex items-center gap-3">
                 <div className="flex bg-surface border border-border rounded p-0.5">
+                  {['1m', '6m', '1y', '5y'].map(tf => (
+                    <button 
+                      key={tf}
+                      onClick={() => setTimeframe(tf)}
+                      className={`px-1.5 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${timeframe === tf ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
+                    >
+                      {tf}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex bg-surface border border-border rounded p-0.5">
                   <button 
                     onClick={() => setChartMode('standard')}
                     className={`px-2 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${chartMode === 'standard' ? 'bg-accent text-accent-text' : 'text-text-tertiary hover:text-text-primary'}`}
@@ -291,8 +303,13 @@ export default function TerminalPage() {
                   <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
                     <Loader2 size={24} className="animate-spin text-accent" />
                   </div>
-                ) : (
+                ) : historicalData.length > 0 ? (
                   <TradingChart data={historicalData} />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-30">
+                    <LineChart size={32} />
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Select Asset to Load Chart</span>
+                  </div>
                 )
               ) : (
                 <TradingViewChart symbol={activeSymbol} />
