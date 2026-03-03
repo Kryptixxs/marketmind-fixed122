@@ -8,24 +8,22 @@ export async function generateAIJSON(prompt: string, fallback: any = null) {
     return fallback;
   }
 
-  const ai = new GoogleGenAI({ apiKey });
-
   try {
+    const ai = new GoogleGenAI({ apiKey });
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-        temperature: 0.2 // Low temperature for more analytical/deterministic outputs
-      }
+      // Force the AI to output raw JSON without markdown wrappers
+      contents: prompt + "\n\nCRITICAL INSTRUCTION: You must return ONLY raw, valid JSON. Do not wrap the response in ```json or ``` tags. No markdown. Just the raw JSON object.",
     });
 
-    const text = response.text;
-    if (!text) return fallback;
+    let text = response.text || "";
+    
+    // Aggressively clean any markdown that the AI stubbornly includes
+    text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
 
     return JSON.parse(text);
   } catch (error) {
-    console.error("[AI_UTILS_ERROR]:", error);
+    console.error("[AI_UTILS_ERROR] Parsing failed. The AI likely returned malformed data:", error);
     return fallback;
   }
 }
