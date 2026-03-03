@@ -21,15 +21,16 @@ const POLY_MAP: Record<string, string> = {
   'NAS100': 'I:NDX',
   'SPX500': 'I:SPX',
   'US30': 'I:DJI',
-  'CRUDE': 'USO',     // Oil ETF proxy (Futures require specific contract months on Polygon)
-  'GOLD': 'GLD',      // Gold ETF proxy
+  'CRUDE': 'USO',     // Oil ETF proxy for pricing
+  'GOLD': 'GLD',      // Gold ETF proxy for pricing
   'EURUSD': 'C:EURUSD',
   'BTCUSD': 'X:BTCUSD',
+  'ETHUSD': 'X:ETHUSD',
   'AAPL': 'AAPL',
   'TSLA': 'TSLA',
   'NVDA': 'NVDA',
   'VIX': 'I:VIX',
-  'DXY': 'UUP',
+  'DXY': 'UUP',       // USD Index proxy
 };
 
 export async function fetchMarketDataBatch(symbols: string[], interval: string = '15m'): Promise<(MarketData | null)[]> {
@@ -43,7 +44,7 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
   if (interval === '60m' || interval === '1h') { multiplier = 1; timespan = 'hour'; }
   if (interval === '1d' || interval === '1D') { multiplier = 1; timespan = 'day'; }
 
-  // Look back 5 days to ensure we have enough data to calculate changes and render charts (bypasses weekends)
+  // Look back 5 days to ensure we have enough data to calculate changes and render charts
   const toDate = new Date();
   const fromDate = new Date();
   fromDate.setDate(toDate.getDate() - 5);
@@ -72,15 +73,15 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
 
         const quotes = data.results;
         const currentCandle = quotes[quotes.length - 1];
-        const currentPrice = currentCandle.c;
+        let currentPrice = currentCandle.c;
 
-        // Calculate change against a candle roughly 24 hours ago (or earliest available)
+        // Calculate change against a candle roughly 24 hours ago
         const lookbackBars = Math.floor((24 * 60) / multiplier);
         const prevIndex = Math.max(0, quotes.length - lookbackBars);
         const prevClose = quotes[prevIndex].c;
         
-        const change = currentPrice - prevClose;
-        const changePercent = (change / prevClose) * 100;
+        let change = currentPrice - prevClose;
+        let changePercent = (change / prevClose) * 100;
 
         const history: OHLCV[] = quotes.map((q: any) => ({
           timestamp: q.t,

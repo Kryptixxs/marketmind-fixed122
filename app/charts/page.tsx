@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 
-const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'CRUDE', 'GOLD', 'AAPL', 'NVDA', 'TSLA', 'BTCUSD'];
+const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'AAPL', 'NVDA', 'BTCUSD'];
 
 const TIMEFRAMES = [
   { label: '1M', yf: '1m', tv: '1' },
@@ -29,9 +29,9 @@ const TIMEFRAMES = [
 ];
 
 const TV_WIDGET_MAP: Record<string, { tv: string, label: string }> = {
-  'NAS100': { tv: 'NASDAQ:NDX', label: 'Nasdaq 100' },
-  'SPX500': { tv: 'SP:SPX', label: 'S&P 500' },
-  'US30': { tv: 'DJ:DJI', label: 'Dow Jones' },
+  'NAS100': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
+  'SPX500': { tv: 'BLACKBULL:SPX500', label: 'S&P 500' },
+  'US30': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones' },
   'CRUDE': { tv: 'TVC:USOIL', label: 'Crude Oil' },
   'GOLD': { tv: 'TVC:GOLD', label: 'Gold' },
   'EURUSD': { tv: 'FX:EURUSD', label: 'EUR/USD' },
@@ -51,14 +51,16 @@ export default function ChartsPage() {
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const saved = localStorage.getItem('vantage_charts_watchlist_v3');
+    const saved = localStorage.getItem('vantage_charts_watchlist_v4');
     if (saved) {
       try { setWatchlist(JSON.parse(saved)); } catch (e) {}
+    } else {
+      localStorage.setItem('vantage_charts_watchlist_v4', JSON.stringify(DEFAULT_WATCHLIST));
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('vantage_charts_watchlist_v3', JSON.stringify(watchlist));
+    localStorage.setItem('vantage_charts_watchlist_v4', JSON.stringify(watchlist));
   }, [watchlist]);
 
   const { data: marketData, error: streamError } = useMarketData(watchlist, timeframe.yf);
@@ -126,7 +128,7 @@ export default function ChartsPage() {
                     ref={searchInputRef}
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Enter ticker (e.g. AAPL, BTCUSD)"
+                    placeholder="Enter ticker (e.g. NAS100, BTCUSD)"
                     className="flex-1 bg-transparent border-none outline-none text-xs py-1.5 text-text-primary uppercase"
                   />
                 </form>

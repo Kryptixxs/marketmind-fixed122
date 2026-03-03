@@ -29,17 +29,18 @@ import {
 import { useRouter, usePathname } from "next/navigation"
 
 const TOP_SYMBOLS = [
-  { sym: 'NQ=F', label: 'Nasdaq 100 Futures', category: 'Indices' },
-  { sym: 'ES=F', label: 'S&P 500 Futures', category: 'Indices' },
-  { sym: 'CL=F', label: 'Crude Oil Futures', category: 'Commodities' },
-  { sym: 'GC=F', label: 'Gold Futures', category: 'Commodities' },
+  { sym: 'NAS100', label: 'Nasdaq 100', category: 'Indices' },
+  { sym: 'SPX500', label: 'S&P 500', category: 'Indices' },
+  { sym: 'US30', label: 'Dow Jones', category: 'Indices' },
+  { sym: 'CRUDE', label: 'Crude Oil', category: 'Commodities' },
+  { sym: 'GOLD', label: 'Gold', category: 'Commodities' },
   { sym: 'AAPL', label: 'Apple Inc.', category: 'Equities' },
   { sym: 'MSFT', label: 'Microsoft Corp.', category: 'Equities' },
   { sym: 'NVDA', label: 'NVIDIA Corp.', category: 'Equities' },
   { sym: 'TSLA', label: 'Tesla Inc.', category: 'Equities' },
-  { sym: 'BTC-USD', label: 'Bitcoin', category: 'Crypto' },
-  { sym: 'ETH-USD', label: 'Ethereum', category: 'Crypto' },
-  { sym: 'EURUSD=X', label: 'EUR/USD', category: 'Forex' },
+  { sym: 'BTCUSD', label: 'Bitcoin', category: 'Crypto' },
+  { sym: 'ETHUSD', label: 'Ethereum', category: 'Crypto' },
+  { sym: 'EURUSD', label: 'EUR/USD', category: 'Forex' },
 ];
 
 export function CommandPalette() {
