@@ -2,29 +2,31 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  ChevronLeft, ChevronRight, Filter, Download
+  ChevronLeft, ChevronRight, Download
 } from 'lucide-react';
 import { fetchEconomicCalendarBatch } from '@/app/actions/fetchEconomicCalendar';
 import { EconomicEvent } from '@/lib/types';
 import { getFullWeek, toISODateString } from '@/lib/date-utils';
 import { EventDetailModal } from './EventDetailModal';
+import { computeSurprise, getEventIntel } from '@/lib/event-intelligence';
 
 const IMPACT_COLORS: Record<string, string> = {
-  High: 'border-l-2 border-l-negative bg-negative/5',
-  Medium: 'border-l-2 border-l-warning bg-warning/5',
-  Low: 'border-l-2 border-l-positive bg-positive/5'
+  High: 'border-l-4 border-l-red-500 bg-red-500/10',
+  Medium: 'border-l-4 border-l-orange-500 bg-orange-500/10',
+  Low: 'border-l-4 border-l-green-500 bg-green-500/10'
 };
 
 const HOURS = [
-  '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00',
-  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00',
+  '00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', 
+  '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', 
   '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'
 ];
 
 function formatHourLabel(h: string) {
   const hour = parseInt(h.split(':')[0]);
-  if (hour === 0) return '00:00';
-  return `${hour.toString().padStart(2, '0')}:00`;
+  if (hour === 0) return '12 AM';
+  if (hour === 12) return '12 PM';
+  return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
 }
 
 export function EconomicCalendarView() {
@@ -33,11 +35,6 @@ export function EconomicCalendarView() {
   const [loading, setLoading] = useState(true);
   const [showLowImpact, setShowLowImpact] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<EconomicEvent | null>(null);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   const weekDates = useMemo(() => {
     const today = new Date();
@@ -87,60 +84,51 @@ export function EconomicCalendarView() {
     return grid;
   }, [eventsData, weekDates, showLowImpact]);
 
-  const todayStr = useMemo(() => mounted ? toISODateString(new Date()) : '', [mounted]);
-
   return (
-    <div className="flex flex-col h-full bg-background border border-border">
+    <div className="flex flex-col h-full bg-background">
       {/* Header Toolbar */}
-      <div className="flex items-center justify-between p-2 border-b border-border bg-surface shrink-0">
+      <div className="flex items-center justify-between p-3 border-b border-border bg-surface shrink-0">
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1 bg-surface-highlight rounded-sm p-0.5 border border-border">
-            <button onClick={() => setWeekOffset(w => w - 1)} className="p-1 hover:bg-surface rounded-sm text-text-secondary hover:text-text-primary"><ChevronLeft size={14}/></button>
-            <span className="px-2 font-mono font-bold text-[10px] min-w-[120px] text-center uppercase">
-              {weekDates[0]?.dateStr} // {weekDates[6]?.dateStr.slice(5)}
+          <div className="flex items-center gap-1 bg-surface-highlight rounded-lg p-0.5 border border-border">
+            <button onClick={() => setWeekOffset(w => w - 1)} className="p-1.5 hover:bg-surface rounded-md text-text-secondary hover:text-text-primary"><ChevronLeft size={16}/></button>
+            <span className="px-3 font-mono font-bold text-sm min-w-[140px] text-center">
+              {weekDates[0]?.dateStr} - {weekDates[6]?.dateStr.slice(5)}
             </span>
-            <button onClick={() => setWeekOffset(w => w + 1)} className="p-1 hover:bg-surface rounded-sm text-text-secondary hover:text-text-primary"><ChevronRight size={14}/></button>
+            <button onClick={() => setWeekOffset(w => w + 1)} className="p-1.5 hover:bg-surface rounded-md text-text-secondary hover:text-text-primary"><ChevronRight size={16}/></button>
           </div>
           
           <div className="flex items-center gap-2">
-            <button
+            <button 
               onClick={() => setShowLowImpact(!showLowImpact)}
-              className={`px-2 py-1 rounded-sm text-[9px] font-bold border transition-colors uppercase ${showLowImpact ? 'bg-surface-highlight border-border text-text-primary' : 'bg-transparent border-transparent text-text-tertiary hover:text-text-secondary'}`}
+              className={`px-3 py-1.5 rounded-md text-xs font-bold border transition-colors ${showLowImpact ? 'bg-surface-highlight border-border text-text-primary' : 'bg-transparent border-transparent text-text-tertiary hover:text-text-secondary'}`}
             >
               {showLowImpact ? 'Hiding Low Impact' : 'Show All'}
             </button>
-            <span className="text-[9px] bg-surface-highlight px-2 py-0.5 rounded-sm text-text-secondary border border-border flex items-center gap-1 font-mono">
-              <span className="w-1 h-1 rounded-full bg-positive animate-pulse"></span>
-              EST_FEED_ACTIVE
-            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-[9px] font-mono text-text-tertiary uppercase">Terminal v4.0.2</span>
-          <button className="p-1 text-text-tertiary hover:text-text-primary">
-            <Download size={14} />
-          </button>
-        </div>
+        <button className="p-2 text-text-tertiary hover:text-text-primary">
+          <Download size={16} />
+        </button>
       </div>
 
       {/* Calendar Grid */}
       <div className="flex-1 overflow-auto custom-scrollbar bg-background relative">
-        <div className="min-w-[1200px]">
+        <div className="min-w-[1000px]">
           
           {/* Header Row (Days) */}
-          <div className="grid grid-cols-[50px_repeat(7,1fr)] border-b border-border sticky top-0 bg-surface/95 backdrop-blur z-20">
-            <div className="p-2 border-r border-border text-[9px] text-text-tertiary font-bold flex items-end justify-center uppercase">
+          <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-border sticky top-0 bg-surface/95 backdrop-blur z-20">
+            <div className="p-2 border-r border-border text-[10px] text-text-tertiary font-bold flex items-end justify-center">
               TIME
             </div>
             {weekDates.map(day => {
-               const isToday = day.dateStr === todayStr;
+               const isToday = day.dateStr === toISODateString(new Date());
                return (
                  <div key={day.dateStr} className={`p-2 border-r border-border text-center ${isToday ? 'bg-accent/5' : ''}`}>
-                   <div className={`text-[9px] uppercase font-bold mb-0.5 ${isToday ? 'text-accent' : 'text-text-tertiary'}`}>
+                   <div className={`text-[10px] uppercase font-bold mb-1 ${isToday ? 'text-accent' : 'text-text-tertiary'}`}>
                      {day.dayName}
                    </div>
-                   <div className={`text-xs font-mono font-bold ${isToday ? 'text-text-primary' : 'text-text-secondary'}`}>
+                   <div className={`text-sm font-bold ${isToday ? 'text-text-primary' : 'text-text-secondary'}`}>
                      {day.dayNum}
                    </div>
                  </div>
@@ -149,73 +137,76 @@ export function EconomicCalendarView() {
           </div>
 
           {/* Body Rows (Hours) */}
-          <div className="divide-y divide-border/50">
+          <div className="divide-y divide-border">
             {HOURS.map(hour => (
-              <div key={hour} className="grid grid-cols-[50px_repeat(7,1fr)] min-h-[60px]">
-                <div className="border-r border-border p-1 text-[9px] font-mono font-bold text-text-tertiary text-center sticky left-0 bg-background z-10">
-                  <span className="block bg-background px-1">{formatHourLabel(hour)}</span>
+              <div key={hour} className="grid grid-cols-[60px_repeat(7,1fr)] min-h-[80px]">
+                <div className="border-r border-border p-2 text-[10px] font-bold text-text-tertiary text-center sticky left-0 bg-background z-10">
+                  <span className="-mt-3 block bg-background px-1">{formatHourLabel(hour)}</span>
                 </div>
 
                 {weekDates.map(day => {
                   const dayEvents = schedule[day.dateStr]?.[hour] || [];
-                  const isToday = day.dateStr === todayStr;
+                  const isToday = day.dateStr === toISODateString(new Date());
                   
                   return (
-                    <div key={`${day.dateStr}-${hour}`} className={`border-r border-border/50 p-0.5 relative group ${isToday ? 'bg-accent/[0.01]' : ''}`}>
+                    <div key={`${day.dateStr}-${hour}`} className={`border-r border-border p-1 relative group ${isToday ? 'bg-accent/[0.02]' : ''}`}>
+                      <div className="flex flex-col gap-1.5 h-full">
+                        {dayEvents.map((event) => {
+                          const surprise = computeSurprise(event);
+                          const intel = getEventIntel(event);
+                          const isMajorSurprise = surprise.surprisePct && Math.abs(surprise.surprisePct) >= intel.surpriseThresholdPct;
 
-                      <div className="flex flex-col gap-0.5 h-full">
-                        {dayEvents.map((event) => (
-                          <div
-                            key={event.id}
-                            onClick={() => setSelectedEvent(event)}
-                            className={`
-                              relative p-1 rounded-sm bg-surface border border-border/30 shadow-sm hover:border-accent/50 hover:bg-surface-highlight transition-all cursor-pointer
-                              ${IMPACT_COLORS[event.impact] || IMPACT_COLORS.Low}
-                            `}
-                          >
-                            <div className="flex items-center justify-between gap-1 mb-0.5">
-                              <div className="flex items-center gap-1">
-                                {event.country && (
-                                  <img
-                                    src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`}
-                                    alt={event.country}
-                                    className="w-2.5 h-1.5 object-cover rounded-[1px] opacity-60"
-                                    onError={(e) => e.currentTarget.style.display = 'none'}
-                                  />
-                                )}
-                                <span className="text-[8px] font-mono text-text-tertiary leading-none">
-                                  {event.time}
-                                </span>
-                              </div>
-                              <span className={`text-[7px] font-bold uppercase px-1 rounded-[1px] ${
-                                event.impact === 'High' ? 'text-negative' :
-                                event.impact === 'Medium' ? 'text-warning' : 'text-positive'
-                              }`}>
-                                {event.impact.slice(0, 1)}
-                              </span>
-                            </div>
-                            
-                            <div className="text-[9px] font-bold leading-tight text-text-primary line-clamp-1 mb-0.5 uppercase tracking-tighter">
-                              {event.title}
-                            </div>
-
-                            {(event.actual || event.forecast) && (
-                              <div className="flex items-center gap-1.5 text-[8px] font-mono border-t border-border/20 pt-0.5 mt-0.5">
-                                {event.actual && (
-                                  <span className={
-                                    event.forecast && parseFloat(event.actual) > parseFloat(event.forecast) ? 'text-positive' :
-                                    event.forecast && parseFloat(event.actual) < parseFloat(event.forecast) ? 'text-negative' : 'text-text-secondary'
-                                  }>
-                                    {event.actual}
+                          return (
+                            <div 
+                              key={event.id}
+                              onClick={() => setSelectedEvent(event)}
+                              className={`
+                                relative p-1.5 rounded bg-surface border border-border/50 shadow-sm hover:border-accent/50 hover:bg-surface-highlight transition-all cursor-pointer
+                                ${IMPACT_COLORS[event.impact] || IMPACT_COLORS.Low}
+                                ${isMajorSurprise ? 'ring-1 ring-accent ring-offset-1 ring-offset-background' : ''}
+                              `}
+                            >
+                              <div className="flex items-center justify-between gap-2 mb-1">
+                                <div className="flex items-center gap-1.5">
+                                  {event.country && (
+                                    <img 
+                                      src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`}
+                                      alt={event.country}
+                                      className="w-3 h-2 object-cover rounded-[1px] opacity-80"
+                                      onError={(e) => e.currentTarget.style.display = 'none'}
+                                    />
+                                  )}
+                                  <span className="text-[9px] font-mono text-text-secondary leading-none">
+                                    {event.time}
                                   </span>
-                                )}
-                                {event.forecast && (
-                                  <span className="text-text-tertiary">/ {event.forecast}</span>
+                                </div>
+                                {isMajorSurprise && (
+                                  <span className="text-[8px] font-bold text-accent animate-pulse">SURPRISE</span>
                                 )}
                               </div>
-                            )}
-                          </div>
-                        ))}
+                              
+                              <div className="text-[10px] font-medium leading-tight text-text-primary line-clamp-2 mb-1">
+                                {event.title}
+                              </div>
+
+                              {(event.actual || event.forecast) && (
+                                <div className="flex items-center gap-2 text-[9px] font-mono border-t border-black/10 pt-1 mt-1 opacity-80">
+                                  {event.actual && (
+                                    <span className={
+                                      surprise.classification === 'HOT' ? 'text-negative' : 
+                                      surprise.classification === 'COOL' ? 'text-positive' : 'text-text-secondary'
+                                    }>
+                                      {event.actual}
+                                    </span>
+                                  )}
+                                  {event.forecast && (
+                                    <span className="text-text-tertiary">/ {event.forecast}</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
@@ -225,17 +216,6 @@ export function EconomicCalendarView() {
           </div>
         </div>
       </div>
-
-      {/* Detail Modal */}
-      {selectedEvent && (
-        <EventDetailModal
-          event={selectedEvent}
-          onClose={() => setSelectedEvent(null)}
-        />
-      )}
-    </div>
-  );
-}
 
       {/* Detail Modal */}
       {selectedEvent && (
