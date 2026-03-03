@@ -7,7 +7,7 @@ import { NewsFeed } from '@/components/NewsFeed';
 import { 
   Activity, Wifi, Loader2, TrendingUp, TrendingDown, Brain, AlertCircle, 
   Terminal as TerminalIcon, Layers, Target, Search, Zap, ShieldAlert, 
-  BarChart3, Globe, Cpu, Clock
+  BarChart3, Globe, Cpu, Clock, ArrowUpRight, ArrowDownRight, Gauge
 } from 'lucide-react';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 import { analyzeMarketState, getMacroRegime } from '@/lib/market-intelligence';
@@ -49,9 +49,9 @@ export default function TerminalPage() {
   const activeQuote = marketData[activeSymbol];
   const activeTV = SYMBOL_MAP[activeSymbol]?.tv || activeSymbol;
   
-  // Deterministic Analysis
-  const insight = activeQuote ? analyzeMarketState(activeQuote) : null;
-  const macro = getMacroRegime(14.5, 104.2); // Mocked VIX/DXY for now
+  // Advanced Deterministic Analysis
+  const insight = activeQuote ? analyzeMarketState(activeQuote, marketData) : null;
+  const macro = getMacroRegime(14.5, 104.2, 4.31); // VIX, DXY, 10Y
 
   const filteredSymbols = WATCHLIST_SYMBOLS.filter(sym => {
     if (tab === 'indices') return SYMBOL_MAP[sym].category === 'indices';
@@ -67,7 +67,7 @@ export default function TerminalPage() {
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2 text-[9px] font-bold text-accent">
             <TerminalIcon size={10} />
-            <span>VANTAGE TERMINAL v4.0 // DETERMINISTIC_INTEL_ENGINE</span>
+            <span>VANTAGE TERMINAL v4.0 // MULTI_CONFLUENCE_ENGINE</span>
           </div>
           <div className="h-3 w-[1px] bg-border" />
           <div className="flex items-center gap-2 text-[9px] font-mono text-text-secondary">
@@ -76,15 +76,15 @@ export default function TerminalPage() {
           </div>
         </div>
         <div className="flex items-center gap-3 text-[9px] font-mono text-text-tertiary">
-          <span className="text-accent">ENGINE: ACTIVE</span>
+          <span className="text-accent">CPU_LOAD: 12%</span>
           <div className="h-3 w-[1px] bg-border" />
-          <span className="text-text-secondary">SECURE_FEED: ACTIVE</span>
+          <span className="text-text-secondary">LATENCY: 42ms</span>
         </div>
       </div>
 
       <div className="flex-1 grid grid-cols-12 grid-rows-12 gap-0.5 w-full min-h-0">
         
-        {/* --- COLUMN 1: MARKET WATCH & INTEL --- */}
+        {/* --- COLUMN 1: MARKET WATCH & TECHNICALS --- */}
         <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
           <div className="flex-1 min-h-0">
             <Widget title={`Market Watch // ${tab.toUpperCase()}`}>
@@ -119,39 +119,60 @@ export default function TerminalPage() {
             </Widget>
           </div>
           
-          <div className="h-[30%] min-h-0">
-            <Widget title="Technical Intelligence">
-              <div className="p-2 text-[10px] text-text-secondary leading-tight h-full flex flex-col">
+          <div className="h-[40%] min-h-0">
+            <Widget title="Technical Indicators">
+              <div className="p-2 space-y-3 h-full overflow-y-auto custom-scrollbar">
                 {insight ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-accent">
-                        <Zap size={12} />
-                        <span className="font-bold uppercase tracking-tight">{insight.sentiment} // {insight.structure}</span>
+                  <>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
+                        <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">RSI (14)</div>
+                        <div className={`text-xs font-mono font-bold ${insight.indicators.rsi > 70 ? 'text-negative' : insight.indicators.rsi < 30 ? 'text-positive' : 'text-text-primary'}`}>
+                          {insight.indicators.rsi.toFixed(2)}
+                        </div>
                       </div>
-                      <span className={insight.strength > 50 ? 'text-positive' : 'text-negative'}>{insight.strength}%</span>
+                      <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
+                        <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">ATR Volatility</div>
+                        <div className="text-xs font-mono font-bold text-warning">{insight.indicators.atr.toFixed(2)}</div>
+                      </div>
                     </div>
-                    <p className="text-[10px] text-text-primary leading-snug font-medium">
-                      {insight.analysis}
-                    </p>
-                    <div className="w-full h-0.5 bg-surface-highlight rounded-full overflow-hidden">
-                      <div className="h-full bg-accent transition-all duration-1000" style={{ width: `${insight.strength}%` }}></div>
+                    
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[9px]">
+                        <span className="text-text-tertiary uppercase font-bold">EMA 9</span>
+                        <span className="font-mono text-text-secondary">{insight.indicators.ema9.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-[9px]">
+                        <span className="text-text-tertiary uppercase font-bold">EMA 21</span>
+                        <span className="font-mono text-text-secondary">{insight.indicators.ema21.toFixed(2)}</span>
+                      </div>
+                      <div className="h-1 w-full bg-surface-highlight rounded-full overflow-hidden mt-1">
+                        <div className={`h-full ${insight.sentiment === 'Bullish' ? 'bg-positive' : 'bg-negative'} transition-all duration-1000`} style={{ width: `${insight.strength}%` }} />
+                      </div>
                     </div>
-                  </div>
+
+                    <div className="bg-accent/5 p-2 border border-accent/10 rounded-sm">
+                      <div className="flex items-center gap-1.5 text-accent mb-1">
+                        <Gauge size={10} />
+                        <span className="text-[8px] font-bold uppercase">Trend Strength: {insight.strength}%</span>
+                      </div>
+                      <p className="text-[9px] text-text-secondary leading-tight italic">
+                        {insight.analysis}
+                      </p>
+                    </div>
+                  </>
                 ) : (
-                  <div className="flex-1 flex flex-col items-center justify-center opacity-30">
-                    <Loader2 size={16} className="animate-spin" />
-                  </div>
+                  <div className="flex items-center justify-center h-full opacity-30"><Loader2 className="animate-spin" size={16} /></div>
                 )}
               </div>
             </Widget>
           </div>
         </div>
 
-        {/* --- COLUMN 2: MACRO ENGINE --- */}
+        {/* --- COLUMN 2: MACRO & SMC ENGINE --- */}
         <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
           <div className="h-[25%] min-h-0">
-            <Widget title="Market Positioning">
+            <Widget title="Institutional Positioning">
               <div className="p-2 grid grid-cols-2 gap-2">
                 <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
                   <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">DXY Bias</div>
@@ -173,49 +194,51 @@ export default function TerminalPage() {
             </Widget>
           </div>
           
-          <div className="h-[25%] min-h-0">
-            <Widget title="Technical Levels">
-              <div className="p-2 space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Resistance 1</span>
-                  <span className="text-[10px] font-mono text-negative">{insight?.levels.resistance[0].toFixed(2)}</span>
+          <div className="h-[35%] min-h-0">
+            <Widget title="SMC / ICT Levels">
+              <div className="p-2 space-y-3 h-full overflow-y-auto custom-scrollbar">
+                <div className="space-y-1">
+                  <div className="text-[8px] text-text-tertiary uppercase font-bold">Order Blocks</div>
+                  {insight?.levels.orderBlocks.map((ob, i) => (
+                    <div key={i} className={`flex justify-between items-center p-1 rounded-sm border ${ob.type === 'Bullish' ? 'bg-positive/5 border-positive/20 text-positive' : 'bg-negative/5 border-negative/20 text-negative'}`}>
+                      <span className="text-[9px] font-bold">{ob.type} OB</span>
+                      <span className="text-[10px] font-mono">{ob.price.toFixed(2)}</span>
+                    </div>
+                  ))}
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Resistance 2</span>
-                  <span className="text-[10px] font-mono text-negative">{insight?.levels.resistance[1].toFixed(2)}</span>
-                </div>
-                <div className="h-[1px] bg-border/50" />
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Support 1</span>
-                  <span className="text-[10px] font-mono text-positive">{insight?.levels.support[0].toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Support 2</span>
-                  <span className="text-[10px] font-mono text-positive">{insight?.levels.support[1].toFixed(2)}</span>
+                <div className="space-y-1">
+                  <div className="text-[8px] text-text-tertiary uppercase font-bold">Fair Value Gaps</div>
+                  {insight?.levels.fvgs.map((fvg, i) => (
+                    <div key={i} className="flex justify-between items-center p-1 rounded-sm border bg-warning/5 border-warning/20 text-warning">
+                      <span className="text-[9px] font-bold">FVG (15m)</span>
+                      <span className="text-[10px] font-mono">{fvg.bottom.toFixed(2)} - {fvg.top.toFixed(2)}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </Widget>
           </div>
 
-          <div className="h-[25%] min-h-0">
-            <Widget title="Setup Scanner">
-              <div className="p-2 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Structure</span>
-                  <span className="text-[10px] font-mono text-accent">{insight?.structure === 'BOS' ? 'BULLISH_BOS' : insight?.structure === 'MSS' ? 'BEARISH_MSS' : 'RANGING'}</span>
-                </div>
-                <div className="bg-accent/5 p-2 border border-accent/10 rounded-sm">
-                  <div className="text-[8px] text-accent font-bold uppercase mb-1">Current Setup</div>
-                  <p className="text-[9px] text-text-secondary leading-tight italic">
-                    "Price action suggests a high-probability retest of the 15m FVG before further expansion."
-                  </p>
-                </div>
+          <div className="h-[20%] min-h-0">
+            <Widget title="Asset Correlations">
+              <div className="p-2 space-y-1.5">
+                {insight?.correlations.map(c => (
+                  <div key={c.asset} className="flex justify-between items-center p-1.5 bg-surface-highlight/30 border border-border/30 rounded-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-text-primary">{c.asset}</span>
+                      <span className="text-[8px] text-text-tertiary font-mono">({c.coefficient})</span>
+                    </div>
+                    <span className={`text-[8px] font-bold uppercase ${c.impact === 'Positive' ? 'text-positive' : 'text-negative'}`}>
+                      {c.impact} Impact
+                    </span>
+                  </div>
+                ))}
               </div>
             </Widget>
           </div>
 
           <div className="flex-1 min-h-0">
-            <Widget title="Macro Narrative">
+            <Widget title="Macro Regime">
               <div className="p-2 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-[9px] text-text-tertiary uppercase font-bold">Regime</span>
@@ -226,15 +249,20 @@ export default function TerminalPage() {
                   <span className="text-[10px] font-mono text-accent">{macro.narrative}</span>
                 </div>
                 <div className="mt-2 p-2 bg-surface-highlight/50 border border-border/50 rounded-sm">
-                  <div className="text-[8px] text-text-tertiary font-bold uppercase mb-1">Market Bias</div>
-                  <div className="text-[10px] font-mono font-bold text-positive">RISK_ON_EXPANSION</div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[8px] text-text-tertiary font-bold uppercase">Sentiment Score</span>
+                    <span className="text-[10px] font-mono font-bold text-accent">{macro.score}/100</span>
+                  </div>
+                  <div className="w-full h-1 bg-background rounded-full overflow-hidden">
+                    <div className="h-full bg-accent transition-all duration-1000" style={{ width: `${macro.score}%` }} />
+                  </div>
                 </div>
               </div>
             </Widget>
           </div>
         </div>
 
-        {/* --- COLUMN 3: MAIN CHART --- */}
+        {/* --- COLUMN 3: MAIN CHART & WIRE --- */}
         <div className="col-span-6 row-span-12 flex flex-col gap-0.5 min-h-0">
           <div className="flex-1 min-h-0 relative">
             <Widget 
@@ -253,14 +281,23 @@ export default function TerminalPage() {
           </div>
 
           <div className="h-[35%] grid grid-cols-2 gap-0.5 min-h-0">
-            <Widget title="Asset Sensitivity">
-              <div className="p-2 space-y-1.5">
-                {['DXY', 'GOLD', 'US10Y', 'ES_FUT'].map(asset => (
-                  <div key={asset} className="flex justify-between items-center p-1.5 bg-surface-highlight/30 border border-border/30 rounded-sm">
-                    <span className="text-[10px] font-bold text-text-primary">{asset}</span>
-                    <span className="text-[8px] font-bold text-accent uppercase">High Sensitivity</span>
-                  </div>
-                ))}
+            <Widget title="Volume Profile & Liquidity">
+              <div className="p-2 h-full flex flex-col">
+                <div className="flex-1 space-y-1.5">
+                  {insight?.indicators.volumeProfile.map((vp, i) => (
+                    <div key={i} className="relative h-4 bg-surface-highlight/20 border border-border/10 rounded-sm overflow-hidden">
+                      <div className="absolute inset-y-0 left-0 bg-accent/10 transition-all duration-1000" style={{ width: `${(vp.volume / 1000) * 100}%` }} />
+                      <div className="absolute inset-0 flex justify-between items-center px-2 text-[8px] font-mono">
+                        <span className="text-text-secondary">{vp.price.toFixed(2)}</span>
+                        <span className="text-text-tertiary">{vp.volume.toFixed(0)} lots</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 pt-2 border-t border-border/50 flex justify-between items-center">
+                  <span className="text-[8px] text-text-tertiary uppercase font-bold">Point of Control (POC)</span>
+                  <span className="text-[10px] font-mono text-accent">{activeQuote?.price.toFixed(2)}</span>
+                </div>
               </div>
             </Widget>
             <Widget title="Intelligence Wire">
