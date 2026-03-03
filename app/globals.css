@@ -41,6 +41,14 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ── Tabular Numbers ── */
+.mono-num, 
+table, 
+input[type="number"],
+[class*="font-mono"] {
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── Scrollbars ── */
 ::-webkit-scrollbar {
   width: 4px;
@@ -78,10 +86,6 @@ html, body {
   background: var(--color-background);
   overflow: auto;
   height: calc(100% - 24px);
-}
-
-.mono-num {
-  font-feature-settings: "tnum" on, "lnum" on;
 }
 
 .custom-scrollbar::-webkit-scrollbar {

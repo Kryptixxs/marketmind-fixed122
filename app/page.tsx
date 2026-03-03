@@ -8,7 +8,7 @@ import { NewsFeed } from '@/components/NewsFeed';
 import { 
   Activity, Wifi, Loader2, TrendingUp, TrendingDown, 
   Brain, AlertCircle, Plus, X, Search, LineChart, Zap,
-  Target, ShieldAlert, ArrowRight, Clock
+  Target, ShieldAlert, ArrowRight, Clock, MousePointer2
 } from 'lucide-react';
 import { analyzeMarket, MarketAnalysis } from '@/app/actions/analyzeMarket';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
@@ -17,8 +17,6 @@ import { useWatchlistStore } from '@/store/useWatchlistStore';
 import { fetchHistoricalBars, Bar } from '@/app/actions/fetchHistoricalBars';
 import { getInstrument, resolveYahooSymbol } from '@/lib/instruments';
 import { fetchGlobalVitals, GlobalVitals } from '@/app/actions/fetchGlobalVitals';
-
-const VITALS_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX'];
 
 const TIMEFRAMES = [
   { label: '1M', value: '1m' },
@@ -29,7 +27,7 @@ const TIMEFRAMES = [
 ];
 
 export default function TerminalPage() {
-  const { symbols, activeSymbol, setActiveSymbol, addSymbol, removeSymbol } = useWatchlistStore();
+  const { symbols, activeSymbol, setActiveSymbol, addSymbol } = useWatchlistStore();
   const [aiAnalysis, setAiAnalysis] = useState<MarketAnalysis | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,18 +38,12 @@ export default function TerminalPage() {
   const [interval, setInterval] = useState<'1m' | '5m' | '15m' | '1h' | '1d'>('1d');
   const [historicalData, setHistoricalData] = useState<Bar[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  
-  // Global Vitals State
   const [vitals, setVitals] = useState<GlobalVitals | null>(null);
   
-  const allRequiredYahooSymbols = [
-    ...symbols.map(id => resolveYahooSymbol(id))
-  ];
-  
+  const allRequiredYahooSymbols = symbols.map(id => resolveYahooSymbol(id));
   const { data: marketData } = useMarketData(allRequiredYahooSymbols);
   const lastAnalyzedRef = useRef<string | null>(null);
 
-  // Fetch Vitals
   const loadVitals = useCallback(async () => {
     const data = await fetchGlobalVitals();
     setVitals(data);
@@ -59,11 +51,10 @@ export default function TerminalPage() {
 
   useEffect(() => {
     loadVitals();
-    const intervalId = setInterval(loadVitals, 30000); // Poll every 30s
+    const intervalId = setInterval(loadVitals, 30000);
     return () => clearInterval(intervalId);
   }, [loadVitals]);
 
-  // Auto-select first symbol if none active
   useEffect(() => {
     if (!activeSymbol && symbols.length > 0) {
       setActiveSymbol(symbols[0]);
@@ -87,38 +78,6 @@ export default function TerminalPage() {
     loadHistory(activeSymbol, interval);
   }, [activeSymbol, interval, loadHistory]);
 
-  const calculateTechnicals = (bars: Bar[]) => {
-    if (bars.length < 20) return null;
-    const closes = bars.map(b => b.close);
-    const last20 = closes.slice(-20);
-    
-    let gains = 0, losses = 0;
-    for (let i = closes.length - 14; i < closes.length; i++) {
-      const diff = closes[i] - closes[i-1];
-      if (diff >= 0) gains += diff;
-      else losses -= diff;
-    }
-    const rsi = 100 - (100 / (1 + (gains / 14) / (losses / 14 || 1)));
-    
-    const ma20 = last20.reduce((a, b) => a + b, 0) / 20;
-    const prevMa20 = closes.slice(-21, -1).reduce((a, b) => a + b, 0) / 20;
-    const maSlope = (ma20 - prevMa20) / prevMa20;
-    
-    const trs = bars.slice(-14).map((b, i, arr) => {
-      if (i === 0) return b.high - b.low;
-      return Math.max(b.high - b.low, Math.abs(b.high - arr[i-1].close), Math.abs(b.low - arr[i-1].close));
-    });
-    const volatility = trs.reduce((a, b) => a + b, 0) / 14;
-
-    return {
-      rsi,
-      maSlope,
-      volatility,
-      high52w: Math.max(...closes),
-      low52w: Math.min(...closes)
-    };
-  };
-
   useEffect(() => {
     const yahooSym = resolveYahooSymbol(activeSymbol);
     const data = marketData[yahooSym];
@@ -131,12 +90,27 @@ export default function TerminalPage() {
       setAnalyzing(true);
       setError(null);
       try {
-        const technicals = calculateTechnicals(historicalData);
-        if (!technicals) return;
+        const closes = historicalData.map(b => b.close);
+        const last20 = closes.slice(-20);
+        let gains = 0, losses = 0;
+        for (let i = closes.length - 14; i < closes.length; i++) {
+          const diff = closes[i] - closes[i-1];
+          if (diff >= 0) gains += diff; else losses -= diff;
+        }
+        const rsi = 100 - (100 / (1 + (gains / 14) / (losses / 14 || 1)));
+        const ma20 = last20.reduce((a, b) => a + b, 0) / 20;
+        const prevMa20 = closes.slice(-21, -1).reduce((a, b) => a + b, 0) / 20;
+        const maSlope = (ma20 - prevMa20) / prevMa20;
+        const trs = historicalData.slice(-14).map((b, i, arr) => {
+          if (i === 0) return b.high - b.low;
+          return Math.max(b.high - b.low, Math.abs(b.high - arr[i-1].close), Math.abs(b.low - arr[i-1].close));
+        });
+        const volatility = trs.reduce((a, b) => a + b, 0) / 14;
 
         const inst = getInstrument(activeSymbol);
-        const label = inst?.label || activeSymbol;
-        const result = await analyzeMarket(activeSymbol, label, data.price, data.changePercent, technicals);
+        const result = await analyzeMarket(activeSymbol, inst?.label || activeSymbol, data.price, data.changePercent, {
+          rsi, maSlope, volatility, high52w: Math.max(...closes), low52w: Math.min(...closes)
+        });
         if (result) {
           setAiAnalysis(result);
           lastAnalyzedRef.current = analysisKey;
@@ -147,7 +121,6 @@ export default function TerminalPage() {
         setAnalyzing(false);
       }
     };
-
     runAnalysis();
   }, [activeSymbol, marketData, historicalData, interval]);
 
@@ -162,14 +135,15 @@ export default function TerminalPage() {
   };
 
   const activeInstrument = getInstrument(activeSymbol);
+  const activeQuote = marketData[resolveYahooSymbol(activeSymbol)];
 
   return (
     <div className="h-full w-full bg-background p-0.5 overflow-hidden">
       <div className="grid grid-cols-12 grid-rows-12 gap-0.5 h-full w-full">
         
         {/* --- COLUMN 1: MARKET WATCH & AI --- */}
-        <div className="col-span-3 row-span-12 flex flex-col gap-0.5">
-          <div className="flex-1 min-h-0">
+        <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
+          <div className="flex-1 min-h-[200px]">
             <Widget 
               title="Market Watch // Institutional"
               actions={
@@ -193,10 +167,9 @@ export default function TerminalPage() {
                 )}
                 {symbols.map(id => {
                   const inst = getInstrument(id);
-                  const yahooSym = resolveYahooSymbol(id);
-                  const data = marketData[yahooSym];
+                  const data = marketData[resolveYahooSymbol(id)];
                   const isPositive = data?.change >= 0;
-                  const isStale = data && (Date.now() - data.timestamp > 300000); // 5 mins
+                  const isStale = data && (Date.now() - data.timestamp > 300000);
                   
                   return (
                     <div 
@@ -207,21 +180,17 @@ export default function TerminalPage() {
                       <div className="flex flex-col">
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-[10px] text-text-primary">{id}</span>
-                          {isStale && (
-                            <span className="text-[7px] font-bold bg-warning/10 text-warning px-1 rounded border border-warning/20 flex items-center gap-0.5">
-                              <Clock size={6} /> DELAYED
-                            </span>
-                          )}
+                          {isStale && <span className="text-[7px] font-bold bg-warning/10 text-warning px-1 rounded border border-warning/20">DELAYED</span>}
                         </div>
                         <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{inst?.label || id}</span>
                       </div>
-                      <div className="flex flex-col items-end">
-                        <span className="text-[10px] font-mono font-bold text-text-primary mono-num">
+                      <div className="flex flex-col items-end text-right">
+                        <span className="text-[10px] font-mono font-bold text-text-primary">
                           {data ? formatPrice(data.price, inst?.assetType.toLowerCase() as any, inst?.decimals) : '---'}
                         </span>
-                        <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
-                          <span>{data ? formatPercent(data.changePercent) : '--'}</span>
-                        </div>
+                        <span className={`text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
+                          {data ? formatPercent(data.changePercent) : '--'}
+                        </span>
                       </div>
                     </div>
                   );
@@ -230,10 +199,25 @@ export default function TerminalPage() {
             </Widget>
           </div>
           
-          <div className="h-1/2 min-h-0">
+          <div className="h-1/2 min-h-[300px]">
             <Widget title="Market Intelligence // AI">
               <div className="p-3 text-[10px] text-text-secondary leading-tight h-full flex flex-col overflow-y-auto custom-scrollbar">
-                {analyzing ? (
+                {!activeSymbol ? (
+                  <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center p-4">
+                    <div className="w-12 h-12 rounded-full bg-surface-highlight flex items-center justify-center text-text-tertiary">
+                      <MousePointer2 size={24} />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs font-bold text-text-primary uppercase tracking-widest">Select Instrument</p>
+                      <p className="text-[9px] text-text-tertiary">Choose an asset from the watchlist to begin AI synthesis.</p>
+                    </div>
+                    <div className="flex flex-wrap justify-center gap-1.5 mt-2">
+                      {symbols.slice(0, 4).map(s => (
+                        <button key={s} onClick={() => setActiveSymbol(s)} className="px-2 py-1 bg-surface-highlight border border-border rounded text-[9px] font-bold hover:border-accent/50 transition-colors">{s}</button>
+                      ))}
+                    </div>
+                  </div>
+                ) : analyzing ? (
                   <div className="flex-1 flex flex-col items-center justify-center gap-2 opacity-50">
                     <Loader2 size={16} className="animate-spin text-accent" />
                     <span className="text-[8px] font-bold uppercase tracking-widest">Synthesizing Intelligence...</span>
@@ -250,12 +234,8 @@ export default function TerminalPage() {
                         <div className={`w-2 h-2 rounded-full ${aiAnalysis.bias === 'Bullish' ? 'bg-positive' : aiAnalysis.bias === 'Bearish' ? 'bg-negative' : 'bg-warning'}`} />
                         <span className="font-bold text-text-primary uppercase tracking-tight">{aiAnalysis.bias} Bias</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-text-tertiary uppercase font-bold">Conf:</span>
-                        <span className="text-accent font-bold">{aiAnalysis.confidence}%</span>
-                      </div>
+                      <span className="text-accent font-bold">{aiAnalysis.confidence}% CONF</span>
                     </div>
-
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
                         <Zap size={12} className="text-accent" />
@@ -263,38 +243,22 @@ export default function TerminalPage() {
                       </div>
                       <p className="text-text-primary leading-relaxed italic">"{aiAnalysis.thesis}"</p>
                     </div>
-
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-surface-highlight/50 p-2 rounded border border-border">
                         <span className="text-[8px] font-bold text-text-tertiary uppercase block mb-1">Resistance</span>
-                        <div className="space-y-1">
-                          {aiAnalysis.levels.resistance.map(l => <div key={l} className="font-mono text-negative font-bold">{formatPrice(l)}</div>)}
-                        </div>
+                        {aiAnalysis.levels.resistance.map(l => <div key={l} className="font-mono text-negative font-bold">{formatPrice(l)}</div>)}
                       </div>
                       <div className="bg-surface-highlight/50 p-2 rounded border border-border">
                         <span className="text-[8px] font-bold text-text-tertiary uppercase block mb-1">Support</span>
-                        <div className="space-y-1">
-                          {aiAnalysis.levels.support.map(l => <div key={l} className="font-mono text-positive font-bold">{formatPrice(l)}</div>)}
-                        </div>
+                        {aiAnalysis.levels.support.map(l => <div key={l} className="font-mono text-positive font-bold">{formatPrice(l)}</div>)}
                       </div>
                     </div>
-
                     <div className="space-y-2 pt-2 border-t border-border">
                       <div className="flex items-center gap-2 text-negative">
                         <ShieldAlert size={12} />
                         <span className="font-bold uppercase tracking-tighter">Invalidation</span>
                       </div>
                       <p className="text-text-secondary">{aiAnalysis.invalidation}</p>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <span className="text-[8px] font-bold text-text-tertiary uppercase block">Tactical Steps</span>
-                      {aiAnalysis.nextSteps.map((step, i) => (
-                        <div key={i} className="flex items-start gap-2 text-text-primary">
-                          <ArrowRight size={10} className="mt-0.5 text-accent shrink-0" />
-                          <span>{step}</span>
-                        </div>
-                      ))}
                     </div>
                   </div>
                 ) : (
@@ -309,8 +273,8 @@ export default function TerminalPage() {
         </div>
 
         {/* --- COLUMN 2: VITALS & NEWS --- */}
-        <div className="col-span-3 row-span-12 flex flex-col gap-0.5">
-          <div className="h-1/4 min-h-0">
+        <div className="col-span-3 row-span-12 flex flex-col gap-0.5 min-h-0">
+          <div className="h-1/4 min-h-[120px]">
             <Widget title="Global Vitals">
               <div className="p-2 grid grid-cols-2 gap-x-4 gap-y-2 h-full content-start">
                 <div>
@@ -321,15 +285,11 @@ export default function TerminalPage() {
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">DXY Dollar</div>
-                  <div className="text-sm font-bold mono-num text-text-primary">
-                    {vitals?.dxy ? vitals.dxy.toFixed(2) : '---'}
-                  </div>
+                  <div className="text-sm font-bold mono-num text-text-primary">{vitals?.dxy ? vitals.dxy.toFixed(2) : '---'}</div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">10Y Yield</div>
-                  <div className="text-sm font-bold mono-num text-text-primary">
-                    {vitals?.us10y ? `${vitals.us10y.toFixed(2)}%` : '---'}
-                  </div>
+                  <div className="text-sm font-bold mono-num text-text-primary">{vitals?.us10y ? `${vitals.us10y.toFixed(2)}%` : '---'}</div>
                 </div>
                 <div>
                   <div className="text-[8px] text-text-tertiary uppercase mb-0.5">Liquidity</div>
@@ -340,8 +300,7 @@ export default function TerminalPage() {
               </div>
             </Widget>
           </div>
-          
-          <div className="flex-1 min-h-0">
+          <div className="flex-1 min-h-[300px]">
             <Widget title="Intelligence Wire">
               <NewsFeed />
             </Widget>
@@ -349,57 +308,42 @@ export default function TerminalPage() {
         </div>
 
         {/* --- COLUMN 3: MAIN CHART --- */}
-        <div className="col-span-6 row-span-12 overflow-hidden relative">
+        <div className="col-span-6 row-span-12 overflow-hidden relative min-h-0">
           <Widget 
-            title={`${activeSymbol} • ${activeInstrument?.label || ''}`} 
+            title={`${activeSymbol} • ${activeInstrument?.label || 'Select Asset'}`} 
             actions={
               <div className="flex items-center gap-3">
                 <div className="flex bg-surface border border-border rounded p-0.5">
                   {TIMEFRAMES.map(tf => (
-                    <button 
-                      key={tf.value}
-                      onClick={() => setInterval(tf.value as any)}
-                      className={`px-1.5 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${interval === tf.value ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
-                    >
-                      {tf.label}
-                    </button>
+                    <button key={tf.value} onClick={() => setInterval(tf.value as any)} className={`px-1.5 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${interval === tf.value ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}>{tf.label}</button>
                   ))}
                 </div>
                 <div className="flex bg-surface border border-border rounded p-0.5">
-                  <button 
-                    onClick={() => setChartMode('standard')}
-                    className={`px-2 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${chartMode === 'standard' ? 'bg-accent text-accent-text' : 'text-text-tertiary hover:text-text-primary'}`}
-                  >
-                    Standard
-                  </button>
-                  {activeInstrument?.tradingViewSymbol && (
-                    <button 
-                      onClick={() => setChartMode('advanced')}
-                      className={`px-2 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${chartMode === 'advanced' ? 'bg-accent text-accent-text' : 'text-text-tertiary hover:text-text-primary'}`}
-                    >
-                      Advanced
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center gap-2 text-[8px]">
-                  <span className="text-positive flex items-center gap-1"><Wifi size={8}/> Live</span>
-                  <span className="px-1 py-0.5 bg-surface border border-border rounded text-text-secondary uppercase">{marketData[resolveYahooSymbol(activeSymbol)]?.marketState || 'REGULAR'}</span>
+                  <button onClick={() => setChartMode('standard')} className={`px-2 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${chartMode === 'standard' ? 'bg-accent text-accent-text' : 'text-text-tertiary hover:text-text-primary'}`}>Standard</button>
+                  {activeInstrument?.tradingViewSymbol && <button onClick={() => setChartMode('advanced')} className={`px-2 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${chartMode === 'advanced' ? 'bg-accent text-accent-text' : 'text-text-tertiary hover:text-text-primary'}`}>Advanced</button>}
                 </div>
               </div>
             }
           >
             <div className="w-full h-full bg-black relative">
+              {activeSymbol && activeQuote && (
+                <div className="absolute top-2 left-2 z-10 flex items-center gap-3 bg-black/60 backdrop-blur-md border border-border/50 px-2 py-1 rounded-sm pointer-events-none">
+                  <span className="text-xs font-bold text-text-primary">{formatPrice(activeQuote.price, activeInstrument?.assetType.toLowerCase() as any, activeInstrument?.decimals)}</span>
+                  <span className={`text-[10px] font-mono ${activeQuote.change >= 0 ? 'text-positive' : 'text-negative'}`}>{formatPercent(activeQuote.changePercent)}</span>
+                </div>
+              )}
               {chartMode === 'standard' ? (
                 loadingHistory ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-10">
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 z-10 gap-3">
                     <Loader2 size={24} className="animate-spin text-accent" />
+                    <span className="text-[9px] font-bold uppercase tracking-widest text-text-tertiary">Syncing OHLC Data...</span>
                   </div>
                 ) : historicalData.length > 0 ? (
                   <TradingChart data={historicalData} />
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-30">
                     <LineChart size={32} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Loading Chart Data...</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest">No Data Available</span>
                   </div>
                 )
               ) : (
