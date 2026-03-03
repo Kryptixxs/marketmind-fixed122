@@ -1,19 +1,40 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Zap, TrendingUp, TrendingDown, Loader2, Sparkles } from 'lucide-react';
+import { Zap, TrendingUp, TrendingDown, Loader2, Sparkles, Newspaper } from 'lucide-react';
 import { ConfluenceEngine } from '@/lib/confluence/engine';
 import { ConfluenceResult } from '@/lib/confluence/types';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
 import { useSettings } from '@/context/SettingsContext';
+import { fetchNews } from '@/app/actions/fetchNews';
 
 export function ConfluenceScanner({ symbol, timeframeLabel = '15m' }: { symbol: string, timeframeLabel?: string }) {
   const [bullish, setBullish] = useState<ConfluenceResult[]>([]);
   const [bearish, setBearish] = useState<ConfluenceResult[]>([]);
+  const [newsScore, setNewsScore] = useState(0);
   const { settings } = useSettings();
   
   const { data } = useMarketData([symbol]);
   const tick = data[symbol];
+
+  // Asynchronously fetch news to feed the engine
+  useEffect(() => {
+    const getNews = async () => {
+      const symName = symbol.split('=')[0].split('-')[0];
+      const news = await fetchNews('General');
+      let score = 0;
+      let count = 0;
+      news.forEach(n => {
+        if (n.title.toLowerCase().includes(symName.toLowerCase())) {
+          count++;
+          if (n.title.match(/soar|jump|buy|bull|beat|growth|high|up/i)) score += 40;
+          if (n.title.match(/plunge|drop|sell|bear|miss|shrink|low|down|risk/i)) score -= 40;
+        }
+      });
+      setNewsScore(count > 0 ? score / count : 0);
+    };
+    getNews();
+  }, [symbol]);
 
   useEffect(() => {
     if (!tick || !tick.history || tick.history.length < 50) return;
@@ -22,27 +43,25 @@ export function ConfluenceScanner({ symbol, timeframeLabel = '15m' }: { symbol: 
       symbol,
       interval: timeframeLabel,
       quotes: tick.history
-    });
+    }, newsScore); // Inject news score here
     
     const allActive = engine.calculateAll().filter(r => r.isActive);
     
     const bulls: ConfluenceResult[] = [];
     const bears: ConfluenceResult[] = [];
 
-    // Complex System: Dynamically weight scores based on user's Trading Strategy
     allActive.forEach(res => {
       let multiplier = 1.0;
       if (settings.strategy === 'Scalper' && ['MOMENTUM', 'VOLUME', 'CANDLE'].includes(res.category)) multiplier = 1.25;
       if (settings.strategy === 'Swing' && ['SMC', 'STRUCTURE', 'SR'].includes(res.category)) multiplier = 1.25;
       if (settings.strategy === 'Macro' && ['MA', 'FUNDAMENTAL', 'QUANT', 'INTERMARKET'].includes(res.category)) multiplier = 1.25;
 
-      // Apply multiplier and cap at 100
       res.score = Math.min(100, Math.round(res.score * multiplier));
 
       const str = (res.label + ' ' + res.description).toLowerCase();
-      if (str.match(/bearish|resistance|supply|overbought|death cross|distribution|short|high|top|down|reject|sell|below|target/)) {
+      if (str.match(/bearish|resistance|supply|overbought|death cross|distribution|short|high|top|down|reject|sell|below|target|headwind/)) {
         bears.push(res);
-      } else if (str.match(/bullish|support|demand|oversold|golden cross|accumulation|long|low|bottom|up|buy|above|expansion/)) {
+      } else if (str.match(/bullish|support|demand|oversold|golden cross|accumulation|long|low|bottom|up|buy|above|expansion|tailwind/)) {
         bulls.push(res);
       } else {
         bulls.push(res); 
@@ -51,7 +70,7 @@ export function ConfluenceScanner({ symbol, timeframeLabel = '15m' }: { symbol: 
 
     setBullish(bulls.sort((a, b) => b.score - a.score));
     setBearish(bears.sort((a, b) => b.score - a.score));
-  }, [tick, timeframeLabel, settings.strategy]);
+  }, [tick, timeframeLabel, settings.strategy, newsScore]);
 
   const loading = !tick || !tick.history || tick.history.length < 50;
 
@@ -92,7 +111,6 @@ export function ConfluenceScanner({ symbol, timeframeLabel = '15m' }: { symbol: 
               <span className="text-[7px] text-text-tertiary mt-0.5 line-clamp-2">{res.description}</span>
             </div>
           ))}
-          {bullish.length === 0 && <span className="text-[8px] text-text-tertiary italic">No bullish factors.</span>}
         </div>
 
         {/* BEARISH COLUMN */}
@@ -109,7 +127,6 @@ export function ConfluenceScanner({ symbol, timeframeLabel = '15m' }: { symbol: 
               <span className="text-[7px] text-text-tertiary mt-0.5 line-clamp-2">{res.description}</span>
             </div>
           ))}
-          {bearish.length === 0 && <span className="text-[8px] text-text-tertiary italic">No bearish factors.</span>}
         </div>
       </div>
     </div>
