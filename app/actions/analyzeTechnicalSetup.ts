@@ -1,6 +1,6 @@
 'use server';
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import YahooFinance from 'yahoo-finance2';
 
 const USER_KEY = "AIzaSyAX3dCFS5Yi8HryL9wC98IVAua71dki-zU";
@@ -12,8 +12,8 @@ const yahooFinance = new YahooFinance({
 export async function analyzeTechnicalSetup(symbol: string) {
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || USER_KEY;
   
-  const ai = new GoogleGenAI(apiKey);
-  const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   try {
     const chartData = await yahooFinance.chart(symbol, { 
