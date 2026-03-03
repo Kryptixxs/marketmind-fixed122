@@ -24,10 +24,11 @@ export async function fetchMarketData(symbol: string): Promise<MarketData | null
   try {
     const quotePromise = yahooFinance.quote(symbol);
     
-    // Fetching 300 days to properly calculate the 200 EMA/SMA and deep market structure
+    // DAY TRADER FOCUS: Fetching 15m intraday data over the last 5 days
+    // This feeds the ICT and Confluence engines with fast, actionable tick data
     const historyPromise = yahooFinance.chart(symbol, { 
-      period1: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000),
-      interval: '1d' 
+      period1: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), // Last 5 days
+      interval: '15m' 
     }).catch(() => null);
 
     const [quote, chartData] = await Promise.all([quotePromise, historyPromise]);
