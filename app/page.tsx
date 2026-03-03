@@ -8,7 +8,7 @@ import { NewsFeed } from '@/components/NewsFeed';
 import { 
   Activity, Wifi, Loader2, TrendingUp, TrendingDown, 
   Brain, AlertCircle, Plus, X, Search, LineChart, Zap,
-  Target, ShieldAlert, ArrowRight
+  Target, ShieldAlert, ArrowRight, Clock
 } from 'lucide-react';
 import { analyzeMarket, MarketAnalysis } from '@/app/actions/analyzeMarket';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
@@ -196,6 +196,7 @@ export default function TerminalPage() {
                   const yahooSym = resolveYahooSymbol(id);
                   const data = marketData[yahooSym];
                   const isPositive = data?.change >= 0;
+                  const isStale = data && (Date.now() - data.timestamp > 300000); // 5 mins
                   
                   return (
                     <div 
@@ -204,15 +205,22 @@ export default function TerminalPage() {
                       className={`flex justify-between items-center px-2 py-1.5 border-b border-border/30 cursor-pointer hover:bg-surface-highlight transition-colors group ${activeSymbol === id ? 'bg-accent/5 border-l-2 border-l-accent' : 'border-l-2 border-l-transparent'}`}
                     >
                       <div className="flex flex-col">
-                        <span className="font-bold text-[10px] text-text-primary">{id}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-[10px] text-text-primary">{id}</span>
+                          {isStale && (
+                            <span className="text-[7px] font-bold bg-warning/10 text-warning px-1 rounded border border-warning/20 flex items-center gap-0.5">
+                              <Clock size={6} /> DELAYED
+                            </span>
+                          )}
+                        </div>
                         <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{inst?.label || id}</span>
                       </div>
                       <div className="flex flex-col items-end">
                         <span className="text-[10px] font-mono font-bold text-text-primary mono-num">
-                          {data ? formatPrice(data.price, inst?.assetType.toLowerCase() as any) : '---'}
+                          {data ? formatPrice(data.price, inst?.assetType.toLowerCase() as any, inst?.decimals) : '---'}
                         </span>
                         <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
-                          <span>{data ? `${isPositive ? '+' : ''}${formatPercent(data.changePercent)}` : '--'}</span>
+                          <span>{data ? formatPercent(data.changePercent) : '--'}</span>
                         </div>
                       </div>
                     </div>

@@ -1,14 +1,15 @@
 'use server';
 
-import YahooFinance from 'yahoo-finance2';
+import yahooFinance from 'yahoo-finance2';
 import { resolveYahooSymbol } from '@/lib/instruments';
 
-const yahooFinance = new YahooFinance({ 
+const yahooFinanceClient = new YahooFinance({ 
   suppressNotices: ['yahooSurvey', 'ripHistorical'],
 });
 
 export interface MarketData {
-  symbol: string;
+  id: string;
+  yahooSymbol: string;
   price: number;
   change: number;
   changePercent: number;
@@ -16,6 +17,9 @@ export interface MarketData {
   marketState: string;
   history: number[];
   name?: string;
+  timestamp: number;
+  stale: boolean;
+  source: 'YAHOO' | 'SIMULATED';
 }
 
 export async function fetchMarketData(instrumentId: string): Promise<MarketData | null> {
@@ -23,38 +27,32 @@ export async function fetchMarketData(instrumentId: string): Promise<MarketData 
   const symbol = resolveYahooSymbol(instrumentId);
 
   try {
-    const quotePromise = yahooFinance.quote(symbol);
-    
-    const historyPromise = yahooFinance.chart(symbol, { 
-      period1: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days
-      interval: '1d' 
-    }).catch(() => null);
-
-    const [quote, chartData] = await Promise.all([quotePromise, historyPromise]);
+    const quote = await yahooFinanceClient.quote(symbol);
     
     if (!quote) return null;
 
-    let history: number[] = [];
-    if (chartData?.quotes && Array.isArray(chartData.quotes)) {
-      history = chartData.quotes
-        .slice(-20)
-        .map((q: any) => q.close)
-        .filter((c: any) => typeof c === 'number');
-    }
+    // Validate change percent (Yahoo usually returns it as a percentage, e.g., 1.23 for 1.23%)
+    // If it's a tiny fraction like 0.00123, we might need to normalize, but Yahoo is usually consistent.
+    let cp = quote.regularMarketChangePercent || 0;
     
-    if (history.length === 0 && quote.regularMarketPrice) {
-      history = [quote.regularMarketPrice, quote.regularMarketPrice];
+    // Basic sanity check: if change is huge but percent is tiny, or vice versa
+    if (Math.abs(cp) < 0.0001 && Math.abs(quote.regularMarketChange || 0) > 0.01) {
+       cp = ((quote.regularMarketChange || 0) / (quote.regularMarketPreviousClose || 1)) * 100;
     }
 
     return {
-      symbol: instrumentId, // Return the ID as the symbol for UI consistency
+      id: instrumentId,
+      yahooSymbol: symbol,
       name: quote.shortName || quote.longName || instrumentId,
       price: quote.regularMarketPrice || 0,
       change: quote.regularMarketChange || 0,
-      changePercent: quote.regularMarketChangePercent || 0,
+      changePercent: cp,
       currency: quote.currency || 'USD',
       marketState: quote.marketState || 'REGULAR',
-      history
+      history: [], // History is fetched separately for charts
+      timestamp: Date.now(),
+      stale: false,
+      source: 'YAHOO'
     };
 
   } catch (error) {
