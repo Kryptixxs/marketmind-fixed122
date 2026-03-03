@@ -3,7 +3,8 @@
 import yahooFinance from 'yahoo-finance2';
 import { resolveYahooSymbol } from '@/lib/instruments';
 
-const yahooFinanceClient = new YahooFinance({ 
+// Suppress notices globally
+yahooFinance.setGlobalConfig({ 
   suppressNotices: ['yahooSurvey', 'ripHistorical'],
 });
 
@@ -27,12 +28,11 @@ export async function fetchMarketData(instrumentId: string): Promise<MarketData 
   const symbol = resolveYahooSymbol(instrumentId);
 
   try {
-    const quote = await yahooFinanceClient.quote(symbol);
+    const quote = await yahooFinance.quote(symbol);
     
     if (!quote) return null;
 
     // Validate change percent (Yahoo usually returns it as a percentage, e.g., 1.23 for 1.23%)
-    // If it's a tiny fraction like 0.00123, we might need to normalize, but Yahoo is usually consistent.
     let cp = quote.regularMarketChangePercent || 0;
     
     // Basic sanity check: if change is huge but percent is tiny, or vice versa
@@ -49,7 +49,7 @@ export async function fetchMarketData(instrumentId: string): Promise<MarketData 
       changePercent: cp,
       currency: quote.currency || 'USD',
       marketState: quote.marketState || 'REGULAR',
-      history: [], // History is fetched separately for charts
+      history: [], 
       timestamp: Date.now(),
       stale: false,
       source: 'YAHOO'
