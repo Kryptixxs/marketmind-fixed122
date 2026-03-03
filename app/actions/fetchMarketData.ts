@@ -21,22 +21,22 @@ export interface MarketData {
 export async function fetchMarketData(symbol: string, interval: string = '15m'): Promise<MarketData | null> {
   if (!symbol) return null;
 
-  // Determine lookback period based on interval to ensure we get enough candles for math
+  // Guarantee we request enough days to fill the math engine arrays (min 20 candles needed)
   let days = 10;
   let yfInterval: any = '15m';
 
   switch(interval) {
-    case '1m': days = 2; yfInterval = '1m'; break;
-    case '5m': days = 5; yfInterval = '5m'; break;
-    case '15m': days = 10; yfInterval = '15m'; break;
-    case '60m': days = 30; yfInterval = '60m'; break;
+    case '1m': days = 5; yfInterval = '1m'; break; // max 7 days allowed by Yahoo
+    case '5m': days = 15; yfInterval = '5m'; break;
+    case '15m': days = 30; yfInterval = '15m'; break;
+    case '60m': days = 50; yfInterval = '60m'; break;
     case '1d': days = 300; yfInterval = '1d'; break;
-    default: days = 10; yfInterval = '15m'; break;
+    default: days = 30; yfInterval = '15m'; break;
   }
 
   try {
-    const quotePromise = yahooFinance.quote(symbol);
-    
+    // Fetch concurrently, but catch errors individually so one failure doesn't kill the other
+    const quotePromise = yahooFinance.quote(symbol).catch(() => null);
     const historyPromise = yahooFinance.chart(symbol, { 
       period1: new Date(Date.now() - days * 24 * 60 * 60 * 1000),
       interval: yfInterval 
@@ -44,7 +44,7 @@ export async function fetchMarketData(symbol: string, interval: string = '15m'):
 
     const [quote, chartData] = await Promise.all([quotePromise, historyPromise]);
     
-    if (!quote) return null;
+    if (!quote && !chartData) return null; // Complete failure
 
     let history: OHLCV[] = [];
     if (chartData?.quotes && Array.isArray(chartData.quotes)) {
@@ -60,14 +60,23 @@ export async function fetchMarketData(symbol: string, interval: string = '15m'):
         }));
     }
 
+    // Safely extract price from quote, or fallback to the last chart candle
+    const lastCandle = history.length > 0 ? history[history.length - 1] : null;
+    const price = quote?.regularMarketPrice || chartData?.meta?.regularMarketPrice || lastCandle?.close || 0;
+    
+    // Calculate change safely
+    const prevClose = chartData?.meta?.chartPreviousClose || (price * 0.99); // absolute fallback
+    const change = quote?.regularMarketChange || (price - prevClose);
+    const changePercent = quote?.regularMarketChangePercent || ((change / prevClose) * 100);
+
     return {
       symbol,
-      name: quote.shortName || quote.longName || symbol,
-      price: quote.regularMarketPrice || 0,
-      change: quote.regularMarketChange || 0,
-      changePercent: quote.regularMarketChangePercent || 0,
-      currency: quote.currency || 'USD',
-      marketState: quote.marketState || 'REGULAR',
+      name: quote?.shortName || quote?.longName || symbol,
+      price,
+      change,
+      changePercent,
+      currency: quote?.currency || chartData?.meta?.currency || 'USD',
+      marketState: quote?.marketState || 'REGULAR',
       history
     };
 

@@ -37,34 +37,38 @@ function calculateRSI(closes: number[], period = 14): number {
 }
 
 function calculateATR(history: OHLCV[], period = 14): number {
-  if (history.length <= period) return 0;
+  const p = Math.min(period, history.length - 1);
+  if (p <= 0) return history[history.length - 1].close * 0.005; // 0.5% default fallback
+  
   let trSum = 0;
-  for (let i = history.length - period; i < history.length; i++) {
+  for (let i = history.length - p; i < history.length; i++) {
     const high = history[i].high;
     const low = history[i].low;
     const prevClose = history[i - 1].close;
     const tr = Math.max(high - low, Math.abs(high - prevClose), Math.abs(low - prevClose));
     trSum += tr;
   }
-  return trSum / period;
+  return trSum / p;
 }
 
 function calculateEMA(data: number[], period: number): number {
-  if (data.length < period) return data[data.length - 1] || 0;
-  const k = 2 / (period + 1);
-  let ema = data[data.length - period];
-  for (let i = data.length - period + 1; i < data.length; i++) {
+  const p = Math.min(period, data.length);
+  if (p === 0) return 0;
+  const k = 2 / (p + 1);
+  let ema = data[data.length - p];
+  for (let i = data.length - p + 1; i < data.length; i++) {
     ema = (data[i] - ema) * k + ema;
   }
   return ema;
 }
 
 export function generateTradeSetup(history: OHLCV[]): TradeSetup {
-  if (!history || history.length < 50) {
+  // Graceful tolerance: Require only 15 candles minimum to perform basic math
+  if (!history || history.length < 15) {
     return {
       signal: 'NEUTRAL', confidence: 0, color: 'text-text-secondary',
       entryZone: [0, 0], stopLoss: 0, takeProfit1: 0, takeProfit2: 0, riskReward: 0,
-      support: [], resistance: [], warnings: ['Insufficient historical data for calculation.'],
+      support: [], resistance: [], warnings: ['Warming up: Insufficient historical data for full matrix calculation.'],
       context: { trend: 'Ranging', rsi: 50, atr: 0, structure: 'Unknown' }
     };
   }
@@ -72,20 +76,32 @@ export function generateTradeSetup(history: OHLCV[]): TradeSetup {
   const closes = history.map(h => h.close);
   const currentPrice = closes[closes.length - 1];
   
-  // 1. Technical Indicators
-  const rsi = calculateRSI(closes);
-  const atr = calculateATR(history);
-  const ema9 = calculateEMA(closes, 9);
-  const ema21 = calculateEMA(closes, 21);
-  const sma200 = closes.length >= 200 ? closes.slice(-200).reduce((a, b) => a + b, 0) / 200 : closes.slice(-50).reduce((a, b) => a + b, 0) / 50;
+  // 1. Technical Indicators (Dynamic periods based on available data)
+  const rsi = calculateRSI(closes, Math.min(14, closes.length - 1));
+  const atr = calculateATR(history, Math.min(14, history.length - 1));
+  const ema9 = calculateEMA(closes, Math.min(9, closes.length));
+  const ema21 = calculateEMA(closes, Math.min(21, closes.length));
+  
+  const smaWindow = Math.min(200, closes.length);
+  const sma200 = closes.slice(-smaWindow).reduce((a, b) => a + b, 0) / smaWindow;
 
-  // 2. SMC & Liquidity (Reusing your tech-math)
-  const { swingHighs, swingLows } = findSwingPoints(history, 5, 5); // Wider window for major levels
+  // 2. SMC & Liquidity
+  // Reduce window size if we have very little data
+  const windowSize = history.length < 50 ? 2 : 5; 
+  const { swingHighs, swingLows } = findSwingPoints(history, windowSize, windowSize);
   const fvgs = findUnmitigatedFVGs(history);
 
-  // Extract Major Support / Resistance from unmitigated swings
-  const resistanceLevels = swingHighs.filter(h => !h.mitigated && h.price > currentPrice).map(h => h.price).sort((a, b) => a - b);
-  const supportLevels = swingLows.filter(l => !l.mitigated && l.price < currentPrice).map(l => l.price).sort((a, b) => b - a); // Descending (closest first)
+  // Extract Major Support / Resistance
+  let resistanceLevels = swingHighs.filter(h => !h.mitigated && h.price > currentPrice).map(h => h.price).sort((a, b) => a - b);
+  let supportLevels = swingLows.filter(l => !l.mitigated && l.price < currentPrice).map(l => l.price).sort((a, b) => b - a);
+
+  // ALGORITHMIC FALLBACK: If price is in "Blue Sky" (ATH/ATL), project targets using ATR and Fibonacci
+  if (resistanceLevels.length === 0) {
+    resistanceLevels.push(currentPrice + (atr * 1.5), currentPrice + (atr * 3.0), currentPrice + (atr * 5.0));
+  }
+  if (supportLevels.length === 0) {
+    supportLevels.push(currentPrice - (atr * 1.5), currentPrice - (atr * 3.0), currentPrice - (atr * 5.0));
+  }
 
   // 3. Scoring System for Bias
   let score = 0;
@@ -97,15 +113,15 @@ export function generateTradeSetup(history: OHLCV[]): TradeSetup {
   const trend = score > 0 ? 'Bullish' : score < 0 ? 'Bearish' : 'Ranging';
 
   // Momentum
-  if (rsi < 30) { score += 2; warnings.push("RSI Extremely Oversold (Reversal Risk)"); }
-  else if (rsi > 70) { score -= 2; warnings.push("RSI Extremely Overbought (Reversal Risk)"); }
+  if (rsi < 30) { score += 2; warnings.push("RSI Oversold: Reversal Risk Elevated"); }
+  else if (rsi > 70) { score -= 2; warnings.push("RSI Overbought: Reversal Risk Elevated"); }
 
   // FVG Proximity
   const activeBullFVG = fvgs.find(f => f.type === 'BISI' && currentPrice >= f.bottom && currentPrice <= f.top + atr);
   const activeBearFVG = fvgs.find(f => f.type === 'SIBI' && currentPrice <= f.top && currentPrice >= f.bottom - atr);
 
-  if (activeBullFVG) { score += 3; warnings.push(`Price testing Bullish FVG (${activeBullFVG.bottom.toFixed(2)} - ${activeBullFVG.top.toFixed(2)})`); }
-  if (activeBearFVG) { score -= 3; warnings.push(`Price testing Bearish FVG (${activeBearFVG.bottom.toFixed(2)} - ${activeBearFVG.top.toFixed(2)})`); }
+  if (activeBullFVG) { score += 3; warnings.push(`Testing Bullish FVG: ${activeBullFVG.bottom.toFixed(2)} - ${activeBullFVG.top.toFixed(2)}`); }
+  if (activeBearFVG) { score -= 3; warnings.push(`Testing Bearish FVG: ${activeBearFVG.bottom.toFixed(2)} - ${activeBearFVG.top.toFixed(2)}`); }
 
   // Determine Signal
   let signal: TradeSetup['signal'] = 'NEUTRAL';
@@ -125,45 +141,42 @@ export function generateTradeSetup(history: OHLCV[]): TradeSetup {
   let riskReward = 0;
 
   if (signal.includes('BUY')) {
-    // Buy Setup
-    const nearestSupport = supportLevels.length > 0 ? supportLevels[0] : currentPrice - (atr * 2);
+    const nearestSupport = supportLevels[0];
     entryZone = [currentPrice, Math.max(nearestSupport, currentPrice - atr)];
-    stopLoss = nearestSupport - (atr * 0.5); // Provide breathing room below structure
+    stopLoss = nearestSupport - (atr * 0.5); // Structural Stop Loss
     
-    takeProfit1 = resistanceLevels.length > 0 ? resistanceLevels[0] : currentPrice + (atr * 2);
+    takeProfit1 = resistanceLevels[0];
     takeProfit2 = resistanceLevels.length > 1 ? resistanceLevels[1] : takeProfit1 + (atr * 2);
 
-    // Validate risk
     const risk = currentPrice - stopLoss;
     const reward = takeProfit1 - currentPrice;
     riskReward = risk > 0 ? reward / risk : 0;
 
-    if (riskReward < 1) warnings.push("Poor Risk/Reward to primary target.");
   } else if (signal.includes('SELL')) {
-    // Sell Setup
-    const nearestRes = resistanceLevels.length > 0 ? resistanceLevels[0] : currentPrice + (atr * 2);
+    const nearestRes = resistanceLevels[0];
     entryZone = [currentPrice, Math.min(nearestRes, currentPrice + atr)];
-    stopLoss = nearestRes + (atr * 0.5);
+    stopLoss = nearestRes + (atr * 0.5); // Structural Stop Loss
     
-    takeProfit1 = supportLevels.length > 0 ? supportLevels[0] : currentPrice - (atr * 2);
+    takeProfit1 = supportLevels[0];
     takeProfit2 = supportLevels.length > 1 ? supportLevels[1] : takeProfit1 - (atr * 2);
 
     const risk = stopLoss - currentPrice;
     const reward = currentPrice - takeProfit1;
     riskReward = risk > 0 ? reward / risk : 0;
-
-    if (riskReward < 1) warnings.push("Poor Risk/Reward to primary target.");
   }
 
-  // Add structural warnings
-  if (currentPrice < ema21 && signal.includes('BUY')) warnings.push("Counter-trend long (Price below EMA21).");
-  if (currentPrice > ema21 && signal.includes('SELL')) warnings.push("Counter-trend short (Price above EMA21).");
+  if (signal !== 'NEUTRAL' && riskReward < 1) {
+    warnings.push(`Poor Risk/Reward (${riskReward.toFixed(2)}). Consider tighter entry.`);
+  }
+
+  if (currentPrice < ema21 && signal.includes('BUY')) warnings.push("Counter-trend long: Price below EMA21.");
+  if (currentPrice > ema21 && signal.includes('SELL')) warnings.push("Counter-trend short: Price above EMA21.");
 
   return {
     signal,
-    confidence: Math.min(confidence, 99), // Cap at 99%
+    confidence: Math.min(confidence, 99),
     color,
-    entryZone,
+    entryZone: [Math.min(...entryZone), Math.max(...entryZone)], // Ensure proper ordering
     stopLoss,
     takeProfit1,
     takeProfit2,
@@ -175,7 +188,7 @@ export function generateTradeSetup(history: OHLCV[]): TradeSetup {
       trend,
       rsi,
       atr,
-      structure: score > 0 ? 'Expansion (Bull)' : score < 0 ? 'Expansion (Bear)' : 'Consolidation'
+      structure: score > 0 ? 'Bullish Expansion' : score < 0 ? 'Bearish Expansion' : 'Consolidation'
     }
   };
 }
