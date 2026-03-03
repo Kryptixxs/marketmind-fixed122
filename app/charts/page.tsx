@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import TradingViewChart from '@/components/TradingViewChart';
 import { 
   Plus, 
@@ -28,7 +29,8 @@ const TIMEFRAMES = [
   { label: '1W', value: 'W' },
 ];
 
-export default function ChartsPage() {
+function ChartsContent() {
+  const searchParams = useSearchParams();
   const [activeSymbol, setActiveSymbol] = useState('AAPL');
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[3]);
   const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
@@ -40,6 +42,14 @@ export default function ChartsPage() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle symbol from query param
+  useEffect(() => {
+    const sym = searchParams.get('symbol');
+    if (sym) {
+      setActiveSymbol(sym.toUpperCase());
+    }
+  }, [searchParams]);
 
   // Load watchlist from local storage on mount
   useEffect(() => {
@@ -256,5 +266,13 @@ export default function ChartsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ChartsPage() {
+  return (
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center"><Loader2 className="animate-spin text-accent" /></div>}>
+      <ChartsContent />
+    </Suspense>
   );
 }
