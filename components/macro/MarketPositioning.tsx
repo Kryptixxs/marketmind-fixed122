@@ -4,41 +4,23 @@ import React, { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { analyzeMarketPositioning } from '@/app/actions/analyzeMarketPositioning';
 
-interface PositioningMetricProps {
-  label: string;
-  value: string;
-  status: string;
+interface MarketPositioningProps {
+  symbol: string;
 }
 
-function PositioningMetric({ label, value, status }: PositioningMetricProps) {
-  const statusColors: Record<string, string> = {
-    positive: 'text-positive',
-    negative: 'text-negative',
-    neutral: 'text-text-secondary',
-    warning: 'text-warning',
-  };
-
-  return (
-    <div className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
-      <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">{label}</div>
-      <div className={`text-xs font-mono font-bold ${statusColors[status] || 'text-text-primary'}`}>{value}</div>
-    </div>
-  );
-}
-
-export function MarketPositioning() {
+export function MarketPositioning({ symbol }: MarketPositioningProps) {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const result = await analyzeMarketPositioning();
+      const result = await analyzeMarketPositioning(symbol);
       if (result) setData(result);
       setLoading(false);
     }
     load();
-  }, []);
+  }, [symbol]);
 
   if (loading) {
     return (
@@ -49,41 +31,31 @@ export function MarketPositioning() {
     );
   }
 
-  if (!data) return null;
+  if (!data) return <div className="p-4 text-[10px] text-text-tertiary italic">Data unavailable for {symbol}</div>;
+
+  const statusColors: Record<string, string> = {
+    positive: 'text-positive',
+    negative: 'text-negative',
+    neutral: 'text-text-secondary',
+    warning: 'text-warning',
+  };
 
   return (
     <div className="flex flex-col h-full">
       <div className="grid grid-cols-2 gap-1 p-2">
-        <PositioningMetric 
-          label="DXY Positioning" 
-          value={data.dxyPositioning} 
-          status={data.metrics.dxy}
-        />
-        <PositioningMetric 
-          label="Futures (CFTC)" 
-          value={data.futuresPositioning} 
-          status={data.metrics.futures}
-        />
-        <PositioningMetric 
-          label="Options Implied" 
-          value={data.optionsImplied} 
-          status={data.metrics.options}
-        />
-        <PositioningMetric 
-          label="Volatility Regime" 
-          value={data.volatilityRegime} 
-          status={data.metrics.volatility}
-        />
-        <PositioningMetric 
-          label="Liquidity Index" 
-          value={data.liquidityIndex.toFixed(2)} 
-          status={data.metrics.liquidity}
-        />
-        <PositioningMetric 
-          label="Gamma Exposure" 
-          value={data.gammaExposure} 
-          status={data.metrics.gamma}
-        />
+        {[
+          { label: 'DXY Impact', value: data.dxyPositioning, status: data.metrics.dxy },
+          { label: 'Estimated Pos', value: data.futuresPositioning, status: data.metrics.futures },
+          { label: 'Options Bias', value: data.optionsImplied, status: data.metrics.options },
+          { label: 'Vol Regime', value: data.volatilityRegime, status: data.metrics.volatility },
+          { label: 'Liquidity', value: data.liquidityIndex.toFixed(0), status: data.metrics.liquidity },
+          { label: 'Gamma Exp', value: data.gammaExposure, status: data.metrics.gamma },
+        ].map(m => (
+          <div key={m.label} className="bg-surface-highlight/50 p-2 border border-border/50 rounded-sm">
+            <div className="text-[8px] text-text-tertiary uppercase font-bold mb-1">{m.label}</div>
+            <div className={`text-[10px] font-mono font-bold ${statusColors[m.status] || 'text-text-primary'}`}>{m.value}</div>
+          </div>
+        ))}
       </div>
       
       <div className="mt-auto p-2 border-t border-border/50 bg-surface/30">

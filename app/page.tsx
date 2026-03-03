@@ -17,7 +17,6 @@ import {
   BarChart3, Globe, Cpu, Clock, ArrowUpRight, ArrowDownRight, Gauge
 } from 'lucide-react';
 import { useMarketData } from '@/lib/marketdata/useMarketData';
-import { analyzeMarketState } from '@/lib/market-intelligence';
 
 const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
   '^NDX': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
