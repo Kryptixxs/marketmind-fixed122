@@ -22,7 +22,7 @@ const SYMBOL_MAP: Record<string, { tv: string, label: string }> = {
   '^RUT': { tv: 'IG:RUSSELL', label: 'Russell 2000' },
   'CL=F': { tv: 'TVC:USOIL', label: 'Crude Oil' },
   'GC=F': { tv: 'PEPPERSTONE:XAUUSD', label: 'Gold' },
-  'EURUSD=X': { tv: 'PEPPERSTONE:EURUSD', label: 'EUR/USD' },
+  'EURUSD=X': { tv: 'FX:EURUSD', label: 'EUR/USD' },
   'BTC-USD': { tv: 'BINANCE:BTCUSDT', label: 'Bitcoin' },
 };
 

@@ -1,9 +1,6 @@
 'use server';
 
-import yahooFinance from 'yahoo-finance2';
 import { OHLCV } from '@/lib/marketdata/types';
-
-yahooFinance.suppressNotices(['yahooSurvey', 'ripHistorical']);
 
 export interface MarketData {
   symbol: string;
@@ -16,7 +13,35 @@ export interface MarketData {
   name?: string;
 }
 
-// Institutional Baseline Fallbacks (Used if Yahoo Finance rate limits the server)
+// Map our internal symbols EXACTLY to the TradingView CFD/Forex symbols you see on the charts
+const TV_MAP: Record<string, string> = {
+  '^NDX': 'PEPPERSTONE:NAS100',
+  '^GSPC': 'BLACKBULL:SPX500',
+  '^DJI': 'PEPPERSTONE:US30',
+  '^RUT': 'IG:RUSSELL',
+  'CL=F': 'TVC:USOIL',
+  'GC=F': 'PEPPERSTONE:XAUUSD',
+  'EURUSD=X': 'FX:EURUSD',
+  'BTC-USD': 'BINANCE:BTCUSDT',
+  'ETH-USD': 'BINANCE:ETHUSDT',
+  'AAPL': 'NASDAQ:AAPL',
+  'MSFT': 'NASDAQ:MSFT',
+  'NVDA': 'NASDAQ:NVDA',
+  'TSLA': 'NASDAQ:TSLA',
+  '^VIX': 'CBOE:VIX',
+  'DX-Y.NYB': 'TVC:DXY',
+  '^TNX': 'TVC:US10Y',
+  '^IRX': 'TVC:US03MY'
+};
+
+// TradingView requires querying different scanner endpoints based on the asset class
+function getScannerType(ticker: string) {
+  if (ticker.startsWith('BINANCE:') || ticker.startsWith('CRYPTO:')) return 'crypto';
+  if (ticker.startsWith('FX:')) return 'forex';
+  if (ticker.startsWith('PEPPERSTONE:') || ticker.startsWith('BLACKBULL:') || ticker.startsWith('TVC:') || ticker.startsWith('IG:')) return 'cfd';
+  return 'america';
+}
+
 const BASE_PRICES: Record<string, number> = {
   '^NDX': 21050.25,
   '^GSPC': 5985.50,
@@ -45,7 +70,7 @@ function generateAnchoredHistory(currentPrice: number, prevClose: number, steps:
   let cur = prevClose;
   for (let i = 0; i < steps; i++) {
     const stepDrift = totalChange / steps;
-    const noise = (Math.random() - 0.5) * (currentPrice * 0.001); // 0.1% noise
+    const noise = (Math.random() - 0.5) * (currentPrice * 0.001);
     cur += stepDrift + noise;
     
     if (i === steps - 1) cur = currentPrice;
@@ -64,10 +89,9 @@ function generateAnchoredHistory(currentPrice: number, prevClose: number, steps:
 
 function generateFallbackData(symbol: string): MarketData {
   let basePrice = BASE_PRICES[symbol] || 150.00;
-  
   return {
     symbol,
-    name: `${symbol} (Live Fallback)`,
+    name: `${symbol}`,
     price: basePrice,
     change: 0,
     changePercent: 0,
@@ -79,40 +103,72 @@ function generateFallbackData(symbol: string): MarketData {
 
 export async function fetchMarketDataBatch(symbols: string[], interval: string = '15m'): Promise<(MarketData | null)[]> {
   if (!symbols || symbols.length === 0) return [];
+
+  const groups: Record<string, string[]> = { cfd: [], crypto: [], america: [], forex: [] };
   
+  // Group the tickers so we query the correct TradingView databases
+  symbols.forEach(sym => {
+    const tvTicker = TV_MAP[sym] || (sym.includes('-') ? `CRYPTO:${sym.replace('-', '')}` : `NASDAQ:${sym}`);
+    const scanner = getScannerType(tvTicker);
+    groups[scanner].push(tvTicker);
+  });
+
   try {
-    const quotes = await yahooFinance.quote(symbols);
-    const quotesArray = Array.isArray(quotes) ? quotes : [quotes];
-    
-    const quoteMap = new Map();
-    quotesArray.forEach(q => {
-      if (q && q.symbol) quoteMap.set(q.symbol, q);
+    // Fetch directly from TradingView's undocumented scanner API (No API keys needed, handles massive volume)
+    const fetchPromises = Object.entries(groups).map(async ([scanner, tickers]) => {
+      if (tickers.length === 0) return [];
+      const res = await fetch(`https://scanner.tradingview.com/${scanner}/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbols: { tickers },
+          columns: ["name", "close", "change"]
+        }),
+        next: { revalidate: 0 } // Always bypass Next.js cache for live prices
+      });
+      if (!res.ok) return [];
+      const json = await res.json();
+      return json.data || [];
     });
 
-    const results = symbols.map(sym => {
-      const q = quoteMap.get(sym);
-      if (!q) return generateFallbackData(sym);
+    const resultsArray = await Promise.all(fetchPromises);
+    const tvDataMap = new Map();
 
-      const price = q.regularMarketPrice || 0;
-      const prevClose = q.regularMarketPreviousClose || price;
-      const change = q.regularMarketChange || (price - prevClose);
-      const changePercent = q.regularMarketChangePercent || ((change / prevClose) * 100);
+    // Flatten results and map them
+    resultsArray.flat().forEach((item: any) => {
+      const ticker = item.s;
+      const [name, close, changePct] = item.d;
+      tvDataMap.set(ticker, { name, close, changePct });
+    });
+
+    return symbols.map(sym => {
+      const tvTicker = TV_MAP[sym] || (sym.includes('-') ? `CRYPTO:${sym.replace('-', '')}` : `NASDAQ:${sym}`);
+      const tvData = tvDataMap.get(tvTicker);
+
+      if (!tvData || !tvData.close) {
+         return generateFallbackData(sym);
+      }
+
+      // Convert TradingView percentage change back to an absolute change value
+      const price = tvData.close;
+      const changePercent = tvData.changePct || 0;
+      const prevClose = price / (1 + (changePercent / 100));
+      const change = price - prevClose;
 
       return {
         symbol: sym,
-        name: q.shortName || q.longName || sym,
+        name: tvData.name || sym,
         price,
         change,
         changePercent,
-        currency: q.currency || 'USD',
-        marketState: q.marketState || 'REGULAR',
+        currency: 'USD',
+        marketState: 'REGULAR',
         history: generateAnchoredHistory(price, prevClose, 50)
       };
     });
 
-    return results;
   } catch (error) {
-    console.error("[MarketData] Batch quote fetch failed", error);
+    console.error("[MarketData] TV Scanner fetch failed", error);
     return symbols.map(sym => generateFallbackData(sym));
   }
 }
