@@ -35,65 +35,82 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
   if (!symbols || symbols.length === 0) return [];
   
   const yfInterval = interval.toLowerCase() === '1h' ? '60m' : interval.toLowerCase();
+  let range = '5d';
+  if (yfInterval === '1d') range = '1mo';
+  if (yfInterval === '1m') range = '3d';
+
+  // Extract unique Yahoo symbols to fetch
+  const yfSyms = Array.from(new Set(symbols.map(sym => YF_MAP[sym] || sym)));
+  
+  // 1. BULK QUOTE FETCH
+  // This grabs the live price for all 10+ symbols in exactly ONE network request.
+  // This bypasses rate limits and guarantees the UI never shows "---"
+  let quotesMap: Record<string, any> = {};
+  try {
+    const quotes = await yahooFinance.quoteCombine(yfSyms);
+    quotes.forEach(q => { 
+      quotesMap[q.symbol] = q; 
+    });
+  } catch (err) {
+    console.warn('[MarketData] quoteCombine failed', err);
+  }
+
   const results: (MarketData | null)[] = [];
 
-  // Process sequentially to completely avoid Yahoo Finance 429 Too Many Requests
+  // 2. SEQUENTIAL HISTORY FETCH
+  // We fetch history one by one so Yahoo doesn't block us.
   for (const sym of symbols) {
     const yfSym = YF_MAP[sym] || sym;
+    const quote = quotesMap[yfSym];
+
+    let history: OHLCV[] = [];
+    let marketState = 'REGULAR';
     
     try {
-      // 1. Fetch the lightweight, ultra-fast quote first.
-      // This ensures the dashboard ALWAYS has a price, even if the history chart fails.
-      const quote = await yahooFinance.quote(yfSym);
-      
-      let history: OHLCV[] = [];
-      
-      // 2. Safely attempt to fetch the history chart for the sparklines
-      try {
-        let period1 = new Date();
-        if (yfInterval === '1mo') period1.setFullYear(period1.getFullYear() - 2);
-        else if (yfInterval === '1d') period1.setMonth(period1.getMonth() - 2);
-        else period1.setDate(period1.getDate() - 5);
-
-        const chart = await yahooFinance.chart(yfSym, { 
-          interval: yfInterval as any, 
-          period1: Math.floor(period1.getTime() / 1000)
-        });
-
-        if (chart && chart.quotes) {
-          history = chart.quotes
-            .filter(q => q.close !== null && q.close !== undefined)
-            .map(q => ({
-              timestamp: q.date.getTime(),
-              open: q.open as number,
-              high: q.high as number,
-              low: q.low as number,
-              close: q.close as number,
-              volume: q.volume || 0
-            }));
-        }
-      } catch (chartErr) {
-        console.warn(`[MarketData] Chart history rate-limited for ${yfSym}. Defaulting to quote-only.`);
+      const chart = await yahooFinance.chart(yfSym, { interval: yfInterval as any, range });
+      if (chart && chart.quotes) {
+        history = chart.quotes
+          .filter(q => q.close !== null && q.close !== undefined)
+          .map(q => ({
+            timestamp: q.date.getTime(),
+            open: q.open as number,
+            high: q.high as number,
+            low: q.low as number,
+            close: q.close as number,
+            volume: q.volume || 0
+          }));
+          
+        if (chart.meta?.currentTradingPeriod?.pre?.hasEvents) marketState = 'PRE';
+        else if (chart.meta?.currentTradingPeriod?.post?.hasEvents) marketState = 'POST';
       }
+    } catch (chartErr) {
+      // Graceful degradation: History failed (rate limit), but we STILL have the live quote!
+      console.warn(`[MarketData] History skipped for ${yfSym}`);
+    }
+
+    if (quote || history.length > 0) {
+      // Safe fallback logic if one data source failed
+      const price = quote?.regularMarketPrice || (history.length > 0 ? history[history.length - 1].close : 0);
+      const prevClose = quote?.regularMarketPreviousClose || (history.length > 0 ? history[0].close : price);
+      const change = quote?.regularMarketChange || (price - prevClose);
+      const changePercent = quote?.regularMarketChangePercent || (prevClose > 0 ? (change / prevClose) * 100 : 0);
 
       results.push({
         symbol: sym,
-        name: quote.shortName || quote.longName || sym,
-        price: quote.regularMarketPrice || 0,
-        change: quote.regularMarketChange || 0,
-        changePercent: quote.regularMarketChangePercent || 0,
-        currency: quote.currency || 'USD',
-        marketState: quote.marketState || 'REGULAR',
+        name: quote?.shortName || quote?.longName || sym,
+        price,
+        change,
+        changePercent,
+        currency: quote?.currency || 'USD',
+        marketState: quote?.marketState || marketState,
         history
       });
-
-    } catch (quoteErr) {
-      console.error(`[MarketData] Complete failure fetching ${sym}:`, (quoteErr as Error).message);
+    } else {
       results.push(null);
     }
     
-    // Artificial 250ms delay between requests to appease Yahoo's rate limiter
-    await new Promise(resolve => setTimeout(resolve, 250));
+    // 50ms micro-delay between history calls to prevent spiking the rate limiter
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
 
   return results;
