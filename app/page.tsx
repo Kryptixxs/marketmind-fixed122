@@ -19,6 +19,14 @@ import { getInstrument, resolveYahooSymbol } from '@/lib/instruments';
 
 const VITALS_SYMBOLS = ['^VIX', 'DX-Y.NYB', '^TNX'];
 
+const TIMEFRAMES = [
+  { label: '1M', value: '1m' },
+  { label: '5M', value: '5m' },
+  { label: '15M', value: '15m' },
+  { label: '1H', value: '1h' },
+  { label: '1D', value: '1d' },
+];
+
 export default function TerminalPage() {
   const { symbols, activeSymbol, setActiveSymbol, addSymbol, removeSymbol } = useWatchlistStore();
   const [aiAnalysis, setAiAnalysis] = useState<MarketAnalysis | null>(null);
@@ -28,25 +36,30 @@ export default function TerminalPage() {
   const [newSymbol, setNewSymbol] = useState('');
   
   const [chartMode, setChartMode] = useState<'standard' | 'advanced'>('standard');
-  const [timeframe, setTimeframe] = useState('6m');
+  const [interval, setInterval] = useState<'1m' | '5m' | '15m' | '1h' | '1d'>('1d');
   const [historicalData, setHistoricalData] = useState<Bar[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   
-  // Resolve all required Yahoo symbols for the data hook
   const allRequiredYahooSymbols = [
     ...symbols.map(id => resolveYahooSymbol(id)),
     ...VITALS_SYMBOLS
   ];
   
   const { data: marketData } = useMarketData(allRequiredYahooSymbols);
-  
   const lastAnalyzedRef = useRef<string | null>(null);
 
-  const loadHistory = useCallback(async (id: string, range: string) => {
+  // Auto-select first symbol if none active
+  useEffect(() => {
+    if (!activeSymbol && symbols.length > 0) {
+      setActiveSymbol(symbols[0]);
+    }
+  }, [activeSymbol, symbols, setActiveSymbol]);
+
+  const loadHistory = useCallback(async (id: string, int: any) => {
     if (!id) return;
     setLoadingHistory(true);
     try {
-      const bars = await fetchHistoricalBars(id, range);
+      const bars = await fetchHistoricalBars(id, '1y', int);
       setHistoricalData(bars);
     } catch (err) {
       console.error("Failed to load history", err);
@@ -56,8 +69,8 @@ export default function TerminalPage() {
   }, []);
 
   useEffect(() => {
-    loadHistory(activeSymbol, timeframe);
-  }, [activeSymbol, timeframe, loadHistory]);
+    loadHistory(activeSymbol, interval);
+  }, [activeSymbol, interval, loadHistory]);
 
   const calculateTechnicals = (bars: Bar[]) => {
     if (bars.length < 20) return null;
@@ -96,7 +109,7 @@ export default function TerminalPage() {
     const data = marketData[yahooSym];
     if (!data || historicalData.length < 20) return;
 
-    const analysisKey = `${activeSymbol}-${data.price}`;
+    const analysisKey = `${activeSymbol}-${data.price}-${interval}`;
     if (lastAnalyzedRef.current === analysisKey) return;
 
     const runAnalysis = async () => {
@@ -121,7 +134,7 @@ export default function TerminalPage() {
     };
 
     runAnalysis();
-  }, [activeSymbol, marketData, historicalData]);
+  }, [activeSymbol, marketData, historicalData, interval]);
 
   const handleAdd = (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +156,8 @@ export default function TerminalPage() {
     return { label: 'Risk-off', color: 'text-negative' };
   };
   const liquidity = vix ? getLiquidity(vix.price) : { label: '---', color: 'text-text-tertiary' };
+
+  const activeInstrument = getInstrument(activeSymbol);
 
   return (
     <div className="h-full w-full bg-background p-0.5 overflow-hidden">
@@ -324,17 +339,17 @@ export default function TerminalPage() {
         {/* --- COLUMN 3: MAIN CHART --- */}
         <div className="col-span-6 row-span-12 overflow-hidden relative">
           <Widget 
-            title={`${activeSymbol} • ${getInstrument(activeSymbol)?.label || ''}`} 
+            title={`${activeSymbol} • ${activeInstrument?.label || ''}`} 
             actions={
               <div className="flex items-center gap-3">
                 <div className="flex bg-surface border border-border rounded p-0.5">
-                  {['1m', '6m', '1y', '5y'].map(tf => (
+                  {TIMEFRAMES.map(tf => (
                     <button 
-                      key={tf}
-                      onClick={() => setTimeframe(tf)}
-                      className={`px-1.5 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${timeframe === tf ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
+                      key={tf.value}
+                      onClick={() => setInterval(tf.value as any)}
+                      className={`px-1.5 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${interval === tf.value ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
                     >
-                      {tf}
+                      {tf.label}
                     </button>
                   ))}
                 </div>
@@ -345,12 +360,14 @@ export default function TerminalPage() {
                   >
                     Standard
                   </button>
-                  <button 
-                    onClick={() => setChartMode('advanced')}
-                    className={`px-2 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${chartMode === 'advanced' ? 'bg-accent text-accent-text' : 'text-text-tertiary hover:text-text-primary'}`}
-                  >
-                    Advanced
-                  </button>
+                  {activeInstrument?.tradingViewSymbol && (
+                    <button 
+                      onClick={() => setChartMode('advanced')}
+                      className={`px-2 py-0.5 text-[8px] font-bold uppercase rounded-sm transition-colors ${chartMode === 'advanced' ? 'bg-accent text-accent-text' : 'text-text-tertiary hover:text-text-primary'}`}
+                    >
+                      Advanced
+                    </button>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 text-[8px]">
                   <span className="text-positive flex items-center gap-1"><Wifi size={8}/> Live</span>
@@ -370,7 +387,7 @@ export default function TerminalPage() {
                 ) : (
                   <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 opacity-30">
                     <LineChart size={32} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Select Asset to Load Chart</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Loading Chart Data...</span>
                   </div>
                 )
               ) : (
