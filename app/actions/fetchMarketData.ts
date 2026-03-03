@@ -16,11 +16,11 @@ export interface MarketData {
 // Provided Institutional API Key
 const POLYGON_API_KEY = 'Educ3tK6ue_eC33G_3ERTMb0qc7wd3K6';
 
-// Mapping our clean UI symbols to Polygon.io strict ticker formats
+// Map our clean UI symbols to Polygon's TRUE index tickers first
 const POLY_MAP: Record<string, string> = {
   'NAS100': 'I:NDX',
-  'SPX500': 'SPY',    // S&P 500 ETF proxy (avoids premium index restrictions)
-  'US30': 'DIA',      // Dow Jones ETF proxy (avoids premium index restrictions)
+  'SPX500': 'I:SPX',
+  'US30': 'I:DJI',
   'CRUDE': 'USO',     // Oil ETF proxy
   'GOLD': 'GLD',      // Gold ETF proxy
   'EURUSD': 'C:EURUSD',
@@ -36,7 +36,6 @@ const POLY_MAP: Record<string, string> = {
 export async function fetchMarketDataBatch(symbols: string[], interval: string = '15m'): Promise<(MarketData | null)[]> {
   if (!symbols || symbols.length === 0) return [];
   
-  // Convert standard intervals to Polygon format (multiplier + timespan)
   let multiplier = 15;
   let timespan = 'minute';
   if (interval === '1m') { multiplier = 1; timespan = 'minute'; }
@@ -44,7 +43,6 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
   if (interval === '60m' || interval === '1h') { multiplier = 1; timespan = 'hour'; }
   if (interval === '1d' || interval === '1D') { multiplier = 1; timespan = 'day'; }
 
-  // Look back 5 days to ensure we have enough data to calculate changes and render charts
   const toDate = new Date();
   const fromDate = new Date();
   fromDate.setDate(toDate.getDate() - 5);
@@ -55,26 +53,35 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
   try {
     const results = await Promise.all(symbols.map(async (sym) => {
       try {
-        const polySym = POLY_MAP[sym] || sym;
-        
-        // Fetch Aggregates (OHLCV) from Polygon.io
-        const url = `https://api.polygon.io/v2/aggs/ticker/${polySym}/range/${multiplier}/${timespan}/${fromStr}/${toStr}?adjusted=true&sort=asc&apiKey=${POLYGON_API_KEY}`;
-        
-        const res = await fetch(url, { next: { revalidate: 0 } });
-        
-        if (!res.ok) {
-          console.warn(`[Polygon] API rejected ${polySym}: ${res.status}`);
-          return null;
-        }
-
-        const data = await res.json();
-        
-        if (!data.results || data.results.length === 0) return null;
-
-        // If we used an ETF proxy for an index, scale the price back up so the UI looks correct
+        let polySym = POLY_MAP[sym] || sym;
         let priceMultiplier = 1;
-        if (sym === 'SPX500') priceMultiplier = 10;  // SPY is ~1/10th of SPX
-        if (sym === 'US30') priceMultiplier = 100;   // DIA is ~1/100th of DJI
+        
+        let url = `https://api.polygon.io/v2/aggs/ticker/${polySym}/range/${multiplier}/${timespan}/${fromStr}/${toStr}?adjusted=true&sort=asc&apiKey=${POLYGON_API_KEY}`;
+        let res = await fetch(url, { next: { revalidate: 0 } });
+        
+        // SELF-HEALING FALLBACK: If the raw Index is blocked/restricted by S&P Global, seamlessly fallback to the ETF and scale it.
+        let data = await res.json().catch(() => null);
+        
+        if (!res.ok || !data || !data.results || data.results.length === 0) {
+          if (sym === 'SPX500') {
+            polySym = 'SPY';
+            priceMultiplier = 10; // SPY is ~1/10th of SPX
+          } else if (sym === 'US30') {
+            polySym = 'DIA';
+            priceMultiplier = 100; // DIA is ~1/100th of DJI
+          } else {
+            return null; // Hard fail for others
+          }
+          
+          // Re-fetch using the ETF Proxy
+          url = `https://api.polygon.io/v2/aggs/ticker/${polySym}/range/${multiplier}/${timespan}/${fromStr}/${toStr}?adjusted=true&sort=asc&apiKey=${POLYGON_API_KEY}`;
+          res = await fetch(url, { next: { revalidate: 0 } });
+          data = await res.json().catch(() => null);
+          
+          if (!res.ok || !data || !data.results || data.results.length === 0) {
+            return null; // Total failure
+          }
+        }
 
         const quotes = data.results;
         const currentCandle = quotes[quotes.length - 1];

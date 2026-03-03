@@ -30,7 +30,7 @@ const TIMEFRAMES = [
 
 const TV_WIDGET_MAP: Record<string, { tv: string, label: string }> = {
   'NAS100': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
-  'SPX500': { tv: 'BLACKBULL:SPX500', label: 'S&P 500' },
+  'SPX500': { tv: 'PEPPERSTONE:US500', label: 'S&P 500' },
   'US30': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones' },
   'CRUDE': { tv: 'TVC:USOIL', label: 'Crude Oil' },
   'GOLD': { tv: 'TVC:GOLD', label: 'Gold' },
