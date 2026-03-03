@@ -3,9 +3,6 @@
 import { OHLCV } from '@/lib/marketdata/types';
 import yahooFinance from 'yahoo-finance2';
 
-// Configure yahoo-finance2 to suppress non-critical warnings
-yahooFinance.suppressNotices(['yahooSurvey']);
-
 export interface MarketData {
   symbol: string;
   price: number;
