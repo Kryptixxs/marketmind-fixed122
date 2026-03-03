@@ -1,49 +1,63 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { useSettings } from '@/context/SettingsContext';
 
-export default function TradingViewChart({ symbol }: { symbol: string }) {
+interface TradingViewChartProps {
+  symbol: string;
+  interval?: string;
+  style?: string;
+}
+
+export default function TradingViewChart({ symbol, interval = "15", style = "1" }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const { settings } = useSettings();
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    // Clear previous widget
     containerRef.current.innerHTML = '';
-
     const script = document.createElement('script');
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.type = 'text/javascript';
     script.async = true;
     
-    // Configuration for the Pepperstone Advanced Chart
+    // In Terminal mode, force Amber/Orange overrides
+    const terminalOverrides = settings.uiTheme === 'terminal' ? {
+      "mainSeriesProperties.barStyle.upColor": "#FFB000",
+      "mainSeriesProperties.barStyle.downColor": "#CC8800",
+      "paneProperties.background": "#000000",
+      "paneProperties.vertGridProperties.color": "#222222",
+      "paneProperties.horzGridProperties.color": "#222222",
+      "scalesProperties.textColor": "#FFB000"
+    } : {};
+
     const config = {
       "autosize": true,
       "symbol": symbol,
-      "interval": "5",
+      "interval": interval,
       "timezone": "Etc/UTC",
       "theme": "dark",
-      "style": "1",
+      "style": style, // 0 = Bars, 1 = Candles
       "locale": "en",
-      "backgroundColor": "#000000",
-      "gridColor": "rgba(242, 242, 242, 0.06)",
+      "backgroundColor": settings.uiTheme === 'terminal' ? "#000000" : "rgba(0,0,0,0)",
+      "gridColor": settings.uiTheme === 'terminal' ? "#222222" : "rgba(255, 255, 255, 0.05)",
       "hide_side_toolbar": true,
-      "allow_symbol_change": true,
-      "save_image": true,
+      "allow_symbol_change": false,
+      "save_image": false,
       "details": false,
       "calendar": false,
-      "support_host": "https://www.tradingview.com"
+      "support_host": "https://www.tradingview.com",
+      "overrides": terminalOverrides
     };
 
     script.innerHTML = JSON.stringify(config);
     containerRef.current.appendChild(script);
 
     return () => {
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
-      }
+      if (containerRef.current) containerRef.current.innerHTML = '';
     };
-  }, [symbol]);
+  }, [symbol, interval, style, settings.uiTheme]);
 
   return (
     <div className="tradingview-widget-container h-full w-full" ref={containerRef}>
