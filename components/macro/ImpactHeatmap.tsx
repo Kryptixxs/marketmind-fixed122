@@ -1,27 +1,41 @@
 'use client';
 
-import React from 'react';
-import { Target, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Target, Loader2 } from 'lucide-react';
+import { analyzeAssetSensitivity } from '@/app/actions/analyzeAssetSensitivity';
 
 interface AssetSensitivity {
   symbol: string;
   sensitivity: 'HIGH' | 'MODERATE' | 'LOW';
   expectedMove: string;
-  weight: number; // 1-10
+  weight: number;
 }
 
-const SENSITIVITIES: AssetSensitivity[] = [
-  { symbol: 'Gold', sensitivity: 'HIGH', expectedMove: '+1.2% on Cool', weight: 9 },
-  { symbol: 'ES (S&P 500)', sensitivity: 'HIGH', expectedMove: '-1.5% on Hot', weight: 10 },
-  { symbol: 'NQ (Nasdaq)', sensitivity: 'HIGH', expectedMove: '-2.1% on Hot', weight: 10 },
-  { symbol: 'DXY (Dollar)', sensitivity: 'HIGH', expectedMove: '+0.8% on Hot', weight: 9 },
-  { symbol: '2Y Yields', sensitivity: 'HIGH', expectedMove: '+12bps on Hot', weight: 10 },
-  { symbol: 'USD/JPY', sensitivity: 'MODERATE', expectedMove: '+80 pips on Hot', weight: 7 },
-  { symbol: 'BTC/USD', sensitivity: 'MODERATE', expectedMove: '-3.5% on Hot', weight: 6 },
-  { symbol: 'Crude Oil', sensitivity: 'LOW', expectedMove: '+0.4% on Hot', weight: 3 }
-];
-
 export function ImpactHeatmap() {
+  const [data, setData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      const result = await analyzeAssetSensitivity();
+      if (result) setData(result);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-2 opacity-50">
+        <Loader2 size={14} className="animate-spin text-accent" />
+        <span className="text-[8px] font-bold uppercase tracking-widest">Ranking Sensitivity...</span>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
   return (
     <div className="flex flex-col h-full p-2 space-y-2">
       <div className="flex items-center justify-between mb-1">
@@ -32,8 +46,8 @@ export function ImpactHeatmap() {
         <span className="text-[8px] text-accent font-mono">SENSITIVITY_RANK_V2.1</span>
       </div>
       
-      <div className="space-y-1.5">
-        {SENSITIVITIES.map((asset) => (
+      <div className="space-y-1.5 overflow-y-auto custom-scrollbar pr-1">
+        {data.sensitivities.map((asset: AssetSensitivity) => (
           <div key={asset.symbol} className="bg-surface-highlight/50 border border-border/50 p-2 flex items-center justify-between group hover:border-accent/30 transition-colors">
             <div className="flex flex-col">
               <span className="text-[10px] font-bold text-text-primary">{asset.symbol}</span>
@@ -53,10 +67,10 @@ export function ImpactHeatmap() {
       <div className="mt-auto p-2 border-t border-border/50 bg-surface/30">
         <div className="flex items-center justify-between mb-2">
           <span className="text-[9px] font-bold text-text-secondary uppercase">Aggregate Sensitivity</span>
-          <span className="text-[9px] font-mono text-negative">HIGH</span>
+          <span className={`text-[9px] font-mono ${data.aggregateSensitivity === 'HIGH' ? 'text-negative' : 'text-positive'}`}>{data.aggregateSensitivity}</span>
         </div>
         <div className="w-full h-1 bg-surface-highlight rounded-full overflow-hidden">
-          <div className="h-full bg-negative w-[88%]" />
+          <div className={`h-full ${data.aggregateSensitivity === 'HIGH' ? 'bg-negative' : 'bg-positive'} transition-all duration-1000`} style={{ width: `${data.aggregateScore}%` }} />
         </div>
       </div>
     </div>

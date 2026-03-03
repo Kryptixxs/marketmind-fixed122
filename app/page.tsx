@@ -215,7 +215,7 @@ export default function TerminalPage() {
 
           <div className="h-[25%] min-h-0">
             <Widget title="Pre-Event Setup Scanner">
-              <SetupScanner />
+              <SetupScanner activeSymbol={activeSymbol} />
             </Widget>
           </div>
 

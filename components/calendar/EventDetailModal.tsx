@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useMemo } from 'react';
-import {
-  X, TrendingUp, Globe, Zap, BarChart3, AlertTriangle, Activity, Layers, Target, Info, Search, ShieldAlert
+import React, { useMemo, useEffect, useState } from 'react';
+import { 
+  X, TrendingUp, Globe, Zap, BarChart3, AlertTriangle, Activity, Layers, Target, Info, Search, ShieldAlert, Loader2
 } from 'lucide-react';
 import { EconomicEvent } from '@/lib/types';
-import { formatTime } from '@/lib/date-utils';
-import { getEventIntel, computeSurprise } from '@/lib/event-intelligence';
+import { computeSurprise } from '@/lib/event-intelligence';
+import { analyzeEventIntel } from '@/app/actions/analyzeEventIntel';
 
 interface EventDetailModalProps {
   event: EconomicEvent;
@@ -14,13 +14,24 @@ interface EventDetailModalProps {
 }
 
 export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
-  const intel = useMemo(() => getEventIntel(event), [event]);
+  const [intel, setIntel] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const surprise = useMemo(() => computeSurprise(event), [event]);
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    async function load() {
+      setLoading(true);
+      const result = await analyzeEventIntel(event);
+      if (result) setIntel(result);
+      setLoading(false);
+    }
+    load();
+  }, [event]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-2">
@@ -51,137 +62,149 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-6">
-          
-          {/* Top Stats Bar */}
-          <div className="grid grid-cols-4 gap-0.5 bg-border border border-border">
-            {[
-              { label: 'Volatility Regime', value: intel.volatility, color: 'text-accent' },
-              { label: 'Macro Impact Score', value: `${intel.macroImpact}/10`, color: 'text-text-primary' },
-              { label: 'Market Positioning', value: intel.positioning, color: 'text-warning' },
-              { label: 'Surprise Threshold', value: `${intel.surpriseThresholdPct}%`, color: 'text-text-secondary' }
-            ].map(s => (
-              <div key={s.label} className="bg-background p-2 flex flex-col gap-1">
-                <span className="text-[8px] text-text-tertiary uppercase font-bold">{s.label}</span>
-                <span className={`text-[10px] font-mono font-bold ${s.color}`}>{s.value}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Narrative Section */}
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-text-tertiary">
-              <Info size={12} />
-              <span className="text-[9px] font-bold uppercase tracking-wider">Macro Narrative & Context</span>
+          {loading ? (
+            <div className="h-64 flex flex-col items-center justify-center gap-3 opacity-50">
+              <Loader2 size={24} className="animate-spin text-accent" />
+              <span className="text-[10px] font-bold uppercase tracking-widest">Synthesizing Event Intelligence...</span>
             </div>
-            <p className="text-[11px] text-text-secondary leading-relaxed bg-surface-highlight/30 p-3 border-l-2 border-accent">
-              {intel.narrative}
-            </p>
-          </div>
-
-          {/* Main Intelligence Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            
-            {/* Scenario Tree */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-text-tertiary">
-                <Layers size={12} />
-                <span className="text-[9px] font-bold uppercase tracking-wider">Scenario Tree</span>
-              </div>
-              <div className="space-y-1">
-                {intel.scenarios.map(s => (
-                  <div key={s.label} className="bg-background border border-border p-2 flex flex-col gap-1 group hover:border-accent/30 transition-colors">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-bold text-text-primary">{s.label}</span>
-                      <span className="text-[10px] font-mono text-accent">{s.probability}%</span>
-                    </div>
-                    <p className="text-[9px] text-text-tertiary leading-tight">{s.reaction}</p>
-                    <div className="w-full h-0.5 bg-surface-highlight mt-1">
-                      <div className={`h-full ${s.bias === 'BULLISH' ? 'bg-positive/40' : s.bias === 'BEARISH' ? 'bg-negative/40' : 'bg-warning/40'}`} style={{ width: `${s.probability}%` }} />
-                    </div>
+          ) : intel ? (
+            <>
+              {/* Top Stats Bar */}
+              <div className="grid grid-cols-4 gap-0.5 bg-border border border-border">
+                {[
+                  { label: 'Volatility Regime', value: intel.volatility, color: 'text-accent' },
+                  { label: 'Macro Impact Score', value: `${intel.macroImpact}/10`, color: 'text-text-primary' },
+                  { label: 'Market Positioning', value: intel.positioning, color: 'text-warning' },
+                  { label: 'Surprise Threshold', value: `${intel.surpriseThresholdPct}%`, color: 'text-text-secondary' }
+                ].map(s => (
+                  <div key={s.label} className="bg-background p-2 flex flex-col gap-1">
+                    <span className="text-[8px] text-text-tertiary uppercase font-bold">{s.label}</span>
+                    <span className={`text-[10px] font-mono font-bold ${s.color}`}>{s.value}</span>
                   </div>
                 ))}
               </div>
-            </div>
 
-            {/* Impact Heatmap */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-text-tertiary">
-                <Target size={12} />
-                <span className="text-[9px] font-bold uppercase tracking-wider">Asset Sensitivity</span>
+              {/* Narrative Section */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-text-tertiary">
+                  <Info size={12} />
+                  <span className="text-[9px] font-bold uppercase tracking-wider">Macro Narrative & Context</span>
+                </div>
+                <p className="text-[11px] text-text-secondary leading-relaxed bg-surface-highlight/30 p-3 border-l-2 border-accent">
+                  {intel.narrative}
+                </p>
               </div>
-              <div className="space-y-1">
-                {intel.sensitivities.map(asset => (
-                  <div key={asset.symbol} className="bg-background border border-border p-2 flex items-center justify-between">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-text-primary">{asset.symbol}</span>
-                      <span className="text-[8px] text-text-tertiary uppercase">{asset.expectedMove}</span>
+
+              {/* Main Intelligence Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                
+                {/* Scenario Tree */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-text-tertiary">
+                    <Layers size={12} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Scenario Tree</span>
+                  </div>
+                  <div className="space-y-1">
+                    {intel.scenarios.map((s: any) => (
+                      <div key={s.label} className="bg-background border border-border p-2 flex flex-col gap-1 group hover:border-accent/30 transition-colors">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-text-primary">{s.label}</span>
+                          <span className="text-[10px] font-mono text-accent">{s.probability}%</span>
+                        </div>
+                        <p className="text-[9px] text-text-tertiary leading-tight">{s.reaction}</p>
+                        <div className="w-full h-0.5 bg-surface-highlight mt-1">
+                          <div className={`h-full ${s.bias === 'BULLISH' ? 'bg-positive/40' : s.bias === 'BEARISH' ? 'bg-negative/40' : 'bg-warning/40'} transition-all duration-1000`} style={{ width: `${s.probability}%` }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Impact Heatmap */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-text-tertiary">
+                    <Target size={12} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Asset Sensitivity</span>
+                  </div>
+                  <div className="space-y-1">
+                    {intel.sensitivities.map((asset: any) => (
+                      <div key={asset.symbol} className="bg-background border border-border p-2 flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span className="text-[10px] font-bold text-text-primary">{asset.symbol}</span>
+                          <span className="text-[8px] text-text-tertiary uppercase">{asset.expectedMove}</span>
+                        </div>
+                        <div className={`px-2 py-0.5 rounded-sm text-[8px] font-bold uppercase ${
+                          asset.sensitivity === 'HIGH' ? 'bg-negative/20 text-negative border border-negative/30' :
+                          asset.sensitivity === 'MODERATE' ? 'bg-warning/20 text-warning border border-warning/30' :
+                          'bg-positive/20 text-positive border border-positive/30'
+                        }`}>
+                          {asset.sensitivity}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Setup Scanner */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-text-tertiary">
+                    <Search size={12} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Pre-Event Setup</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="bg-background border border-border p-2 flex items-center justify-between">
+                      <span className="text-[9px] text-text-tertiary uppercase font-bold">Crowdedness</span>
+                      <span className="text-[10px] font-mono font-bold text-warning">HIGH</span>
                     </div>
-                    <div className={`px-2 py-0.5 rounded-sm text-[8px] font-bold uppercase ${
-                      asset.sensitivity === 'HIGH' ? 'bg-negative/20 text-negative border border-negative/30' :
-                      asset.sensitivity === 'MODERATE' ? 'bg-warning/20 text-warning border border-warning/30' :
-                      'bg-positive/20 text-positive border border-positive/30'
-                    }`}>
-                      {asset.sensitivity}
+                    <div className="bg-background border border-border p-2 flex items-center justify-between">
+                      <span className="text-[9px] text-text-tertiary uppercase font-bold">Volatility</span>
+                      <span className="text-[10px] font-mono font-bold text-negative">EXPENSIVE</span>
+                    </div>
+                    <div className="bg-background border border-border p-2 flex items-center justify-between">
+                      <span className="text-[9px] text-text-tertiary uppercase font-bold">Liquidity</span>
+                      <span className="text-[10px] font-mono font-bold text-negative">THIN</span>
+                    </div>
+                    <div className="bg-background border border-border p-2 flex items-center justify-between">
+                      <span className="text-[9px] text-text-tertiary uppercase font-bold">Gamma</span>
+                      <span className="text-[10px] font-mono font-bold text-positive">POSITIVE</span>
+                    </div>
+                    <div className="mt-2 p-2 bg-surface-highlight/30 border border-border/50 rounded-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        <ShieldAlert size={10} className="text-warning" />
+                        <span className="text-[8px] text-warning font-bold uppercase">Risk Map</span>
+                      </div>
+                      <p className="text-[9px] text-text-secondary leading-tight italic">
+                        "Positioning suggests asymmetric risk to the downside if data prints 'In-Line' or 'Cool'."
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* Setup Scanner */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-text-tertiary">
-                <Search size={12} />
-                <span className="text-[9px] font-bold uppercase tracking-wider">Pre-Event Setup</span>
               </div>
-              <div className="space-y-1.5">
-                <div className="bg-background border border-border p-2 flex items-center justify-between">
-                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Crowdedness</span>
-                  <span className="text-[10px] font-mono font-bold text-warning">HIGH</span>
-                </div>
-                <div className="bg-background border border-border p-2 flex items-center justify-between">
-                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Volatility</span>
-                  <span className="text-[10px] font-mono font-bold text-negative">EXPENSIVE</span>
-                </div>
-                <div className="bg-background border border-border p-2 flex items-center justify-between">
-                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Liquidity</span>
-                  <span className="text-[10px] font-mono font-bold text-negative">THIN</span>
-                </div>
-                <div className="bg-background border border-border p-2 flex items-center justify-between">
-                  <span className="text-[9px] text-text-tertiary uppercase font-bold">Gamma</span>
-                  <span className="text-[10px] font-mono font-bold text-positive">POSITIVE</span>
-                </div>
-                <div className="mt-2 p-2 bg-surface-highlight/30 border border-border/50 rounded-sm">
-                  <div className="flex items-center gap-2 mb-1">
-                    <ShieldAlert size={10} className="text-warning" />
-                    <span className="text-[8px] text-warning font-bold uppercase">Risk Map</span>
+
+              {/* Live Reaction Engine (If data printed) */}
+              {surprise.classification !== 'N/A' && (
+                <div className="pt-4 border-t border-border space-y-3">
+                  <div className="flex items-center gap-2 text-text-tertiary">
+                    <Activity size={12} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Live Reaction Engine</span>
                   </div>
-                  <p className="text-[9px] text-text-secondary leading-tight italic">
-                    "Positioning suggests asymmetric risk to the downside if data prints 'In-Line' or 'Cool'."
-                  </p>
+                  <div className="bg-accent/5 border border-accent/20 p-3 flex items-center justify-between">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[10px] font-bold text-accent uppercase">Surprise Magnitude: {surprise.surprisePct?.toFixed(2)}%</span>
+                      <span className="text-[9px] text-text-secondary">Classification: <span className="text-text-primary font-bold">{surprise.classification}</span></span>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[14px] font-mono font-bold text-text-primary uppercase">REACTION: {surprise.classification === 'HOT' ? 'HAWKISH' : surprise.classification === 'COOL' ? 'DOVISH' : 'NEUTRAL'}</div>
+                      <div className="text-[8px] text-text-tertiary uppercase">Historical Analog: 88th Percentile</div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Live Reaction Engine (If data printed) */}
-          {surprise.classification !== 'N/A' && (
-            <div className="pt-4 border-t border-border space-y-3">
-              <div className="flex items-center gap-2 text-text-tertiary">
-                <Activity size={12} />
-                <span className="text-[9px] font-bold uppercase tracking-wider">Live Reaction Engine</span>
-              </div>
-              <div className="bg-accent/5 border border-accent/20 p-3 flex items-center justify-between">
-                <div className="flex flex-col gap-1">
-                  <span className="text-[10px] font-bold text-accent uppercase">Surprise Magnitude: {surprise.surprisePct?.toFixed(2)}%</span>
-                  <span className="text-[9px] text-text-secondary">Classification: <span className="text-text-primary font-bold">{surprise.classification}</span></span>
-                </div>
-                <div className="text-right">
-                  <div className="text-[14px] font-mono font-bold text-text-primary uppercase">REACTION: {surprise.classification === 'HOT' ? 'HAWKISH' : surprise.classification === 'COOL' ? 'DOVISH' : 'NEUTRAL'}</div>
-                  <div className="text-[8px] text-text-tertiary uppercase">Historical Analog: 88th Percentile</div>
-                </div>
-              </div>
+              )}
+            </>
+          ) : (
+            <div className="h-64 flex items-center justify-center text-text-tertiary italic">
+              Failed to load event intelligence.
             </div>
           )}
 
