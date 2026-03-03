@@ -14,7 +14,6 @@ export function MarketInternals({ tick }: { tick?: Tick }) {
   const volumes = quotes.map(q => q.volume);
   const currentPrice = closes[closes.length - 1];
 
-  // Pure Math Calculations
   const sma20 = closes.slice(-20).reduce((a, b) => a + b, 0) / 20;
   const avgVol20 = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
   const currentVol = volumes[volumes.length - 1];
@@ -22,7 +21,6 @@ export function MarketInternals({ tick }: { tick?: Tick }) {
   const rvol = avgVol20 > 0 ? (currentVol / avgVol20) : 0;
   const distFromMean = ((currentPrice - sma20) / sma20) * 100;
 
-  // 14-Day ATR
   let trSum = 0;
   const period = 14;
   for(let i = quotes.length - period; i < quotes.length; i++) {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { Widget } from '@/components/Widget';
 import TradingViewChart from '@/components/TradingViewChart';
@@ -96,7 +96,11 @@ export default function TerminalPage() {
               
               <Panel defaultSize={40} minSize={20} className="pt-0.5">
                 <Widget title="Cross-Asset Correlation">
-                  {activeQuote && <CorrelationMatrix activeTick={activeQuote} marketData={marketData} />}
+                  {activeQuote ? (
+                    <CorrelationMatrix activeTick={activeQuote} marketData={marketData} />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-text-tertiary text-[10px]">Loading Correlation...</div>
+                  )}
                 </Widget>
               </Panel>
             </PanelGroup>
