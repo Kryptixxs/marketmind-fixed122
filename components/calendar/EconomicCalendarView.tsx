@@ -2,13 +2,12 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { 
-  ChevronLeft, ChevronRight, Download
+  ChevronLeft, ChevronRight, Download, Loader2
 } from 'lucide-react';
 import { fetchEconomicCalendarBatch } from '@/app/actions/fetchEconomicCalendar';
 import { EconomicEvent } from '@/lib/types';
 import { getFullWeek, toISODateString } from '@/lib/date-utils';
 import { EventDetailModal } from './EventDetailModal';
-import { computeSurprise, getEventIntel } from '@/lib/event-intelligence';
 import { exportToCSV } from '@/lib/utils';
 import { formatMaybeNumber } from '@/lib/format';
 
@@ -48,11 +47,6 @@ export function EconomicCalendarView() {
     const load = async () => {
       setLoading(true);
       const datesToFetch = weekDates.map(d => d.dateStr);
-      
-      const lastDay = new Date(weekDates[6].date);
-      lastDay.setDate(lastDay.getDate() + 1);
-      datesToFetch.push(toISODateString(lastDay));
-
       const data = await fetchEconomicCalendarBatch(datesToFetch);
       setEventsData(data);
       setLoading(false);
@@ -79,7 +73,7 @@ export function EconomicCalendarView() {
         if (!showLowImpact && e.impact === 'Low') return;
         
         let hourKey = '00:00';
-        if (e.time.includes(':')) {
+        if (e.time !== 'All Day' && e.time !== 'TBD' && e.time.includes(':')) {
            const parts = e.time.split(':');
            const h = parseInt(parts[0]);
            if (!isNaN(h)) {
@@ -106,23 +100,24 @@ export function EconomicCalendarView() {
             <button onClick={() => setWeekOffset(w => w + 1)} className="p-1.5 hover:bg-surface rounded-md text-text-secondary hover:text-text-primary"><ChevronRight size={16}/></button>
           </div>
           
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setShowLowImpact(!showLowImpact)}
-              className={`px-3 py-1.5 rounded-md text-xs font-bold border transition-colors ${showLowImpact ? 'bg-surface-highlight border-border text-text-primary' : 'bg-transparent border-transparent text-text-tertiary hover:text-text-secondary'}`}
-            >
-              {showLowImpact ? 'Hiding Low Impact' : 'Show All'}
-            </button>
-          </div>
+          <button 
+            onClick={() => setShowLowImpact(!showLowImpact)}
+            className={`px-3 py-1.5 rounded-md text-xs font-bold border transition-colors ${showLowImpact ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-surface-highlight border-border text-text-tertiary hover:text-text-secondary'}`}
+          >
+            {showLowImpact ? 'Hiding Low Impact' : 'Show All'}
+          </button>
         </div>
 
-        <button 
-          onClick={handleDownload}
-          className="p-2 text-text-tertiary hover:text-text-primary"
-          title="Export Week to CSV"
-        >
-          <Download size={16} />
-        </button>
+        <div className="flex items-center gap-3">
+          {loading && <Loader2 size={14} className="animate-spin text-accent" />}
+          <button 
+            onClick={handleDownload}
+            className="p-2 text-text-tertiary hover:text-text-primary"
+            title="Export Week to CSV"
+          >
+            <Download size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Calendar Grid */}
@@ -164,67 +159,50 @@ export function EconomicCalendarView() {
                   return (
                     <div key={`${day.dateStr}-${hour}`} className={`border-r border-border p-1 relative group ${isToday ? 'bg-accent/[0.02]' : ''}`}>
                       <div className="flex flex-col gap-1.5 h-full">
-                        {dayEvents.map((event) => {
-                          const intel = getEventIntel(event);
-                          const surprise = computeSurprise(event, intel);
-                          const isMajorSurprise = surprise.surprisePct && Math.abs(surprise.surprisePct) >= intel.surpriseThresholdPct;
+                        {dayEvents.map((event) => (
+                          <div 
+                            key={event.id}
+                            onClick={() => setSelectedEvent(event)}
+                            className={`
+                              relative p-1.5 rounded bg-surface border border-border/50 shadow-sm hover:border-accent/50 hover:bg-surface-highlight transition-all cursor-pointer
+                              ${IMPACT_COLORS[event.impact] || IMPACT_COLORS.Low}
+                            `}
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1">
+                              <div className="flex items-center gap-1.5">
+                                {event.country && (
+                                  <img 
+                                    src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`}
+                                    alt={event.country}
+                                    className="w-3 h-2 object-cover rounded-[1px] opacity-80"
+                                    onError={(e) => e.currentTarget.style.display = 'none'}
+                                  />
+                                )}
+                                <span className="text-[9px] font-mono text-text-secondary leading-none">
+                                  {event.time}
+                                </span>
+                              </div>
+                              <span className="text-[8px] font-bold text-text-tertiary">{event.currency}</span>
+                            </div>
+                            
+                            <div className="text-[10px] font-medium leading-tight text-text-primary line-clamp-2 mb-1">
+                              {event.title}
+                            </div>
 
-                          // Determine color based on interpretation
-                          let actualColor = 'text-text-secondary';
-                          if (surprise.interpretation === 'BULLISH_RISK' || surprise.interpretation === 'HAWKISH') {
-                            actualColor = 'text-positive';
-                          } else if (surprise.interpretation === 'BEARISH_RISK' || surprise.interpretation === 'DOVISH') {
-                            actualColor = 'text-negative';
-                          }
-
-                          return (
-                            <div 
-                              key={event.id}
-                              onClick={() => setSelectedEvent(event)}
-                              className={`
-                                relative p-1.5 rounded bg-surface border border-border/50 shadow-sm hover:border-accent/50 hover:bg-surface-highlight transition-all cursor-pointer
-                                ${IMPACT_COLORS[event.impact] || IMPACT_COLORS.Low}
-                                ${isMajorSurprise ? 'ring-1 ring-accent ring-offset-1 ring-offset-background' : ''}
-                              `}
-                            >
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <div className="flex items-center gap-1.5">
-                                  {event.country && (
-                                    <img 
-                                      src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`}
-                                      alt={event.country}
-                                      className="w-3 h-2 object-cover rounded-[1px] opacity-80"
-                                      onError={(e) => e.currentTarget.style.display = 'none'}
-                                    />
-                                  )}
-                                  <span className="text-[9px] font-mono text-text-secondary leading-none">
-                                    {event.time}
+                            {(event.actual || event.forecast) && (
+                              <div className="flex items-center gap-2 text-[9px] font-mono border-t border-black/10 pt-1 mt-1 opacity-80">
+                                {event.actual && (
+                                  <span className="text-text-primary font-bold">
+                                    {formatMaybeNumber(event.actual)}
                                   </span>
-                                </div>
-                                {isMajorSurprise && (
-                                  <span className="text-[8px] font-bold text-accent animate-pulse">SURPRISE</span>
+                                )}
+                                {event.forecast && (
+                                  <span className="text-text-tertiary">/ {formatMaybeNumber(event.forecast)}</span>
                                 )}
                               </div>
-                              
-                              <div className="text-[10px] font-medium leading-tight text-text-primary line-clamp-2 mb-1">
-                                {event.title}
-                              </div>
-
-                              {(event.actual || event.forecast) && (
-                                <div className="flex items-center gap-2 text-[9px] font-mono border-t border-black/10 pt-1 mt-1 opacity-80">
-                                  {event.actual && (
-                                    <span className={actualColor}>
-                                      {formatMaybeNumber(event.actual)}
-                                    </span>
-                                  )}
-                                  {event.forecast && (
-                                    <span className="text-text-tertiary">/ {formatMaybeNumber(event.forecast)}</span>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
                   );

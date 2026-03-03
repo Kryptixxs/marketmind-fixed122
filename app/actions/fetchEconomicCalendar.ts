@@ -5,45 +5,44 @@ import { EconomicEvent, Impact } from '@/lib/types';
 const CACHE: Record<string, { data: EconomicEvent[], timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
+const COUNTRY_MAP: Record<string, { code: string; currency: string }> = {
+  'United States': { code: 'US', currency: 'USD' },
+  'Euro Zone': { code: 'EU', currency: 'EUR' },
+  'United Kingdom': { code: 'GB', currency: 'GBP' },
+  'Japan': { code: 'JP', currency: 'JPY' },
+  'Canada': { code: 'CA', currency: 'CAD' },
+  'Australia': { code: 'AU', currency: 'AUD' },
+  'China': { code: 'CN', currency: 'CNY' },
+  'Switzerland': { code: 'CH', currency: 'CHF' },
+  'New Zealand': { code: 'NZ', currency: 'NZD' },
+  'Germany': { code: 'DE', currency: 'EUR' },
+  'France': { code: 'FR', currency: 'EUR' },
+  'Italy': { code: 'IT', currency: 'EUR' },
+  'Spain': { code: 'ES', currency: 'EUR' },
+  'Netherlands': { code: 'NL', currency: 'EUR' },
+  'India': { code: 'IN', currency: 'INR' },
+  'Brazil': { code: 'BR', currency: 'BRL' },
+  'Mexico': { code: 'MX', currency: 'MXN' },
+  'South Korea': { code: 'KR', currency: 'KRW' },
+  'Sweden': { code: 'SE', currency: 'SEK' },
+  'Norway': { code: 'NO', currency: 'NOK' },
+  'Hong Kong': { code: 'HK', currency: 'HKD' },
+  'Singapore': { code: 'SG', currency: 'SGD' },
+};
+
 const HIGH_IMPACT_KEYWORDS = [
   'Nonfarm Payrolls', 'Unemployment Rate', 'CPI', 'PPI', 'GDP', 'FOMC', 
   'Fed Interest Rate', 'Interest Rate Decision', 'Retail Sales', 'ISM Manufacturing', 
   'ISM Services', 'Crude Oil Inventories', 'Consumer Confidence', 'JOLTs',
   'Bank of England', 'ECB', 'Meeting Minutes', 'Policy', 'Inflation',
-  'Employment Change', 'Jobless Claims', 'PMI', 'Rate Statement', 'Non-Farm'
+  'Employment Change', 'Jobless Claims', 'PMI', 'Rate Statement'
 ];
 
 const MEDIUM_IMPACT_KEYWORDS = [
   'Durable Goods', 'Housing Starts', 'Existing Home Sales', 'New Home Sales',
   'ADP', 'Trade Balance', 'Factory Orders', 'Building Permits', 'Michigan', 
-  'PCE', 'Import Price', 'Export Price', 'Wholesale', 'Industrial Production', 
-  'Capacity Utilization', 'Leading Index', 'Budget Balance', 'Current Account'
+  'PCE', 'Import Price', 'Export Price', 'Wholesale', 'Industrial Production'
 ];
-
-const IGNORED_KEYWORDS = [
-  'Bill Auction', 'Note Auction', 'Bond Auction', 'Tips Auction', 
-  'Mortgage Market', 'MBA', 'Redbook', 'API Weekly', 'Rig Count',
-  'Gasoline', 'Heating Oil', 'Cushing', 'Distillate', '3-Month', '6-Month',
-  '4-Week', '8-Week', '52-Week', 'Wasde', 'Natural Gas Storage',
-  'Challenger Job Cuts', 'Chain Store', 'Baskin', 'Money Supply',
-  'Settlement Price', 'HICP', 'Labor Costs', 'Production Price Index'
-];
-
-const COUNTRY_CODES: Record<string, string> = {
-  'United States': 'US', 'Euro Zone': 'EU', 'United Kingdom': 'GB',
-  'Japan': 'JP', 'Canada': 'CA', 'Australia': 'AU', 'China': 'CN',
-  'Switzerland': 'CH', 'New Zealand': 'NZ', 'Germany': 'DE', 'France': 'FR',
-  'Italy': 'IT', 'Spain': 'ES', 'Netherlands': 'NL', 'India': 'IN',
-  'Brazil': 'BR', 'Mexico': 'MX', 'South Korea': 'KR'
-};
-
-const CURRENCY_MAP: Record<string, string> = {
-  'United States': 'USD', 'Euro Zone': 'EUR', 'United Kingdom': 'GBP',
-  'Japan': 'JPY', 'Canada': 'CAD', 'Australia': 'AUD', 'China': 'CNY',
-  'Switzerland': 'CHF', 'New Zealand': 'NZD', 'Germany': 'EUR', 'France': 'EUR',
-  'Italy': 'EUR', 'Spain': 'EUR', 'Netherlands': 'EUR', 'India': 'INR',
-  'Brazil': 'BRL', 'Mexico': 'MXN', 'South Korea': 'KRW'
-};
 
 function calculateImpact(title: string): Impact {
   const t = title.toLowerCase();
@@ -52,22 +51,27 @@ function calculateImpact(title: string): Impact {
   return 'Low';
 }
 
-function shouldFilterOut(title: string): boolean {
-  const t = title.toLowerCase();
-  return IGNORED_KEYWORDS.some(k => t.includes(k.toLowerCase()));
-}
-
-function sanitizeValue(val: string | undefined): string {
-  if (!val) return '';
+function sanitizeValue(val: string | undefined): string | null {
+  if (!val) return null;
+  // Strip HTML and entities
   const clean = val.replace(/<[^>]*>?/gm, '').replace(/&[a-z0-9#]+;/gi, '').trim();
-  const isReasonable = /^-?[\d,.]+[kMB%]?$/i.test(clean);
-  return isReasonable ? clean : '';
+  // Normalize whitespace
+  const normalized = clean.replace(/\s+/g, ' ');
+  // Validate numeric-ish (number, percent, k/m/b suffix)
+  const isNumeric = /^-?[\d,.]+[kMB%]?$/i.test(normalized);
+  return isNumeric ? normalized : null;
 }
 
-function normalizeTime(time: string | undefined, gmt: string | undefined): string {
-  const t = (time || gmt || '').trim().toUpperCase();
+function normalizeTime(time: string | undefined): string {
+  const t = (time || '').trim().toUpperCase();
   if (!t || t === '24H' || t === 'ALL DAY') return 'All Day';
+  if (t === 'TENTATIVE' || t === 'TBD') return 'TBD';
   return t;
+}
+
+function generateStableId(date: string, time: string, title: string, country: string): string {
+  const raw = `${date}-${time}-${title}-${country}`.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  return raw;
 }
 
 export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Record<string, EconomicEvent[]>> {
@@ -83,36 +87,18 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
     }
   }
 
-  dates.forEach(d => { if (!results[d]) results[d] = []; });
-
   if (datesToFetch.length === 0) return results;
-
-  const rawEvents: EconomicEvent[] = [];
 
   await Promise.all(datesToFetch.map(async (date) => {
     try {
       const events = await fetchEventsForDate(date);
-      rawEvents.push(...events);
+      results[date] = events;
+      CACHE[date] = { data: events, timestamp: Date.now() };
     } catch (error) {
       console.error(`Error fetching economic calendar for ${date}:`, error);
+      results[date] = [];
     }
   }));
-
-  rawEvents.forEach(event => {
-    if (results[event.date]) {
-      results[event.date].push(event);
-    } else {
-      results[event.date] = [event];
-    }
-  });
-  
-  Object.keys(results).forEach(key => {
-    results[key].sort((a, b) => {
-       if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
-       const impactScore = { High: 3, Medium: 2, Low: 1 };
-       return (impactScore[b.impact] || 0) - (impactScore[a.impact] || 0);
-    });
-  });
 
   return results;
 }
@@ -132,42 +118,31 @@ async function fetchEventsForDate(dateStr: string): Promise<EconomicEvent[]> {
     const json = await response.json();
     if (!json.data?.rows) return [];
 
-    return json.data.rows
-      .filter((row: any) => row.eventName && !shouldFilterOut(row.eventName))
-      .map((row: any) => {
-        const time = normalizeTime(row.time, row.gmt);
-        
-        // Manual 1-day shift left logic to match trading week grid
-        const d = new Date(`${dateStr}T00:00:00Z`);
-        d.setDate(d.getDate() - 1);
-        const shiftedDateStr = d.toISOString().split('T')[0];
+    return json.data.rows.map((row: any) => {
+      const time = normalizeTime(row.time);
+      const countryInfo = COUNTRY_MAP[row.country] || { code: row.country || 'UN', currency: '---' };
+      
+      // Calculate timestamp
+      let sortTime = "00:00";
+      if (time !== 'All Day' && time !== 'TBD' && time.includes(':')) {
+        sortTime = time;
+      }
+      const timestamp = new Date(`${dateStr}T${sortTime}:00Z`).getTime();
 
-        let sortTime = "00:00";
-        if (time !== 'All Day' && time.includes(':')) {
-          sortTime = time;
-        }
-        const timestamp = new Date(`${shiftedDateStr}T${sortTime}:00Z`).getTime();
-
-        const impact = calculateImpact(row.eventName || '');
-        const countryCode = COUNTRY_CODES[row.country] || 'US'; 
-        const currency = CURRENCY_MAP[row.country] || 'USD';
-
-        const stableId = `${shiftedDateStr}-${row.eventName}-${countryCode}-${time}`.replace(/\s+/g, '-').toLowerCase();
-
-        return {
-          id: stableId,
-          date: shiftedDateStr,
-          time: time,
-          country: countryCode, 
-          currency: currency,
-          impact: impact, 
-          title: row.eventName || 'Event',
-          actual: sanitizeValue(row.actual),
-          forecast: sanitizeValue(row.consensus),
-          previous: sanitizeValue(row.previous),
-          timestamp: timestamp
-        };
-      });
+      return {
+        id: generateStableId(dateStr, time, row.eventName, countryInfo.code),
+        date: dateStr,
+        time: time,
+        country: countryInfo.code,
+        currency: countryInfo.currency,
+        impact: calculateImpact(row.eventName || ''),
+        title: (row.eventName || 'Unknown Event').trim(),
+        actual: sanitizeValue(row.actual),
+        forecast: sanitizeValue(row.consensus),
+        previous: sanitizeValue(row.previous),
+        timestamp: timestamp
+      };
+    }).sort((a: EconomicEvent, b: EconomicEvent) => a.timestamp - b.timestamp);
   } catch {
     return [];
   }
