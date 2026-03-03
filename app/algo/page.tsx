@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Play, Loader2 } from 'lucide-react';
+import { Play, Loader2, Sparkles } from 'lucide-react';
 import { runBacktest, StrategyResult, StrategyParams } from '@/lib/backtest';
 import { Widget } from '@/components/Widget';
 import { TradingChart } from '@/components/TradingChart';
 import { fetchMarketData } from '@/app/actions/fetchMarketData';
+import { useSettings } from '@/context/SettingsContext';
 
 export default function AlgoPage() {
+  const { settings } = useSettings();
   const [params, setParams] = useState<StrategyParams>({
     fastMa: 9,
     slowMa: 21,
@@ -47,12 +49,44 @@ export default function AlgoPage() {
     }
   };
 
+  // Complex System: Auto-tune algorithm based on global user profile settings
+  const applyProfilePresets = () => {
+    let f = 9, s = 21, sl = 2.0, tp = 5.0;
+    
+    // Base Strategy Tuning
+    if (settings.strategy === 'Scalper') { f = 5; s = 15; sl = 0.5; tp = 1.5; }
+    else if (settings.strategy === 'Swing') { f = 10; s = 30; sl = 2.0; tp = 6.0; }
+    else if (settings.strategy === 'Macro') { f = 50; s = 200; sl = 5.0; tp = 15.0; }
+    
+    // Risk Tolerance Adjustments
+    if (settings.riskTolerance === 'Aggressive') { sl *= 1.5; tp *= 1.5; }
+    else if (settings.riskTolerance === 'Conservative') { sl *= 0.5; tp *= 0.5; }
+
+    setParams({
+      fastMa: f,
+      slowMa: s,
+      stopLossPct: Number(sl.toFixed(2)),
+      takeProfitPct: Number(tp.toFixed(2))
+    });
+  };
+
   return (
     <div className="h-full w-full bg-background p-2 flex flex-col lg:grid lg:grid-cols-12 gap-2 overflow-y-auto lg:overflow-hidden custom-scrollbar">
       {/* Sidebar: Config */}
       <div className="lg:col-span-3 flex flex-col gap-2 shrink-0">
         <Widget title="Strategy Parameters">
           <div className="p-4 flex flex-col gap-4">
+            
+            <button 
+              onClick={applyProfilePresets}
+              className="w-full py-2 bg-accent/10 border border-accent/30 text-accent text-xs font-bold rounded flex items-center justify-center gap-2 hover:bg-accent/20 transition-colors"
+            >
+              <Sparkles size={14} />
+              Auto-Tune to {settings.strategy} Profile
+            </button>
+
+            <div className="h-[1px] bg-border my-1" />
+
             <div>
               <label className="text-xs font-bold text-text-secondary">Target Asset</label>
               <div className="flex gap-2 mt-1">
@@ -65,7 +99,6 @@ export default function AlgoPage() {
                 <button onClick={fetchRealHistory} className="px-3 bg-surface-highlight border border-border rounded text-xs font-bold hover:bg-white/10">Fetch</button>
               </div>
             </div>
-            <div className="h-[1px] bg-border my-2" />
             <div>
               <label className="text-xs font-bold text-text-secondary">Fast MA Period</label>
               <input 
