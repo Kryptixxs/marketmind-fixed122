@@ -35,7 +35,6 @@ const CURRENCY_MAP: Record<string, string> = {
   'Switzerland': 'CHF', 'New Zealand': 'NZD', 'Germany': 'EUR', 'France': 'EUR'
 };
 
-// Use the exact country codes for filtering to avoid mismatching 'US' with 'United States'
 const MAJOR_COUNTRY_CODES = Object.values(COUNTRY_CODES);
 
 function cleanText(text: string): string {
@@ -56,13 +55,8 @@ function calculateImpact(title: string): 'High' | 'Medium' | 'Low' {
 
 function shouldKeepEvent(title: string, countryCode: string): boolean {
   const t = title.toLowerCase();
-
-  // 1. Reject obvious noise
   if (IGNORED_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return false;
-
-  // 2. Keep events only if they belong to a major economy code (US, EU, GB, etc.)
   if (!MAJOR_COUNTRY_CODES.includes(countryCode)) return false;
-
   return true;
 }
 
@@ -85,9 +79,15 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
 
   const rawEvents: EconomicEvent[] = [];
 
-  await Promise.all(datesToFetch.map(async (date) => {
+  await Promise.all(datesToFetch.map(async (requestedDate) => {
     try {
-      const url = `https://api.nasdaq.com/api/calendar/economicevents?date=${date}`;
+      // Shift the requested date right by 1 day for the API query
+      // This counters the API's behavior of returning events shifted by 1 day, effectively shifting them left in the UI.
+      const d = new Date(requestedDate);
+      d.setUTCDate(d.getUTCDate() + 1);
+      const queryDate = d.toISOString().split('T')[0];
+
+      const url = `https://api.nasdaq.com/api/calendar/economicevents?date=${queryDate}`;
       const response = await fetch(url, {
         headers: {
           'User-Agent': 'Mozilla/5.0',
@@ -104,12 +104,11 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
         .map((row: any, i: number) => {
           const rawTitle = row.eventName || '';
           const cleanTitle = cleanText(rawTitle);
-          // If the country isn't in our map, fall back to the raw string so it gets filtered out
           const countryCode = COUNTRY_CODES[row.country] || row.country;
 
           return {
-            id: `${date}-${i}`,
-            date: date,
+            id: `${requestedDate}-${i}`,
+            date: requestedDate, // Bind to the requested date so it renders in the correct column
             time: row.gmt || '00:00',
             country: countryCode,
             currency: CURRENCY_MAP[row.country] || 'USD',
@@ -124,9 +123,9 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
         .filter((e: EconomicEvent) => shouldKeepEvent(e.title, e.country));
 
       rawEvents.push(...dailyEvents);
-      CACHE[date] = { data: dailyEvents, timestamp: Date.now() };
+      CACHE[requestedDate] = { data: dailyEvents, timestamp: Date.now() };
     } catch (error) {
-      console.error(`Error fetching economic calendar for ${date}:`, error);
+      console.error(`Error fetching economic calendar for ${requestedDate}:`, error);
     }
   }));
 
@@ -155,7 +154,11 @@ export async function fetchEconomicCalendar(): Promise<CalendarEvent[]> {
   for (let i = 0; i < 7; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
-    dates.push(d.toISOString().split('T')[0]);
+    // Use local date string formatting to avoid UTC midnight rollovers
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    dates.push(`${year}-${month}-${day}`);
   }
   const batch = await fetchEconomicCalendarBatch(dates);
   return Object.values(batch).flat();

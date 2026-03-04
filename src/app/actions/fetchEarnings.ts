@@ -4,8 +4,13 @@ import { EarningsEvent } from '@/lib/types';
 
 export async function fetchEarnings(dateStr: string): Promise<EarningsEvent[]> {
   try {
+    // Shift date right by 1 to fix the API's timezone offset, effectively shifting events left by 1 day in the UI
+    const d = new Date(dateStr);
+    d.setUTCDate(d.getUTCDate() + 1);
+    const queryDate = d.toISOString().split('T')[0];
+
     // Switch to NASDAQ API which is more stable for public access
-    const url = `https://api.nasdaq.com/api/calendar/earnings?date=${dateStr}`;
+    const url = `https://api.nasdaq.com/api/calendar/earnings?date=${queryDate}`;
     
     const response = await fetch(url, {
       headers: {
@@ -19,19 +24,17 @@ export async function fetchEarnings(dateStr: string): Promise<EarningsEvent[]> {
     });
 
     if (!response.ok) {
-      console.warn(`NASDAQ API error: ${response.status} for ${dateStr}`);
+      console.warn(`NASDAQ API error: ${response.status} for ${queryDate}`);
       return [];
     }
 
     const json = await response.json();
     
-    // NASDAQ structure: data.rows[]
     if (!json.data || !json.data.rows || !Array.isArray(json.data.rows)) {
       return [];
     }
 
     return json.data.rows.map((row: any, i: number) => {
-      // Helper to safely parse floats
       const safeFloat = (val: string | undefined): number | null => {
         if (!val) return null;
         const cleaned = val.toString().replace(/[$,%]/g, '');
@@ -41,33 +44,29 @@ export async function fetchEarnings(dateStr: string): Promise<EarningsEvent[]> {
 
       const epsEst = safeFloat(row.epsForecast);
       const epsAct = safeFloat(row.eps);
-      
-      // NASDAQ provides Market Cap in the row usually
       const marketCap = row.marketCap || '-';
 
-      // Time is usually "Time Not Supplied" or "After Market Close"
       let time: 'bmo' | 'amc' | 'tbd' = 'tbd';
       if (row.time?.toLowerCase().includes('after')) time = 'amc';
       else if (row.time?.toLowerCase().includes('before') || row.time?.toLowerCase().includes('pre')) time = 'bmo';
 
-      // Surprise is in %Surprise column
       const surprise = safeFloat(row.percentSurprise);
       
       return {
         id: `${dateStr}-${row.symbol}-${i}`,
         ticker: row.symbol?.toUpperCase() || 'N/A',
         name: row.name || 'Unknown',
-        date: dateStr,
+        date: dateStr, // Bind to requested date to correct the display column
         time,
         epsEst,
         epsAct,
-        revEst: null, // NASDAQ API doesn't provide revenue estimate in this endpoint easily
+        revEst: null, 
         revAct: null,
         surprise,
         sector: 'Unknown',
         marketCap,
       };
-    }).slice(0, 20); // Limit to top 20
+    }).slice(0, 20); 
   } catch (error) {
     console.error(`Error fetching earnings for ${dateStr}:`, error);
     return [];
