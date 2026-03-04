@@ -1,0 +1,52 @@
+﻿src/app/actions/analyzeTechnicalSetup.ts(13,21): error TS2339: Property 'quotes' does not exist on type 'never'.
+src/app/actions/analyzeTechnicalSetup.ts(13,41): error TS2339: Property 'quotes' does not exist on type 'never'.
+src/app/actions/analyzeTechnicalSetup.ts(15,30): error TS2339: Property 'quotes' does not exist on type 'never'.
+src/app/actions/analyzeTechnicalSetup.ts(15,44): error TS7006: Parameter 'q' implicitly has an 'any' type.
+src/app/actions/analyzeTechnicalSetup.ts(16,31): error TS7006: Parameter 'q' implicitly has an 'any' type.
+src/app/actions/analyzeTechnicalSetup.ts(17,30): error TS7006: Parameter 'q' implicitly has an 'any' type.
+src/app/actions/analyzeTechnicalSetup.ts(18,29): error TS7006: Parameter 'q' implicitly has an 'any' type.
+src/app/charts/page.tsx(157,76): error TS2322: Type '{ size: number; className: string; title: string; }' is not assignable to type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+  Property 'title' does not exist on type 'IntrinsicAttributes & Omit<LucideProps, "ref"> & RefAttributes<SVGSVGElement>'.
+src/features/Calendar/components/EconomicCalendarList.tsx(7,10): error TS2724: '"@/app/actions/fetchEconomicCalendar"' has no exported member named 'fetchEconomicCalendar'. Did you mean 'fetchEconomicCalendarBatch'?
+src/features/Calendar/components/EconomicCalendarList.tsx(7,38): error TS2305: Module '"@/app/actions/fetchEconomicCalendar"' has no exported member 'CalendarEvent'.
+src/features/Calendar/components/EconomicCalendarList.tsx(69,42): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/features/Calendar/components/EconomicCalendarList.tsx(74,40): error TS7006: Parameter 'e' implicitly has an 'any' type.
+src/features/Calendar/components/EconomicCalendarList.tsx(387,60): error TS7006: Parameter 'asset' implicitly has an 'any' type.
+src/features/MarketData/components/macro/ImpactHeatmap.tsx(5,41): error TS2307: Cannot find module '@/app/actions/analyzeAssetSensitivity' or its corresponding type declarations.
+src/features/MarketData/components/macro/MarketPositioning.tsx(5,42): error TS2307: Cannot find module '@/app/actions/analyzeMarketPositioning' or its corresponding type declarations.
+src/features/MarketData/components/macro/ScenarioTree.tsx(5,39): error TS2307: Cannot find module '@/app/actions/analyzeEventScenarios' or its corresponding type declarations.
+src/features/Terminal/components/Navbar.tsx(7,31): error TS2307: Cannot find module './SettingsModal' or its corresponding type declarations.
+src/lib/event-intelligence.test.ts(3,1): error TS2582: Cannot find name 'describe'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/lib/event-intelligence.test.ts(4,3): error TS2582: Cannot find name 'test'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/lib/event-intelligence.test.ts(5,59): error TS2554: Expected 1 arguments, but got 3.
+src/lib/event-intelligence.test.ts(6,5): error TS2304: Cannot find name 'expect'.
+src/lib/event-intelligence.test.ts(6,18): error TS2339: Property 'importanceScore' does not exist on type 'EventIntel'.
+src/lib/event-intelligence.test.ts(7,5): error TS2304: Cannot find name 'expect'.
+src/lib/event-intelligence.test.ts(8,5): error TS2304: Cannot find name 'expect'.
+src/lib/event-intelligence.test.ts(8,18): error TS2339: Property 'impactedAssets' does not exist on type 'EventIntel'.
+src/lib/event-intelligence.test.ts(8,49): error TS2304: Cannot find name 'expect'.
+src/lib/event-intelligence.test.ts(11,3): error TS2582: Cannot find name 'test'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/lib/event-intelligence.test.ts(12,51): error TS2554: Expected 1 arguments, but got 3.
+src/lib/event-intelligence.test.ts(13,5): error TS2304: Cannot find name 'expect'.
+src/lib/event-intelligence.test.ts(13,18): error TS2339: Property 'importanceScore' does not exist on type 'EventIntel'.
+src/lib/event-intelligence.test.ts(14,5): error TS2304: Cannot find name 'expect'.
+src/lib/event-intelligence.test.ts(17,3): error TS2582: Cannot find name 'test'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/lib/event-intelligence.test.ts(18,57): error TS2554: Expected 1 arguments, but got 3.
+src/lib/event-intelligence.test.ts(19,5): error TS2304: Cannot find name 'expect'.
+src/lib/event-intelligence.test.ts(19,18): error TS2339: Property 'importanceScore' does not exist on type 'EventIntel'.
+src/lib/event-intelligence.test.ts(20,5): error TS2304: Cannot find name 'expect'.
+src/lib/event-intelligence.test.ts(21,5): error TS2304: Cannot find name 'expect'.
+src/lib/event-intelligence.test.ts(21,18): error TS2339: Property 'impactedAssets' does not exist on type 'EventIntel'.
+src/lib/event-intelligence.test.ts(24,3): error TS2582: Cannot find name 'test'. Do you need to install type definitions for a test runner? Try `npm i --save-dev @types/jest` or `npm i --save-dev @types/mocha`.
+src/lib/event-intelligence.test.ts(25,56): error TS2554: Expected 1 arguments, but got 3.
+src/lib/event-intelligence.test.ts(26,5): error TS2304: Cannot find name 'expect'.
+src/lib/event-intelligence.test.ts(26,18): error TS2339: Property 'importanceScore' does not exist on type 'EventIntel'.
+src/lib/event-intelligence.test.ts(27,5): error TS2304: Cannot find name 'expect'.
+src/lib/market-intelligence.ts(1,22): error TS2307: Cannot find module './marketdata/types' or its corresponding type declarations.
+src/lib/market-intelligence.ts(27,64): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/lib/market-intelligence.ts(27,67): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/lib/market-intelligence.ts(28,67): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/lib/market-intelligence.ts(28,70): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/lib/market-intelligence.ts(87,44): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/lib/tech-math.ts(1,23): error TS2307: Cannot find module './marketdata/types' or its corresponding type declarations.
+src/lib/trade-setup-math.ts(1,23): error TS2307: Cannot find module './marketdata/types' or its corresponding type declarations.

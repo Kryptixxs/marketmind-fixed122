@@ -1,0 +1,338 @@
+﻿
+> ai-studio-applet@0.1.0 build
+> next build
+
+   Γû▓ Next.js 15.5.12
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+node.exe :  ΓÜá 
+Compiled with warnings 
+in 1243ms
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : 
+NotSpecified: ( ΓÜ    
+á Compiled with warnin 
+   gs in 
+1243ms:String) [    ], 
+RemoteException
+    + 
+FullyQualifiedErrorI   
+ d : NativeCommandError
+ 
+
+./src/app/page.tsx
+Attempted import 
+error: 'PanelGroup' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelGroup').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 'PanelGroup' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelGroup').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 
+'PanelResizeHandle' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelResizeHandle').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 
+'PanelResizeHandle' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelResizeHandle').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 'PanelGroup' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelGroup').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 
+'PanelResizeHandle' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelResizeHandle').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 'PanelGroup' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelGroup').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 
+'PanelResizeHandle' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelResizeHandle').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 
+'PanelResizeHandle' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelResizeHandle').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 'PanelGroup' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelGroup').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 
+'PanelResizeHandle' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelResizeHandle').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+ ΓÜá Compiled with 
+warnings in 1119ms
+
+./src/app/page.tsx
+Attempted import 
+error: 'PanelGroup' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelGroup').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 'PanelGroup' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelGroup').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 
+'PanelResizeHandle' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelResizeHandle').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 
+'PanelResizeHandle' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelResizeHandle').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 'PanelGroup' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelGroup').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 
+'PanelResizeHandle' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelResizeHandle').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 'PanelGroup' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelGroup').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 
+'PanelResizeHandle' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelResizeHandle').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 
+'PanelResizeHandle' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelResizeHandle').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 'PanelGroup' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelGroup').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+./src/app/page.tsx
+Attempted import 
+error: 
+'PanelResizeHandle' is 
+not exported from 'reac
+t-resizable-panels' 
+(imported as 
+'PanelResizeHandle').
+
+Import trace for 
+requested module:
+./src/app/page.tsx
+
+ Γ£ô Compiled successfully in 2.5s
+   Skipping validation of types
+   Skipping linting
+   Collecting page data ...
+   Generating static pages (0/15) ...
+Error occurred 
+prerendering page "/". 
+Read more: https://next
+js.org/docs/messages/pr
+erender-error
+[Error: Element type 
+is invalid: expected a 
+string (for built-in 
+components) or a 
+class/function (for 
+composite components) 
+but got: undefined.] {
+  digest: '218553980'
+}
+Export encountered an 
+error on /page: /, 
+exiting the build.
+ Γ¿» Next.js build 
+worker exited with 
+code: 1 and signal: 
+null

@@ -1,0 +1,14 @@
+﻿src/features/Calendar/components/EconomicCalendarList.tsx(204,30): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+  Type 'null' is not assignable to type 'string'.
+src/features/MarketData/components/macro/ImpactHeatmap.tsx(5,41): error TS2307: Cannot find module '@/app/actions/analyzeAssetSensitivity' or its corresponding type declarations.
+src/features/MarketData/components/macro/MarketPositioning.tsx(5,42): error TS2307: Cannot find module '@/app/actions/analyzeMarketPositioning' or its corresponding type declarations.
+src/features/MarketData/components/macro/ScenarioTree.tsx(5,39): error TS2307: Cannot find module '@/app/actions/analyzeEventScenarios' or its corresponding type declarations.
+src/features/Terminal/components/Navbar.tsx(7,31): error TS2307: Cannot find module './SettingsModal' or its corresponding type declarations.
+src/lib/market-intelligence.ts(1,22): error TS2307: Cannot find module './marketdata/types' or its corresponding type declarations.
+src/lib/market-intelligence.ts(27,64): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/lib/market-intelligence.ts(27,67): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/lib/market-intelligence.ts(28,67): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/lib/market-intelligence.ts(28,70): error TS7006: Parameter 'b' implicitly has an 'any' type.
+src/lib/market-intelligence.ts(87,44): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/lib/tech-math.ts(1,23): error TS2307: Cannot find module './marketdata/types' or its corresponding type declarations.
+src/lib/trade-setup-math.ts(1,23): error TS2307: Cannot find module './marketdata/types' or its corresponding type declarations.

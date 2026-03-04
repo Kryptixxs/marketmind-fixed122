@@ -1,0 +1,1 @@
+﻿src/lib/market-intelligence.ts(24,59): error TS2339: Property 'volume' does not exist on type 'Tick'.
