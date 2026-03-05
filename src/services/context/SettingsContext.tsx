@@ -4,75 +4,42 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
-export type Theme = 'dark' | 'light' | 'oled' | 'bloomberg' | 'terminal-green' | 'classic-blue';
+export type Theme = 'dark' | 'light' | 'oled' | 'bloomberg';
 export type Density = 'compact' | 'standard' | 'spacious';
-export type FontSize = 'xs' | 'sm' | 'md' | 'lg';
-export type AIDepth = 'standard' | 'deep' | 'quant';
-export type FontFamily = 'mono' | 'sans' | 'serif';
-export type BorderStyle = 'none' | 'thin' | 'bold';
+export type FontSize = 'xs' | 'sm' | 'md';
+export type AIDepth = 'standard' | 'deep';
 
 type Settings = {
-  // UI Aesthetics
   theme: Theme;
   density: Density;
   fontSize: FontSize;
-  fontFamily: FontFamily;
-  borderStyle: BorderStyle;
-  showTicker: boolean;
-  showStatusbar: boolean;
-  showGridLines: boolean;
-  animationsEnabled: boolean;
-  
-  // Trading & Risk
-  impactFilter: 'All' | 'Low' | 'Medium' | 'High';
-  currency: string;
-  defaultTimeframe: string;
-  defaultRiskPct: number;
-  defaultLeverage: number;
-  commissionPerLot: number;
-  riskTolerance: 'Conservative' | 'Moderate' | 'Aggressive';
-  
-  // Data & AI
   aiDepth: AIDepth;
   autoAnalyze: boolean;
-  refreshInterval: number; // ms
-  dataDelayMode: 'realtime' | 'delayed' | 'simulated';
-  preferredExchange: 'NASDAQ' | 'NYSE' | 'CME' | 'ICE';
-  
-  // System
-  sessionTimeout: number; // minutes
-  keyboardFirstMode: boolean;
-  soundEnabled: boolean;
+  refreshInterval: number;
+  impactFilter: 'All' | 'Low' | 'Medium' | 'High';
+  currency: string;
+  showTicker: boolean;
+  showStatusbar: boolean;
+  defaultRiskPct: number;
+  defaultTimeframe: string;
 };
 
 const DEFAULT: Settings = {
   theme: 'dark',
   density: 'compact',
   fontSize: 'sm',
-  fontFamily: 'mono',
-  borderStyle: 'thin',
-  showTicker: true,
-  showStatusbar: true,
-  showGridLines: true,
-  animationsEnabled: true,
-  impactFilter: 'All',
-  currency: 'All',
-  defaultTimeframe: '15m',
-  defaultRiskPct: 1.0,
-  defaultLeverage: 1,
-  commissionPerLot: 0,
-  riskTolerance: 'Moderate',
   aiDepth: 'standard',
   autoAnalyze: true,
   refreshInterval: 30000,
-  dataDelayMode: 'realtime',
-  preferredExchange: 'NASDAQ',
-  sessionTimeout: 60,
-  keyboardFirstMode: false,
-  soundEnabled: true,
+  impactFilter: 'All',
+  currency: 'All',
+  showTicker: true,
+  showStatusbar: true,
+  defaultRiskPct: 1.0,
+  defaultTimeframe: '15m',
 };
 
-const STORAGE_KEY = 'vantage-terminal-settings-v5';
+const STORAGE_KEY = 'vantage-terminal-settings-v4';
 
 const SettingsContext = createContext<{
   settings: Settings;
@@ -153,9 +120,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     root.setAttribute('data-theme', settings.theme);
     root.setAttribute('data-density', settings.density);
     root.setAttribute('data-font-size', settings.fontSize);
-    root.setAttribute('data-font-family', settings.fontFamily);
-    root.setAttribute('data-border-style', settings.borderStyle);
-    root.style.setProperty('--grid-line-opacity', settings.showGridLines ? '1' : '0');
   }, [settings]);
 
   return (
