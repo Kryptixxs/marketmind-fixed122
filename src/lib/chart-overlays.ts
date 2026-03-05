@@ -8,35 +8,33 @@ export function calculateInstitutionalOverlays(history: OHLCV[]): ChartOverlay[]
   const overlays: ChartOverlay[] = [];
   const currentPrice = history[history.length - 1].close;
 
-  // 1. ICT Order Blocks (OB)
+  // 1. ICT Order Blocks (OB) - Labeled lines
   const obs = findOrderBlocks(history);
   obs.slice(-2).forEach(ob => {
     overlays.push({
+      id: `ob-${ob.index}`,
       type: 'level',
       price: ob.type === 'BULLISH' ? ob.bottom : ob.top,
       color: ob.type === 'BULLISH' ? '#3e89fa' : '#ff3131',
-      label: `${ob.type === 'BULLISH' ? '+' : '-'}OB`,
+      label: `${ob.type === 'BULLISH' ? '+OB' : '-OB'}`,
       style: 0
     });
   });
 
-  // 2. Fair Value Gaps (FVG)
+  // 2. Fair Value Gaps (FVG) - Range boxes
   const fvgs = findUnmitigatedFVGs(history);
   fvgs.slice(-2).forEach(fvg => {
     overlays.push({
-      type: 'level',
-      price: fvg.type === 'BISI' ? fvg.bottom : fvg.top,
-      color: fvg.type === 'BISI' ? 'rgba(0, 230, 118, 0.5)' : 'rgba(255, 82, 82, 0.5)',
+      id: `fvg-${fvg.formedIndex}`,
+      type: 'box',
+      price: fvg.top,
+      price2: fvg.bottom,
+      color: fvg.type === 'BISI' ? 'rgba(0, 230, 118, 0.4)' : 'rgba(255, 82, 82, 0.4)',
       label: 'FVG',
-      style: 2
     });
   });
 
-  // 3. Session High/Lows (Ported from Corey's Script)
-  const now = new Date();
-  const currentUtcHour = now.getUTCHours();
-  
-  // NY Session (13:30 - 20:30 UTC approx)
+  // 3. Session High/Lows - Labeled levels
   const nyBars = history.filter(b => {
     const h = new Date(b.timestamp).getUTCHours();
     return h >= 13 && h <= 20;
@@ -47,17 +45,36 @@ export function calculateInstitutionalOverlays(history: OHLCV[]): ChartOverlay[]
     const nyLow = Math.min(...nyBars.map(b => b.low));
     
     overlays.push({
+      id: 'ny-high',
       type: 'level',
       price: nyHigh,
       color: '#ff3333',
-      label: 'NY HIGH',
+      label: 'NY High',
       style: 1
     });
     overlays.push({
+      id: 'ny-low',
       type: 'level',
       price: nyLow,
       color: '#00ff9d',
-      label: 'NY LOW',
+      label: 'NY Low',
+      style: 1
+    });
+  }
+
+  const londonBars = history.filter(b => {
+    const h = new Date(b.timestamp).getUTCHours();
+    return h >= 8 && h <= 14;
+  });
+
+  if (londonBars.length > 0) {
+    const lonHigh = Math.max(...londonBars.map(b => b.high));
+    overlays.push({
+      id: 'lon-high',
+      type: 'level',
+      price: lonHigh,
+      color: '#9c27b0',
+      label: 'London High',
       style: 1
     });
   }

@@ -5,9 +5,12 @@ import * as LightweightCharts from 'lightweight-charts';
 import { ColorType, CrosshairMode, IChartApi, ISeriesApi } from 'lightweight-charts';
 
 export interface ChartOverlay {
-  type: 'level' | 'box' | 'marker';
+  id: string;
+  type: 'level' | 'box';
   price: number;
   price2?: number; // For boxes
+  startTime?: number;
+  endTime?: number;
   color: string;
   label: string;
   style?: number; // 0: Solid, 1: Dotted, 2: Dashed
@@ -41,12 +44,12 @@ export function TradingChart({
     const chart = LightweightCharts.createChart(chartContainerRef.current, {
       autoSize: true,
       layout: {
-        background: { type: ColorType.Solid, color: 'transparent' },
+        background: { type: ColorType.Solid, color: '#050505' },
         textColor: '#a1a1aa',
       },
       grid: {
-        vertLines: { color: 'rgba(39, 39, 42, 0.2)' },
-        horzLines: { color: 'rgba(39, 39, 42, 0.2)' },
+        vertLines: { color: 'rgba(39, 39, 42, 0.1)' },
+        horzLines: { color: 'rgba(39, 39, 42, 0.1)' },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
@@ -64,10 +67,10 @@ export function TradingChart({
     });
 
     const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#00ff9d',
+      upColor: '#ffffff',
       downColor: '#ff3333',
       borderVisible: false,
-      wickUpColor: '#00ff9d',
+      wickUpColor: '#ffffff',
       wickDownColor: '#ff3333',
     });
 
@@ -93,9 +96,9 @@ export function TradingChart({
     }
   }, [data]);
 
-  // Update Overlays (Institutional Levels)
+  // Update Overlays (Institutional Levels & Boxes)
   useEffect(() => {
-    if (!seriesRef.current) return;
+    if (!seriesRef.current || !chartRef.current) return;
 
     // Clear old lines
     priceLinesRef.current.forEach(line => seriesRef.current?.removePriceLine(line));
@@ -112,9 +115,43 @@ export function TradingChart({
           title: ov.label,
         });
         priceLinesRef.current.push(line);
+      } else if (ov.type === 'box' && ov.price2 !== undefined) {
+        // For boxes (FVGs), we draw two lines to define the range
+        // In a full implementation, we'd use a custom series for shading
+        const top = seriesRef.current!.createPriceLine({
+          price: ov.price,
+          color: ov.color,
+          lineWidth: 1,
+          lineStyle: 2,
+          axisLabelVisible: false,
+          title: ov.label,
+        });
+        const bottom = seriesRef.current!.createPriceLine({
+          price: ov.price2,
+          color: ov.color,
+          lineWidth: 1,
+          lineStyle: 2,
+          axisLabelVisible: false,
+        });
+        priceLinesRef.current.push(top, bottom);
       }
     });
-  }, [overlays]);
+
+    // Add markers for labels on the chart
+    const markers = overlays
+      .filter(ov => ov.type === 'level')
+      .map(ov => ({
+        time: data[data.length - 1]?.time || 0,
+        position: 'inBar' as const,
+        color: ov.color,
+        shape: 'arrowUp' as const,
+        text: ov.label,
+        size: 0,
+      }));
+    
+    seriesRef.current.setMarkers(markers);
+
+  }, [overlays, data]);
 
   return <div ref={chartContainerRef} className="w-full h-full" />;
 }
