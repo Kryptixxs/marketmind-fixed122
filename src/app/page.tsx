@@ -76,7 +76,7 @@ export default function LandingPage() {
           </p>
           
           <div className="flex flex-col sm:flex-row items-center gap-3">
-            <Link href="/dashboard" className="h-10 px-8 bg-text-primary text-background flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest rounded-sm hover:bg-accent transition-colors">
+            <Link href="/register" className="h-10 px-8 bg-text-primary text-background flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest rounded-sm hover:bg-accent transition-colors">
               Launch Terminal <ArrowRight size={14} />
             </Link>
             <Link href="/register" className="h-10 px-8 bg-surface border border-border flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest rounded-sm hover:bg-surface-highlight transition-colors">
