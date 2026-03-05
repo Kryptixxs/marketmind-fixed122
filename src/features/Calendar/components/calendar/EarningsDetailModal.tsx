@@ -140,8 +140,9 @@ export function EarningsDetailModal({ event, onClose }: EarningsDetailModalProps
 
               <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
                 {/* Left Column: Thesis & Analysis */}
-                <div className="xl:col-span-3 space-y-8">
+                <div className="xl:col-span-3 space-y-6">
                   
+                  {/* Synthesis */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between border-b border-border pb-3">
                       <div className="flex items-center gap-2 text-text-primary">
@@ -149,8 +150,8 @@ export function EarningsDetailModal({ event, onClose }: EarningsDetailModalProps
                         <span className="text-base md:text-lg font-bold uppercase tracking-wider">Institutional Synthesis</span>
                       </div>
                       <div className={`flex items-center gap-1.5 px-4 py-1.5 rounded text-xs font-bold uppercase border ${
-                        intel.sentiment === 'Bullish' ? 'bg-positive/10 text-positive border-positive/30' : 
-                        intel.sentiment === 'Bearish' ? 'bg-negative/10 text-negative border-negative/30' : 
+                        intel.sentiment === 'Bullish' ? 'bg-positive/10 text-positive border-positive/30' :
+                        intel.sentiment === 'Bearish' ? 'bg-negative/10 text-negative border-negative/30' :
                         'bg-warning/10 text-warning border-warning/30'
                       }`}>
                         {intel.sentiment === 'Bullish' ? <TrendingUp size={16}/> : intel.sentiment === 'Bearish' ? <TrendingDown size={16}/> : <Minus size={16}/>}
@@ -163,10 +164,41 @@ export function EarningsDetailModal({ event, onClose }: EarningsDetailModalProps
                     </p>
                   </div>
 
+                  {/* Bull vs Bear Scenarios */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                    <div className="bg-positive/5 border border-positive/20 p-5 rounded-md flex flex-col gap-3">
+                      <div className="flex items-center gap-2 text-positive font-bold uppercase tracking-wider text-sm">
+                        <TrendingUp size={18} /> Bull Case Scenario
+                      </div>
+                      <p className="text-sm md:text-base text-text-primary leading-relaxed">{intel.bullCase || 'Strong execution and beat on top/bottom line.'}</p>
+                    </div>
+                    
+                    <div className="bg-negative/5 border border-negative/20 p-5 rounded-md flex flex-col gap-3">
+                      <div className="flex items-center gap-2 text-negative font-bold uppercase tracking-wider text-sm">
+                        <TrendingDown size={18} /> Bear Case Scenario
+                      </div>
+                      <p className="text-sm md:text-base text-text-primary leading-relaxed">{intel.bearCase || 'Miss on estimates or lowered forward guidance.'}</p>
+                    </div>
+                  </div>
+
+                  {/* Institutional Context */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-surface border border-border p-5 rounded-md">
+                      <span className="text-xs text-text-tertiary font-bold uppercase tracking-wider block mb-3">Smart Money Positioning</span>
+                      <p className="text-sm md:text-base text-text-secondary leading-relaxed">{intel.institutionalBias || 'Awaiting definitive data before committing capital.'}</p>
+                    </div>
+                    <div className="bg-surface border border-border p-5 rounded-md">
+                      <span className="text-xs text-text-tertiary font-bold uppercase tracking-wider block mb-3">Historical Day-1 Reaction</span>
+                      <p className="text-sm md:text-base text-text-secondary leading-relaxed">{intel.historicalReaction || 'Typically highly volatile on earnings release.'}</p>
+                    </div>
+                  </div>
+
                 </div>
 
-                {/* Right Column: Derivatives */}
+                {/* Right Column: Derivatives & KPIs */}
                 <div className="space-y-6">
+                  
+                  {/* Options Matrix */}
                   <div className="bg-surface border border-border rounded-sm overflow-hidden shadow-sm">
                     <div className="bg-surface-highlight p-4 border-b border-border flex items-center gap-2">
                       <ArrowRightLeft size={16} className="text-text-tertiary" />
@@ -179,18 +211,37 @@ export function EarningsDetailModal({ event, onClose }: EarningsDetailModalProps
                       </div>
                       <div className="flex justify-between items-end border-b border-border/50 pb-3">
                         <span className="text-xs text-text-tertiary font-bold uppercase">IV Rank</span>
-                        <span className="text-lg font-mono font-bold text-text-primary">{intel.optionsData.ivRank}</span>
+                        <span className="text-lg font-mono font-bold text-text-primary">{intel.optionsData?.ivRank || 'N/A'}</span>
                       </div>
                       <div className="flex justify-between items-end border-b border-border/50 pb-3">
                         <span className="text-xs text-text-tertiary font-bold uppercase">Put/Call Ratio</span>
-                        <span className="text-lg font-mono font-bold text-text-primary">{intel.optionsData.putCallRatio}</span>
+                        <span className="text-lg font-mono font-bold text-text-primary">{intel.optionsData?.putCallRatio || 'N/A'}</span>
                       </div>
                       <div className="flex justify-between items-end">
                         <span className="text-xs text-text-tertiary font-bold uppercase">Options Skew</span>
-                        <span className="text-lg font-mono font-bold text-text-primary">{intel.optionsData.skew}</span>
+                        <span className="text-lg font-mono font-bold text-text-primary">{intel.optionsData?.skew || 'Neutral'}</span>
                       </div>
                     </div>
                   </div>
+
+                  {/* Key Metrics */}
+                  {intel.keyMetrics && intel.keyMetrics.length > 0 && (
+                    <div className="bg-surface border border-border rounded-sm overflow-hidden shadow-sm">
+                      <div className="bg-surface-highlight p-4 border-b border-border flex items-center gap-2">
+                        <Activity size={16} className="text-text-tertiary" />
+                        <span className="text-xs font-bold uppercase tracking-wider text-text-secondary">Key KPI Focus</span>
+                      </div>
+                      <div className="p-4 space-y-3">
+                        {intel.keyMetrics.map((metric: string, idx: number) => (
+                          <div key={idx} className="flex items-center gap-3 p-3 bg-background border border-border/50 rounded-sm">
+                            <div className="w-1.5 h-1.5 rounded-full bg-accent shrink-0 shadow-[0_0_5px_rgba(0,255,157,0.5)]" />
+                            <span className="text-sm text-text-primary font-medium">{metric}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                 </div>
               </div>
 
