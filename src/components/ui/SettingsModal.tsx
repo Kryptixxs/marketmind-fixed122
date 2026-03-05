@@ -2,325 +2,280 @@
 
 import React, { useState } from 'react';
 import { 
-  X, Monitor, Layout, Type, Bell, Shield, Database, Zap, 
-  RefreshCw, Brain, Keyboard, Volume2, Clock, Globe, 
-  CreditCard, ShieldAlert, RotateCcw, Palette
+  X, Settings, Monitor, Shield, Zap, Database, 
+  RefreshCw, Check, RotateCcw, Layout, Type, 
+  Eye, Sliders, Cloud
 } from 'lucide-react';
-import { 
-  useSettings, Theme, Density, FontSize, AIDepth, 
-  FontFamily, BorderStyle 
-} from '@/services/context/SettingsContext';
+import { useSettings, Theme, Density, FontSize, AIDepth, FontFamily, BorderStyle } from '@/services/context/SettingsContext';
 
 interface SettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-type TabId = 'ui' | 'trading' | 'data' | 'system' | 'security';
+type Tab = 'appearance' | 'trading' | 'intelligence' | 'system';
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { settings, updateSettings, resetToDefaults } = useSettings();
-  const [activeTab, setActiveTab] = useState<TabId>('ui');
+  const { settings, updateSettings, resetToDefaults, isSyncing } = useSettings();
+  const [activeTab, setActiveTab] = useState<Tab>('appearance');
 
   if (!isOpen) return null;
 
-  const tabs = [
-    { id: 'ui' as TabId, label: 'Interface', icon: Monitor },
-    { id: 'trading' as TabId, label: 'Trading', icon: Zap },
-    { id: 'data' as TabId, label: 'Data & AI', icon: Database },
-    { id: 'system' as TabId, label: 'System', icon: Keyboard },
-    { id: 'security' as TabId, label: 'Security', icon: Shield },
+  const themes: { id: Theme; label: string; color: string }[] = [
+    { id: 'dark', label: 'Vantage Dark', color: 'bg-[#0d0d0f]' },
+    { id: 'oled', label: 'Pure Black', color: 'bg-black' },
+    { id: 'bloomberg', label: 'Terminal Blue', color: 'bg-[#000044]' },
+    { id: 'terminal-green', label: 'Matrix Green', color: 'bg-[#0a0a0a] border-green-900' },
+    { id: 'classic-blue', label: 'Classic Blue', color: 'bg-[#003366]' },
+    { id: 'light', label: 'Day Mode', color: 'bg-white' },
   ];
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="bg-surface border border-border w-full max-w-3xl h-[85vh] flex flex-col shadow-2xl rounded-sm overflow-hidden">
+      <div className="bg-surface border border-border w-full max-w-3xl h-[600px] flex flex-col shadow-2xl rounded-sm overflow-hidden animate-in zoom-in-95 duration-200">
         
         {/* Header */}
         <div className="panel-header shrink-0 flex justify-between items-center px-4 py-3 h-auto border-b border-border bg-surface-highlight">
-          <div className="flex items-center gap-2">
-            <Zap size={16} className="text-accent" />
-            <span className="text-xs font-bold uppercase tracking-widest">Terminal Configuration // v5.0</span>
+          <div className="flex items-center gap-3">
+            <Settings size={18} className="text-accent" />
+            <div className="flex flex-col">
+              <h2 className="text-sm font-bold text-text-primary uppercase tracking-widest">Terminal Configuration</h2>
+              <div className="flex items-center gap-2">
+                <span className="text-[8px] text-text-tertiary uppercase font-mono">Vantage_OS // v4.0.2</span>
+                {isSyncing && <span className="text-[8px] text-accent animate-pulse flex items-center gap-1"><Cloud size={8}/> Syncing...</span>}
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={resetToDefaults}
-              className="flex items-center gap-1.5 px-2 py-1 text-[9px] font-bold uppercase text-text-tertiary hover:text-text-primary transition-colors"
-            >
-              <RotateCcw size={12} /> Reset Defaults
-            </button>
-            <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full transition-colors">
-              <X size={18} />
-            </button>
-          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-sm transition-colors">
+            <X size={18} />
+          </button>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
-          {/* Sidebar */}
-          <div className="w-44 border-r border-border bg-surface-highlight/30 flex flex-col py-2">
-            {tabs.map(tab => (
-              <button 
-                key={tab.id} 
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-3 px-4 py-3 text-[10px] font-bold uppercase tracking-wider transition-colors text-left ${
-                  activeTab === tab.id 
-                    ? 'text-accent bg-accent/5 border-r-2 border-accent' 
-                    : 'text-text-secondary hover:text-text-primary hover:bg-white/5'
-                }`}
+          {/* Sidebar Tabs */}
+          <div className="w-48 border-r border-border bg-surface-highlight/30 flex flex-col p-2 gap-1">
+            {[
+              { id: 'appearance', label: 'Appearance', icon: Monitor },
+              { id: 'trading', label: 'Trading & Risk', icon: Zap },
+              { id: 'intelligence', label: 'AI Intelligence', icon: Database },
+              { id: 'system', label: 'System', icon: Sliders },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as Tab)}
+                className={`
+                  flex items-center gap-3 px-3 py-2 rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all
+                  ${activeTab === tab.id 
+                    ? 'bg-accent/10 text-accent border border-accent/20' 
+                    : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'}
+                `}
               >
-                <tab.icon size={14} /> {tab.label}
+                <tab.icon size={14} />
+                {tab.label}
               </button>
             ))}
+            
+            <div className="mt-auto pt-2 border-t border-border">
+              <button 
+                onClick={resetToDefaults}
+                className="w-full flex items-center gap-3 px-3 py-2 text-text-tertiary hover:text-negative text-[10px] font-bold uppercase tracking-wider transition-colors"
+              >
+                <RotateCcw size={14} />
+                Reset All
+              </button>
+            </div>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
-            
-            {activeTab === 'ui' && (
-              <div className="space-y-10 animate-in fade-in duration-200">
-                {/* Theme Section */}
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-background">
+            {activeTab === 'appearance' && (
+              <div className="space-y-8">
                 <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-text-tertiary border-b border-border pb-2">
-                    <Palette size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Visual Identity</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['dark', 'oled', 'bloomberg', 'terminal-green', 'classic-blue', 'light'] as Theme[]).map(t => (
-                      <button 
-                        key={t}
-                        onClick={() => updateSettings({ theme: t })}
-                        className={`p-3 border rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all ${settings.theme === t ? 'bg-accent/10 border-accent text-accent' : 'bg-background border-border text-text-tertiary hover:border-text-secondary'}`}
+                  <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-[0.2em] flex items-center gap-2">
+                    <Layout size={12} /> Interface Theme
+                  </h3>
+                  <div className="grid grid-cols-3 gap-3">
+                    {themes.map(t => (
+                      <button
+                        key={t.id}
+                        onClick={() => updateSettings({ theme: t.id })}
+                        className={`
+                          p-3 border rounded-sm flex flex-col items-center gap-2 transition-all
+                          ${settings.theme === t.id ? 'border-accent bg-accent/5 ring-1 ring-accent' : 'border-border bg-surface hover:border-text-tertiary'}
+                        `}
                       >
-                        {t.replace('-', ' ')}
+                        <div className={`w-full h-8 rounded-sm border border-white/10 ${t.color}`} />
+                        <span className="text-[9px] font-bold uppercase tracking-tighter">{t.label}</span>
                       </button>
                     ))}
                   </div>
                 </section>
 
-                {/* Typography Section */}
-                <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-text-tertiary border-b border-border pb-2">
-                    <Type size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Typography & Scaling</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-text-tertiary uppercase">Font Family</label>
-                      <div className="grid grid-cols-3 gap-1">
-                        {(['mono', 'sans', 'serif'] as FontFamily[]).map(f => (
-                          <button 
-                            key={f}
-                            onClick={() => updateSettings({ fontFamily: f })}
-                            className={`py-2 border rounded-sm text-[10px] font-bold uppercase ${settings.fontFamily === f ? 'bg-accent/10 border-accent text-accent' : 'bg-background border-border text-text-tertiary'}`}
-                          >
-                            {f}
-                          </button>
-                        ))}
+                <div className="grid grid-cols-2 gap-8">
+                  <section className="space-y-4">
+                    <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-[0.2em] flex items-center gap-2">
+                      <Type size={12} /> Typography
+                    </h3>
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[9px] font-bold text-text-secondary uppercase">Font Family</label>
+                        <select 
+                          value={settings.fontFamily}
+                          onChange={e => updateSettings({ fontFamily: e.target.value as FontFamily })}
+                          className="bg-surface border border-border rounded-sm px-2 py-1.5 text-[10px] font-mono text-text-primary outline-none focus:border-accent"
+                        >
+                          <option value="mono">JetBrains Mono</option>
+                          <option value="sans">Inter Sans</option>
+                          <option value="serif">Georgia Serif</option>
+                        </select>
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="text-[9px] font-bold text-text-secondary uppercase">Base Size</label>
+                        <div className="flex gap-1">
+                          {['xs', 'sm', 'md', 'lg'].map(sz => (
+                            <button
+                              key={sz}
+                              onClick={() => updateSettings({ fontSize: sz as FontSize })}
+                              className={`flex-1 py-1 text-[9px] font-bold uppercase border rounded-sm ${settings.fontSize === sz ? 'bg-accent/10 border-accent text-accent' : 'border-border text-text-tertiary'}`}
+                            >
+                              {sz}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-text-tertiary uppercase">Base Size</label>
-                      <div className="grid grid-cols-4 gap-1">
-                        {(['xs', 'sm', 'md', 'lg'] as FontSize[]).map(f => (
-                          <button 
-                            key={f}
-                            onClick={() => updateSettings({ fontSize: f })}
-                            className={`py-2 border rounded-sm text-[10px] font-bold uppercase ${settings.fontSize === f ? 'bg-accent/10 border-accent text-accent' : 'bg-background border-border text-text-tertiary'}`}
-                          >
-                            {f}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </section>
+                  </section>
 
-                {/* Layout Section */}
-                <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-text-tertiary border-b border-border pb-2">
-                    <Layout size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Layout & Density</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['compact', 'standard', 'spacious'] as Density[]).map(d => (
-                      <button 
-                        key={d}
-                        onClick={() => updateSettings({ density: d })}
-                        className={`p-3 border rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all ${settings.density === d ? 'bg-accent/10 border-accent text-accent' : 'bg-background border-border text-text-tertiary hover:border-text-secondary'}`}
-                      >
-                        {d}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    <label className="flex items-center justify-between p-3 bg-background border border-border rounded-sm cursor-pointer hover:bg-white/5 transition-colors">
-                      <span className="text-[10px] font-bold text-text-primary uppercase">Show Grid Lines</span>
-                      <input 
-                        type="checkbox" 
-                        checked={settings.showGridLines} 
-                        onChange={e => updateSettings({ showGridLines: e.target.checked })}
-                        className="w-4 h-4 accent-accent"
-                      />
-                    </label>
-                    <label className="flex items-center justify-between p-3 bg-background border border-border rounded-sm cursor-pointer hover:bg-white/5 transition-colors">
-                      <span className="text-[10px] font-bold text-text-primary uppercase">Enable Animations</span>
-                      <input 
-                        type="checkbox" 
-                        checked={settings.animationsEnabled} 
-                        onChange={e => updateSettings({ animationsEnabled: e.target.checked })}
-                        className="w-4 h-4 accent-accent"
-                      />
-                    </label>
-                  </div>
-                </section>
+                  <section className="space-y-4">
+                    <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-[0.2em] flex items-center gap-2">
+                      <Eye size={12} /> Visibility
+                    </h3>
+                    <div className="space-y-2">
+                      {[
+                        { id: 'showTicker', label: 'Global Ticker' },
+                        { id: 'showStatusbar', label: 'System Statusbar' },
+                        { id: 'showGridLines', label: 'Grid Separators' },
+                        { id: 'animationsEnabled', label: 'UI Animations' },
+                      ].map(opt => (
+                        <label key={opt.id} className="flex items-center justify-between p-2 bg-surface/50 border border-border rounded-sm cursor-pointer hover:bg-surface transition-colors">
+                          <span className="text-[10px] font-bold text-text-secondary uppercase">{opt.label}</span>
+                          <input 
+                            type="checkbox" 
+                            checked={(settings as any)[opt.id]} 
+                            onChange={e => updateSettings({ [opt.id]: e.target.checked })}
+                            className="sr-only peer"
+                          />
+                          <div className="w-7 h-4 bg-border rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-text-tertiary after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-accent peer-checked:after:bg-accent-text relative" />
+                        </label>
+                      ))}
+                    </div>
+                  </section>
+                </div>
               </div>
             )}
 
             {activeTab === 'trading' && (
-              <div className="space-y-10 animate-in fade-in duration-200">
+              <div className="space-y-6">
                 <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-text-tertiary border-b border-border pb-2">
-                    <ShieldAlert size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Risk Management</span>
-                  </div>
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-[10px] font-bold text-text-secondary uppercase mb-2">Default Risk Per Trade (%)</label>
-                      <input 
-                        type="range" min="0.1" max="10" step="0.1"
-                        value={settings.defaultRiskPct}
-                        onChange={e => updateSettings({ defaultRiskPct: parseFloat(e.target.value) })}
-                        className="w-full accent-accent"
-                      />
-                      <div className="flex justify-between text-[10px] font-mono text-text-tertiary mt-1">
-                        <span>0.1%</span>
-                        <span className="text-accent font-bold">{settings.defaultRiskPct}%</span>
-                        <span>10.0%</span>
+                  <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-[0.2em]">Risk Management</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-bold text-text-secondary uppercase">Risk Tolerance</label>
+                      <div className="flex flex-col gap-1">
+                        {['Conservative', 'Moderate', 'Aggressive'].map(lvl => (
+                          <button
+                            key={lvl}
+                            onClick={() => updateSettings({ riskTolerance: lvl as any })}
+                            className={`px-3 py-2 text-left text-[10px] font-bold uppercase border rounded-sm flex justify-between items-center ${settings.riskTolerance === lvl ? 'bg-accent/10 border-accent text-accent' : 'border-border text-text-tertiary'}`}
+                          >
+                            {lvl}
+                            {settings.riskTolerance === lvl && <Check size={12} />}
+                          </button>
+                        ))}
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-[9px] font-bold text-text-tertiary uppercase">Risk Tolerance Profile</label>
-                        <select 
-                          value={settings.riskTolerance}
-                          onChange={e => updateSettings({ riskTolerance: e.target.value as any })}
-                          className="w-full bg-background border border-border rounded-sm p-2 text-xs text-text-primary outline-none focus:border-accent"
-                        >
-                          <option value="Conservative">Conservative (Wealth Preservation)</option>
-                          <option value="Moderate">Moderate (Balanced Growth)</option>
-                          <option value="Aggressive">Aggressive (High Alpha)</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[9px] font-bold text-text-tertiary uppercase">Default Leverage</label>
-                        <input 
-                          type="number" min="1" max="100"
-                          value={settings.defaultLeverage}
-                          onChange={e => updateSettings({ defaultLeverage: parseInt(e.target.value) })}
-                          className="w-full bg-background border border-border rounded-sm p-2 text-xs text-text-primary outline-none focus:border-accent font-mono"
-                        />
-                      </div>
+                    <div className="space-y-2">
+                      <label className="text-[9px] font-bold text-text-secondary uppercase">Default Currency</label>
+                      <select 
+                        value={settings.currency}
+                        onChange={e => updateSettings({ currency: e.target.value })}
+                        className="w-full bg-surface border border-border rounded-sm px-3 py-2 text-[10px] font-mono text-text-primary outline-none focus:border-accent"
+                      >
+                        <option value="All">All Currencies</option>
+                        <option value="USD">USD - US Dollar</option>
+                        <option value="EUR">EUR - Euro</option>
+                        <option value="GBP">GBP - British Pound</option>
+                        <option value="JPY">JPY - Japanese Yen</option>
+                      </select>
                     </div>
                   </div>
                 </section>
 
                 <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-text-tertiary border-b border-border pb-2">
-                    <Globe size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Execution Preferences</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-text-tertiary uppercase">Preferred Exchange Feed</label>
-                      <select 
-                        value={settings.preferredExchange}
-                        onChange={e => updateSettings({ preferredExchange: e.target.value as any })}
-                        className="w-full bg-background border border-border rounded-sm p-2 text-xs text-text-primary outline-none focus:border-accent"
-                      >
-                        <option value="NASDAQ">NASDAQ (Direct)</option>
-                        <option value="NYSE">NYSE (Direct)</option>
-                        <option value="CME">CME (Futures)</option>
-                        <option value="ICE">ICE (Global)</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-text-tertiary uppercase">Commission Per Lot ($)</label>
-                      <input 
-                        type="number" step="0.01"
-                        value={settings.commissionPerLot}
-                        onChange={e => updateSettings({ commissionPerLot: parseFloat(e.target.value) })}
-                        className="w-full bg-background border border-border rounded-sm p-2 text-xs text-text-primary outline-none focus:border-accent font-mono"
-                      />
+                  <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-[0.2em]">Data Feed Configuration</h3>
+                  <div className="p-4 bg-surface border border-border rounded-sm space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-text-primary uppercase">Data Delay Mode</span>
+                        <span className="text-[9px] text-text-tertiary">Institutional feeds require Pro entitlement.</span>
+                      </div>
+                      <div className="flex gap-1">
+                        {['realtime', 'delayed'].map(mode => (
+                          <button
+                            key={mode}
+                            onClick={() => updateSettings({ dataDelayMode: mode as any })}
+                            className={`px-3 py-1 text-[9px] font-bold uppercase border rounded-sm ${settings.dataDelayMode === mode ? 'bg-accent text-accent-text border-accent' : 'border-border text-text-tertiary'}`}
+                          >
+                            {mode}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </section>
               </div>
             )}
 
-            {activeTab === 'data' && (
-              <div className="space-y-10 animate-in fade-in duration-200">
-                <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-text-tertiary border-b border-border pb-2">
-                    <Brain size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">AI Intelligence Engine</span>
+            {activeTab === 'intelligence' && (
+              <div className="space-y-6">
+                <div className="p-6 bg-accent/5 border border-accent/20 rounded-sm flex items-start gap-4">
+                  <Brain size={24} className="text-accent shrink-0" />
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-bold text-text-primary uppercase tracking-wider">Gemini 2.0 Synthesis Engine</h4>
+                    <p className="text-[10px] text-text-secondary leading-relaxed">
+                      Configure how the terminal processes unstructured data. Deep analysis provides higher conviction but increases latency.
+                    </p>
                   </div>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2">
-                      {(['standard', 'deep', 'quant'] as AIDepth[]).map(depth => (
-                        <button 
-                          key={depth}
-                          onClick={() => updateSettings({ aiDepth: depth })}
-                          className={`p-3 border rounded-sm text-[10px] font-bold uppercase tracking-wider transition-all ${settings.aiDepth === depth ? 'bg-accent/10 border-accent text-accent' : 'bg-background border-border text-text-tertiary hover:border-text-secondary'}`}
-                        >
-                          {depth}
-                        </button>
-                      ))}
-                    </div>
-                    <label className="flex items-center justify-between p-3 bg-background border border-border rounded-sm cursor-pointer hover:bg-white/5 transition-colors">
-                      <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-text-primary uppercase">Auto-Analyze Symbols</span>
-                        <span className="text-[8px] text-text-tertiary uppercase">Trigger AI synthesis on every symbol change</span>
-                      </div>
-                      <input 
-                        type="checkbox" 
-                        checked={settings.autoAnalyze} 
-                        onChange={e => updateSettings({ autoAnalyze: e.target.checked })}
-                        className="w-4 h-4 accent-accent"
-                      />
-                    </label>
-                  </div>
-                </section>
+                </div>
 
                 <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-text-tertiary border-b border-border pb-2">
-                    <RefreshCw size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Data Propagation</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-text-tertiary uppercase">Refresh Interval</label>
-                      <select 
-                        value={settings.refreshInterval}
-                        onChange={e => updateSettings({ refreshInterval: parseInt(e.target.value) })}
-                        className="w-full bg-background border border-border rounded-sm p-2 text-xs text-text-primary outline-none focus:border-accent"
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center justify-between p-3 bg-surface border border-border rounded-sm">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] font-bold text-text-primary uppercase">Auto-Analyze Events</span>
+                        <span className="text-[9px] text-text-tertiary">Automatically trigger AI synthesis on calendar selection.</span>
+                      </div>
+                      <button 
+                        onClick={() => updateSettings({ autoAnalyze: !settings.autoAnalyze })}
+                        className={`w-10 h-5 rounded-full transition-colors relative ${settings.autoAnalyze ? 'bg-accent' : 'bg-border'}`}
                       >
-                        <option value={5000}>5 Seconds (Ultra-Low Latency)</option>
-                        <option value={15000}>15 Seconds (High Performance)</option>
-                        <option value={30000}>30 Seconds (Standard)</option>
-                        <option value={60000}>1 Minute (Battery Saver)</option>
-                      </select>
+                        <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${settings.autoAnalyze ? 'right-1' : 'left-1'}`} />
+                      </button>
                     </div>
+
                     <div className="space-y-2">
-                      <label className="text-[9px] font-bold text-text-tertiary uppercase">Data Mode</label>
-                      <select 
-                        value={settings.dataDelayMode}
-                        onChange={e => updateSettings({ dataDelayMode: e.target.value as any })}
-                        className="w-full bg-background border border-border rounded-sm p-2 text-xs text-text-primary outline-none focus:border-accent"
-                      >
-                        <option value="realtime">Real-time (Direct)</option>
-                        <option value="delayed">Delayed (15m)</option>
-                        <option value="simulated">Simulated (Paper)</option>
-                      </select>
+                      <label className="text-[9px] font-bold text-text-secondary uppercase">Analysis Depth</label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {['standard', 'deep', 'quant'].map(d => (
+                          <button
+                            key={d}
+                            onClick={() => updateSettings({ aiDepth: d as AIDepth })}
+                            className={`py-2 text-[10px] font-bold uppercase border rounded-sm ${settings.aiDepth === d ? 'bg-accent/10 border-accent text-accent' : 'border-border text-text-tertiary'}`}
+                          >
+                            {d}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </section>
@@ -328,106 +283,54 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             )}
 
             {activeTab === 'system' && (
-              <div className="space-y-10 animate-in fade-in duration-200">
+              <div className="space-y-6">
                 <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-text-tertiary border-b border-border pb-2">
-                    <Keyboard size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Navigation & Input</span>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="flex items-center justify-between p-3 bg-background border border-border rounded-sm cursor-pointer hover:bg-white/5 transition-colors">
+                  <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-[0.2em]">Network & Performance</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 bg-surface border border-border rounded-sm">
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-text-primary uppercase">Keyboard-First Mode</span>
-                        <span className="text-[8px] text-text-tertiary uppercase">Optimize UI for hotkey-driven navigation</span>
+                        <span className="text-[10px] font-bold text-text-primary uppercase">Refresh Interval</span>
+                        <span className="text-[9px] text-text-tertiary">Frequency of background data synchronization.</span>
                       </div>
-                      <input 
-                        type="checkbox" 
-                        checked={settings.keyboardFirstMode} 
-                        onChange={e => updateSettings({ keyboardFirstMode: e.target.checked })}
-                        className="w-4 h-4 accent-accent"
-                      />
-                    </label>
-                    <label className="flex items-center justify-between p-3 bg-background border border-border rounded-sm cursor-pointer hover:bg-white/5 transition-colors">
-                      <span className="text-[10px] font-bold text-text-primary uppercase">Enable Audio Feedback</span>
-                      <input 
-                        type="checkbox" 
-                        checked={settings.soundEnabled} 
-                        onChange={e => updateSettings({ soundEnabled: e.target.checked })}
-                        className="w-4 h-4 accent-accent"
-                      />
-                    </label>
+                      <select 
+                        value={settings.refreshInterval}
+                        onChange={e => updateSettings({ refreshInterval: parseInt(e.target.value) })}
+                        className="bg-background border border-border rounded-sm px-2 py-1 text-[10px] font-mono text-text-primary outline-none"
+                      >
+                        <option value={10000}>10s (Aggressive)</option>
+                        <option value={30000}>30s (Standard)</option>
+                        <option value={60000}>60s (Conservative)</option>
+                      </select>
+                    </div>
                   </div>
                 </section>
 
-                <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-text-tertiary border-b border-border pb-2">
-                    <Clock size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Session Management</span>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[9px] font-bold text-text-tertiary uppercase">Auto-Lock Session (Minutes)</label>
-                    <input 
-                      type="number" min="5" max="1440"
-                      value={settings.sessionTimeout}
-                      onChange={e => updateSettings({ sessionTimeout: parseInt(e.target.value) })}
-                      className="w-full bg-background border border-border rounded-sm p-2 text-xs text-text-primary outline-none focus:border-accent font-mono"
-                    />
-                  </div>
-                </section>
-              </div>
-            )}
-
-            {activeTab === 'security' && (
-              <div className="space-y-10 animate-in fade-in duration-200">
-                <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-text-tertiary border-b border-border pb-2">
+                <div className="p-4 bg-surface-highlight/30 border border-border rounded-sm">
+                  <div className="flex items-center gap-2 text-text-tertiary mb-2">
                     <Shield size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Institutional Security</span>
+                    <span className="text-[9px] font-bold uppercase">Session Security</span>
                   </div>
-                  <div className="space-y-4">
-                    <div className="p-4 bg-accent/5 border border-accent/20 rounded-sm">
-                      <div className="flex items-center gap-2 text-accent mb-2">
-                        <Shield size={16} />
-                        <span className="text-[10px] font-bold uppercase">Encrypted Session Active</span>
-                      </div>
-                      <p className="text-[10px] text-text-secondary leading-relaxed">
-                        Your terminal session is protected by AES-256 end-to-end encryption. All settings and preferences are synced securely to your institutional profile.
-                      </p>
-                    </div>
-                    <button className="w-full py-3 bg-surface-highlight border border-border text-[10px] font-bold uppercase tracking-widest text-text-primary hover:bg-white/5 transition-colors">
-                      Manage Hardware MFA
-                    </button>
-                    <button className="w-full py-3 bg-surface-highlight border border-border text-[10px] font-bold uppercase tracking-widest text-text-primary hover:bg-white/5 transition-colors">
-                      View Audit Logs
-                    </button>
-                  </div>
-                </section>
-
-                <section className="space-y-4">
-                  <div className="flex items-center gap-2 text-text-tertiary border-b border-border pb-2">
-                    <CreditCard size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Entitlements</span>
-                  </div>
-                  <div className="p-4 bg-surface-highlight/50 border border-border rounded-sm flex justify-between items-center">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-bold text-text-primary uppercase">Current Tier</span>
-                      <span className="text-xs font-black text-accent uppercase tracking-tighter">Vantage Pro</span>
-                    </div>
-                    <button className="px-3 py-1.5 bg-accent text-accent-text text-[9px] font-bold uppercase rounded-sm hover:opacity-90 transition-opacity">
-                      Upgrade
-                    </button>
-                  </div>
-                </section>
+                  <p className="text-[9px] text-text-tertiary leading-relaxed">
+                    Your preferences are encrypted and synced to the Vantage Cloud. Hardware-level isolation is active for all API keys.
+                  </p>
+                </div>
               </div>
             )}
-
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border bg-surface-highlight flex justify-between items-center">
-          <span className="text-[9px] font-mono text-text-tertiary uppercase tracking-wider">Institutional settings are persistent across all authorized nodes.</span>
-          <button onClick={onClose} className="px-8 py-2 bg-accent text-accent-text text-[10px] font-bold uppercase rounded-sm hover:opacity-90 transition-opacity shadow-lg shadow-accent/10">Apply Changes</button>
+        <div className="p-4 border-t border-border bg-surface-highlight flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-2 text-[9px] font-mono text-text-tertiary">
+            <RefreshCw size={10} className={isSyncing ? 'animate-spin text-accent' : ''} />
+            {isSyncing ? 'SYNCING_TO_CLOUD...' : 'ALL_CHANGES_PERSISTED'}
+          </div>
+          <button 
+            onClick={onClose}
+            className="px-6 py-2 bg-accent text-accent-text text-[10px] font-bold uppercase rounded-sm hover:opacity-90 transition-opacity"
+          >
+            Close Configuration
+          </button>
         </div>
       </div>
     </div>

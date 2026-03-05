@@ -12,7 +12,6 @@ export type FontFamily = 'mono' | 'sans' | 'serif';
 export type BorderStyle = 'none' | 'thin' | 'bold';
 
 type Settings = {
-  // UI Aesthetics
   theme: Theme;
   density: Density;
   fontSize: FontSize;
@@ -22,27 +21,13 @@ type Settings = {
   showStatusbar: boolean;
   showGridLines: boolean;
   animationsEnabled: boolean;
-  
-  // Trading & Risk
   impactFilter: 'All' | 'Low' | 'Medium' | 'High';
   currency: string;
-  defaultTimeframe: string;
-  defaultRiskPct: number;
-  defaultLeverage: number;
-  commissionPerLot: number;
   riskTolerance: 'Conservative' | 'Moderate' | 'Aggressive';
-  
-  // Data & AI
   aiDepth: AIDepth;
   autoAnalyze: boolean;
-  refreshInterval: number; // ms
+  refreshInterval: number;
   dataDelayMode: 'realtime' | 'delayed' | 'simulated';
-  preferredExchange: 'NASDAQ' | 'NYSE' | 'CME' | 'ICE';
-  
-  // System
-  sessionTimeout: number; // minutes
-  keyboardFirstMode: boolean;
-  soundEnabled: boolean;
 };
 
 const DEFAULT: Settings = {
@@ -57,51 +42,47 @@ const DEFAULT: Settings = {
   animationsEnabled: true,
   impactFilter: 'All',
   currency: 'All',
-  defaultTimeframe: '15m',
-  defaultRiskPct: 1.0,
-  defaultLeverage: 1,
-  commissionPerLot: 0,
   riskTolerance: 'Moderate',
   aiDepth: 'standard',
   autoAnalyze: true,
   refreshInterval: 30000,
   dataDelayMode: 'realtime',
-  preferredExchange: 'NASDAQ',
-  sessionTimeout: 60,
-  keyboardFirstMode: false,
-  soundEnabled: true,
 };
 
-const STORAGE_KEY = 'vantage-terminal-settings-v5';
+const STORAGE_KEY = 'vantage-terminal-settings-v6';
 
 const SettingsContext = createContext<{
   settings: Settings;
   updateSettings: (patch: Partial<Settings>) => void;
   setImpactFilter: (filter: 'All' | 'Low' | 'Medium' | 'High') => void;
   resetToDefaults: () => void;
+  isSyncing: boolean;
 }>({
   settings: DEFAULT,
   updateSettings: () => {},
   setImpactFilter: () => {},
   resetToDefaults: () => {},
+  isSyncing: false,
 });
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [settings, setSettings] = useState<Settings>(DEFAULT);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   useEffect(() => {
     const loadSettings = async () => {
+      // 1. Load from LocalStorage first for instant UI
       const raw = localStorage.getItem(STORAGE_KEY);
-      let currentSettings = DEFAULT;
       if (raw) {
         try {
-          currentSettings = { ...DEFAULT, ...JSON.parse(raw) };
-          setSettings(currentSettings);
+          setSettings(prev => ({ ...prev, ...JSON.parse(raw) }));
         } catch (e) {}
       }
 
+      // 2. If user is logged in, fetch from Supabase
       if (user) {
+        setIsSyncing(true);
         const { data, error } = await supabase
           .from('user_preferences')
           .select('default_filters')
@@ -111,7 +92,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         if (data?.default_filters) {
           const serverSettings = data.default_filters as Partial<Settings>;
           setSettings(prev => ({ ...prev, ...serverSettings }));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, ...serverSettings }));
         }
+        setIsSyncing(false);
       }
     };
 
@@ -124,6 +107,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       
       if (user) {
+        setIsSyncing(true);
         supabase
           .from('user_preferences')
           .upsert({ 
@@ -133,6 +117,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           })
           .then(({ error }) => {
             if (error) console.error("[Settings] Sync failed:", error);
+            setIsSyncing(false);
           });
       }
       
@@ -159,7 +144,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   }, [settings]);
 
   return (
-    <SettingsContext.Provider value={{ settings, updateSettings, setImpactFilter, resetToDefaults }}>
+    <SettingsContext.Provider value={{ settings, updateSettings, setImpactFilter, resetToDefaults, isSyncing }}>
       {children}
     </SettingsContext.Provider>
   );
