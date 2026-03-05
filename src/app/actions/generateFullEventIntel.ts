@@ -18,52 +18,22 @@ async function fetchEventIntelFromGemini(event: EconomicEvent, prompt: string, f
         model: "gemini-2.5-flash",
         contents: prompt,
         config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              liveBias: { type: Type.STRING, description: "Highly Bullish, Bullish, Neutral, Bearish, or Highly Bearish" },
-              predictionAccuracy: { type: Type.NUMBER, description: "1-100 score" },
-              smartMoneyPositioning: { type: Type.STRING, description: "1 sentence on exactly how hedge funds are positioned RIGHT NOW" },
-              specificPrediction: { type: Type.STRING, description: "2 sentences predicting exactly what will happen" },
-              narrative: { type: Type.STRING, description: "Macro context explaining why this indicator matters" },
-              volatility: { type: Type.STRING, description: "Low, Moderate, High, or Extreme" },
-              macroImpact: { type: Type.NUMBER, description: "1 to 10" },
-              surpriseThresholdPct: { type: Type.NUMBER, description: "What % deviation from forecast triggers a massive reaction" },
-              scenarios: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    label: { type: Type.STRING },
-                    probability: { type: Type.NUMBER },
-                    reaction: { type: Type.STRING },
-                    bias: { type: Type.STRING, description: "BULLISH, BEARISH, or NEUTRAL" }
-                  },
-                  required: ["label", "probability", "reaction", "bias"]
-                }
-              },
-              sensitivities: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    symbol: { type: Type.STRING },
-                    sensitivity: { type: Type.STRING, description: "HIGH, MODERATE, or LOW" },
-                    expectedMove: { type: Type.STRING },
-                    weight: { type: Type.NUMBER }
-                  },
-                  required: ["symbol", "sensitivity", "expectedMove", "weight"]
-                }
-              }
-            },
-            required: ["liveBias", "predictionAccuracy", "smartMoneyPositioning", "specificPrediction", "narrative", "volatility", "macroImpact", "surpriseThresholdPct", "scenarios", "sensitivities"]
-          }
+          tools: [{ googleSearch: {} }],
         }
       });
 
       if (response.text) {
-        return JSON.parse(response.text);
+        let text = response.text.replace(/```json/gi, '').replace(/```/g, '').trim();
+        const startIdx = text.indexOf('{');
+        const endIdx = text.lastIndexOf('}');
+        if (startIdx !== -1 && endIdx !== -1) {
+          text = text.substring(startIdx, endIdx + 1);
+        }
+        
+        const parsed = JSON.parse(text);
+        if (parsed.reportStatus && parsed.scenarios) {
+          return parsed;
+        }
       }
     } catch (error: any) {
       console.warn(`[Event Intel] AI fetch failed. Retries remaining: ${retries - 1}.`);
@@ -76,17 +46,20 @@ async function fetchEventIntelFromGemini(event: EconomicEvent, prompt: string, f
 }
 
 export async function generateFullEventIntel(event: EconomicEvent) {
-  // 1. Prepare Deterministic Fallback
   const ruleEngineData = getEventIntel(event);
   const fallbackResponse = {
     ...ruleEngineData,
+    reportStatus: event.actual ? "POST-RELEASE" : "PRE-RELEASE",
+    actualValue: event.actual || "Pending",
+    consensusValue: event.forecast || "N/A",
+    previousValue: event.previous || "N/A",
+    revision: "Awaiting data.",
     liveBias: "Neutral",
     predictionAccuracy: 85,
     smartMoneyPositioning: ruleEngineData.positioning || "Institutions are awaiting data execution.",
     specificPrediction: `(Auto-Fallback Mode) ${ruleEngineData.logic}`
   };
 
-  // Fetch real-time news to inform the AI's predictions
   let newsContext = "No recent news available.";
   try {
     const news = await fetchNews('General');
@@ -96,22 +69,55 @@ export async function generateFullEventIntel(event: EconomicEvent) {
   }
 
   const prompt = `You are the lead quantitative macro strategist for a major hedge fund.
-  Generate a highly specific, customized intelligence briefing for the following upcoming economic event.
-  You must output a precise, asset-specific analysis based on the live news context provided.
+  Your task is to find the LATEST actual released data for the following economic event using Google Search, and generate a highly specific intelligence briefing.
   
   EVENT DATA:
   Title: ${event.title}
   Country: ${event.country} | Currency: ${event.currency}
-  Actual: ${event.actual || 'Pending'} | Forecast: ${event.forecast || 'N/A'} | Previous: ${event.previous || 'N/A'}
+  NASDAQ Actual: ${event.actual || 'Pending'}
+  NASDAQ Forecast: ${event.forecast || 'N/A'}
+  NASDAQ Previous: ${event.previous || 'N/A'}
   
-  LIVE NEWS CONTEXT (Use this to determine current market sentiment and Smart Money positioning):
-  ${newsContext}`;
+  LIVE NEWS CONTEXT:
+  ${newsContext}
 
-  // Use Next.js global server cache! Updates once an hour per unique event.
+  INSTRUCTIONS:
+  1. Use your Google Search tool to query exactly: "${event.country} ${event.title} latest release results".
+  2. If the data is already out today, you MUST extract the actual headline value, the consensus/forecast, and crucially, any revisions to the previous month.
+  3. If it is NOT out yet, use the consensus estimates and mark actual as "Pending".
+  4. Generate the institutional synthesis.
+
+  CRITICAL: You must output ONLY a valid, raw JSON object. Do not include markdown formatting like \`\`\`json. Do not include any conversational text.
+
+  OUTPUT EXACTLY IN THIS JSON FORMAT:
+  {
+    "reportStatus": "PRE-RELEASE or POST-RELEASE",
+    "actualValue": "e.g. 250K or 3.2%",
+    "consensusValue": "e.g. 200K or 3.1%",
+    "previousValue": "e.g. 210K or 3.3%",
+    "revision": "e.g. Previous revised up to 220K, or None",
+    "liveBias": "Highly Bullish, Bullish, Neutral, Bearish, or Highly Bearish",
+    "predictionAccuracy": 85,
+    "smartMoneyPositioning": "1 sentence on hedge fund positioning",
+    "specificPrediction": "2 sentences predicting market reaction",
+    "narrative": "Macro context explaining why this matters",
+    "volatility": "Low, Moderate, High, or Extreme",
+    "macroImpact": 8,
+    "surpriseThresholdPct": 5,
+    "scenarios": [
+      { "label": "Hot", "probability": 30, "reaction": "...", "bias": "BULLISH" },
+      { "label": "In-Line", "probability": 50, "reaction": "...", "bias": "NEUTRAL" },
+      { "label": "Cool", "probability": 20, "reaction": "...", "bias": "BEARISH" }
+    ],
+    "sensitivities": [
+      { "symbol": "DXY", "sensitivity": "HIGH", "expectedMove": "+0.5%", "weight": 9 }
+    ]
+  }`;
+
   const getCached = unstable_cache(
     async () => fetchEventIntelFromGemini(event, prompt, fallbackResponse),
-    [`event-intel-v1-${event.id}`],
-    { revalidate: 3600 } 
+    [`event-intel-v2-${event.id}`],
+    { revalidate: 3600 }
   );
 
   return getCached();

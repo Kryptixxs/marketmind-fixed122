@@ -107,8 +107,8 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
             <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm gap-4">
               <Loader2 size={40} className="animate-spin text-accent" />
               <div className="text-center">
-                <h3 className="text-lg font-bold text-text-primary uppercase tracking-widest">Synthesizing Live Data</h3>
-                <p className="text-xs text-text-tertiary mt-2">Analyzing recent news & generating custom predictions...</p>
+                <h3 className="text-lg font-bold text-text-primary uppercase tracking-widest">Extracting Macro Data</h3>
+                <p className="text-xs text-text-tertiary mt-2">Searching live web for actual prints, revisions, & generating predictions...</p>
               </div>
             </div>
           ) : null}
@@ -178,12 +178,56 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 xl:grid-cols-4 gap-8 animate-in fade-in duration-300">
+              <div className="space-y-8 animate-in fade-in duration-300">
                 
-                {/* LEFT COL: Live AI Insights */}
-                <div className="xl:col-span-3 space-y-6">
+                {/* Macro Report Card */}
+                <div className="bg-surface border border-border rounded-sm overflow-hidden shadow-sm">
+                  <div className="bg-surface-highlight p-3 md:p-4 border-b border-border flex items-center justify-between">
+                    <span className="text-xs md:text-sm font-bold uppercase tracking-wider text-text-secondary flex items-center gap-2">
+                      <Target size={16} className="text-accent" />
+                      Macro Report Card
+                      <span className={`px-2 py-0.5 rounded text-[10px] md:text-xs ${intel.reportStatus === 'POST-RELEASE' ? 'bg-positive/10 text-positive' : 'bg-warning/10 text-warning'}`}>
+                        {intel.reportStatus}
+                      </span>
+                    </span>
+                    <span className="text-xs md:text-sm text-text-tertiary font-mono">Date: {event.date}</span>
+                  </div>
                   
-                  <div className="p-6 bg-accent/5 border border-accent/20 rounded-sm space-y-4 relative overflow-hidden shadow-sm">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-border">
+                    <div className="p-6 md:p-8 flex flex-col items-center text-center justify-center bg-surface/30">
+                      <span className="text-xs text-text-tertiary uppercase font-bold mb-2">Reported Actual</span>
+                      <span className="text-4xl md:text-5xl font-mono font-black tracking-tighter text-text-primary">
+                        {intel.actualValue}
+                      </span>
+                    </div>
+                    
+                    <div className="p-6 md:p-8 flex flex-col items-center text-center justify-center bg-surface/30">
+                      <span className="text-xs text-text-tertiary uppercase font-bold mb-2">Consensus Forecast</span>
+                      <span className="text-3xl md:text-4xl font-mono font-black tracking-tighter text-text-secondary">
+                        {intel.consensusValue}
+                      </span>
+                    </div>
+
+                    <div className="p-6 md:p-8 flex flex-col items-center text-center justify-center bg-surface/30">
+                      <span className="text-xs text-text-tertiary uppercase font-bold mb-2">Previous Month</span>
+                      <span className="text-3xl md:text-4xl font-mono font-bold text-text-secondary">
+                        {intel.previousValue}
+                      </span>
+                    </div>
+
+                    <div className="p-6 md:p-8 flex flex-col items-center text-center justify-center bg-accent/5">
+                      <span className="text-xs text-accent uppercase font-bold mb-2">Data Revisions</span>
+                      <span className="text-sm md:text-base font-bold text-text-primary leading-tight">{intel.revision || 'None'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 xl:grid-cols-4 gap-8">
+                  
+                  {/* LEFT COL: Live AI Insights */}
+                  <div className="xl:col-span-3 space-y-6">
+                    
+                    <div className="p-6 bg-accent/5 border border-accent/20 rounded-sm space-y-4 relative overflow-hidden shadow-sm">
                     <div className="absolute top-0 right-0 p-2 bg-accent text-accent-text text-[10px] font-bold uppercase flex items-center gap-1">
                       <Sparkles size={12} /> Live AI Context
                     </div>
@@ -222,33 +266,33 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                     </p>
                   </div>
 
-                  {intel.scenarios && intel.scenarios.length > 0 && (
-                    <div className="space-y-4 pt-4 border-t border-border">
-                      <div className="flex items-center gap-2 text-text-tertiary">
-                        <Layers size={16} />
-                        <span className="text-xs font-bold uppercase tracking-wider">Probabilistic Scenario Tree</span>
-                      </div>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {intel.scenarios.map((s: any) => (
-                          <div key={s.label} className="bg-surface border border-border p-4 flex flex-col gap-2 rounded-sm shadow-sm hover:border-accent/30 transition-colors">
-                            <div className="flex justify-between items-center">
-                              <span className="text-sm font-bold text-text-primary">{s.label}</span>
-                              <span className="text-base font-mono font-bold text-accent">{s.probability}%</span>
+                    {intel.scenarios && intel.scenarios.length > 0 && (
+                      <div className="space-y-4 pt-4 border-t border-border">
+                        <div className="flex items-center gap-2 text-text-tertiary">
+                          <Layers size={16} />
+                          <span className="text-xs font-bold uppercase tracking-wider">Probabilistic Scenario Tree</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {intel.scenarios.map((s: any) => (
+                            <div key={s.label} className="bg-surface border border-border p-4 flex flex-col gap-2 rounded-sm shadow-sm hover:border-accent/30 transition-colors">
+                              <div className="flex justify-between items-center">
+                                <span className="text-sm font-bold text-text-primary">{s.label}</span>
+                                <span className="text-base font-mono font-bold text-accent">{s.probability}%</span>
+                              </div>
+                              <p className="text-xs text-text-tertiary leading-relaxed min-h-[40px]">{s.reaction}</p>
+                              <div className="w-full h-1 bg-surface-highlight mt-2 rounded-full overflow-hidden">
+                                <div className={`h-full ${s.bias === 'BULLISH' ? 'bg-positive/60' : s.bias === 'BEARISH' ? 'bg-negative/60' : 'bg-warning/60'} transition-all duration-1000`} style={{ width: `${s.probability}%` }} />
+                              </div>
                             </div>
-                            <p className="text-xs text-text-tertiary leading-relaxed min-h-[40px]">{s.reaction}</p>
-                            <div className="w-full h-1 bg-surface-highlight mt-2 rounded-full overflow-hidden">
-                              <div className={`h-full ${s.bias === 'BULLISH' ? 'bg-positive/60' : s.bias === 'BEARISH' ? 'bg-negative/60' : 'bg-warning/60'} transition-all duration-1000`} style={{ width: `${s.probability}%` }} />
-                            </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                </div>
+                  </div>
 
-                {/* RIGHT COL: Data & Sensitivities */}
-                <div className="space-y-6">
+                  {/* RIGHT COL: Data & Sensitivities */}
+                  <div className="space-y-6">
                   <div className="grid grid-cols-1 gap-2 bg-surface-highlight/50 border border-border rounded-sm p-2 shadow-sm">
                     {[
                       { label: 'Volatility Regime', value: intel.volatility || 'Moderate', color: 'text-accent' },
@@ -288,29 +332,30 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                     </div>
                   )}
 
-                  {surprise.classification !== 'N/A' && (
-                    <div className="pt-6 border-t border-border space-y-4">
-                      <div className="flex items-center gap-2 text-text-tertiary">
-                        <Activity size={16} />
-                        <span className="text-xs font-bold uppercase tracking-wider">Live Reaction Engine</span>
-                      </div>
-                      <div className="bg-surface border border-border p-5 flex flex-col gap-4 rounded-sm shadow-sm relative overflow-hidden">
-                        <div className={`absolute top-0 right-0 bottom-0 w-1 ${surprise.classification === 'HOT' ? 'bg-negative' : surprise.classification === 'COOL' ? 'bg-positive' : 'bg-surface-highlight'}`} />
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-bold text-text-secondary uppercase">Magnitude</span>
-                          <span className="text-lg font-mono font-bold text-text-primary">{surprise.surprisePct?.toFixed(2)}%</span>
+                    {surprise.classification !== 'N/A' && (
+                      <div className="pt-6 border-t border-border space-y-4">
+                        <div className="flex items-center gap-2 text-text-tertiary">
+                          <Activity size={16} />
+                          <span className="text-xs font-bold uppercase tracking-wider">Live Reaction Engine</span>
                         </div>
-                        <div className="flex items-center justify-between border-t border-border/50 pt-3">
-                          <span className="text-xs font-bold text-text-secondary uppercase">Classification</span>
-                          <span className="text-xl font-black tracking-tighter uppercase text-accent">
-                            {surprise.classification === 'HOT' ? 'HAWKISH' : surprise.classification === 'COOL' ? 'DOVISH' : 'NEUTRAL'}
-                          </span>
+                        <div className="bg-surface border border-border p-5 flex flex-col gap-4 rounded-sm shadow-sm relative overflow-hidden">
+                          <div className={`absolute top-0 right-0 bottom-0 w-1 ${surprise.classification === 'HOT' ? 'bg-negative' : surprise.classification === 'COOL' ? 'bg-positive' : 'bg-surface-highlight'}`} />
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-bold text-text-secondary uppercase">Magnitude</span>
+                            <span className="text-lg font-mono font-bold text-text-primary">{surprise.surprisePct?.toFixed(2)}%</span>
+                          </div>
+                          <div className="flex items-center justify-between border-t border-border/50 pt-3">
+                            <span className="text-xs font-bold text-text-secondary uppercase">Classification</span>
+                            <span className="text-xl font-black tracking-tighter uppercase text-accent">
+                              {surprise.classification === 'HOT' ? 'HAWKISH' : surprise.classification === 'COOL' ? 'DOVISH' : 'NEUTRAL'}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
+                    )}
+                  </div>
 
+                </div>
               </div>
             )}
           </div>

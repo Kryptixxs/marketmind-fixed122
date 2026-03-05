@@ -14,6 +14,7 @@ export function EarningsCalendarView() {
   const [events, setEvents] = useState<Record<string, EarningsEvent[]>>({});
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<EarningsEvent | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const weekDates = useMemo(() => {
     const today = new Date();
@@ -43,8 +44,16 @@ export function EarningsCalendarView() {
             <button onClick={() => setWeekOffset(w => w + 1)} className="p-1 hover:bg-surface-highlight rounded"><ChevronRight size={16}/></button>
           </div>
           <div className="h-4 w-[1px] bg-border" />
-          <div className="flex items-center gap-2 text-xs font-bold text-text-secondary">
-             <span>EARNINGS SEASON</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 bg-background border border-border px-2 py-1.5 rounded-md focus-within:border-accent/50 transition-colors">
+              <Search size={14} className="text-text-tertiary" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search ticker or name..."
+                className="bg-transparent border-none outline-none text-xs text-text-primary placeholder:text-text-tertiary w-32 md:w-48"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -52,7 +61,11 @@ export function EarningsCalendarView() {
       <div className="flex-1 grid grid-cols-5 gap-1 overflow-hidden min-h-0">
         {weekDates.map((day) => {
           const isToday = day.dateStr === toISODateString(new Date());
-          const dayEvents = events[day.dateStr] || [];
+          const dayEvents = (events[day.dateStr] || []).filter(e =>
+            !searchQuery ||
+            e.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            e.name.toLowerCase().includes(searchQuery.toLowerCase())
+          );
 
           return (
             <div key={day.dateStr} className={`flex flex-col border border-border rounded-sm overflow-hidden ${isToday ? 'bg-surface-highlight/10' : 'bg-surface'}`}>

@@ -41,6 +41,7 @@ export function EconomicCalendarView() {
   const [eventsData, setEventsData] = useState<Record<string, EconomicEvent[]>>({});
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<EconomicEvent | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
 
@@ -114,6 +115,9 @@ export function EconomicCalendarView() {
         // 2. Apply Global Impact Filter
         const eventImpactVal = impactValues[e.impact] || 1;
         if (eventImpactVal < requiredImpact) return;
+
+        // 3. Apply Search Query
+        if (searchQuery && !e.title.toLowerCase().includes(searchQuery.toLowerCase())) return;
         
         let hourKey = '00:00';
         if (e.time.includes(':')) {
@@ -147,7 +151,16 @@ export function EconomicCalendarView() {
           </div>
           
           <div className="flex items-center gap-2">
-            <button 
+            <div className="flex items-center gap-2 bg-background border border-border px-2 py-1.5 rounded-md focus-within:border-accent/50 transition-colors">
+              <Search size={14} className="text-text-tertiary" />
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search events..."
+                className="bg-transparent border-none outline-none text-xs text-text-primary placeholder:text-text-tertiary w-24 md:w-40"
+              />
+            </div>
+            <button
               onClick={() => setImpactFilter(settings.impactFilter === 'All' ? 'Medium' : 'All')}
               className={`px-3 py-1.5 rounded-md text-xs font-bold border transition-colors flex items-center gap-1 ${settings.impactFilter !== 'All' ? 'bg-accent/10 border-accent/30 text-accent' : 'bg-transparent border-transparent text-text-tertiary hover:text-text-secondary'}`}
             >
