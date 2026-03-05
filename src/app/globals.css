@@ -21,7 +21,7 @@
 }
 
 :root {
-  /* Default Dark */
+  /* Default Dark - Scaled Up */
   --bg-main: #050505;
   --bg-surface: #0d0d0f;
   --bg-surface-hi: #161618;
@@ -35,10 +35,10 @@
   --neg-main: #ff3b30;
   --warn-main: #ffcc00;
   
-  --base-font-size: 11px;
-  --panel-padding: 6px;
-  --panel-header-h: 24px;
-  --grid-gap: 1px;
+  --base-font-size: 12px; /* Increased from 11px */
+  --panel-padding: 10px;  /* Increased from 6px */
+  --panel-header-h: 32px; /* Increased from 24px */
+  --grid-gap: 2px;
 }
 
 /* Theme Overrides */
@@ -74,24 +74,24 @@
   --accent-main: #2563eb;
 }
 
-/* Density Overrides - Refined to prevent breakage */
+/* Density Overrides - Prominent Scaling */
 [data-density='standard'] {
-  --base-font-size: 12px;
-  --panel-padding: 10px;
-  --panel-header-h: 32px;
-  --grid-gap: 2px;
-}
-
-[data-density='spacious'] {
   --base-font-size: 14px;
-  --panel-padding: 16px;
+  --panel-padding: 14px;
   --panel-header-h: 40px;
   --grid-gap: 4px;
 }
 
+[data-density='spacious'] {
+  --base-font-size: 16px;
+  --panel-padding: 20px;
+  --panel-header-h: 48px;
+  --grid-gap: 6px;
+}
+
 /* Font Size Overrides */
-[data-font-size='xs'] { --base-font-size: 10px; }
-[data-font-size='md'] { --base-font-size: 13px; }
+[data-font-size='xs'] { --base-font-size: 11px; }
+[data-font-size='md'] { --base-font-size: 15px; }
 
 html, body {
   height: 100dvh;
