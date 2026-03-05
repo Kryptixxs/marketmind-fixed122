@@ -38,8 +38,15 @@ export function EarningsCalendarView() {
       const currentEventsData = eventsDataRef.current;
       const currentWeekDates = weekDatesRef.current;
 
+      const isMatch = (e: EarningsEvent) => {
+        const t = e.ticker.toLowerCase();
+        const n = e.name.toLowerCase();
+        // Strict ticker match, or prefix match for >2 chars, or generic name search
+        return t === query || (query.length > 2 && t.startsWith(query)) || n.includes(query);
+      };
+
       const currentWeekEvents = currentWeekDates.flatMap(d => currentEventsData[d.dateStr] || []);
-      let match = currentWeekEvents.find(e => e.ticker.toLowerCase().includes(query) || e.name.toLowerCase().includes(query));
+      let match = currentWeekEvents.find(isMatch);
       
       if (match) {
         setTargetEventId(`event-${match.id}`);
@@ -60,7 +67,7 @@ export function EarningsCalendarView() {
         setEvents(prev => ({...prev, ...futureData}));
         
         const allFuture = Object.values(futureData).flat();
-        match = allFuture.find(e => e.ticker.toLowerCase().includes(query) || e.name.toLowerCase().includes(query));
+        match = allFuture.find(isMatch);
         
         if (match) {
           const today = new Date();
@@ -144,11 +151,13 @@ export function EarningsCalendarView() {
       <div className="flex-1 grid grid-cols-5 gap-1 overflow-hidden min-h-0">
         {weekDates.map((day) => {
           const isToday = day.dateStr === toISODateString(new Date());
-          const dayEvents = (events[day.dateStr] || []).filter(e =>
-            !searchQuery ||
-            e.ticker.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            e.name.toLowerCase().includes(searchQuery.toLowerCase())
-          );
+          const dayEvents = (events[day.dateStr] || []).filter(e => {
+            if (!searchQuery) return true;
+            const q = searchQuery.toLowerCase();
+            const t = e.ticker.toLowerCase();
+            const n = e.name.toLowerCase();
+            return t === q || (q.length > 2 && t.startsWith(q)) || n.includes(q);
+          });
 
           return (
             <div key={day.dateStr} className={`flex flex-col border border-border rounded-sm overflow-hidden ${isToday ? 'bg-surface-highlight/10' : 'bg-surface'}`}>

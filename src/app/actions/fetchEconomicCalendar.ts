@@ -65,7 +65,7 @@ function calculateImpact(title: string): 'High' | 'Medium' | 'Low' {
   return 'Low';
 }
 
-function shouldKeepEvent(title: string, countryCode: string): boolean {
+function shouldKeepEvent(title: string, countryCode: string, currency: string): boolean {
   const t = title.toLowerCase();
   
   // 1. Drop explicitly ignored noise
@@ -75,10 +75,11 @@ function shouldKeepEvent(title: string, countryCode: string): boolean {
   if (!MAJOR_COUNTRY_CODES.includes(countryCode)) return false;
   
   // 3. STRICT DAY TRADING FILTER:
-  // If it doesn't match our High or Medium keywords, it is designated as 'Low' impact noise.
-  // We completely filter these out so they never clutter the terminal.
   const impact = calculateImpact(title);
   if (impact === 'Low') return false;
+
+  // 4. USD BIAS: Only allow the absolute highest impact events for non-USD currencies
+  if (currency !== 'USD' && impact !== 'High') return false;
 
   return true;
 }
@@ -142,7 +143,7 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
             timestamp: 0
           };
         })
-        .filter((e: EconomicEvent) => shouldKeepEvent(e.title, e.country));
+        .filter((e: EconomicEvent) => shouldKeepEvent(e.title, e.country, e.currency));
 
       rawEvents.push(...dailyEvents);
       CACHE[requestedDate] = { data: dailyEvents, timestamp: Date.now() };
