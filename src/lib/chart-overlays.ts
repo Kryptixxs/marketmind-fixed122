@@ -29,12 +29,13 @@ export function calculateInstitutionalOverlays(history: OHLCV[]): ChartOverlay[]
       type: 'box',
       price: fvg.top,
       price2: fvg.bottom,
-      color: fvg.type === 'BISI' ? 'rgba(0, 230, 118, 0.4)' : 'rgba(255, 82, 82, 0.4)',
+      color: fvg.type === 'BISI' ? 'rgba(0, 230, 118, 0.3)' : 'rgba(255, 82, 82, 0.3)',
       label: 'FVG',
     });
   });
 
   // 3. Session High/Lows - Labeled levels
+  // NY Session (13:30 - 20:30 UTC)
   const nyBars = history.filter(b => {
     const h = new Date(b.timestamp).getUTCHours();
     return h >= 13 && h <= 20;
@@ -62,6 +63,7 @@ export function calculateInstitutionalOverlays(history: OHLCV[]): ChartOverlay[]
     });
   }
 
+  // London Session (08:00 - 14:00 UTC)
   const londonBars = history.filter(b => {
     const h = new Date(b.timestamp).getUTCHours();
     return h >= 8 && h <= 14;

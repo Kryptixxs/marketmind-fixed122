@@ -2,15 +2,13 @@
 
 import { useEffect, useRef } from 'react';
 import * as LightweightCharts from 'lightweight-charts';
-import { ColorType, CrosshairMode, IChartApi, ISeriesApi } from 'lightweight-charts';
+import { ColorType, CrosshairMode, IChartApi, ISeriesApi, SeriesMarker } from 'lightweight-charts';
 
 export interface ChartOverlay {
   id: string;
   type: 'level' | 'box';
   price: number;
   price2?: number; // For boxes
-  startTime?: number;
-  endTime?: number;
   color: string;
   label: string;
   style?: number; // 0: Solid, 1: Dotted, 2: Dashed
@@ -58,6 +56,7 @@ export function TradingChart({
       },
       rightPriceScale: { 
         borderColor: 'rgba(39, 39, 42, 0.8)',
+        autoScale: true,
       },
       timeScale: { 
         borderColor: 'rgba(39, 39, 42, 0.8)', 
@@ -98,11 +97,13 @@ export function TradingChart({
 
   // Update Overlays (Institutional Levels & Boxes)
   useEffect(() => {
-    if (!seriesRef.current || !chartRef.current) return;
+    if (!seriesRef.current || !chartRef.current || data.length === 0) return;
 
     // Clear old lines
     priceLinesRef.current.forEach(line => seriesRef.current?.removePriceLine(line));
     priceLinesRef.current = [];
+
+    const lastTime = data[data.length - 1].time;
 
     overlays.forEach(ov => {
       if (ov.type === 'level') {
@@ -116,8 +117,6 @@ export function TradingChart({
         });
         priceLinesRef.current.push(line);
       } else if (ov.type === 'box' && ov.price2 !== undefined) {
-        // For boxes (FVGs), we draw two lines to define the range
-        // In a full implementation, we'd use a custom series for shading
         const top = seriesRef.current!.createPriceLine({
           price: ov.price,
           color: ov.color,
@@ -137,14 +136,14 @@ export function TradingChart({
       }
     });
 
-    // Add markers for labels on the chart
-    const markers = overlays
-      .filter(ov => ov.type === 'level')
+    // Add on-chart text markers for session levels
+    const markers: SeriesMarker<any>[] = overlays
+      .filter(ov => ov.type === 'level' && ov.label.includes('High'))
       .map(ov => ({
-        time: data[data.length - 1]?.time || 0,
-        position: 'inBar' as const,
+        time: lastTime,
+        position: 'inBar',
         color: ov.color,
-        shape: 'arrowUp' as const,
+        shape: 'arrowUp',
         text: ov.label,
         size: 0,
       }));
