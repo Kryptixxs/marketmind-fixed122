@@ -20,10 +20,9 @@
   --color-warning: var(--theme-warn);
 
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
-  --font-sans: "Inter", "Geist", system-ui, sans-serif;
 }
 
-/* 1. THEME DEFINITIONS (Colors) */
+/* 1. THEME DEFINITIONS */
 :root, [data-theme="dark"] {
   --theme-bg-base: #000000;
   --theme-bg-panel: #09090b;
@@ -89,40 +88,24 @@
   --size-font-base: 10px;
   --space-panel-pad: 4px;
   --space-header-h: 22px;
-  --radius-ui: 0px;
 }
 
 [data-density="standard"] {
   --size-font-base: 12px;
   --space-panel-pad: 8px;
   --space-header-h: 28px;
-  --radius-ui: 4px;
 }
 
 [data-density="spacious"] {
   --size-font-base: 14px;
   --space-panel-pad: 12px;
   --space-header-h: 34px;
-  --radius-ui: 8px;
 }
 
-/* 3. UI STYLE OVERRIDES */
-[data-ui-style="terminal"] {
-  --font-current: var(--font-mono);
-  --radius-current: 0px !important;
-  --shadow-current: none;
-}
-
-[data-ui-style="modern"] {
-  --font-current: var(--font-sans);
-  --radius-current: var(--radius-ui);
-  --shadow-current: 0 4px 20px -5px rgba(0,0,0,0.5);
-}
-
-/* ── Global Reset ── */
+/* ── Brutalist Reset ── */
 *, *::before, *::after {
   box-sizing: border-box;
-  border-radius: var(--radius-current);
+  border-radius: 0 !important; /* Force sharp edges */
 }
 
 html, body {
@@ -131,7 +114,7 @@ html, body {
   overflow: hidden;
   background-color: var(--theme-bg-base);
   color: var(--theme-text-main);
-  font-family: var(--font-current);
+  font-family: var(--font-mono);
   font-size: var(--size-font-base);
   -webkit-font-smoothing: antialiased;
 }
@@ -166,7 +149,6 @@ html, body {
   font-weight: bold;
   padding: 4px 8px;
   cursor: pointer;
-  box-shadow: var(--shadow-current);
 }
 .terminal-btn:hover {
   background: var(--theme-accent);
