@@ -7,21 +7,18 @@ import { fetchNews } from "./fetchNews";
 
 async function executeEarningsIntel(event: EarningsEvent, newsContext: string) {
   const fallback = {
+    reportStatus: event.epsAct ? "POST-EARNINGS" : "PRE-EARNINGS",
+    actualEPS: event.epsAct ? `$${event.epsAct}` : "Pending",
+    estimatedEPS: event.epsEst ? `$${event.epsEst}` : "Pending",
+    actualRevenue: "Pending",
+    revenueEstimate: "Pending",
+    yoyGrowth: "Pending",
+    guidanceSummary: "Awaiting forward guidance details.",
     sentiment: "Neutral",
     expectedMove: "+/- 4.5%",
-    revenueEstimate: "Pending",
     whisperNumber: "Pending",
-    optionsData: {
-      ivRank: "Elevated",
-      putCallRatio: "1.0",
-      skew: "Neutral"
-    },
-    bullCase: "Strong forward guidance and margin expansion could trigger a short squeeze.",
-    bearCase: "Any miss on top-line revenue or lowered guidance will be punished severely in the current macro environment.",
-    historicalReaction: "Mixed historical performance on earnings day.",
-    institutionalBias: "Markets are pricing in average historical volatility for this report.",
-    keyMetrics: ["Forward Guidance", "Revenue Growth", "Operating Margins"],
-    analysis: `${event.ticker} earnings act as a binary catalyst. Institutional focus will be heavily weighted on forward guidance.`
+    optionsData: { ivRank: "Elevated", putCallRatio: "1.0", skew: "Neutral" },
+    analysis: `Awaiting exact financial print for ${event.ticker}.`
   };
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
@@ -29,42 +26,54 @@ async function executeEarningsIntel(event: EarningsEvent, newsContext: string) {
 
   try {
     const ai = new GoogleGenAI({ apiKey });
-    const prompt = `You are a Senior Equity Research Analyst and Derivatives Trader at a top-tier hedge fund. 
-    Write a comprehensive, institutional-grade pre-earnings briefing for ${event.name} (${event.ticker}).
+    const prompt = `You are a Senior Equity Research Analyst at a top-tier hedge fund. 
+    Analyze the earnings report for ${event.name} (${event.ticker}).
     
     EVENT DATA:
-    Official EPS Estimate: ${event.epsEst || 'N/A'}
-    Release Time: ${event.time === 'bmo' ? 'Before Market Open' : event.time === 'amc' ? 'After Market Close' : 'TBD'}
+    Date: ${event.date}
+    NASDAQ EPS Estimate: ${event.epsEst || 'N/A'}
+    NASDAQ EPS Actual (If already reported): ${event.epsAct || 'Pending'}
     
     LIVE NEWS CONTEXT:
     ${newsContext}
 
-    Use your search tools to find recent analyst revisions, revenue estimates, and options market positioning (implied volatility).
+    INSTRUCTIONS:
+    Use your Google Search tool to find the EXACT financial numbers for this specific earnings release. 
+    If the earnings are already out, you MUST provide the Actual Revenue, Actual EPS, YoY Growth %, and a 1-sentence summary of the Forward Guidance.
+    If the earnings are NOT out yet, provide the consensus estimates and leave Actuals as "Pending".
+
     Provide a highly specific JSON response matching this schema:
-    - sentiment: "Bullish", "Bearish", or "Neutral"
-    - expectedMove: estimated options implied move (e.g. "+/- 6.2%")
-    - revenueEstimate: Consensus revenue estimate (e.g. "$24.5B")
-    - whisperNumber: The unofficial "whisper" EPS expectation from buy-side analysts.
-    - optionsData: Object containing ivRank (e.g., "85%"), putCallRatio (e.g., "0.8"), and skew (e.g., "Call Heavy" or "Put Heavy").
-    - bullCase: 1 concise sentence on the best-case scenario.
-    - bearCase: 1 concise sentence on the worst-case scenario.
-    - historicalReaction: 1 short phrase on how the stock usually reacts to earnings (e.g., "Averaged +4% move over last 4 quarters").
-    - institutionalBias: 1 sentence on how smart money is positioned going into the print.
-    - keyMetrics: Array of 3 exact metrics analysts are watching (e.g. ["Cloud Revenue", "Gross Margins", "China Sales"]).
-    - analysis: A 2-sentence institutional breakdown of what to expect and what constitutes a "beat".`;
+    - reportStatus: "PRE-EARNINGS" or "POST-EARNINGS"
+    - actualEPS: The EXACT reported EPS (e.g., "$1.25" or "Pending")
+    - estimatedEPS: The consensus EPS estimate (e.g., "$1.20")
+    - actualRevenue: The EXACT reported revenue (e.g., "$24.5B" or "Pending")
+    - revenueEstimate: The consensus revenue estimate (e.g., "$24.1B")
+    - yoyGrowth: Year-over-year revenue or EPS growth (e.g., "+15% YoY")
+    - guidanceSummary: 1 specific sentence on next quarter/year guidance (e.g., "Raised Q3 Rev guidance to $26B, beating $25.5B estimates.")
+    - sentiment: "Bullish", "Bearish", or "Neutral" (based on the print or pre-earnings setup)
+    - expectedMove: options implied move (e.g. "+/- 6.2%")
+    - whisperNumber: buy-side whisper EPS
+    - optionsData: Object with ivRank, putCallRatio, skew
+    - analysis: A 2-sentence institutional breakdown of the financial print.`;
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
       config: {
-        tools: [{ googleSearch: {} }], // Enable live search for current estimates
+        tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
+            reportStatus: { type: Type.STRING },
+            actualEPS: { type: Type.STRING },
+            estimatedEPS: { type: Type.STRING },
+            actualRevenue: { type: Type.STRING },
+            revenueEstimate: { type: Type.STRING },
+            yoyGrowth: { type: Type.STRING },
+            guidanceSummary: { type: Type.STRING },
             sentiment: { type: Type.STRING },
             expectedMove: { type: Type.STRING },
-            revenueEstimate: { type: Type.STRING },
             whisperNumber: { type: Type.STRING },
             optionsData: {
               type: Type.OBJECT,
@@ -75,17 +84,12 @@ async function executeEarningsIntel(event: EarningsEvent, newsContext: string) {
               },
               required: ["ivRank", "putCallRatio", "skew"]
             },
-            bullCase: { type: Type.STRING },
-            bearCase: { type: Type.STRING },
-            historicalReaction: { type: Type.STRING },
-            institutionalBias: { type: Type.STRING },
-            keyMetrics: { type: Type.ARRAY, items: { type: Type.STRING } },
             analysis: { type: Type.STRING },
           },
           required: [
-            "sentiment", "expectedMove", "revenueEstimate", "whisperNumber", 
-            "optionsData", "bullCase", "bearCase", "historicalReaction", 
-            "institutionalBias", "keyMetrics", "analysis"
+            "reportStatus", "actualEPS", "estimatedEPS", "actualRevenue", "revenueEstimate", 
+            "yoyGrowth", "guidanceSummary", "sentiment", "expectedMove", 
+            "whisperNumber", "optionsData", "analysis"
           ]
         }
       }
@@ -106,13 +110,13 @@ export async function generateEarningsIntel(event: EarningsEvent) {
   let newsContext = "No recent news available.";
   try {
     const news = await fetchNews('Stock');
-    newsContext = news.filter(n => n.title.includes(event.ticker) || n.title.includes(event.name.split(' ')[0])).slice(0, 4).map(n => n.title).join('\n');
+    newsContext = news.filter(n => n.title.includes(event.ticker) || n.title.includes(event.name.split(' ')[0])).slice(0, 5).map(n => n.title).join('\n');
   } catch (e) {}
 
-  // Cache globally for 1 hour. Version bumped to v2 to clear old cache schema.
+  // Bumped cache to v3 to use the new hard-numbers schema
   const getCached = unstable_cache(
     async () => executeEarningsIntel(event, newsContext),
-    [`earnings-intel-v2-${event.ticker}-${event.date}`],
+    [`earnings-intel-v3-${event.ticker}-${event.date}`],
     { revalidate: 3600 } 
   );
 
