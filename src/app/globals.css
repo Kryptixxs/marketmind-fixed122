@@ -1,34 +1,94 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #050505;
-  --color-surface: #0d0d0f;
-  --color-surface-highlight: #161618;
+  --color-background: var(--bg-main);
+  --color-surface: var(--bg-surface);
+  --color-surface-highlight: var(--bg-surface-hi);
   
-  --color-border: #1f1f22;
-  --color-border-highlight: #2d2d30;
+  --color-border: var(--border-main);
+  --color-border-highlight: var(--border-hi);
 
-  --color-text-primary: #e4e4e7;
-  --color-text-secondary: #a1a1aa;
-  --color-text-tertiary: #52525b;
+  --color-text-primary: var(--text-main);
+  --color-text-secondary: var(--text-dim);
+  --color-text-tertiary: var(--text-muted);
 
-  --color-accent: #00ff9d;
-  --color-accent-dim: rgba(0, 255, 157, 0.1);
-  --color-accent-text: #000000;
-
-  --color-positive: #00ff9d;
-  --color-negative: #ff3b30;
-  --color-warning: #ffcc00;
+  --color-accent: var(--accent-main);
+  --color-positive: var(--pos-main);
+  --color-negative: var(--neg-main);
+  --color-warning: var(--warn-main);
 
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
-  --radius-sm: 1px;
-  --radius-md: 2px;
 }
 
-/* ── Reset & Base ── */
-*, *::before, *::after {
-  box-sizing: border-box;
+:root {
+  /* Default Dark */
+  --bg-main: #050505;
+  --bg-surface: #0d0d0f;
+  --bg-surface-hi: #161618;
+  --border-main: #1f1f22;
+  --border-hi: #2d2d30;
+  --text-main: #e4e4e7;
+  --text-dim: #a1a1aa;
+  --text-muted: #52525b;
+  --accent-main: #00ff9d;
+  --pos-main: #00ff9d;
+  --neg-main: #ff3b30;
+  --warn-main: #ffcc00;
+  
+  --base-font-size: 11px;
+  --panel-padding: 6px;
+  --panel-header-h: 22px;
 }
+
+/* Theme Overrides */
+[data-theme='oled'] {
+  --bg-main: #000000;
+  --bg-surface: #000000;
+  --bg-surface-hi: #0a0a0a;
+  --border-main: #111111;
+  --border-hi: #1a1a1a;
+}
+
+[data-theme='bloomberg'] {
+  --bg-main: #000033;
+  --bg-surface: #000044;
+  --bg-surface-hi: #000066;
+  --border-main: #000088;
+  --border-hi: #0000aa;
+  --text-main: #ffffff;
+  --text-dim: #cccccc;
+  --text-muted: #999999;
+  --accent-main: #ff9900;
+}
+
+[data-theme='light'] {
+  --bg-main: #ffffff;
+  --bg-surface: #f4f4f5;
+  --bg-surface-hi: #e4e4e7;
+  --border-main: #d4d4d8;
+  --border-hi: #a1a1aa;
+  --text-main: #09090b;
+  --text-dim: #3f3f46;
+  --text-muted: #71717a;
+  --accent-main: #2563eb;
+}
+
+/* Density Overrides */
+[data-density='standard'] {
+  --base-font-size: 12px;
+  --panel-padding: 10px;
+  --panel-header-h: 28px;
+}
+
+[data-density='spacious'] {
+  --base-font-size: 14px;
+  --panel-padding: 16px;
+  --panel-header-h: 36px;
+}
+
+/* Font Size Overrides */
+[data-font-size='xs'] { --base-font-size: 10px; }
+[data-font-size='md'] { --base-font-size: 13px; }
 
 html, body {
   height: 100dvh;
@@ -36,59 +96,20 @@ html, body {
   background-color: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-mono);
-  font-size: 11px; /* Reduced from 12px for higher density */
+  font-size: var(--base-font-size);
   -webkit-font-smoothing: antialiased;
-  overscroll-behavior-y: none;
-  touch-action: pan-x pan-y pinch-zoom;
+  overflow: hidden;
 }
 
-/* ── Scrollbars ── */
-::-webkit-scrollbar {
-  width: 3px;
-  height: 3px;
-}
-::-webkit-scrollbar-track {
-  background: var(--color-surface);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-border-highlight);
-}
-
-/* ── Panel System ── */
 .panel-header {
-  min-height: 22px; /* Even tighter */
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 6px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  font-size: 9px;
-  text-transform: uppercase;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  color: var(--color-text-secondary);
+  min-height: var(--panel-header-h);
+  padding: 0 var(--panel-padding);
 }
 
 .panel-content {
-  background: var(--color-background);
-  overflow: auto;
-  flex: 1;
+  padding: var(--panel-padding);
 }
 
-.mono-num {
-  font-feature-settings: "tnum" on, "lnum" on;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 3px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-border-highlight);
-}
-
-/* ── Animations ── */
 @keyframes ticker {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
@@ -96,5 +117,4 @@ html, body {
 
 .animate-ticker {
   animation: ticker 60s linear infinite;
-  will-change: transform;
 }

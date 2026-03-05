@@ -9,10 +9,11 @@ import { ConfluenceScanner } from '@/features/Terminal/components/widgets/Conflu
 import { ICTPanel } from '@/features/Terminal/components/widgets/ICTPanel';
 import { MiniCalendar } from '@/features/Terminal/components/widgets/MiniCalendar';
 import { MarketInternals } from '@/features/Terminal/components/widgets/MarketInternals';
-import { Wifi, TrendingUp, TrendingDown, Plus, Search, X, Loader2, Layout, Maximize2, Info, ExternalLink, Cpu, Globe, ShieldCheck, Clock } from 'lucide-react';
+import { Wifi, TrendingUp, TrendingDown, Plus, Search, X, Loader2, Layout, Maximize2, Info, ExternalLink, Cpu, Globe, ShieldCheck, Clock } from 'lucide-center';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { searchSymbols } from '@/app/actions/searchSymbols';
+import { useSettings } from '@/services/context/SettingsContext';
 import Link from 'next/link';
 
 const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'EURUSD', 'BTCUSD'];
@@ -43,6 +44,7 @@ const TIMEFRAMES = [
 ];
 
 export default function TerminalPage() {
+  const { settings } = useSettings();
   const [activeSymbol, setActiveSymbol] = useState("NAS100");
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]);
   const [systemTime, setSystemTime] = useState('');
@@ -364,32 +366,34 @@ export default function TerminalPage() {
       </div>
 
       {/* System Status Bar */}
-      <div className="h-6 bg-surface border-t border-border flex items-center justify-between px-3 shrink-0">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse" />
-            <span className="text-[9px] font-bold uppercase tracking-widest text-text-secondary">Gateway: US-EAST-1</span>
+      {settings.showStatusbar && (
+        <div className="h-6 bg-surface border-t border-border flex items-center justify-between px-3 shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse" />
+              <span className="text-[9px] font-bold uppercase tracking-widest text-text-secondary">Gateway: US-EAST-1</span>
+            </div>
+            <div className="flex items-center gap-2 text-[9px] text-text-tertiary">
+              <Cpu size={10} />
+              <span className="font-mono uppercase">Engine: V4.0.2-STABLE</span>
+            </div>
+            <div className="flex items-center gap-2 text-[9px] text-text-tertiary">
+              <Globe size={10} />
+              <span className="font-mono uppercase">Nodes: 12 Active</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2 text-[9px] text-text-tertiary">
-            <Cpu size={10} />
-            <span className="font-mono uppercase">Engine: V4.0.2-STABLE</span>
-          </div>
-          <div className="flex items-center gap-2 text-[9px] text-text-tertiary">
-            <Globe size={10} />
-            <span className="font-mono uppercase">Nodes: 12 Active</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 text-[9px] text-text-tertiary">
+              <ShieldCheck size={10} className="text-accent" />
+              <span className="font-mono uppercase">Encrypted Session</span>
+            </div>
+            <div className="flex items-center gap-2 text-[9px] font-mono text-text-secondary">
+              <Clock size={10} />
+              <span>{systemTime} UTC</span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-[9px] text-text-tertiary">
-            <ShieldCheck size={10} className="text-accent" />
-            <span className="font-mono uppercase">Encrypted Session</span>
-          </div>
-          <div className="flex items-center gap-2 text-[9px] font-mono text-text-secondary">
-            <Clock size={10} />
-            <span>{systemTime} UTC</span>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

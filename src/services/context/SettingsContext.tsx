@@ -2,43 +2,54 @@
 
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 
-export type ImpactFilter = 'All' | 'Low' | 'Medium' | 'High';
-export type Strategy = 'Scalper' | 'Swing' | 'Macro';
-export type VolatilityPreference = 'Low' | 'Moderate' | 'High';
-export type RiskTolerance = 'Conservative' | 'Moderate' | 'Aggressive';
+export type Theme = 'dark' | 'light' | 'oled' | 'bloomberg';
+export type Density = 'compact' | 'standard' | 'spacious';
+export type FontSize = 'xs' | 'sm' | 'md';
+export type AIDepth = 'standard' | 'deep';
 
 type Settings = {
-  impactFilter: ImpactFilter;
+  // UI
+  theme: Theme;
+  density: Density;
+  fontSize: FontSize;
+  showTicker: boolean;
+  showStatusbar: boolean;
+  
+  // Trading
+  impactFilter: 'All' | 'Low' | 'Medium' | 'High';
   currency: string;
-  strategy: Strategy;
-  volatilityPreference: VolatilityPreference;
-  riskTolerance: RiskTolerance;
+  defaultTimeframe: string;
+  defaultRiskPct: number;
+  
+  // AI & Data
+  aiDepth: AIDepth;
+  autoAnalyze: boolean;
+  refreshInterval: number; // ms
 };
 
 const DEFAULT: Settings = {
+  theme: 'dark',
+  density: 'compact',
+  fontSize: 'sm',
+  showTicker: true,
+  showStatusbar: true,
   impactFilter: 'All',
   currency: 'All',
-  strategy: 'Macro',
-  volatilityPreference: 'Moderate',
-  riskTolerance: 'Moderate',
+  defaultTimeframe: '15m',
+  defaultRiskPct: 1.0,
+  aiDepth: 'standard',
+  autoAnalyze: true,
+  refreshInterval: 30000,
 };
 
-const STORAGE_KEY = 'vantage-terminal-settings-v2';
+const STORAGE_KEY = 'vantage-terminal-settings-v4';
 
 const SettingsContext = createContext<{
   settings: Settings;
-  setImpactFilter: (v: ImpactFilter) => void;
-  setCurrency: (v: string) => void;
-  setStrategy: (v: Strategy) => void;
-  setVolatilityPreference: (v: VolatilityPreference) => void;
-  setRiskTolerance: (v: RiskTolerance) => void;
+  updateSettings: (patch: Partial<Settings>) => void;
 }>({
   settings: DEFAULT,
-  setImpactFilter: () => {},
-  setCurrency: () => {},
-  setStrategy: () => {},
-  setVolatilityPreference: () => {},
-  setRiskTolerance: () => {},
+  updateSettings: () => {},
 });
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
@@ -48,12 +59,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       try {
-        setSettings({ ...DEFAULT, ...JSON.parse(raw) });
+        const parsed = JSON.parse(raw);
+        setSettings({ ...DEFAULT, ...parsed });
       } catch (e) {}
     }
   }, []);
 
-  const update = useCallback((patch: Partial<Settings>) => {
+  const updateSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...patch };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
@@ -61,21 +73,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const setImpactFilter = (v: ImpactFilter) => update({ impactFilter: v });
-  const setCurrency = (v: string) => update({ currency: v });
-  const setStrategy = (v: Strategy) => update({ strategy: v });
-  const setVolatilityPreference = (v: VolatilityPreference) => update({ volatilityPreference: v });
-  const setRiskTolerance = (v: RiskTolerance) => update({ riskTolerance: v });
+  // Apply theme and font size to document root
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute('data-theme', settings.theme);
+    root.setAttribute('data-density', settings.density);
+    root.setAttribute('data-font-size', settings.fontSize);
+  }, [settings.theme, settings.density, settings.fontSize]);
 
   return (
-    <SettingsContext.Provider value={{ 
-      settings, 
-      setImpactFilter, 
-      setCurrency, 
-      setStrategy, 
-      setVolatilityPreference, 
-      setRiskTolerance 
-    }}>
+    <SettingsContext.Provider value={{ settings, updateSettings }}>
       {children}
     </SettingsContext.Provider>
   );

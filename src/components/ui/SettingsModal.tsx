@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Settings, Bell, Shield, User, CreditCard, LogOut, Building, Mail } from 'lucide-react';
-import { useSettings } from '@/services/context/SettingsContext';
-import { useAuth } from '@/services/context/AuthContext';
+import { X, Monitor, Zap, Cpu, Bell, Shield, Layout, Type, Palette } from 'lucide-react';
+import { useSettings, Theme, Density, FontSize, AIDepth } from '@/services/context/SettingsContext';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -11,23 +10,33 @@ interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
-  const { settings, setImpactFilter, setCurrency, setStrategy, setVolatilityPreference, setRiskTolerance } = useSettings();
-  const { user, signOut } = useAuth();
-  const [activeTab, setActiveTab] = useState<'General' | 'Account' | 'Notifications' | 'Security'>('General');
+  const { settings, updateSettings } = useSettings();
+  const [activeTab, setActiveTab] = useState<'ui' | 'trading' | 'ai' | 'account'>('ui');
 
   if (!isOpen) return null;
 
-  const userMeta = user?.user_metadata || {};
-  const fullName = userMeta.first_name ? `${userMeta.first_name} ${userMeta.last_name || ''}` : 'Institutional User';
+  const TabButton = ({ id, icon: Icon, label }: { id: typeof activeTab, icon: any, label: string }) => (
+    <button
+      onClick={() => setActiveTab(id)}
+      className={`flex items-center gap-3 px-4 py-2.5 text-xs font-bold uppercase tracking-wider transition-all border-l-2 ${
+        activeTab === id 
+          ? 'bg-accent/10 text-accent border-accent' 
+          : 'text-text-tertiary border-transparent hover:text-text-secondary hover:bg-white/5'
+      }`}
+    >
+      <Icon size={16} />
+      {label}
+    </button>
+  );
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-surface border border-border w-full max-w-2xl h-[500px] flex flex-col shadow-2xl rounded-sm overflow-hidden">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+      <div className="bg-surface border border-border w-full max-w-3xl h-[500px] flex flex-col shadow-2xl rounded-sm overflow-hidden">
         
         {/* Header */}
         <div className="panel-header shrink-0 flex justify-between items-center px-4 py-3 h-auto border-b border-border bg-surface-highlight">
           <div className="flex items-center gap-2">
-            <Settings size={16} className="text-accent" />
+            <Monitor size={16} className="text-accent" />
             <span className="text-xs font-bold uppercase tracking-widest">Terminal Preferences</span>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-white/10 rounded-full transition-colors">
@@ -37,188 +46,164 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
 
         <div className="flex-1 flex overflow-hidden">
           {/* Sidebar Tabs */}
-          <div className="w-40 border-r border-border bg-surface-highlight/30 flex flex-col py-2">
-            {[
-              { id: 'General', icon: Settings },
-              { id: 'Account', icon: User },
-              { id: 'Notifications', icon: Bell },
-              { id: 'Security', icon: Shield },
-            ].map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id as any)}
-                className={`
-                  flex items-center gap-3 px-4 py-2.5 text-[10px] font-bold uppercase tracking-wider transition-all
-                  ${activeTab === tab.id ? 'text-accent bg-accent/5 border-r-2 border-accent' : 'text-text-tertiary hover:text-text-primary hover:bg-white/5'}
-                `}
-              >
-                <tab.icon size={14} />
-                {tab.id}
-              </button>
-            ))}
-            
-            <button 
-              onClick={() => { signOut(); onClose(); }}
-              className="mt-auto flex items-center gap-3 px-4 py-4 text-[10px] font-bold uppercase tracking-wider text-negative hover:bg-negative/5 transition-all border-t border-border/50"
-            >
-              <LogOut size={14} />
-              Sign Out
-            </button>
+          <div className="w-48 border-r border-border bg-surface flex flex-col py-2">
+            <TabButton id="ui" icon={Layout} label="Interface" />
+            <TabButton id="trading" icon={Zap} label="Trading" />
+            <TabButton id="ai" icon={Cpu} label="Intelligence" />
+            <TabButton id="account" icon={Shield} label="Account" />
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-            {activeTab === 'General' && (
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest border-b border-border pb-2">Market Filters</h3>
-                  
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-text-secondary uppercase">Default Impact Filter</label>
-                    <div className="flex gap-1">
-                      {['All', 'Low', 'Medium', 'High'].map(f => (
-                        <button
-                          key={f}
-                          onClick={() => setImpactFilter(f as any)}
-                          className={`flex-1 py-1.5 text-[10px] font-bold rounded-sm border transition-all ${settings.impactFilter === f ? 'bg-accent/10 border-accent text-accent' : 'bg-background border-border text-text-tertiary hover:text-text-secondary'}`}
-                        >
-                          {f}
-                        </button>
-                      ))}
-                    </div>
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 bg-background">
+            
+            {activeTab === 'ui' && (
+              <div className="space-y-8 animate-in fade-in duration-200">
+                <section className="space-y-4">
+                  <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest flex items-center gap-2">
+                    <Palette size={12} /> Visual Theme
+                  </h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['dark', 'oled', 'bloomberg', 'light'] as Theme[]).map(t => (
+                      <button
+                        key={t}
+                        onClick={() => updateSettings({ theme: t })}
+                        className={`p-3 border rounded-sm text-xs font-bold uppercase transition-all ${
+                          settings.theme === t ? 'bg-accent/10 border-accent text-accent' : 'bg-surface border-border text-text-secondary hover:border-text-tertiary'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
                   </div>
+                </section>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-text-secondary uppercase">Primary Currency Focus</label>
-                    <select 
-                      value={settings.currency}
-                      onChange={(e) => setCurrency(e.target.value)}
-                      className="w-full bg-background border border-border rounded-sm px-3 py-2 text-xs text-text-primary outline-none focus:border-accent"
-                    >
-                      <option value="All">Global (All Currencies)</option>
-                      <option value="USD">USD - US Dollar</option>
-                      <option value="EUR">EUR - Euro</option>
-                      <option value="GBP">GBP - British Pound</option>
-                      <option value="JPY">JPY - Japanese Yen</option>
-                    </select>
+                <section className="space-y-4">
+                  <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest flex items-center gap-2">
+                    <Layout size={12} /> Layout Density
+                  </h3>
+                  <div className="flex gap-2">
+                    {(['compact', 'standard', 'spacious'] as Density[]).map(d => (
+                      <button
+                        key={d}
+                        onClick={() => updateSettings({ density: d })}
+                        className={`flex-1 py-2 border rounded-sm text-[10px] font-bold uppercase transition-all ${
+                          settings.density === d ? 'bg-accent/10 border-accent text-accent' : 'bg-surface border-border text-text-secondary hover:border-text-tertiary'
+                        }`}
+                      >
+                        {d}
+                      </button>
+                    ))}
                   </div>
+                </section>
+
+                <section className="space-y-4">
+                  <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest flex items-center gap-2">
+                    <Type size={12} /> Font Scaling
+                  </h3>
+                  <div className="flex gap-2">
+                    {(['xs', 'sm', 'md'] as FontSize[]).map(f => (
+                      <button
+                        key={f}
+                        onClick={() => updateSettings({ fontSize: f })}
+                        className={`flex-1 py-2 border rounded-sm text-[10px] font-bold uppercase transition-all ${
+                          settings.fontSize === f ? 'bg-accent/10 border-accent text-accent' : 'bg-surface border-border text-text-secondary hover:border-text-tertiary'
+                        }`}
+                      >
+                        {f === 'xs' ? 'Compact' : f === 'sm' ? 'Normal' : 'Large'}
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              </div>
+            )}
+
+            {activeTab === 'trading' && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-text-tertiary uppercase">Default Risk Per Trade (%)</label>
+                  <input 
+                    type="number" 
+                    step="0.1"
+                    value={settings.defaultRiskPct}
+                    onChange={e => updateSettings({ defaultRiskPct: parseFloat(e.target.value) })}
+                    className="w-full bg-surface border border-border rounded-sm px-3 py-2 text-sm text-text-primary focus:border-accent outline-none"
+                  />
                 </div>
-
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest border-b border-border pb-2">Trading Profile</h3>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-text-secondary uppercase">Strategy Bias</label>
-                      <select 
-                        value={settings.strategy}
-                        onChange={(e) => setStrategy(e.target.value as any)}
-                        className="w-full bg-background border border-border rounded-sm px-3 py-2 text-xs text-text-primary outline-none focus:border-accent"
-                      >
-                        <option value="Scalper">Scalper (1m - 5m)</option>
-                        <option value="Swing">Swing (1h - 4h)</option>
-                        <option value="Macro">Macro (Daily+)</option>
-                      </select>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-text-secondary uppercase">Risk Tolerance</label>
-                      <select 
-                        value={settings.riskTolerance}
-                        onChange={(e) => setRiskTolerance(e.target.value as any)}
-                        className="w-full bg-background border border-border rounded-sm px-3 py-2 text-xs text-text-primary outline-none focus:border-accent"
-                      >
-                        <option value="Conservative">Conservative</option>
-                        <option value="Moderate">Moderate</option>
-                        <option value="Aggressive">Aggressive</option>
-                      </select>
-                    </div>
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-text-tertiary uppercase">Default Chart Timeframe</label>
+                  <select 
+                    value={settings.defaultTimeframe}
+                    onChange={e => updateSettings({ defaultTimeframe: e.target.value })}
+                    className="w-full bg-surface border border-border rounded-sm px-3 py-2 text-sm text-text-primary focus:border-accent outline-none"
+                  >
+                    <option value="1m">1 Minute</option>
+                    <option value="5m">5 Minutes</option>
+                    <option value="15m">15 Minutes</option>
+                    <option value="1h">1 Hour</option>
+                    <option value="1d">Daily</option>
+                  </select>
                 </div>
               </div>
             )}
 
-            {activeTab === 'Account' && (
-              <div className="space-y-6">
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest border-b border-border pb-2">Institutional Profile</h3>
-                  
-                  <div className="p-4 bg-background border border-border rounded-sm space-y-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center text-accent border border-accent/20">
-                        <User size={24} />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-text-primary">{fullName}</span>
-                        <span className="text-xs text-text-tertiary flex items-center gap-1">
-                          <Mail size={10} /> {user?.email}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-2 pt-2">
-                      <div className="flex items-center justify-between text-[10px] py-1 border-t border-border/50">
-                        <span className="text-text-tertiary uppercase font-bold flex items-center gap-1.5">
-                          <Building size={12} /> Firm
-                        </span>
-                        <span className="text-text-primary font-mono">{userMeta.firm || 'Independent Trader'}</span>
-                      </div>
-                      <div className="flex items-center justify-between text-[10px] py-1 border-t border-border/50">
-                        <span className="text-text-tertiary uppercase font-bold flex items-center gap-1.5">
-                          <CreditCard size={12} /> Tier
-                        </span>
-                        <span className="text-accent font-bold uppercase tracking-tighter">Vantage Pro</span>
-                      </div>
-                    </div>
+            {activeTab === 'ai' && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between p-4 bg-surface border border-border rounded-sm">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-bold text-text-primary uppercase">Auto-Analyze Symbols</span>
+                    <span className="text-[10px] text-text-tertiary">Trigger Gemini 2.0 on every symbol change</span>
                   </div>
+                  <button 
+                    onClick={() => updateSettings({ autoAnalyze: !settings.autoAnalyze })}
+                    className={`w-10 h-5 rounded-full transition-colors relative ${settings.autoAnalyze ? 'bg-accent' : 'bg-border'}`}
+                  >
+                    <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${settings.autoAnalyze ? 'right-1' : 'left-1'}`} />
+                  </button>
                 </div>
 
-                <div className="space-y-3">
-                  <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest border-b border-border pb-2">Entitlements</h3>
-                  <div className="grid grid-cols-1 gap-2">
-                    {[
-                      { label: 'Real-time L2 Data', status: 'Active' },
-                      { label: 'Gemini 2.0 Synthesis', status: 'Active' },
-                      { label: 'Institutional News Wire', status: 'Active' },
-                    ].map(e => (
-                      <div key={e.label} className="flex items-center justify-between bg-surface-highlight/30 p-2 rounded-sm border border-border/50">
-                        <span className="text-[10px] text-text-secondary font-medium">{e.label}</span>
-                        <span className="text-[9px] font-bold text-positive uppercase">{e.status}</span>
-                      </div>
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-bold text-text-tertiary uppercase tracking-widest">Analysis Depth</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(['standard', 'deep'] as AIDepth[]).map(d => (
+                      <button
+                        key={d}
+                        onClick={() => updateSettings({ aiDepth: d })}
+                        className={`p-4 border rounded-sm text-left transition-all ${
+                          settings.aiDepth === d ? 'bg-accent/5 border-accent' : 'bg-surface border-border'
+                        }`}
+                      >
+                        <div className={`text-xs font-bold uppercase ${settings.aiDepth === d ? 'text-accent' : 'text-text-primary'}`}>{d}</div>
+                        <div className="text-[9px] text-text-tertiary mt-1">
+                          {d === 'standard' ? 'Fast technical summary' : 'Full macro & correlation synthesis'}
+                        </div>
+                      </button>
                     ))}
                   </div>
                 </div>
               </div>
             )}
 
-            {activeTab === 'Notifications' && (
+            {activeTab === 'account' && (
               <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-50">
-                <Bell size={32} className="text-text-tertiary" />
-                <div className="space-y-1">
-                  <h4 className="text-xs font-bold text-text-primary uppercase tracking-widest">Notification Engine</h4>
-                  <p className="text-[10px] text-text-tertiary max-w-[200px]">Configure desktop and mobile push alerts for high-impact macro events.</p>
+                <Shield size={48} className="text-text-tertiary" />
+                <div>
+                  <div className="text-xs font-bold text-text-primary uppercase">Institutional Account</div>
+                  <div className="text-[10px] text-text-tertiary mt-1">Managed by Vantage Admin</div>
                 </div>
               </div>
             )}
 
-            {activeTab === 'Security' && (
-              <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-50">
-                <Shield size={32} className="text-text-tertiary" />
-                <div className="space-y-1">
-                  <h4 className="text-xs font-bold text-text-primary uppercase tracking-widest">Security Protocols</h4>
-                  <p className="text-[10px] text-text-tertiary max-w-[200px]">Manage 2FA, session tokens, and institutional encryption keys.</p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-border bg-surface-highlight flex justify-end">
+        <div className="p-4 border-t border-border bg-surface-highlight flex justify-between items-center">
+          <span className="text-[9px] font-mono text-text-tertiary uppercase">Vantage_OS // Config_v4.0.2</span>
           <button 
             onClick={onClose}
-            className="px-6 py-2 bg-accent text-accent-text text-[10px] font-bold uppercase tracking-widest rounded-sm hover:opacity-90 transition-opacity"
+            className="px-6 py-1.5 bg-accent text-accent-text text-[10px] font-bold uppercase rounded-sm hover:opacity-90 transition-opacity"
           >
-            Save & Close
+            Apply Changes
           </button>
         </div>
       </div>
