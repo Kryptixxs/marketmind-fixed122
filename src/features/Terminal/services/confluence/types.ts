@@ -1,7 +1,7 @@
 export type ConfluenceCategory = 
   | 'STRUCTURE' | 'SMC' | 'SR' | 'MA' | 'MOMENTUM' 
   | 'VOLUME' | 'CANDLE' | 'FIB' | 'TIME' | 'DERIVATIVES' 
-  | 'INTERMARKET' | 'FUNDAMENTAL' | 'QUANT';
+  | 'INTERMARKET' | 'FUNDAMENTAL' | 'QUANT' | 'VOLATILITY';
 
 export interface ConfluenceResult {
   id: string;
