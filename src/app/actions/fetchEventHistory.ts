@@ -1,6 +1,7 @@
 'use server';
 
 import { GoogleGenAI, Type } from "@google/genai";
+import { unstable_cache } from "next/cache";
 
 export interface HistoricalPrint {
   date: string;
@@ -8,7 +9,7 @@ export interface HistoricalPrint {
   forecast: string;
 }
 
-export async function fetchEventHistory(eventName: string, country: string): Promise<HistoricalPrint[]> {
+async function executeHistoryFetch(eventName: string, country: string): Promise<HistoricalPrint[]> {
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
   if (!apiKey) {
     console.warn("[History] No API key found.");
@@ -44,8 +45,19 @@ export async function fetchEventHistory(eventName: string, country: string): Pro
       return Array.isArray(data) ? data : [];
     }
   } catch (error) {
-    console.error("[History] Failed to fetch historical data:", error);
+    console.warn("[History] Failed to fetch historical data from Gemini. Rate limit or parsing error.");
   }
   
   return [];
+}
+
+export async function fetchEventHistory(eventName: string, country: string): Promise<HistoricalPrint[]> {
+  // Cache the web-scraping result globally for 1 hour (3600 seconds)
+  const getCached = unstable_cache(
+    async () => executeHistoryFetch(eventName, country),
+    [`history-v1-${eventName}-${country}`],
+    { revalidate: 3600 }
+  );
+
+  return getCached();
 }

@@ -1,8 +1,13 @@
 import { GoogleGenAI, Type } from '@google/genai';
+import { unstable_cache } from 'next/cache';
 
-export async function fetchDashboardData() {
+async function executeDashboardFetch() {
+  const fallback = { stocks: [], crypto: [], economicEvents: [], earnings: [] };
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
+  if (!apiKey) return fallback;
+
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.NEXT_PUBLIC_GEMINI_API_KEY });
+    const ai = new GoogleGenAI({ apiKey });
     
     const response = await ai.models.generateContent({
       model: 'gemini-2.0-flash',
@@ -12,66 +17,17 @@ export async function fetchDashboardData() {
 3. The top 5 most important economic events happening this week (include date, time, event name, impact level, and forecast).
 4. The top 5 major company earnings reports happening this week (include date, company name, symbol, and estimated EPS).
 
-Return the data strictly as a JSON object matching this schema. Do not include markdown formatting like \`\`\`json.`,
+Return the data strictly as a JSON object matching this schema.`,
       config: {
         tools: [{ googleSearch: {} }],
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            stocks: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  symbol: { type: Type.STRING },
-                  price: { type: Type.NUMBER },
-                  change: { type: Type.NUMBER },
-                  changePercent: { type: Type.NUMBER },
-                },
-                required: ["symbol", "price", "change", "changePercent"]
-              }
-            },
-            crypto: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  symbol: { type: Type.STRING },
-                  price: { type: Type.NUMBER },
-                  change: { type: Type.NUMBER },
-                  changePercent: { type: Type.NUMBER },
-                },
-                required: ["symbol", "price", "change", "changePercent"]
-              }
-            },
-            economicEvents: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  date: { type: Type.STRING },
-                  time: { type: Type.STRING },
-                  title: { type: Type.STRING },
-                  impact: { type: Type.STRING },
-                  forecast: { type: Type.STRING },
-                },
-                required: ["date", "time", "title", "impact", "forecast"]
-              }
-            },
-            earnings: {
-              type: Type.ARRAY,
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  date: { type: Type.STRING },
-                  company: { type: Type.STRING },
-                  symbol: { type: Type.STRING },
-                  epsEstimate: { type: Type.STRING },
-                },
-                required: ["date", "company", "symbol", "epsEstimate"]
-              }
-            }
+            stocks: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { symbol: { type: Type.STRING }, price: { type: Type.NUMBER }, change: { type: Type.NUMBER }, changePercent: { type: Type.NUMBER } }, required: ["symbol", "price", "change", "changePercent"] } },
+            crypto: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { symbol: { type: Type.STRING }, price: { type: Type.NUMBER }, change: { type: Type.NUMBER }, changePercent: { type: Type.NUMBER } }, required: ["symbol", "price", "change", "changePercent"] } },
+            economicEvents: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { date: { type: Type.STRING }, time: { type: Type.STRING }, title: { type: Type.STRING }, impact: { type: Type.STRING }, forecast: { type: Type.STRING } }, required: ["date", "time", "title", "impact", "forecast"] } },
+            earnings: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { date: { type: Type.STRING }, company: { type: Type.STRING }, symbol: { type: Type.STRING }, epsEstimate: { type: Type.STRING } }, required: ["date", "company", "symbol", "epsEstimate"] } }
           },
           required: ["stocks", "crypto", "economicEvents", "earnings"]
         }
@@ -81,6 +37,16 @@ Return the data strictly as a JSON object matching this schema. Do not include m
     return JSON.parse(response.text || '{}');
   } catch (error) {
     console.error("Error fetching data from Gemini:", error);
-    return null;
+    return fallback;
   }
+}
+
+export async function fetchDashboardData() {
+  // Cache for 1 hour
+  const getCached = unstable_cache(
+    async () => executeDashboardFetch(),
+    ['dashboard-global-data-v1'],
+    { revalidate: 3600 }
+  );
+  return getCached();
 }

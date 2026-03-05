@@ -31,5 +31,6 @@ export async function predictEventOutcome(event: EconomicEvent) {
     specificPrediction: "Expect elevated volatility immediately following the print. Markets will likely consolidate until the data confirms or denies the current trend."
   };
 
-  return await generateAIJSON(prompt, fallback);
+  // Cache globally for 1 hour based on the specific event ID
+  return await generateAIJSON(prompt, fallback, `predict-outcome-v1-${event.id}`, 3600);
 }
