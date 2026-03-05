@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { 
   X, Settings, Monitor, Shield, Zap, Database, 
   RefreshCw, Check, RotateCcw, Layout, Type, 
-  Eye, Sliders, Cloud
+  Eye, Sliders, Cloud, Brain
 } from 'lucide-react';
 import { useSettings, Theme, Density, FontSize, AIDepth, FontFamily, BorderStyle } from '@/services/context/SettingsContext';
 
