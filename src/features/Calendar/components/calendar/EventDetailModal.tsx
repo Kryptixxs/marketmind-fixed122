@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
-  X, TrendingUp, Globe, Zap, BarChart3, AlertTriangle, Activity, Layers, Target, Info, Sparkles, Loader2, Brain, History
+  X, TrendingUp, Globe, Zap, BarChart3, AlertTriangle, Activity, Layers, Target, Info, Sparkles, Loader2, Brain, History, RefreshCw
 } from 'lucide-react';
 import { EconomicEvent } from '@/lib/types';
 import { formatTime } from '@/lib/date-utils';
@@ -26,20 +26,21 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   const [historyData, setHistoryData] = useState<(HistoricalPrint & { surprise: number, classification: string })[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  useEffect(() => {
-    async function getPrediction() {
-      setIsPredicting(true);
-      try {
-        const result = await generateFullEventIntel(event);
-        setIntel(result);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setIsPredicting(false);
-      }
+  const getPrediction = useCallback(async () => {
+    setIsPredicting(true);
+    try {
+      const result = await generateFullEventIntel(event);
+      setIntel(result);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsPredicting(false);
     }
-    getPrediction();
   }, [event]);
+
+  useEffect(() => {
+    getPrediction();
+  }, [getPrediction]);
 
   // Lazy load the REAL history when the user clicks the "Historical Data" button
   useEffect(() => {
@@ -162,12 +163,18 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                 </div>
              </div>
           ) : !intel ? (
-            <div className="flex-1 h-full flex flex-col items-center justify-center gap-3 opacity-70">
-              <AlertTriangle size={32} className="text-warning" />
+            <div className="flex-1 h-full flex flex-col items-center justify-center gap-4 opacity-80">
+              <AlertTriangle size={36} className="text-warning" />
               <div className="text-center">
-                <h3 className="text-sm font-bold text-text-primary uppercase tracking-widest">AI Intelligence Unavailable</h3>
-                <p className="text-[10px] text-text-tertiary mt-1">Live synthesis could not be generated. Please try again later.</p>
+                <h3 className="text-sm font-bold text-text-primary uppercase tracking-widest">API Rate Limit Reached</h3>
+                <p className="text-[10px] text-text-tertiary mt-1">The intelligence agent failed to connect after 3 retries.</p>
               </div>
+              <button 
+                onClick={getPrediction}
+                className="flex items-center gap-2 px-4 py-2 bg-surface-highlight border border-border hover:bg-white/5 transition-colors rounded-sm text-xs font-bold uppercase tracking-widest mt-2"
+              >
+                <RefreshCw size={12} /> Retry Analysis
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
