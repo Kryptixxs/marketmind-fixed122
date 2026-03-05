@@ -8,16 +8,16 @@ import { TerminalCommandBar } from '@/features/Terminal/components/TerminalComma
 import { ConfluenceScanner } from '@/features/Terminal/components/widgets/ConfluenceScanner';
 import { ICTPanel } from '@/features/Terminal/components/widgets/ICTPanel';
 import { MiniCalendar } from '@/features/Terminal/components/widgets/MiniCalendar';
-import { Wifi, TrendingUp, TrendingDown, Plus, Search, X, Loader2 } from 'lucide-react';
+import { MarketInternals } from '@/features/Terminal/components/widgets/MarketInternals';
+import { Wifi, TrendingUp, TrendingDown, Plus, Search, X, Loader2, Layout, Maximize2, Info, ExternalLink } from 'lucide-react';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { searchSymbols } from '@/app/actions/searchSymbols';
+import Link from 'next/link';
 
-// Clean UI Symbols
 const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'EURUSD', 'BTCUSD'];
 const MACRO_SYMBOLS = ['VIX', 'DXY'];
 
-// Map the clean symbols to the preferred labels
 const LABEL_MAP: Record<string, string> = {
   'NAS100': 'Nasdaq 100',
   'SPX500': 'S&P 500',
@@ -45,6 +45,7 @@ const TIMEFRAMES = [
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("NAS100");
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]);
+  const [showWelcome, setShowWelcome] = useState(true);
 
   const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -70,16 +71,21 @@ export default function TerminalPage() {
 
   useEffect(() => {
     const saved = localStorage.getItem('vantage_main_watchlist_v4');
+    const welcomeDismissed = localStorage.getItem('vantage_welcome_dismissed');
     if (saved) {
       try { setWatchlist(JSON.parse(saved)); } catch (e) { }
-    } else {
-      localStorage.setItem('vantage_main_watchlist_v4', JSON.stringify(DEFAULT_WATCHLIST));
     }
+    if (welcomeDismissed) setShowWelcome(false);
   }, []);
 
   useEffect(() => {
     localStorage.setItem('vantage_main_watchlist_v4', JSON.stringify(watchlist));
   }, [watchlist]);
+
+  const dismissWelcome = () => {
+    setShowWelcome(false);
+    localStorage.setItem('vantage_welcome_dismissed', 'true');
+  };
 
   const allSymbols = [...new Set([...watchlist, ...MACRO_SYMBOLS])];
   const { data: marketData } = useMarketData(allSymbols, timeframe.yf);
@@ -141,7 +147,7 @@ export default function TerminalPage() {
   const chartData = useMemo(() => {
     if (!activeQuote || !activeQuote.history) return [];
     return activeQuote.history.map(h => ({
-      time: Math.floor(h.timestamp / 1000), // Convert ms to seconds for lightweight-charts
+      time: Math.floor(h.timestamp / 1000),
       open: h.open,
       high: h.high,
       low: h.low,
@@ -153,90 +159,116 @@ export default function TerminalPage() {
     <div className="h-full w-full bg-background flex flex-col overflow-hidden min-h-0">
       <TerminalCommandBar />
 
+      {showWelcome && (
+        <div className="bg-accent/10 border-b border-accent/20 px-4 py-2 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-6 h-6 bg-accent text-accent-text rounded-full flex items-center justify-center">
+              <Info size={14} />
+            </div>
+            <p className="text-[11px] font-bold text-text-primary uppercase tracking-wider">
+              Welcome to Vantage v4.0. Use the <code className="bg-background px-1 rounded text-accent">/</code> key to search symbols or navigate.
+            </p>
+          </div>
+          <button onClick={dismissWelcome} className="text-text-tertiary hover:text-text-primary transition-colors">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       <div className="flex-1 w-full flex overflow-hidden">
         <PanelGroup orientation="horizontal" className="w-full h-full">
 
           {/* --- LEFT COLUMN --- */}
           <Panel defaultSize={20} minSize={15} id="left-panel">
-            <div className="h-full w-full p-px bg-background">
-              <Widget
-                title="Market Watch // Institutional"
-                actions={
-                  <div className="relative">
-                    <button onClick={() => setIsSearchOpen(true)} className="p-1 hover:bg-white/10 rounded transition-colors text-text-tertiary hover:text-text-primary" title="Add Ticker">
-                      <Plus size={12} />
-                    </button>
-                    {isSearchOpen && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setIsSearchOpen(false)} />
-                        <div className="absolute top-full left-0 mt-1 w-64 bg-surface-highlight border border-border rounded shadow-2xl z-50 p-1 flex flex-col">
-                          <form onSubmit={handleAddSymbol} className="flex items-center gap-2 bg-background border border-border px-2 rounded">
-                            <Search size={12} className="text-text-tertiary" />
-                            <input
-                              ref={searchInputRef}
-                              value={searchQuery}
-                              onChange={e => setSearchQuery(e.target.value)}
-                              placeholder="Type company name or ticker..."
-                              className="flex-1 bg-transparent border-none outline-none text-xs py-2 text-text-primary uppercase"
-                            />
-                            {isSearching && <Loader2 size={12} className="animate-spin text-accent" />}
-                          </form>
-                          
-                          {searchResults.length > 0 && (
-                            <div className="flex flex-col mt-1 bg-background rounded overflow-hidden">
-                              {searchResults.map(res => (
-                                <button
-                                  key={res.symbol}
-                                  onClick={() => addResolvedSymbol(res.symbol)}
-                                  className="flex items-center justify-between p-2 hover:bg-surface-highlight text-left border-b border-border/50 last:border-0"
-                                >
-                                  <div className="flex flex-col overflow-hidden pr-2">
-                                    <span className="text-xs font-bold text-text-primary">{res.symbol}</span>
-                                    <span className="text-[10px] text-text-tertiary truncate">{res.name}</span>
-                                  </div>
-                                  <span className="text-[9px] text-text-secondary bg-surface px-1.5 py-0.5 rounded font-mono shrink-0">{res.type}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                }
-              >
-                <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
-                  {watchlist.map(sym => {
-                    const data = marketData[sym];
-                    const isPositive = data?.changePercent != null ? data.changePercent >= 0 : true;
-
-                    return (
-                      <div
-                        key={sym}
-                        onClick={() => setActiveSymbol(sym)}
-                        className={`flex justify-between items-center px-3 py-2 border-b border-border/20 cursor-pointer group transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
+            <div className="h-full w-full p-px bg-background flex flex-col gap-px">
+              <div className="flex-1 min-h-0">
+                <Widget
+                  title="Market Watch"
+                  actions={
+                    <div className="relative">
+                      <button 
+                        onClick={() => setIsSearchOpen(true)} 
+                        className="flex items-center gap-1 px-2 py-0.5 bg-accent/10 border border-accent/30 text-accent rounded-sm text-[9px] font-bold uppercase hover:bg-accent/20 transition-all"
                       >
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1">
-                            <span className="font-bold text-[10px] text-text-primary">{sym}</span>
-                            <button onClick={(e) => handleRemoveSymbol(e, sym)} className="opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-negative"><X size={10} /></button>
+                        <Plus size={10} /> Add Symbol
+                      </button>
+                      {isSearchOpen && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setIsSearchOpen(false)} />
+                          <div className="absolute top-full left-0 mt-1 w-64 bg-surface-highlight border border-border rounded shadow-2xl z-50 p-1 flex flex-col">
+                            <form onSubmit={handleAddSymbol} className="flex items-center gap-2 bg-background border border-border px-2 rounded">
+                              <Search size={12} className="text-text-tertiary" />
+                              <input
+                                ref={searchInputRef}
+                                value={searchQuery}
+                                onChange={e => setSearchQuery(e.target.value)}
+                                placeholder="Type company name or ticker..."
+                                className="flex-1 bg-transparent border-none outline-none text-xs py-2 text-text-primary uppercase"
+                              />
+                              {isSearching && <Loader2 size={12} className="animate-spin text-accent" />}
+                            </form>
+                            
+                            {searchResults.length > 0 && (
+                              <div className="flex flex-col mt-1 bg-background rounded overflow-hidden">
+                                {searchResults.map(res => (
+                                  <button
+                                    key={res.symbol}
+                                    onClick={() => addResolvedSymbol(res.symbol)}
+                                    className="flex items-center justify-between p-2 hover:bg-surface-highlight text-left border-b border-border/50 last:border-0"
+                                  >
+                                    <div className="flex flex-col overflow-hidden pr-2">
+                                      <span className="text-xs font-bold text-text-primary">{res.symbol}</span>
+                                      <span className="text-[10px] text-text-tertiary truncate">{res.name}</span>
+                                    </div>
+                                    <span className="text-[9px] text-text-secondary bg-surface px-1.5 py-0.5 rounded font-mono shrink-0">{res.type}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
-                          <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{getLabel(sym)}</span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                          <span className="text-[10px] font-mono font-bold text-text-primary">
-                            {data && data.price != null ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
-                          </span>
-                          <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
-                            {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
-                            <span>{data && data.changePercent != null ? `${Math.abs(data.changePercent).toFixed(2)}%` : '--'}</span>
+                        </>
+                      )}
+                    </div>
+                  }
+                >
+                  <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
+                    {watchlist.map(sym => {
+                      const data = marketData[sym];
+                      const isPositive = data?.changePercent != null ? data.changePercent >= 0 : true;
+
+                      return (
+                        <div
+                          key={sym}
+                          onClick={() => setActiveSymbol(sym)}
+                          className={`flex justify-between items-center px-3 py-2 border-b border-border/20 cursor-pointer group transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
+                        >
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1">
+                              <span className="font-bold text-[10px] text-text-primary">{sym}</span>
+                              <button onClick={(e) => handleRemoveSymbol(e, sym)} className="opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-negative"><X size={10} /></button>
+                            </div>
+                            <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{getLabel(sym)}</span>
+                          </div>
+                          <div className="flex flex-col items-end">
+                            <span className="text-[10px] font-mono font-bold text-text-primary">
+                              {data && data.price != null ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
+                            </span>
+                            <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
+                              {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
+                              <span>{data && data.changePercent != null ? `${Math.abs(data.changePercent).toFixed(2)}%` : '--'}</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </Widget>
+                      );
+                    })}
+                  </div>
+                </Widget>
+              </div>
+              <div className="h-32 shrink-0">
+                <Widget title="Market Internals">
+                  <MarketInternals tick={activeQuote} />
+                </Widget>
+              </div>
             </div>
           </Panel>
 
@@ -308,7 +340,14 @@ export default function TerminalPage() {
             <PanelGroup orientation="vertical">
               <Panel defaultSize={40} minSize={20} id="calendar">
                 <div className="h-full w-full p-px bg-background">
-                  <Widget title="Filtered Economic Calendar">
+                  <Widget 
+                    title="Economic Calendar"
+                    actions={
+                      <Link href="/calendar" className="text-[9px] font-bold text-accent hover:underline flex items-center gap-1">
+                        FULL VIEW <ExternalLink size={10} />
+                      </Link>
+                    }
+                  >
                     <MiniCalendar />
                   </Widget>
                 </div>
@@ -318,7 +357,14 @@ export default function TerminalPage() {
 
               <Panel defaultSize={60} minSize={30} id="news">
                 <div className="h-full w-full p-px bg-background">
-                  <Widget title="Live Intelligence Wire">
+                  <Widget 
+                    title="Intelligence Wire"
+                    actions={
+                      <Link href="/news" className="text-[9px] font-bold text-accent hover:underline flex items-center gap-1">
+                        FULL WIRE <ExternalLink size={10} />
+                      </Link>
+                    }
+                  >
                     <NewsFeed activeSymbol={activeSymbol} />
                   </Widget>
                 </div>
