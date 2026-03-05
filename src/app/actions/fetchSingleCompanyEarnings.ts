@@ -55,13 +55,28 @@ export async function fetchSingleCompanyEarnings(symbol: string): Promise<Earnin
     }
   }
 
-  // 3. AI Fallback for unannounced dates or if Yahoo completely failed
+  // STALE DATA FILTER: Reject dates older than ~100 days
+  if (dateStr !== 'TBD') {
+    const parsedDate = new Date(dateStr);
+    const now = new Date();
+    const diffDays = (now.getTime() - parsedDate.getTime()) / (1000 * 3600 * 24);
+    
+    if (diffDays > 100) {
+      console.warn(`[SingleEarnings] Yahoo returned stale date (${dateStr}) for ${safeSymbol}. Rejecting and forcing AI fallback.`);
+      dateStr = 'TBD';
+    }
+  }
+
+  // 3. AI Fallback for unannounced dates or stale data
   if (dateStr === 'TBD') {
     try {
-      const prompt = `You are a financial data extractor. Use Google Search to find the EXACT date of the most recent past earnings report, or the next upcoming earnings report for ticker symbol ${safeSymbol}.
+      const todayStr = new Date().toISOString().split('T')[0];
+      const prompt = `You are a financial data extractor. Today's date is ${todayStr}. 
+      Use Google Search to find the EXACT date of the MOST RECENT (within the last 3 months) or NEXT UPCOMING earnings report for ticker symbol ${safeSymbol}.
       Return ONLY a raw JSON object with a single key "date" in "YYYY-MM-DD" format. Do not use markdown blocks. Example: {"date": "2024-05-02"}`;
       
-      const fallbackRes = await generateAIJSON(prompt, { date: 'TBD' }, `earnings-date-v5-${safeSymbol}`, 86400);
+      // Bumped cache key to v6 to flush any previously cached 2024 AI responses
+      const fallbackRes = await generateAIJSON(prompt, { date: 'TBD' }, `earnings-date-v6-${safeSymbol}`, 86400);
       
       if (fallbackRes && fallbackRes.date && fallbackRes.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
         dateStr = fallbackRes.date;
