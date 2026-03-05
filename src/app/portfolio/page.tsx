@@ -5,7 +5,7 @@ import { TerminalCommandBar } from '@/features/Terminal/components/TerminalComma
 import { TerminalPanel } from '@/features/Terminal/components/TerminalPanel';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { useTradingStore } from '@/services/store/use-trading-store';
-import { Briefcase, TrendingUp, TrendingDown } from 'lucide-react';
+import { Briefcase, TrendingUp, TrendingDown, DollarSign, PieChart } from 'lucide-react';
 
 export default function PortfolioPage() {
     const { positions, balance, initialBalance } = useTradingStore();
@@ -40,46 +40,87 @@ export default function PortfolioPage() {
     return (
         <div className="h-full w-full flex flex-col bg-background overflow-hidden">
             <TerminalCommandBar />
+            
             <div className="h-10 border-b border-border bg-surface flex items-center px-4 gap-4 shrink-0">
                 <Briefcase size={16} className="text-accent" />
                 <h1 className="text-[11px] font-bold uppercase tracking-widest">Portfolio Analytics</h1>
                 <div className="ml-auto flex items-center gap-6 text-[10px] tabular-nums">
-                    <div><span className="text-text-tertiary mr-2 uppercase">Cash</span><span className="font-bold">${balance.toLocaleString()}</span></div>
-                    <div><span className="text-text-tertiary mr-2 uppercase">Total P&L</span><span className={`font-bold ${portfolioData.totalPnl >= 0 ? 'text-positive' : 'text-negative'}`}>${portfolioData.totalPnl.toLocaleString()} ({portfolioData.totalPnlPct.toFixed(2)}%)</span></div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-text-tertiary uppercase">Buying Power</span>
+                        <span className="font-bold text-text-primary">${balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-text-tertiary uppercase">Total P&L</span>
+                        <span className={`font-bold ${portfolioData.totalPnl >= 0 ? 'text-positive' : 'text-negative'}`}>
+                            ${portfolioData.totalPnl.toLocaleString(undefined, { minimumFractionDigits: 2 })} ({portfolioData.totalPnlPct.toFixed(2)}%)
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-3">
-                <TerminalPanel title="Active Holdings" fnKey="F1">
-                    <table className="data-table">
-                        <thead>
-                            <tr>
-                                <th>Symbol</th>
-                                <th>Side</th>
-                                <th className="text-right">Qty</th>
-                                <th className="text-right">Avg Cost</th>
-                                <th className="text-right">Current</th>
-                                <th className="text-right">P&L</th>
-                                <th className="text-right">Return</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {portfolioData.holdings.map(h => (
-                                <tr key={h.symbol}>
-                                    <td className="font-bold text-accent">{h.symbol}</td>
-                                    <td><span className={`px-1.5 py-0.5 text-[8px] font-bold uppercase ${h.side === 'LONG' ? 'bg-positive/10 text-positive' : 'bg-negative/10 text-negative'}`}>{h.side}</span></td>
-                                    <td className="text-right tabular-nums">{h.quantity}</td>
-                                    <td className="text-right tabular-nums">${h.avgPrice.toLocaleString()}</td>
-                                    <td className="text-right tabular-nums">${h.currentPrice.toLocaleString()}</td>
-                                    <td className={`text-right tabular-nums font-bold ${h.pnl >= 0 ? 'text-positive' : 'text-negative'}`}>${h.pnl.toLocaleString()}</td>
-                                    <td className={`text-right tabular-nums font-bold ${h.pnlPct >= 0 ? 'text-positive' : 'text-negative'}`}>{h.pnlPct.toFixed(2)}%</td>
+            <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                {/* Summary Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="p-4 bg-surface border border-border rounded-sm">
+                        <div className="text-[9px] font-bold text-text-tertiary uppercase mb-1">Net Asset Value</div>
+                        <div className="text-xl font-black tabular-nums">${(balance + portfolioData.totalMarketValue).toLocaleString()}</div>
+                    </div>
+                    <div className="p-4 bg-surface border border-border rounded-sm">
+                        <div className="text-[9px] font-bold text-text-tertiary uppercase mb-1">Market Exposure</div>
+                        <div className="text-xl font-black tabular-nums">${portfolioData.totalMarketValue.toLocaleString()}</div>
+                    </div>
+                    <div className="p-4 bg-surface border border-border rounded-sm">
+                        <div className="text-[9px] font-bold text-text-tertiary uppercase mb-1">Realized P&L</div>
+                        <div className="text-xl font-black tabular-nums text-text-secondary">$0.00</div>
+                    </div>
+                </div>
+
+                <TerminalPanel title="Active Institutional Holdings" fnKey="F1">
+                    <div className="overflow-auto">
+                        <table className="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Symbol</th>
+                                    <th>Side</th>
+                                    <th className="text-right">Qty</th>
+                                    <th className="text-right">Avg Cost</th>
+                                    <th className="text-right">Current</th>
+                                    <th className="text-right">Market Value</th>
+                                    <th className="text-right">P&L</th>
+                                    <th className="text-right">Return</th>
                                 </tr>
-                            ))}
-                            {portfolioData.holdings.length === 0 && (
-                                <tr><td colSpan={7} className="text-center py-8 text-text-tertiary uppercase text-[10px] tracking-widest">No open positions</td></tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+                                {portfolioData.holdings.map(h => (
+                                    <tr key={h.symbol}>
+                                        <td className="font-bold text-accent">{h.symbol}</td>
+                                        <td>
+                                            <span className={`px-1.5 py-0.5 text-[8px] font-bold uppercase ${h.side === 'LONG' ? 'bg-positive/10 text-positive' : 'bg-negative/10 text-negative'}`}>
+                                                {h.side}
+                                            </span>
+                                        </td>
+                                        <td className="text-right tabular-nums">{h.quantity.toLocaleString()}</td>
+                                        <td className="text-right tabular-nums">${h.avgPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                        <td className="text-right tabular-nums">${h.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                        <td className="text-right tabular-nums">${h.marketValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                                        <td className={`text-right tabular-nums font-bold ${h.pnl >= 0 ? 'text-positive' : 'text-negative'}`}>
+                                            {h.pnl >= 0 ? '+' : ''}${h.pnl.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                        </td>
+                                        <td className={`text-right tabular-nums font-bold ${h.pnlPct >= 0 ? 'text-positive' : 'text-negative'}`}>
+                                            {h.pnlPct >= 0 ? '+' : ''}{h.pnlPct.toFixed(2)}%
+                                        </td>
+                                    </tr>
+                                ))}
+                                {portfolioData.holdings.length === 0 && (
+                                    <tr>
+                                        <td colSpan={8} className="text-center py-12 text-text-tertiary uppercase text-[10px] tracking-[0.2em]">
+                                            No active positions in current allocation
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </TerminalPanel>
             </div>
         </div>

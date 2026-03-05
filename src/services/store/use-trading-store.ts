@@ -36,7 +36,7 @@ interface TradingState {
   trades: Trade[];
   
   // Actions
-  submitOrder: (order: Omit<Order, 'id' | 'status' | 'timestamp'>, currentPrice: number) => void;
+  submitOrder: (order: Omit<Order, 'id' | 'status' | 'timestamp'>, currentPrice: number) => { success: boolean; error?: string };
   cancelOrder: (id: string) => void;
   resetAccount: () => void;
 }
@@ -51,12 +51,23 @@ export const useTradingStore = create<TradingState>()(
       trades: [],
 
       submitOrder: (orderData, currentPrice) => {
+        const state = get();
+        
+        // 1. SIMULATE SPREAD/SLIPPAGE (Institutional Reality)
+        // Market orders fill slightly worse than the mid-price
+        const spread = currentPrice * 0.0002; // 2bps spread
+        const fillPrice = orderData.side === 'BUY' ? currentPrice + spread : currentPrice - spread;
+        const totalCost = fillPrice * orderData.quantity;
+
+        // 2. BUYING POWER CHECK
+        if (orderData.side === 'BUY' && totalCost > state.balance) {
+          return { success: false, error: 'Insufficient Buying Power' };
+        }
+
         const id = `ORD-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
         const timestamp = Date.now();
         
-        // For now, we auto-fill MARKET orders immediately
         if (orderData.type === 'MARKET') {
-          const fillPrice = currentPrice;
           const tradeId = `TRD-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
           
           const newTrade: Trade = {
@@ -80,15 +91,12 @@ export const useTradingStore = create<TradingState>()(
             const nextPositions = { ...state.positions };
             const existing = nextPositions[orderData.symbol];
             
-            // Logic for updating positions
             if (orderData.side === 'BUY') {
               if (existing && existing.side === 'SHORT') {
-                // Closing a short
                 const remaining = existing.quantity - orderData.quantity;
                 if (remaining <= 0) delete nextPositions[orderData.symbol];
                 else nextPositions[orderData.symbol] = { ...existing, quantity: remaining };
               } else {
-                // Opening or adding to long
                 const qty = (existing?.quantity || 0) + orderData.quantity;
                 const avg = existing 
                   ? (existing.avgPrice * existing.quantity + fillPrice * orderData.quantity) / qty
@@ -96,14 +104,11 @@ export const useTradingStore = create<TradingState>()(
                 nextPositions[orderData.symbol] = { symbol: orderData.symbol, side: 'LONG', quantity: qty, avgPrice: avg };
               }
             } else {
-              // SELL logic
               if (existing && existing.side === 'LONG') {
-                // Closing a long
                 const remaining = existing.quantity - orderData.quantity;
                 if (remaining <= 0) delete nextPositions[orderData.symbol];
                 else nextPositions[orderData.symbol] = { ...existing, quantity: remaining };
               } else {
-                // Opening or adding to short
                 const qty = (existing?.quantity || 0) + orderData.quantity;
                 const avg = existing 
                   ? (existing.avgPrice * existing.quantity + fillPrice * orderData.quantity) / qty
@@ -116,14 +121,14 @@ export const useTradingStore = create<TradingState>()(
               orders: [newOrder, ...state.orders],
               trades: [newTrade, ...state.trades],
               positions: nextPositions,
-              // Deduct/Add to balance (simplified cash account)
-              balance: state.balance - (orderData.side === 'BUY' ? fillPrice * orderData.quantity : -fillPrice * orderData.quantity)
+              balance: state.balance - (orderData.side === 'BUY' ? totalCost : -totalCost)
             };
           });
+          return { success: true };
         } else {
-          // Limit/Stop orders stay pending
           const newOrder: Order = { ...orderData, id, status: 'PENDING', timestamp };
           set((state) => ({ orders: [newOrder, ...state.orders] }));
+          return { success: true };
         }
       },
 
