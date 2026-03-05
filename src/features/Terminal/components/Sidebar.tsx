@@ -9,15 +9,10 @@ import {
   Newspaper,
   Settings,
   Terminal,
-  Cpu,
   Search,
   Bell,
   Calendar,
   Zap,
-  Shield,
-  Briefcase,
-  ArrowUpDown,
-  Brain,
 } from 'lucide-react';
 import { SettingsModal } from '@/components/ui/SettingsModal';
 import { NotificationsPanel } from './notifications/NotificationsPanel';
@@ -28,11 +23,6 @@ const NAV_ITEMS = [
   { href: '/charts', icon: LineChart, label: 'Technical', key: '3', fnLabel: 'F3' },
   { href: '/confluences', icon: Zap, label: 'Confluence', key: '4', fnLabel: 'F4' },
   { href: '/news', icon: Newspaper, label: 'Wire', key: '5', fnLabel: 'F5' },
-  { href: '/algo', icon: Cpu, label: 'Algos', key: '6', fnLabel: 'F6' },
-  { href: '/risk', icon: Shield, label: 'Risk', key: '7', fnLabel: 'F7' },
-  { href: '/portfolio', icon: Briefcase, label: 'Portfolio', key: '8', fnLabel: 'F8' },
-  { href: '/execution', icon: ArrowUpDown, label: 'Execution', key: '9', fnLabel: 'F9' },
-  { href: '/research', icon: Brain, label: 'Research', key: '0', fnLabel: 'F10' },
 ];
 
 export function Sidebar() {
