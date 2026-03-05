@@ -37,7 +37,8 @@
   
   --base-font-size: 11px;
   --panel-padding: 6px;
-  --panel-header-h: 22px;
+  --panel-header-h: 24px;
+  --grid-gap: 1px;
 }
 
 /* Theme Overrides */
@@ -73,17 +74,19 @@
   --accent-main: #2563eb;
 }
 
-/* Density Overrides */
+/* Density Overrides - Refined to prevent breakage */
 [data-density='standard'] {
   --base-font-size: 12px;
   --panel-padding: 10px;
-  --panel-header-h: 28px;
+  --panel-header-h: 32px;
+  --grid-gap: 2px;
 }
 
 [data-density='spacious'] {
   --base-font-size: 14px;
   --panel-padding: 16px;
-  --panel-header-h: 36px;
+  --panel-header-h: 40px;
+  --grid-gap: 4px;
 }
 
 /* Font Size Overrides */
@@ -99,6 +102,11 @@ html, body {
   font-size: var(--base-font-size);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+}
+
+/* Ensure grid gaps scale with density */
+.grid {
+  gap: var(--grid-gap) !important;
 }
 
 .panel-header {
