@@ -1,109 +1,168 @@
 @import "tailwindcss";
 
 @theme {
-  /* Dynamic Color Mapping */
-  --color-background: var(--theme-bg-base);
-  --color-surface: var(--theme-bg-panel);
-  --color-surface-highlight: var(--theme-bg-header);
+  --color-background: var(--bg-main);
+  --color-surface: var(--bg-surface);
+  --color-surface-highlight: var(--bg-surface-hi);
   
-  --color-border: var(--theme-border-subtle);
-  --color-border-strong: var(--theme-border-strong);
+  --color-border: var(--border-main);
+  --color-border-highlight: var(--border-hi);
 
-  --color-text-primary: var(--theme-text-main);
-  --color-text-secondary: var(--theme-text-muted);
-  --color-text-tertiary: var(--theme-text-muted);
-  --color-text-hi: var(--theme-text-hi);
+  --color-text-primary: var(--text-main);
+  --color-text-secondary: var(--text-dim);
+  --color-text-tertiary: var(--text-muted);
 
-  --color-accent: var(--theme-accent);
-  --color-positive: var(--theme-up);
-  --color-negative: var(--theme-down);
-  --color-warning: var(--theme-warn);
+  --color-accent: var(--accent-main);
+  --color-positive: var(--pos-main);
+  --color-negative: var(--neg-main);
+  --color-warning: var(--warn-main);
 
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
-  --font-sans: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-serif: "Georgia", serif;
 }
 
-/* 1. MODERN UI (Default) */
-:root, [data-ui="modern"] {
-  --theme-bg-base: #0a0a0c;
-  --theme-bg-panel: #141417;
-  --theme-bg-header: #1c1c21;
-  --theme-border-subtle: #27272a;
-  --theme-border-strong: #3f3f46;
-  --theme-text-main: #e4e4e7;
-  --theme-text-muted: #a1a1aa;
-  --theme-text-hi: #ffffff;
-  --theme-accent: #6366f1; /* Indigo */
-  --theme-up: #10b981;
-  --theme-down: #ef4444;
-  --theme-warn: #f59e0b;
+:root {
+  /* Default Dark */
+  --bg-main: #050505;
+  --bg-surface: #0d0d0f;
+  --bg-surface-hi: #161618;
+  --border-main: #1f1f22;
+  --border-hi: #2d2d30;
+  --text-main: #e4e4e7;
+  --text-dim: #a1a1aa;
+  --text-muted: #52525b;
+  --accent-main: #00ff9d;
+  --pos-main: #00ff9d;
+  --neg-main: #ff3b30;
+  --warn-main: #ffcc00;
   
-  --radius-widget: 12px;
-  --font-primary: var(--font-sans);
+  --base-font-size: 12px;
+  --panel-padding: 10px;
+  --panel-header-h: 32px;
+  --grid-gap: 2px;
+  --grid-line-opacity: 1;
 }
 
-/* 2. TERMINAL UI (Legacy) */
-[data-ui="terminal"] {
-  --theme-bg-base: #000000;
-  --theme-bg-panel: #000000;
-  --theme-bg-header: #09090b;
-  --theme-border-subtle: #18181b;
-  --theme-border-strong: #27272a;
-  --theme-text-main: #00ff9d;
-  --theme-text-muted: #00663d;
-  --theme-text-hi: #ffffff;
-  --theme-accent: #00ff9d;
-  --theme-up: #00ff9d;
-  --theme-down: #ff3333;
-  --theme-warn: #eab308;
-
-  --radius-widget: 0px;
-  --font-primary: var(--font-mono);
+/* Theme Overrides */
+[data-theme='oled'] {
+  --bg-main: #000000;
+  --bg-surface: #000000;
+  --bg-surface-hi: #0a0a0a;
+  --border-main: #111111;
+  --border-hi: #1a1a1a;
 }
 
-/* 3. THEME OVERRIDES (Bloomberg, etc) */
-[data-theme="bloomberg"] {
-  --theme-bg-base: #000000;
-  --theme-bg-panel: #000000;
-  --theme-bg-header: #000033;
-  --theme-text-main: #ff9900;
-  --theme-accent: #ff9900;
+[data-theme='bloomberg'] {
+  --bg-main: #000033;
+  --bg-surface: #000044;
+  --bg-surface-hi: #000066;
+  --border-main: #000088;
+  --border-hi: #0000aa;
+  --text-main: #ffffff;
+  --text-dim: #cccccc;
+  --text-muted: #999999;
+  --accent-main: #ff9900;
 }
 
-/* ── Global Reset ── */
+[data-theme='terminal-green'] {
+  --bg-main: #0a0a0a;
+  --bg-surface: #0f0f0f;
+  --bg-surface-hi: #1a1a1a;
+  --border-main: #003300;
+  --border-hi: #004400;
+  --text-main: #00ff00;
+  --text-dim: #00cc00;
+  --text-muted: #006600;
+  --accent-main: #00ff00;
+}
+
+[data-theme='classic-blue'] {
+  --bg-main: #001f3f;
+  --bg-surface: #003366;
+  --bg-surface-hi: #004080;
+  --border-main: #0059b3;
+  --border-hi: #0073e6;
+  --text-main: #ffffff;
+  --text-dim: #b3d9ff;
+  --text-muted: #66b3ff;
+  --accent-main: #ffcc00;
+}
+
+[data-theme='light'] {
+  --bg-main: #ffffff;
+  --bg-surface: #f4f4f5;
+  --bg-surface-hi: #e4e4e7;
+  --border-main: #d4d4d8;
+  --border-hi: #a1a1aa;
+  --text-main: #09090b;
+  --text-dim: #3f3f46;
+  --text-muted: #71717a;
+  --accent-main: #2563eb;
+}
+
+/* Density Overrides */
+[data-density='standard'] {
+  --base-font-size: 14px;
+  --panel-padding: 14px;
+  --panel-header-h: 40px;
+  --grid-gap: 4px;
+}
+
+[data-density='spacious'] {
+  --base-font-size: 16px;
+  --panel-padding: 20px;
+  --panel-header-h: 48px;
+  --grid-gap: 6px;
+}
+
+/* Font Family Overrides */
+[data-font-family='sans'] { font-family: var(--font-sans); }
+[data-font-family='serif'] { font-family: var(--font-serif); }
+[data-font-family='mono'] { font-family: var(--font-mono); }
+
+/* Border Style Overrides */
+[data-border-style='none'] { --border-main: transparent; --border-hi: transparent; }
+[data-border-style='bold'] { --border-main: #3f3f46; --border-hi: #52525b; }
+
+/* Font Size Overrides */
+[data-font-size='xs'] { --base-font-size: 11px; }
+[data-font-size='md'] { --base-font-size: 15px; }
+[data-font-size='lg'] { --base-font-size: 18px; }
+
 html, body {
-  height: 100%;
+  height: 100dvh;
   width: 100%;
+  background-color: var(--color-background);
+  color: var(--color-text-primary);
+  font-size: var(--base-font-size);
+  -webkit-font-smoothing: antialiased;
   overflow: hidden;
-  background-color: var(--theme-bg-base);
-  color: var(--theme-text-main);
-  font-family: var(--font-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-*, *::before, *::after {
-  box-sizing: border-box;
-  border-radius: inherit;
+.grid {
+  gap: var(--grid-gap) !important;
 }
 
-.modern-card {
-  background: var(--theme-bg-panel);
-  border: 1px solid var(--theme-border-subtle);
-  border-radius: var(--radius-widget);
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+.panel-header {
+  min-height: var(--panel-header-h);
+  padding: 0 var(--panel-padding);
 }
 
-.modern-header {
-  height: 40px;
-  padding: 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: var(--theme-bg-header);
-  border-bottom: 1px solid var(--theme-border-subtle);
-  font-weight: 600;
-  color: var(--theme-text-hi);
+.panel-content {
+  padding: var(--panel-padding);
 }
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-thumb { background: var(--theme-border-strong); border-radius: 10px; }
+/* Grid line visibility control */
+.border, .border-b, .border-r, .border-t, .border-l {
+  border-color: rgba(var(--color-border), var(--grid-line-opacity));
+}
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-ticker {
+  animation: ticker 60s linear infinite;
+}
