@@ -3,8 +3,10 @@
 import { generateAIJSON } from "@/lib/ai-utils";
 
 export async function analyzeNewsSentiment(headlines: string[], assetName: string) {
+  const fallback = { score: 0, label: "Neutral", summary: "Market awaiting definitive catalysts." };
+  
   if (!headlines || headlines.length === 0) {
-    return { score: 0, label: "Neutral", summary: "No recent news available." };
+    return fallback;
   }
 
   const prompt = `You are a senior quantitative news desk analyst. 
@@ -20,7 +22,6 @@ export async function analyzeNewsSentiment(headlines: string[], assetName: strin
       "summary": string // A 1-sentence summary of the dominant news narrative affecting the asset
     }`;
 
-  const fallback = { score: 0, label: "Neutral", summary: "Market awaiting definitive catalysts." };
-  
-  return await generateAIJSON(prompt, fallback);
+  // Cache globally for 1 hour based on the asset name
+  return await generateAIJSON(prompt, fallback, `news-sentiment-v1-${assetName}`, 3600);
 }

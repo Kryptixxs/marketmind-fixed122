@@ -20,5 +20,6 @@ export async function analyzeMarket(symbol: string, label: string, price: number
     analysis: `${symbol} is trading at ${price} with a daily change of ${changePercent}%. Market structure is currently developing.`
   };
 
-  return await generateAIJSON(prompt, fallback);
+  // Cache globally for 1 hour based on the symbol
+  return await generateAIJSON(prompt, fallback, `market-analysis-v1-${symbol}`, 3600);
 }

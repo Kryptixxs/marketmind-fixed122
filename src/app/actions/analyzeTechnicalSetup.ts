@@ -122,7 +122,8 @@ export async function analyzeTechnicalSetup(symbol: string) {
         "confidence": number 
       }`;
 
-    return await generateAIJSON(prompt, fallback);
+    // Cache globally for 1 hour based on the symbol
+    return await generateAIJSON(prompt, fallback, `tech-setup-v1-${symbol}`, 3600);
   } catch (error) {
     console.error("Alpha Agent Quant Error:", error);
     return null;

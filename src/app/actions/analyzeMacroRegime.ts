@@ -21,5 +21,15 @@ export async function analyzeMacroRegime(activeSymbol: string, price: number) {
     - score: Sentiment score from 0-100.
     - insight: A 1-sentence high-conviction insight for ${activeSymbol}.`;
 
-  return await generateAIJSON(prompt);
+  const fallback = {
+    narrative: "Consolidation",
+    stance: "Neutral",
+    regime: "Mean Reverting",
+    bias: "Neutral",
+    score: 50,
+    insight: "Awaiting further macroeconomic clarity."
+  };
+
+  // Cache globally for 1 hour based on the symbol
+  return await generateAIJSON(prompt, fallback, `macro-regime-v1-${activeSymbol}`, 3600);
 }

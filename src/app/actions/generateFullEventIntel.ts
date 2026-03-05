@@ -4,62 +4,16 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { EconomicEvent } from "@/lib/types";
 import { fetchNews } from "./fetchNews";
 import { getEventIntel } from "@/lib/event-intelligence";
+import { unstable_cache } from "next/cache";
 
-// In-memory cache to prevent redundant API calls
-const intelCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_TTL = 1000 * 60 * 60; // 1 hour
-
-export async function generateFullEventIntel(event: EconomicEvent) {
-  // 1. Check Cache First
-  const cached = intelCache.get(event.id);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-    return cached.data;
-  }
-
-  // 2. Prepare Deterministic Fallback
-  // If the API fails, we use our deterministic rules engine so the UI never breaks
-  const ruleEngineData = getEventIntel(event);
-  const fallbackResponse = {
-    ...ruleEngineData,
-    liveBias: "Neutral",
-    predictionAccuracy: 85, // High accuracy because it's deterministic historical math
-    smartMoneyPositioning: ruleEngineData.positioning || "Institutions are awaiting data execution.",
-    specificPrediction: `(Auto-Fallback Mode) ${ruleEngineData.logic}`
-  };
-
+async function fetchEventIntelFromGemini(event: EconomicEvent, prompt: string, fallbackResponse: any) {
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-  if (!apiKey) {
-    console.warn("No Gemini API key found. Using fallback.");
-    return fallbackResponse;
-  }
+  if (!apiKey) return fallbackResponse;
 
-  // Fetch real-time news to inform the AI's predictions
-  let newsContext = "No recent news available.";
-  try {
-    const news = await fetchNews('General');
-    newsContext = news.slice(0, 5).map(n => n.title).join('\n');
-  } catch (e) {
-    console.warn("Failed to fetch news for context.");
-  }
-
-  const prompt = `You are the lead quantitative macro strategist for a major hedge fund.
-  Generate a highly specific, customized intelligence briefing for the following upcoming economic event.
-  You must output a precise, asset-specific analysis based on the live news context provided.
-  
-  EVENT DATA:
-  Title: ${event.title}
-  Country: ${event.country} | Currency: ${event.currency}
-  Actual: ${event.actual || 'Pending'} | Forecast: ${event.forecast || 'N/A'} | Previous: ${event.previous || 'N/A'}
-  
-  LIVE NEWS CONTEXT (Use this to determine current market sentiment and Smart Money positioning):
-  ${newsContext}`;
-
-  const ai = new GoogleGenAI({ apiKey });
-
-  // Implement a 3-attempt retry loop to handle brief rate limits (429s)
   let retries = 3;
   while (retries > 0) {
     try {
+      const ai = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: prompt,
@@ -109,25 +63,56 @@ export async function generateFullEventIntel(event: EconomicEvent) {
       });
 
       if (response.text) {
-        const parsed = JSON.parse(response.text);
-        
-        // Save to cache
-        intelCache.set(event.id, { data: parsed, timestamp: Date.now() });
-        return parsed;
+        return JSON.parse(response.text);
       }
     } catch (error: any) {
       console.warn(`[Event Intel] AI fetch failed. Retries remaining: ${retries - 1}.`);
       retries--;
-      
-      // If we run out of retries, break the loop
       if (retries === 0) break;
-      
-      // Wait 2 seconds before retrying to let the rate limit reset
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
-
-  // If we reach here, all AI retries failed (Rate Limit hit).
-  // Return the deterministic fallback so the UI still looks great.
   return fallbackResponse;
+}
+
+export async function generateFullEventIntel(event: EconomicEvent) {
+  // 1. Prepare Deterministic Fallback
+  const ruleEngineData = getEventIntel(event);
+  const fallbackResponse = {
+    ...ruleEngineData,
+    liveBias: "Neutral",
+    predictionAccuracy: 85,
+    smartMoneyPositioning: ruleEngineData.positioning || "Institutions are awaiting data execution.",
+    specificPrediction: `(Auto-Fallback Mode) ${ruleEngineData.logic}`
+  };
+
+  // Fetch real-time news to inform the AI's predictions
+  let newsContext = "No recent news available.";
+  try {
+    const news = await fetchNews('General');
+    newsContext = news.slice(0, 5).map(n => n.title).join('\n');
+  } catch (e) {
+    console.warn("Failed to fetch news for context.");
+  }
+
+  const prompt = `You are the lead quantitative macro strategist for a major hedge fund.
+  Generate a highly specific, customized intelligence briefing for the following upcoming economic event.
+  You must output a precise, asset-specific analysis based on the live news context provided.
+  
+  EVENT DATA:
+  Title: ${event.title}
+  Country: ${event.country} | Currency: ${event.currency}
+  Actual: ${event.actual || 'Pending'} | Forecast: ${event.forecast || 'N/A'} | Previous: ${event.previous || 'N/A'}
+  
+  LIVE NEWS CONTEXT (Use this to determine current market sentiment and Smart Money positioning):
+  ${newsContext}`;
+
+  // Use Next.js global server cache! Updates once an hour per unique event.
+  const getCached = unstable_cache(
+    async () => fetchEventIntelFromGemini(event, prompt, fallbackResponse),
+    [`event-intel-v1-${event.id}`],
+    { revalidate: 3600 } 
+  );
+
+  return getCached();
 }

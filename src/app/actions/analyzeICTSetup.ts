@@ -45,12 +45,12 @@ export async function analyzeICTSetup(symbol: string, currentPrice: number, cand
     "customAnalysis": "string" // A 2-sentence highly specific breakdown of the chart + news. Mention exact liquidity levels, sweeps, or FVGs.
   }`;
 
-  // If AI fails due to rate limits, use the highly complex mathematical bias calculated locally!
   const fallback = {
     algoBias: mathData.algoBias || "DATA SYNCING",
     biasColor: mathData.biasColor || "text-text-secondary",
     customAnalysis: `(System Override) AI unavailable. Algorithmic bias derived strictly from local execution engine. Structure is ${mathData.structure} in a ${mathData.isDiscount ? 'Discount' : 'Premium'} array.`
   };
 
-  return await generateAIJSON(prompt, fallback);
+  // Cache globally for 1 hour based on the symbol
+  return await generateAIJSON(prompt, fallback, `ict-setup-v1-${symbol}`, 3600);
 }
