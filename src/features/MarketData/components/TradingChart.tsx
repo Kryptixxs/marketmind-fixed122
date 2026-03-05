@@ -72,7 +72,7 @@ export function TradingChart({
   useEffect(() => {
     if (seriesRef.current && data && data.length > 0) {
       const sorted = [...data].sort((a, b) => a.time - b.time);
-      const unique: any[] = [];
+      const unique = [];
       for (const d of sorted) {
         if (unique.length === 0 || d.time > unique[unique.length - 1].time) {
           unique.push(d);

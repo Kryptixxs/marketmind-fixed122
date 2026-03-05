@@ -6,7 +6,7 @@ export async function searchSymbols(query: string) {
   if (!query || query.trim().length < 1) return [];
   
   try {
-    const res = await yahooFinance.search(query.trim()) as any;
+    const res = await yahooFinance.search(query.trim());
     return res.quotes
       .filter((q: any) => q.symbol)
       .map((q: any) => ({

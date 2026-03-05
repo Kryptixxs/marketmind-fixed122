@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -9,20 +9,22 @@ import {
   Newspaper,
   Settings,
   Terminal,
+  Cpu,
   Search,
   Bell,
   Calendar,
-  Zap,
+  Zap
 } from 'lucide-react';
 import { SettingsModal } from '@/components/ui/SettingsModal';
 import { NotificationsPanel } from './notifications/NotificationsPanel';
 
 const NAV_ITEMS = [
-  { href: '/dashboard', icon: LayoutGrid, label: 'Workspace', key: '1', fnLabel: 'F1' },
-  { href: '/calendar', icon: Calendar, label: 'Calendar', key: '2', fnLabel: 'F2' },
-  { href: '/charts', icon: LineChart, label: 'Technical', key: '3', fnLabel: 'F3' },
-  { href: '/confluences', icon: Zap, label: 'Confluence', key: '4', fnLabel: 'F4' },
-  { href: '/news', icon: Newspaper, label: 'Wire', key: '5', fnLabel: 'F5' },
+  { href: '/dashboard', icon: LayoutGrid, label: 'Workspace', key: '1' },
+  { href: '/calendar', icon: Calendar, label: 'Calendar', key: '2' },
+  { href: '/charts', icon: LineChart, label: 'Technical', key: '3' },
+  { href: '/confluences', icon: Zap, label: 'Confluences', key: '4' },
+  { href: '/news', icon: Newspaper, label: 'Wire', key: '5' },
+  { href: '/algo', icon: Cpu, label: 'Algos', key: '6' },
 ];
 
 export function Sidebar() {
@@ -30,54 +32,41 @@ export function Sidebar() {
   const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
-    const item = NAV_ITEMS.find(i => i.key === e.key);
-    if (item) {
-      e.preventDefault();
-      router.push(item.href);
-    }
-
-    if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
-      e.preventDefault();
-      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }));
-    }
-  }, [router]);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const item = NAV_ITEMS.find(i => i.key === e.key);
+      if (item) {
+        e.preventDefault();
+        router.push(item.href);
+      }
+    };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleKeyDown]);
+  }, [router]);
 
   return (
     <>
-      <div
-        onMouseEnter={() => setIsExpanded(true)}
-        onMouseLeave={() => setIsExpanded(false)}
+      <div 
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         className={`
-          h-full bg-surface border-r border-border flex flex-col transition-all duration-200 z-50 shrink-0 select-none
-          ${isExpanded ? 'w-44' : 'w-12'}
+          h-full bg-surface border-r border-border flex flex-col transition-all duration-300 z-50 shrink-0
+          ${isHovered ? 'w-48 shadow-2xl' : 'w-12'}
         `}
       >
-        {/* Brand */}
-        <div className="h-8 flex items-center px-2 border-b border-border bg-background/80">
-          <Link href="/dashboard" className="flex items-center gap-2 overflow-hidden">
-            <div className="w-7 h-5 bg-accent rounded-[2px] flex items-center justify-center shrink-0">
-              <Terminal size={12} className="text-background" />
-            </div>
-            {isExpanded && (
-              <span className="text-[10px] font-black tracking-tight uppercase text-text-primary whitespace-nowrap">
-                VANTAGE
-              </span>
-            )}
+        {/* Brand Header */}
+        <div className="h-12 flex items-center px-3 border-b border-border bg-background">
+          <Link href="/dashboard" className="flex items-center gap-2 text-accent hover:opacity-80 transition-opacity overflow-hidden">
+            <Terminal size={20} className="shrink-0" />
+            {isHovered && <span className="font-black tracking-tighter text-sm uppercase">Vantage</span>}
           </Link>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 py-2 flex flex-col gap-0.5 px-1 overflow-y-auto custom-scrollbar">
+        <nav className="flex-1 py-4 flex flex-col gap-1 px-2">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
             return (
@@ -85,22 +74,18 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={`
-                  flex items-center gap-2.5 h-8 px-2 rounded-[2px] transition-all group relative
+                  flex items-center gap-3 h-9 px-2 rounded-[2px] transition-all group
                   ${isActive
-                    ? 'bg-accent/10 text-accent'
+                    ? 'bg-accent/10 text-accent border border-accent/20'
                     : 'text-text-tertiary hover:text-text-primary hover:bg-surface-highlight'}
                 `}
-                title={`${item.label} (${item.key})`}
+                title={item.label}
               >
-                {isActive && <div className="absolute left-0 top-1 bottom-1 w-[2px] bg-accent rounded-full" />}
-
-                <item.icon size={14} className="shrink-0" strokeWidth={isActive ? 2 : 1.5} />
-                {isExpanded && (
+                <item.icon size={16} className="shrink-0" strokeWidth={isActive ? 2.5 : 1.5} />
+                {isHovered && (
                   <div className="flex-1 flex justify-between items-center overflow-hidden">
-                    <span className="text-[10px] font-bold uppercase tracking-wider truncate">{item.label}</span>
-                    <span className={`text-[8px] font-mono px-1 py-0.5 rounded-[2px] ${isActive ? 'bg-accent/20 text-accent' : 'bg-surface-highlight text-text-muted'}`}>
-                      {item.key}
-                    </span>
+                    <span className="text-[11px] font-bold uppercase tracking-wider truncate">{item.label}</span>
+                    <span className="text-[9px] font-mono opacity-40 group-hover:opacity-100">{item.key}</span>
                   </div>
                 )}
               </Link>
@@ -109,42 +94,32 @@ export function Sidebar() {
         </nav>
 
         {/* Bottom Actions */}
-        <div className="px-1 pb-2 flex flex-col gap-0.5 border-t border-border/50 pt-2">
+        <div className="p-2 flex flex-col gap-1 border-t border-border/50">
           <button
             onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
-            className="flex items-center gap-2.5 h-8 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
-            title="Search (Ctrl+K)"
+            className="flex items-center gap-3 h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
           >
-            <Search size={14} className="shrink-0" />
-            {isExpanded && (
-              <div className="flex-1 flex justify-between items-center">
-                <span className="text-[10px] font-bold uppercase tracking-wider">Search</span>
-                <span className="text-[8px] font-mono text-text-muted">⌘K</span>
-              </div>
-            )}
+            <Search size={16} className="shrink-0" />
+            {isHovered && <span className="text-[11px] font-bold uppercase tracking-wider">Search</span>}
           </button>
           <button
             onClick={() => setIsNotificationsOpen(true)}
-            className="flex items-center gap-2.5 h-8 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
-            title="Alerts"
+            className="flex items-center gap-3 h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
           >
-            <Bell size={14} className="shrink-0" />
-            {isExpanded && <span className="text-[10px] font-bold uppercase tracking-wider">Alerts</span>}
+            <Bell size={16} className="shrink-0" />
+            {isHovered && <span className="text-[11px] font-bold uppercase tracking-wider">Alerts</span>}
           </button>
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="flex items-center gap-2.5 h-8 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
-            title="Settings"
+            className="flex items-center gap-3 h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
           >
-            <Settings size={14} className="shrink-0" />
-            {isExpanded && <span className="text-[10px] font-bold uppercase tracking-wider">Settings</span>}
+            <Settings size={16} className="shrink-0" />
+            {isHovered && <span className="text-[11px] font-bold uppercase tracking-wider">Settings</span>}
           </button>
-
-          <div className="h-7 flex items-center px-2 mt-1">
-            <div className="w-1.5 h-1.5 rounded-full bg-positive shrink-0" style={{ boxShadow: '0 0 4px rgba(0, 200, 83, 0.5)' }} />
-            {isExpanded && (
-              <span className="ml-2.5 text-[8px] font-bold text-text-muted uppercase tracking-widest">SYS.ONLINE</span>
-            )}
+          
+          <div className="h-8 flex items-center px-2 mt-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse shrink-0" />
+            {isHovered && <span className="ml-3 text-[8px] font-bold text-text-tertiary uppercase tracking-widest">System Live</span>}
           </div>
         </div>
       </div>

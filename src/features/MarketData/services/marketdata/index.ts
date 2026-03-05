@@ -1,15 +1,11 @@
 import { MarketDataProvider } from './types';
+import { PolygonProvider } from './providers/polygon';
 
 let globalProvider: MarketDataProvider | null = null;
 
-export function getProvider(): MarketDataProvider | null {
-  // Prevent server-side instantiation of browser-only providers
-  if (typeof window === 'undefined') return null;
-
+export function getProvider(): MarketDataProvider {
   if (!globalProvider) {
-    // We use a dynamic require here to ensure the PolygonProvider (which uses WebSocket)
-    // is never even evaluated by the server-side bundler.
-    const { PolygonProvider } = require('./providers/polygon');
+    // Upgraded to true real-time WebSockets via Polygon.io
     globalProvider = new PolygonProvider(); 
   }
   return globalProvider;

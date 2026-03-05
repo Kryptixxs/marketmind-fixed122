@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
-import { StatusBar } from './StatusBar';
 import { SettingsModal } from '@/components/ui/SettingsModal';
 import { LayoutSettingsModal } from '@/components/ui/LayoutSettingsModal';
 import { CommandPalette } from './CommandPalette';
@@ -26,6 +25,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Determine if we are on a public marketing/auth page
   const isPublicPage = pathname === '/' || pathname === '/login' || pathname === '/register';
 
   if (isPublicPage) {
@@ -36,16 +36,12 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Terminal shell: sidebar + content + status bar
   return (
     <>
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 min-h-0 bg-background relative overflow-hidden">
-        <main className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden">
-          {children}
-        </main>
-        <StatusBar />
-      </div>
+      <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-background relative overflow-hidden">
+        {children}
+      </main>
       <CommandPalette />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <LayoutSettingsModal isOpen={isLayoutOpen} onClose={() => setIsLayoutOpen(false)} />

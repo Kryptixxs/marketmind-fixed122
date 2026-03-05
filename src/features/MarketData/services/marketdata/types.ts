@@ -16,7 +16,6 @@ export interface Tick {
   history?: OHLCV[];
   timestamp: number;
   name?: string;
-  currency?: string;
 }
 
 export interface ProviderConfig {
