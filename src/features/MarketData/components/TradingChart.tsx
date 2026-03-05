@@ -68,17 +68,7 @@ export function TradingChart({
       wickDownColor: '#ff3333',
     };
 
-    let candlestickSeries;
-    
-    // Handle both lightweight-charts v4 and v5 APIs dynamically
-    if (typeof (chart as any).addCandlestickSeries === 'function') {
-      // v4 API
-      candlestickSeries = (chart as any).addCandlestickSeries(seriesOptions);
-    } else {
-      // v5 API
-      // @ts-ignore
-      candlestickSeries = chart.addSeries(LightweightCharts.CandlestickSeries, seriesOptions);
-    }
+    const candlestickSeries = chart.addCandlestickSeries(seriesOptions);
 
     chartRef.current = chart;
     seriesRef.current = candlestickSeries;
