@@ -68,9 +68,21 @@ export function EconomicCalendarView() {
       const currentEventsData = eventsDataRef.current;
       const currentWeekDates = weekDatesRef.current;
 
+      const impactValues: Record<string, number> = { High: 3, Medium: 2, Low: 1, All: 0 };
+      const requiredImpact = impactValues[settings.impactFilter] || 0;
+
+      const isMatch = (e: EconomicEvent) => {
+        // Respect currency filter
+        if (settings.currency !== 'All' && e.currency !== settings.currency) return false;
+        // Respect impact filter
+        if ((impactValues[e.impact] || 1) < requiredImpact) return false;
+        // Check search query
+        return e.title.toLowerCase().includes(query);
+      };
+
       // 1. Check if the event is already visible in the current week
       const currentWeekEvents = currentWeekDates.flatMap(d => currentEventsData[d.dateStr] || []);
-      let match = currentWeekEvents.find(e => e.title.toLowerCase().includes(query));
+      let match = currentWeekEvents.find(isMatch);
       
       if (match) {
         setTargetEventId(`event-${match.id}`);
@@ -92,7 +104,7 @@ export function EconomicCalendarView() {
         setEventsData(prev => ({...prev, ...futureData}));
         
         const allFuture = Object.values(futureData).flat();
-        match = allFuture.find(e => e.title.toLowerCase().includes(query));
+        match = allFuture.find(isMatch);
         
         if (match) {
           // Calculate the exact week offset to jump to
@@ -116,7 +128,7 @@ export function EconomicCalendarView() {
     }, 800); // Debounce to prevent spamming while typing
 
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, settings.currency, settings.impactFilter]);
 
   // Smooth scroll and highlight effect when an event is targeted
   useEffect(() => {
