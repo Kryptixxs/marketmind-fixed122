@@ -38,15 +38,22 @@ export function EarningsCalendarView() {
       const currentEventsData = eventsDataRef.current;
       const currentWeekDates = weekDatesRef.current;
 
-      const isMatch = (e: EarningsEvent) => {
-        const t = e.ticker.toLowerCase();
-        const n = e.name.toLowerCase();
-        // Strict ticker match, or prefix match for >2 chars, or generic name search
-        return t === query || (query.length > 2 && t.startsWith(query)) || n.includes(query);
+      // Priority Matcher: Guarantees Exact Tickers > Partial Tickers > Exact Names > Partial Names
+      const findBestMatch = (eventList: EarningsEvent[]) => {
+        const exactTicker = eventList.find(e => e.ticker.toLowerCase() === query);
+        if (exactTicker) return exactTicker;
+        
+        const prefixTicker = eventList.find(e => e.ticker.toLowerCase().startsWith(query));
+        if (prefixTicker) return prefixTicker;
+        
+        const exactNameWord = eventList.find(e => e.name.toLowerCase().split(/[\s-]/).includes(query));
+        if (exactNameWord) return exactNameWord;
+        
+        return eventList.find(e => e.name.toLowerCase().includes(query));
       };
 
       const currentWeekEvents = currentWeekDates.flatMap(d => currentEventsData[d.dateStr] || []);
-      let match = currentWeekEvents.find(isMatch);
+      let match = findBestMatch(currentWeekEvents);
       
       if (match) {
         setTargetEventId(`event-${match.id}`);
@@ -56,7 +63,8 @@ export function EarningsCalendarView() {
       setIsGlobalSearching(true);
       const dates = [];
       const now = new Date();
-      for (let i = -7; i < 28; i++) {
+      // Expanded search window from 4 weeks to 6 weeks forward to catch more events
+      for (let i = -7; i < 42; i++) {
          const d = new Date();
          d.setDate(now.getDate() + i);
          dates.push(toISODateString(d));
@@ -67,7 +75,7 @@ export function EarningsCalendarView() {
         setEvents(prev => ({...prev, ...futureData}));
         
         const allFuture = Object.values(futureData).flat();
-        match = allFuture.find(isMatch);
+        match = findBestMatch(allFuture);
         
         if (match) {
           const today = new Date();
@@ -156,7 +164,7 @@ export function EarningsCalendarView() {
             const q = searchQuery.toLowerCase();
             const t = e.ticker.toLowerCase();
             const n = e.name.toLowerCase();
-            return t === q || (q.length > 2 && t.startsWith(q)) || n.includes(q);
+            return t === q || t.startsWith(q) || n.includes(q);
           });
 
           return (
