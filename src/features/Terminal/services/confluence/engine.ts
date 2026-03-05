@@ -1,16 +1,21 @@
 import { MarketSnapshot, ConfluenceResult } from './types';
-import { findUnmitigatedFVGs, findSwingPoints } from '@/lib/tech-math';
+import { 
+  findUnmitigatedFVGs, 
+  findSwingPoints, 
+  findOrderBlocks, 
+  findVolumeImbalances,
+  detectMarketStructure 
+} from '@/lib/tech-math';
 
 export class ConfluenceEngine {
   private data: MarketSnapshot;
-  private newsSentiment: number; // -100 to 100
+  private newsSentiment: number;
 
   constructor(snapshot: MarketSnapshot, newsSentiment: number = 0) {
     this.data = snapshot;
     this.newsSentiment = newsSentiment;
   }
 
-  // Technical Analysis Math Helpers
   private SMA(data: number[], period: number): number {
     if (data.length < period) return data[data.length - 1] || 0;
     return data.slice(-period).reduce((a, b) => a + b, 0) / period;
@@ -26,137 +31,49 @@ export class ConfluenceEngine {
     return ema;
   }
 
-  private RSI(data: number[], period: number): number {
-    if (data.length <= period) return 50;
-    let gains = 0, losses = 0;
-    for (let i = data.length - period; i < data.length; i++) {
-      const diff = data[i] - data[i - 1];
-      if (diff >= 0) gains += diff;
-      else losses += Math.abs(diff);
-    }
-    const rs = (gains / period) / ((losses / period) || 1);
-    return 100 - (100 / (1 + rs));
-  }
-
-  private ATR(highs: number[], lows: number[], closes: number[], period: number): number {
-    if (highs.length <= period) return 0;
-    let trSum = 0;
-    for (let i = highs.length - period; i < highs.length; i++) {
-      const hl = highs[i] - lows[i];
-      const hc = Math.abs(highs[i] - (closes[i - 1] || closes[i]));
-      const lc = Math.abs(lows[i] - (closes[i - 1] || closes[i]));
-      trSum += Math.max(hl, hc, lc);
-    }
-    return trSum / period;
-  }
-
   public calculateAll(): ConfluenceResult[] {
     const quotes = this.data.quotes;
     if (!quotes || quotes.length < 50) return [];
 
+    const last = quotes[quotes.length - 1];
     const closes = quotes.map(q => q.close);
-    const highs = quotes.map(q => q.high);
-    const lows = quotes.map(q => q.low);
     const volumes = quotes.map(q => q.volume);
 
-    const last = quotes[quotes.length - 1];
-    const prev = quotes[quotes.length - 2];
-
-    // Core indicators
-    const ema9 = this.EMA(closes, 9);
-    const ema20 = this.EMA(closes, 20);
+    // Indicators
     const sma200 = this.SMA(closes, 200);
-    const rsi14 = this.RSI(closes, 14);
-    const atr14 = this.ATR(highs, lows, closes, 14);
     const avgVol20 = this.SMA(volumes, 20);
 
-    // Bollinger Bands
-    const sma20 = this.SMA(closes, 20);
-    const variance = closes.slice(-20).reduce((a, b) => a + Math.pow(b - sma20, 2), 0) / 20;
-    const stdDev = Math.sqrt(variance);
-    const bbUpper = sma20 + (stdDev * 2);
-    const bbLower = sma20 - (stdDev * 2);
-
-    // SMC & Liquidity
-    const { swingHighs, swingLows } = findSwingPoints(quotes);
+    // ICT Concepts
+    const obs = findOrderBlocks(quotes);
+    const vis = findVolumeImbalances(quotes);
     const fvgs = findUnmitigatedFVGs(quotes);
-    
-    const recentHigh = Math.max(...highs.slice(-20, -1));
-    const recentLow = Math.min(...lows.slice(-20, -1));
-    
-    const isLiquiditySweepHigh = last.high > recentHigh && last.close < recentHigh;
-    const isLiquiditySweepLow = last.low < recentLow && last.close > recentLow;
+    const structure = detectMarketStructure(quotes);
+    const { swingHighs, swingLows } = findSwingPoints(quotes);
 
     const results: ConfluenceResult[] = [
+      // Trend & Volume
       { id: 'MS_HTF', label: 'HTF Trend Alignment', category: 'STRUCTURE', isActive: last.close > sma200, score: 85, description: 'Price is above 200 SMA indicating macro uptrend.' },
       { id: 'VOL_CLIMAX', label: 'Volume Climax', category: 'VOLUME', isActive: last.volume > avgVol20 * 2.5, score: 95, description: 'Massive institutional participation detected.' },
-      { id: 'FUN_MAC', label: 'Macro Tailwind', category: 'FUNDAMENTAL', isActive: this.newsSentiment >= 30, score: 90, description: 'Recent news headlines are highly bullish.' },
       
-      // New Confluences
-      { 
-        id: 'BB_REV_UPPER', 
-        label: 'Mean Reversion (Upper)', 
-        category: 'QUANT', 
-        isActive: last.close > bbUpper, 
-        score: 75, 
-        description: 'Price is trading outside the 2-StdDev upper Bollinger Band.' 
-      },
-      { 
-        id: 'BB_REV_LOWER', 
-        label: 'Mean Reversion (Lower)', 
-        category: 'QUANT', 
-        isActive: last.close < bbLower, 
-        score: 75, 
-        description: 'Price is trading outside the 2-StdDev lower Bollinger Band.' 
-      },
-      { 
-        id: 'SMC_SWEEP_H', 
-        label: 'Liquidity Sweep (High)', 
-        category: 'SMC', 
-        isActive: isLiquiditySweepHigh, 
-        score: 92, 
-        description: 'Price swept buy-side liquidity and rejected (Turtle Soup).' 
-      },
-      { 
-        id: 'SMC_SWEEP_L', 
-        label: 'Liquidity Sweep (Low)', 
-        category: 'SMC', 
-        isActive: isLiquiditySweepLow, 
-        score: 92, 
-        description: 'Price swept sell-side liquidity and rejected (Turtle Soup).' 
-      },
-      { 
-        id: 'MOM_RSI_OB', 
-        label: 'RSI Overbought', 
-        category: 'MOMENTUM', 
-        isActive: rsi14 > 70, 
-        score: 70, 
-        description: `RSI is in overextended territory (${rsi14.toFixed(1)}).` 
-      },
-      { 
-        id: 'MOM_RSI_OS', 
-        label: 'RSI Oversold', 
-        category: 'MOMENTUM', 
-        isActive: rsi14 < 30, 
-        score: 70, 
-        description: `RSI is in oversold territory (${rsi14.toFixed(1)}).` 
-      },
-      { 
-        id: 'SMC_FVG_BULL', 
-        label: 'Bullish Imbalance', 
-        category: 'SMC', 
-        isActive: fvgs.some(f => f.type === 'BISI' && last.close > f.bottom && last.close < f.top), 
-        score: 88, 
-        description: 'Price is currently trading within a bullish Fair Value Gap.' 
-      },
-      { 
-        id: 'SMC_FVG_BEAR', 
-        label: 'Bearish Imbalance', 
-        category: 'SMC', 
-        isActive: fvgs.some(f => f.type === 'SIBI' && last.close < f.top && last.close > f.bottom), 
-        score: 88, 
-        description: 'Price is currently trading within a bearish Fair Value Gap.' 
-      }
+      // Market Structure
+      { id: 'MSS_BULL', label: 'Market Structure Shift (Bull)', category: 'SMC', isActive: structure.mss === 'BULLISH', score: 90, description: 'Trend reversal confirmed via swing high breach.' },
+      { id: 'MSS_BEAR', label: 'Market Structure Shift (Bear)', category: 'SMC', isActive: structure.mss === 'BEARISH', score: 90, description: 'Trend reversal confirmed via swing low breach.' },
+      
+      // Order Blocks
+      { id: 'OB_BULL', label: 'Bullish Order Block', category: 'SMC', isActive: obs.some(o => o.type === 'BULLISH' && last.close > o.bottom && last.close < o.top), score: 88, description: 'Price is testing an institutional buy zone.' },
+      { id: 'OB_BEAR', label: 'Bearish Order Block', category: 'SMC', isActive: obs.some(o => o.type === 'BEARISH' && last.close > o.bottom && last.close < o.top), score: 88, description: 'Price is testing an institutional sell zone.' },
+      
+      // Imbalances
+      { id: 'VI_BULL', label: 'Volume Imbalance (Bull)', category: 'VOLUME', isActive: vis.some(v => v.type === 'BULLISH' && last.close > v.bottom && last.close < v.top), score: 82, description: 'Gap in volume detected; acting as support.' },
+      { id: 'VI_BEAR', label: 'Volume Imbalance (Bear)', category: 'VOLUME', isActive: vis.some(v => v.type === 'BEARISH' && last.close > v.bottom && last.close < v.top), score: 82, description: 'Gap in volume detected; acting as resistance.' },
+      
+      // Fair Value Gaps
+      { id: 'FVG_BULL', label: 'Bullish FVG', category: 'SMC', isActive: fvgs.some(f => f.type === 'BISI' && last.close > f.bottom && last.close < f.top), score: 85, description: 'Price is within a bullish Fair Value Gap.' },
+      { id: 'FVG_BEAR', label: 'Bearish FVG', category: 'SMC', isActive: fvgs.some(f => f.type === 'SIBI' && last.close > f.bottom && last.close < f.top), score: 85, description: 'Price is within a bearish Fair Value Gap.' },
+      
+      // Liquidity
+      { id: 'LIQ_SWEEP_H', label: 'Buy-Side Sweep', category: 'SMC', isActive: last.high > Math.max(...quotes.slice(-20, -1).map(q => q.high)) && last.close < last.high, score: 92, description: 'Liquidity grab above recent highs (Turtle Soup).' },
+      { id: 'LIQ_SWEEP_L', label: 'Sell-Side Sweep', category: 'SMC', isActive: last.low < Math.min(...quotes.slice(-20, -1).map(q => q.low)) && last.close > last.low, score: 92, description: 'Liquidity grab below recent lows (Turtle Soup).' }
     ];
 
     return results;
