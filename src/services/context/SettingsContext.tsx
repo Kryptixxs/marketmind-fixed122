@@ -54,7 +54,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         try {
-          setSettings(prev => ({ ...prev, ...JSON.parse(raw) }));
+          const localSettings = JSON.parse(raw);
+          setSettings(prev => ({ ...prev, ...localSettings }));
         } catch (e) { }
       }
 
@@ -106,11 +107,21 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     updateSettings(DEFAULT);
   }, [updateSettings]);
 
+  // Apply settings to document root
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', settings.theme);
     root.setAttribute('data-density', settings.density);
-  }, [settings]);
+    
+    // Apply font size
+    const fontSizes = {
+      xs: '10px',
+      sm: '12px',
+      md: '14px',
+      lg: '16px'
+    };
+    root.style.fontSize = fontSizes[settings.fontSize];
+  }, [settings.theme, settings.density, settings.fontSize]);
 
   return (
     <SettingsContext.Provider value={{ settings, updateSettings, setImpactFilter, resetToDefaults, isSyncing }}>
