@@ -6,10 +6,12 @@ import { useAuth } from './AuthContext';
 
 export type Theme = 'dark' | 'oled' | 'bloomberg' | 'classic-terminal';
 export type Density = 'compact' | 'standard' | 'spacious';
+export type UIStyle = 'terminal' | 'modern';
 
 type Settings = {
   theme: Theme;
   density: Density;
+  uiStyle: UIStyle;
   showTicker: boolean;
   showStatusbar: boolean;
   defaultTimeframe: string;
@@ -18,12 +20,13 @@ type Settings = {
 const DEFAULT: Settings = {
   theme: 'dark',
   density: 'compact',
+  uiStyle: 'terminal',
   showTicker: true,
   showStatusbar: true,
   defaultTimeframe: '15m',
 };
 
-const STORAGE_KEY = 'vantage-terminal-settings-v5';
+const STORAGE_KEY = 'vantage-terminal-settings-v6';
 
 const SettingsContext = createContext<{
   settings: Settings;
@@ -37,7 +40,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [settings, setSettings] = useState<Settings>(DEFAULT);
 
-  // Load settings on mount
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -48,17 +50,17 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Apply attributes to HTML tag whenever settings change
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', settings.theme);
     root.setAttribute('data-density', settings.density);
+    root.setAttribute('data-ui-style', settings.uiStyle);
     
-    // Force a repaint for some browsers
+    // Force repaint
     root.style.display = 'none';
-    root.offsetHeight; // trigger reflow
+    root.offsetHeight;
     root.style.display = '';
-  }, [settings.theme, settings.density]);
+  }, [settings.theme, settings.density, settings.uiStyle]);
 
   const updateSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => {
