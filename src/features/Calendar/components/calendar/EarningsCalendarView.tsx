@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { 
-  ChevronLeft, ChevronRight
+import {
+  ChevronLeft, ChevronRight, Search
 } from 'lucide-react';
 import { fetchEarningsBatch } from '@/app/actions/fetchEarningsBatch';
 import { EarningsEvent } from '@/lib/types';
