@@ -19,7 +19,7 @@ type Settings = {
 };
 
 const DEFAULT: Settings = {
-  theme: 'futures-desk',
+  theme: 'bloomberg',
   density: 'compact',
   fontSize: 'sm',
   showTicker: false,
@@ -38,9 +38,9 @@ const SettingsContext = createContext<{
   isSyncing: boolean;
 }>({
   settings: DEFAULT,
-  updateSettings: () => {},
-  setImpactFilter: () => {},
-  resetToDefaults: () => {},
+  updateSettings: () => { },
+  setImpactFilter: () => { },
+  resetToDefaults: () => { },
   isSyncing: false,
 });
 
@@ -55,7 +55,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (raw) {
         try {
           setSettings(prev => ({ ...prev, ...JSON.parse(raw) }));
-        } catch (e) {}
+        } catch (e) { }
       }
 
       if (user) {
@@ -81,19 +81,19 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     setSettings((prev) => {
       const next = { ...prev, ...patch };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      
+
       if (user) {
         setIsSyncing(true);
         supabase
           .from('user_preferences')
-          .upsert({ 
-            user_id: user.id, 
+          .upsert({
+            user_id: user.id,
             default_filters: next,
             updated_at: new Date().toISOString()
           })
           .then(() => setIsSyncing(false));
       }
-      
+
       return next;
     });
   }, [user]);
