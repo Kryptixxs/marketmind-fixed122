@@ -14,6 +14,7 @@ export function MarketInternals({ tick }: { tick?: Tick }) {
   const volumes = quotes.map(q => q.volume);
   const currentPrice = closes[closes.length - 1];
 
+  // RVOL (Relative Volume) - Current vol vs 20-period average
   const sma20 = closes.slice(-20).reduce((a, b) => a + b, 0) / 20;
   const avgVol20 = volumes.slice(-20).reduce((a, b) => a + b, 0) / 20;
   const currentVol = volumes[volumes.length - 1];
