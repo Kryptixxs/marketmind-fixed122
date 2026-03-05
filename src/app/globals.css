@@ -21,6 +21,17 @@
   --font-sans: "Inter", "SF Pro Display", system-ui, sans-serif;
 }
 
+/* Futures Desk Theme Overrides */
+[data-theme='futures-desk'] {
+  --color-background: #000000;
+  --color-surface: #080808;
+  --color-border: #1a1a1a;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #999999;
+  --color-accent: #ffcc00; /* CME Gold */
+  font-family: var(--font-mono);
+}
+
 /* FX Desk Theme Overrides */
 [data-theme='fx-desk'] {
   --color-background: #020202;
@@ -71,8 +82,8 @@ html, body {
   background: var(--color-border-highlight);
 }
 
-/* FX Desk Specific Utilities */
-.fx-grid-header {
+/* Desk Specific Utilities */
+.fx-grid-header, .futures-grid-header {
   background: #111;
   color: #666;
   font-size: 9px;
@@ -82,7 +93,7 @@ html, body {
   border-bottom: 1px solid #222;
 }
 
-.fx-cell {
+.fx-cell, .futures-cell {
   padding: 4px 8px;
   border-bottom: 1px solid #111;
   font-size: 11px;

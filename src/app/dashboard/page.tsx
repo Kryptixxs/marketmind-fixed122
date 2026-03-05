@@ -16,6 +16,11 @@ import { MarketInternals } from '@/features/Terminal/components/widgets/MarketIn
 import { FXMatrixGrid } from '@/features/Terminal/components/FXMatrixGrid';
 import { FXMacroPanel } from '@/features/Terminal/components/FXMacroPanel';
 import { FXYieldStrip } from '@/features/Terminal/components/FXYieldStrip';
+import { FuturesContractMonitor } from '@/features/Terminal/components/FuturesContractMonitor';
+import { DepthOfMarket } from '@/features/Terminal/components/DepthOfMarket';
+import { FlowAnalytics } from '@/features/Terminal/components/FlowAnalytics';
+import { RiskPanel } from '@/features/Terminal/components/RiskPanel';
+import { FuturesBottomStrip } from '@/features/Terminal/components/FuturesBottomStrip';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { useSettings } from '@/services/context/SettingsContext';
 import { PanelLeftClose, PanelRightClose } from 'lucide-react';
@@ -24,7 +29,7 @@ const WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'EURUSD', 'BTCUS
 
 export default function TerminalPage() {
   const { settings } = useSettings();
-  const [activeSymbol, setActiveSymbol] = useState("EURUSD");
+  const [activeSymbol, setActiveSymbol] = useState("SPX500");
   const [isPanelOpen, setIsPanelOpen] = useState(false);
   
   const { data: marketData } = useMarketData(WATCHLIST);
@@ -47,6 +52,61 @@ export default function TerminalPage() {
     }));
   }, [activeQuote?.history]);
 
+  // --- FUTURES DESK LAYOUT ---
+  if (settings.theme === 'futures-desk') {
+    return (
+      <div className="h-full w-full bg-background flex flex-col overflow-hidden text-text-primary">
+        <TerminalCommandBar />
+        <div className="flex-1 flex overflow-hidden">
+          <PanelGroup orientation="horizontal">
+            {/* CONTRACT MONITOR (LEFT) */}
+            <Panel defaultSize={20} minSize={15}>
+              <FuturesContractMonitor activeSymbol={activeSymbol} onSymbolChange={setActiveSymbol} />
+            </Panel>
+            
+            <PanelResizeHandle className="w-px bg-border hover:bg-accent/50 transition-colors" />
+            
+            {/* EXECUTION CORE (CENTER) */}
+            <Panel defaultSize={60} minSize={40}>
+              <PanelGroup orientation="horizontal">
+                {/* DOM LADDER */}
+                <Panel defaultSize={40} minSize={30}>
+                  <DepthOfMarket tick={activeQuote} />
+                </Panel>
+                
+                <PanelResizeHandle className="w-px bg-border hover:bg-accent/50 transition-colors" />
+                
+                {/* COMPRESSED CHART */}
+                <Panel defaultSize={60} minSize={40}>
+                  <div className="h-full w-full bg-black relative">
+                    <div className="absolute top-2 left-4 z-10 text-[10px] font-bold text-accent uppercase tracking-widest">Execution Chart // {activeSymbol}</div>
+                    <TradingChart data={chartData} symbol={activeSymbol} />
+                  </div>
+                </Panel>
+              </PanelGroup>
+            </Panel>
+
+            <PanelResizeHandle className="w-px bg-border hover:bg-accent/50 transition-colors" />
+
+            {/* ANALYTICS & RISK (RIGHT) */}
+            <Panel defaultSize={20} minSize={15}>
+              <PanelGroup orientation="vertical">
+                <Panel defaultSize={50}>
+                  <FlowAnalytics />
+                </Panel>
+                <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
+                <Panel defaultSize={50}>
+                  <RiskPanel />
+                </Panel>
+              </PanelGroup>
+            </Panel>
+          </PanelGroup>
+        </div>
+        <FuturesBottomStrip />
+      </div>
+    );
+  }
+
   // --- FX DESK LAYOUT ---
   if (settings.theme === 'fx-desk') {
     return (
@@ -54,14 +114,10 @@ export default function TerminalPage() {
         <TerminalCommandBar />
         <div className="flex-1 flex overflow-hidden">
           <PanelGroup orientation="horizontal">
-            {/* FX MATRIX (LEFT) */}
             <Panel defaultSize={25} minSize={20}>
               <FXMatrixGrid activeSymbol={activeSymbol} onSymbolChange={setActiveSymbol} />
             </Panel>
-            
             <PanelResizeHandle className="w-px bg-border hover:bg-accent/50 transition-colors" />
-            
-            {/* CHART STACK (CENTER) */}
             <Panel defaultSize={50} minSize={30}>
               <PanelGroup orientation="vertical">
                 <Panel defaultSize={70}>
@@ -79,10 +135,7 @@ export default function TerminalPage() {
                 </Panel>
               </PanelGroup>
             </Panel>
-
             <PanelResizeHandle className="w-px bg-border hover:bg-accent/50 transition-colors" />
-
-            {/* INTELLIGENCE (RIGHT) */}
             <Panel defaultSize={25} minSize={20}>
               <PanelGroup orientation="vertical">
                 <Panel defaultSize={50}>

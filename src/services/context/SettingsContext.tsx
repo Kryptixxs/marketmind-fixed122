@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
-export type Theme = 'dark' | 'light' | 'oled' | 'bloomberg' | 'quant' | 'fx-desk' | 'terminal-green';
+export type Theme = 'dark' | 'light' | 'oled' | 'bloomberg' | 'quant' | 'fx-desk' | 'futures-desk' | 'terminal-green';
 export type Density = 'compact' | 'standard' | 'spacious';
 export type FontSize = 'xs' | 'sm' | 'md' | 'lg';
 
@@ -19,7 +19,7 @@ type Settings = {
 };
 
 const DEFAULT: Settings = {
-  theme: 'fx-desk',
+  theme: 'futures-desk',
   density: 'compact',
   fontSize: 'sm',
   showTicker: false,

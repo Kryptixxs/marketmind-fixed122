@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { X, Monitor, Type, Layout, RefreshCw, Check, Zap, Terminal, Globe } from 'lucide-react';
+import { X, Monitor, Type, Layout, RefreshCw, Check, Zap, Terminal, Globe, Activity } from 'lucide-react';
 import { useSettings, Theme, Density, FontSize } from '@/services/context/SettingsContext';
 
 interface SettingsModalProps {
@@ -15,6 +15,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   if (!isOpen) return null;
 
   const themes: { id: Theme; label: string; icon: any; desc: string }[] = [
+    { id: 'futures-desk', label: 'Futures Desk', icon: Activity, desc: 'Professional execution workstation with DOM ladder and flow analytics.' },
     { id: 'fx-desk', label: 'FX Desk', icon: Globe, desc: 'Institutional currency workstation with matrix grid and macro drivers.' },
     { id: 'quant', label: 'Modern Quant', icon: Zap, desc: 'Minimalist, monochrome, high-whitespace surgical interface.' },
     { id: 'bloomberg', label: 'Bloomberg', icon: Terminal, desc: 'Institutional-grade, high-density modular dashboard.' },
@@ -28,7 +29,7 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         {/* Header */}
         <div className="panel-header shrink-0 flex justify-between items-center px-4 py-3 h-auto border-b border-border bg-surface-highlight">
           <div className="flex items-center gap-2">
-            <SettingsIcon className="text-accent" size={16} />
+            <Monitor className="text-accent" size={16} />
             <span className="text-xs font-bold uppercase tracking-widest">Terminal Preferences</span>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full transition-colors">
@@ -143,8 +144,4 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       </div>
     </div>
   );
-}
-
-function SettingsIcon(props: any) {
-  return <Monitor {...props} />;
 }
