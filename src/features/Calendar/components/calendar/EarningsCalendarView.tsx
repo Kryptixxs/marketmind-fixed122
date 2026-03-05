@@ -56,7 +56,7 @@ export function EarningsCalendarView() {
       const singleEvent = await fetchSingleCompanyEarnings(symbol);
       
       if (singleEvent && singleEvent.date !== 'TBD') {
-        // Calculate how many weeks away this date is
+        // Calculate how many weeks away this date is (can be negative for past events)
         const today = new Date();
         const todayMonday = getMonday(today);
         todayMonday.setHours(0,0,0,0);
@@ -83,7 +83,7 @@ export function EarningsCalendarView() {
         // Trigger the highlight animation
         setTargetEventId(`event-${singleEvent.id}`);
       } else {
-        alert(`The next earnings date for ${symbol} has not been officially confirmed yet.`);
+        alert(`Could not locate upcoming or historical earnings data for ${symbol}.`);
       }
     } finally {
       setIsGlobalSearching(false);
@@ -154,12 +154,22 @@ export function EarningsCalendarView() {
           {/* Intelligent Autocomplete Search Bar */}
           <div className="relative z-50">
             <form
-              onSubmit={(e) => {
+              onSubmit={async (e) => {
                 e.preventDefault();
+                let symToSearch = searchQuery.trim().toUpperCase();
+                if (!symToSearch) return;
+
                 if (searchResults.length > 0) {
                   handleSelectSymbol(searchResults[0].symbol);
-                } else if (searchQuery.trim().length > 0) {
-                  handleSelectSymbol(searchQuery.toUpperCase().trim());
+                } else {
+                  // Wait for resolution if user hit enter before autocomplete loaded
+                  setIsGlobalSearching(true);
+                  const res = await searchSymbols(symToSearch);
+                  if (res && res.length > 0) {
+                    handleSelectSymbol(res[0].symbol);
+                  } else {
+                    handleSelectSymbol(symToSearch);
+                  }
                 }
               }}
               className="flex items-center gap-2 bg-background border border-border px-2 py-1.5 rounded-md focus-within:border-accent/50 transition-colors w-48 md:w-64"

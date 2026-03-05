@@ -2,6 +2,7 @@
 
 import yahooFinance from 'yahoo-finance2';
 import { EarningsEvent } from '@/lib/types';
+import { generateAIJSON } from '@/lib/ai-utils';
 
 export async function fetchSingleCompanyEarnings(symbol: string): Promise<EarningsEvent | null> {
   try {
@@ -18,6 +19,17 @@ export async function fetchSingleCompanyEarnings(symbol: string): Promise<Earnin
       const month = String(d.getMonth() + 1).padStart(2, '0');
       const day = String(d.getDate()).padStart(2, '0');
       dateStr = `${year}-${month}-${day}`;
+    } else {
+      // AI Fallback: If future date is unknown, find the PREVIOUS earnings date
+      const prompt = `The upcoming earnings date for ticker ${symbol} is not yet announced. 
+      Find the exact date of their MOST RECENT (previous) quarterly earnings report.
+      Return ONLY a JSON object with a single key "date" in "YYYY-MM-DD" format.`;
+      
+      const fallbackRes = await generateAIJSON(prompt, { date: 'TBD' }, `prev-earnings-${symbol}`, 86400);
+      
+      if (fallbackRes && fallbackRes.date && fallbackRes.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        dateStr = fallbackRes.date;
+      }
     }
 
     let mcap = '-';
