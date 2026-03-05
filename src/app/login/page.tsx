@@ -3,19 +3,32 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Terminal, Lock, Mail, ArrowRight, Loader2 } from 'lucide-react';
+import { Terminal, Lock, Mail, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function LoginPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    // Mock authentication delay
-    setTimeout(() => {
+    setError(null);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    } else {
       router.push('/dashboard');
-    }, 800);
+    }
   };
 
   return (
@@ -32,6 +45,13 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleLogin} className="space-y-5">
+          {error && (
+            <div className="p-3 bg-negative/10 border border-negative/30 rounded flex items-start gap-2 text-negative text-sm">
+              <AlertCircle size={16} className="shrink-0 mt-0.5" />
+              <span>{error}</span>
+            </div>
+          )}
+
           <div className="space-y-2">
             <label className="text-xs font-bold text-text-tertiary uppercase tracking-wider">Institutional Email</label>
             <div className="relative">
@@ -39,6 +59,8 @@ export default function LoginPage() {
               <input 
                 type="email" 
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-background border border-border rounded-sm pl-10 pr-4 py-3 text-sm text-text-primary focus:border-accent outline-none transition-colors"
                 placeholder="trader@fund.com"
               />
@@ -55,6 +77,8 @@ export default function LoginPage() {
               <input 
                 type="password" 
                 required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 className="w-full bg-background border border-border rounded-sm pl-10 pr-4 py-3 text-sm text-text-primary focus:border-accent outline-none transition-colors"
                 placeholder="••••••••••••"
               />

@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { User, Shield, Key, Check, X } from 'lucide-react';
+import { User, Shield, Key, Check, X, LogOut } from 'lucide-react';
+import { useAuth } from '@/services/context/AuthContext';
 
 export default function AccountPage() {
+  const { user, signOut } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState('Institutional User');
-  const [email, setEmail] = useState('pro-trader@vantage.terminal');
+  const [name, setName] = useState(user?.user_metadata?.first_name ? `${user.user_metadata.first_name} ${user.user_metadata.last_name || ''}` : 'Institutional User');
+  const [email, setEmail] = useState(user?.email || '');
   
   const [keys, setKeys] = useState([
     { id: 1, name: 'Binance Read-Only', prefix: 'sk_live_1a2b...' },
@@ -24,9 +26,17 @@ export default function AccountPage() {
 
   return (
     <div className="flex-1 p-8 max-w-3xl mx-auto w-full space-y-8 overflow-y-auto custom-scrollbar">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Account Settings</h1>
-        <p className="text-text-secondary text-sm mt-1">Manage your institutional profile and security configurations.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-text-primary">Account Settings</h1>
+          <p className="text-text-secondary text-sm mt-1">Manage your institutional profile and security configurations.</p>
+        </div>
+        <button 
+          onClick={signOut}
+          className="flex items-center gap-2 px-4 py-2 bg-surface border border-border text-negative hover:bg-negative/10 transition-colors rounded-sm font-bold text-xs uppercase"
+        >
+          <LogOut size={14} /> Sign Out
+        </button>
       </div>
 
       {/* Profile Section */}
@@ -39,12 +49,12 @@ export default function AccountPage() {
             {isEditing ? (
               <div className="flex flex-col gap-2">
                 <input value={name} onChange={e => setName(e.target.value)} className="bg-background border border-border px-3 py-1 text-sm font-bold text-text-primary rounded-sm outline-none focus:border-accent" />
-                <input value={email} onChange={e => setEmail(e.target.value)} className="bg-background border border-border px-3 py-1 text-xs text-text-secondary rounded-sm outline-none focus:border-accent" />
+                <input value={email} onChange={e => setEmail(e.target.value)} className="bg-background border border-border px-3 py-1 text-xs text-text-secondary rounded-sm outline-none focus:border-accent" disabled />
               </div>
             ) : (
               <div>
                 <div className="text-lg font-bold text-text-primary">{name}</div>
-                <div className="text-sm text-text-tertiary">{email}</div>
+                <div className="text-sm text-text-tertiary">{user?.email}</div>
               </div>
             )}
           </div>

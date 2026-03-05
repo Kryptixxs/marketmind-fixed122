@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SettingsProvider } from '@/services/context/SettingsContext';
 import { LayoutWrapper } from '@/features/Terminal/components/LayoutWrapper';
+import { AuthProvider } from '@/services/context/AuthContext';
 
 export const metadata: Metadata = {
   title: "VANTAGE TERMINAL // v4.0",
@@ -24,11 +25,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="flex flex-col-reverse md:flex-row h-[100dvh] w-full overflow-hidden bg-background text-text-primary antialiased">
-        <SettingsProvider>
-          <LayoutWrapper>
-            {children}
-          </LayoutWrapper>
-        </SettingsProvider>
+        <AuthProvider>
+          <SettingsProvider>
+            <LayoutWrapper>
+              {children}
+            </LayoutWrapper>
+          </SettingsProvider>
+        </AuthProvider>
       </body>
     </html>
   );
