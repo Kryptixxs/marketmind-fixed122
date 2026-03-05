@@ -97,3 +97,14 @@ html, body {
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--color-border);
 }
+
+/* ── Animations ── */
+@keyframes ticker {
+  0% { transform: translateX(50vw); }
+  100% { transform: translateX(-100%); }
+}
+
+.animate-ticker {
+  animation: ticker 40s linear infinite;
+  will-change: transform;
+}

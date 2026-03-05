@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { Calendar, DollarSign, Loader2 } from 'lucide-react';
 import { EconomicCalendarView } from '@/features/Calendar/components/calendar/EconomicCalendarView';
 import { EarningsCalendarView } from '@/features/Calendar/components/calendar/EarningsCalendarView';
+import { MacroTicker } from '@/features/Calendar/components/calendar/MacroTicker';
 
 function CalendarContent() {
   const searchParams = useSearchParams();
@@ -22,12 +23,13 @@ function CalendarContent() {
     <div className="flex flex-col h-full bg-background min-h-0">
       {/* Module Header / Navigation */}
       <div className="flex items-center gap-4 p-4 border-b border-border bg-surface shrink-0 flex-wrap">
-        <h1 className="text-lg font-bold text-text-primary flex items-center gap-2">
+        <h1 className="text-lg font-bold text-text-primary flex items-center gap-2 whitespace-nowrap">
           <Calendar size={18} className="text-accent" />
           Market Calendar
         </h1>
         <div className="hidden sm:block h-6 w-[1px] bg-border" />
-        <div className="flex p-1 bg-background border border-border rounded-lg w-full sm:w-auto">
+        
+        <div className="flex p-1 bg-background border border-border rounded-lg w-full sm:w-auto shrink-0">
           <button
             onClick={() => setView('economic')}
             className={`
@@ -50,6 +52,11 @@ function CalendarContent() {
           >
             <DollarSign size={14} /> Earnings
           </button>
+        </div>
+
+        {/* --- US MACRO TICKER --- */}
+        <div className="hidden lg:block flex-1 min-w-0 h-10 ml-2">
+          <MacroTicker />
         </div>
       </div>
 
