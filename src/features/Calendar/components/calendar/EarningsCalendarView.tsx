@@ -22,6 +22,7 @@ export function EarningsCalendarView() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [targetEventId, setTargetEventId] = useState<string | null>(null);
 
   const weekDates = useMemo(() => {
@@ -37,9 +38,11 @@ export function EarningsCalendarView() {
       setSearchResults([]);
       return;
     }
+    setIsSearching(true);
     const timer = setTimeout(async () => {
       const res = await searchSymbols(q);
       setSearchResults(res);
+      setIsSearching(false);
     }, 400);
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -149,25 +152,37 @@ export function EarningsCalendarView() {
           <div className="h-4 w-[1px] bg-border" />
           
           {/* Intelligent Autocomplete Search Bar */}
-          <div className="relative">
-            <div className="flex items-center gap-2 bg-background border border-border px-2 py-1.5 rounded-md focus-within:border-accent/50 transition-colors w-48 md:w-64">
-              {isGlobalSearching ? <Loader2 size={14} className="text-accent animate-spin" /> : <Search size={14} className="text-text-tertiary" />}
+          <div className="relative z-50">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (searchResults.length > 0) {
+                  handleSelectSymbol(searchResults[0].symbol);
+                } else if (searchQuery.trim().length > 0) {
+                  handleSelectSymbol(searchQuery.toUpperCase().trim());
+                }
+              }}
+              className="flex items-center gap-2 bg-background border border-border px-2 py-1.5 rounded-md focus-within:border-accent/50 transition-colors w-48 md:w-64"
+            >
+              {isGlobalSearching || isSearching ? <Loader2 size={14} className="text-accent animate-spin" /> : <Search size={14} className="text-text-tertiary" />}
               <input
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   setIsSearchOpen(true);
                 }}
-                onFocus={() => setIsSearchOpen(true)}
+                onFocus={() => {
+                  if (searchQuery.length >= 2) setIsSearchOpen(true);
+                }}
                 placeholder="Search company or ticker..."
                 className="bg-transparent border-none outline-none text-xs text-text-primary placeholder:text-text-tertiary flex-1 min-w-0"
               />
               {searchQuery && (
-                <button onClick={handleClearSearch} className="p-0.5 hover:text-negative text-text-tertiary transition-colors">
+                <button type="button" onClick={handleClearSearch} className="p-0.5 hover:text-negative text-text-tertiary transition-colors">
                   <X size={12} />
                 </button>
               )}
-            </div>
+            </form>
 
             {isSearchOpen && searchResults.length > 0 && (
               <>
@@ -175,6 +190,7 @@ export function EarningsCalendarView() {
                 <div className="absolute top-full left-0 mt-1 w-full bg-surface-highlight border border-border rounded shadow-2xl z-50 p-1 flex flex-col max-h-64 overflow-y-auto custom-scrollbar">
                   {searchResults.map(res => (
                     <button
+                      type="button"
                       key={res.symbol}
                       onClick={() => handleSelectSymbol(res.symbol)}
                       className="flex items-center justify-between p-2 hover:bg-surface text-left border-b border-border/50 last:border-0 rounded-sm transition-colors"
