@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  /* Map standard classes to dynamic variables */
+  /* Dynamic Color Mapping */
   --color-background: var(--theme-bg-base);
   --color-surface: var(--theme-bg-panel);
   --color-surface-highlight: var(--theme-bg-header);
@@ -20,151 +20,90 @@
   --color-warning: var(--theme-warn);
 
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
+  --font-sans: "Inter", "Plus Jakarta Sans", system-ui, sans-serif;
 }
 
-/* 1. THEME DEFINITIONS */
-:root, [data-theme="dark"] {
-  --theme-bg-base: #000000;
-  --theme-bg-panel: #09090b;
-  --theme-bg-header: #121214;
+/* 1. MODERN UI (Default) */
+:root, [data-ui="modern"] {
+  --theme-bg-base: #0a0a0c;
+  --theme-bg-panel: #141417;
+  --theme-bg-header: #1c1c21;
   --theme-border-subtle: #27272a;
   --theme-border-strong: #3f3f46;
-  --theme-text-main: #d4d4d8;
-  --theme-text-muted: #71717a;
+  --theme-text-main: #e4e4e7;
+  --theme-text-muted: #a1a1aa;
+  --theme-text-hi: #ffffff;
+  --theme-accent: #6366f1; /* Indigo */
+  --theme-up: #10b981;
+  --theme-down: #ef4444;
+  --theme-warn: #f59e0b;
+  
+  --radius-widget: 12px;
+  --font-primary: var(--font-sans);
+}
+
+/* 2. TERMINAL UI (Legacy) */
+[data-ui="terminal"] {
+  --theme-bg-base: #000000;
+  --theme-bg-panel: #000000;
+  --theme-bg-header: #09090b;
+  --theme-border-subtle: #18181b;
+  --theme-border-strong: #27272a;
+  --theme-text-main: #00ff9d;
+  --theme-text-muted: #00663d;
   --theme-text-hi: #ffffff;
   --theme-accent: #00ff9d;
   --theme-up: #00ff9d;
   --theme-down: #ff3333;
   --theme-warn: #eab308;
+
+  --radius-widget: 0px;
+  --font-primary: var(--font-mono);
 }
 
-[data-theme="oled"] {
-  --theme-bg-base: #000000;
-  --theme-bg-panel: #000000;
-  --theme-bg-header: #050505;
-  --theme-border-subtle: #111111;
-  --theme-border-strong: #222222;
-  --theme-text-main: #aaaaaa;
-  --theme-text-muted: #444444;
-  --theme-text-hi: #ffffff;
-  --theme-accent: #ffffff;
-  --theme-up: #00ff00;
-  --theme-down: #ff0000;
-  --theme-warn: #cc9900;
-}
-
+/* 3. THEME OVERRIDES (Bloomberg, etc) */
 [data-theme="bloomberg"] {
   --theme-bg-base: #000000;
   --theme-bg-panel: #000000;
   --theme-bg-header: #000033;
-  --theme-border-subtle: #331f00;
-  --theme-border-strong: #ff9900;
   --theme-text-main: #ff9900;
-  --theme-text-muted: #995c00;
-  --theme-text-hi: #ffcc00;
   --theme-accent: #ff9900;
-  --theme-up: #00ff00;
-  --theme-down: #ff0000;
-  --theme-warn: #ffff00;
 }
 
-[data-theme="classic-terminal"] {
-  --theme-bg-base: #000000;
-  --theme-bg-panel: #000a00;
-  --theme-bg-header: #001100;
-  --theme-border-subtle: #003300;
-  --theme-border-strong: #00ff00;
-  --theme-text-main: #00ff00;
-  --theme-text-muted: #006600;
-  --theme-text-hi: #ccffcc;
-  --theme-accent: #00ff00;
-  --theme-up: #00ff00;
-  --theme-down: #ff3333;
-  --theme-warn: #ffcc00;
-}
-
-/* 2. DENSITY DEFINITIONS */
-:root, [data-density="compact"] {
-  --size-font-base: 10px;
-  --space-panel-pad: 4px;
-  --space-header-h: 22px;
-}
-
-[data-density="standard"] {
-  --size-font-base: 12px;
-  --space-panel-pad: 8px;
-  --space-header-h: 28px;
-}
-
-[data-density="spacious"] {
-  --size-font-base: 14px;
-  --space-panel-pad: 12px;
-  --space-header-h: 34px;
-}
-
-/* ── Brutalist Reset ── */
-*, *::before, *::after {
-  box-sizing: border-box;
-  border-radius: 0 !important; /* Force sharp edges */
-}
-
+/* ── Global Reset ── */
 html, body {
   height: 100%;
   width: 100%;
   overflow: hidden;
   background-color: var(--theme-bg-base);
   color: var(--theme-text-main);
-  font-family: var(--font-mono);
-  font-size: var(--size-font-base);
-  -webkit-font-smoothing: antialiased;
+  font-family: var(--font-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* ── Component Classes ── */
-.panel-header {
-  height: var(--space-header-h);
-  padding: 0 var(--space-panel-pad);
+*, *::before, *::after {
+  box-sizing: border-box;
+  border-radius: inherit;
+}
+
+.modern-card {
+  background: var(--theme-bg-panel);
+  border: 1px solid var(--theme-border-subtle);
+  border-radius: var(--radius-widget);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+}
+
+.modern-header {
+  height: 40px;
+  padding: 0 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   background: var(--theme-bg-header);
-  border-bottom: 1px solid var(--theme-border-strong);
-  font-size: 0.9em;
-  font-weight: 700;
-  text-transform: uppercase;
+  border-bottom: 1px solid var(--theme-border-subtle);
+  font-weight: 600;
   color: var(--theme-text-hi);
 }
 
-.panel-content {
-  background: var(--theme-bg-panel);
-  padding: var(--space-panel-pad);
-  overflow: auto;
-  height: calc(100% - var(--space-header-h));
-}
-
-.terminal-btn {
-  border: 1px solid var(--theme-border-strong);
-  background: var(--theme-bg-panel);
-  color: var(--theme-text-main);
-  text-transform: uppercase;
-  font-weight: bold;
-  padding: 4px 8px;
-  cursor: pointer;
-}
-.terminal-btn:hover {
-  background: var(--theme-accent);
-  color: var(--theme-bg-base);
-  border-color: var(--theme-accent);
-}
-
-.terminal-input {
-  background: var(--theme-bg-base);
-  border: 1px solid var(--theme-border-strong);
-  color: var(--theme-text-main);
-  padding: 4px 8px;
-  outline: none;
-}
-
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--theme-bg-base); }
-::-webkit-scrollbar-thumb { background: var(--theme-border-strong); }
-::-webkit-scrollbar-thumb:hover { background: var(--theme-accent); }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: var(--theme-border-strong); border-radius: 10px; }

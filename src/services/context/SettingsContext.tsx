@@ -6,10 +6,12 @@ import { useAuth } from './AuthContext';
 
 export type Theme = 'dark' | 'oled' | 'bloomberg' | 'classic-terminal';
 export type Density = 'compact' | 'standard' | 'spacious';
+export type UIStyle = 'modern' | 'terminal';
 
 type Settings = {
   theme: Theme;
   density: Density;
+  uiStyle: UIStyle;
   showTicker: boolean;
   showStatusbar: boolean;
   defaultTimeframe: string;
@@ -17,13 +19,14 @@ type Settings = {
 
 const DEFAULT: Settings = {
   theme: 'dark',
-  density: 'compact',
+  density: 'standard',
+  uiStyle: 'modern',
   showTicker: true,
   showStatusbar: true,
   defaultTimeframe: '15m',
 };
 
-const STORAGE_KEY = 'vantage-terminal-settings-v5';
+const STORAGE_KEY = 'vantage-terminal-settings-v6';
 
 const SettingsContext = createContext<{
   settings: Settings;
@@ -37,39 +40,29 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const [settings, setSettings] = useState<Settings>(DEFAULT);
 
-  // Load settings on mount
   useEffect(() => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       try {
-        const parsed = JSON.parse(raw);
-        setSettings({ ...DEFAULT, ...parsed });
+        setSettings({ ...DEFAULT, ...JSON.parse(raw) });
       } catch (e) {}
     }
   }, []);
 
-  // Apply attributes to HTML tag whenever settings change
   useEffect(() => {
     const root = document.documentElement;
     root.setAttribute('data-theme', settings.theme);
     root.setAttribute('data-density', settings.density);
-    
-    // Force a repaint for some browsers
-    root.style.display = 'none';
-    root.offsetHeight; // trigger reflow
-    root.style.display = '';
-  }, [settings.theme, settings.density]);
+    root.setAttribute('data-ui', settings.uiStyle);
+  }, [settings.theme, settings.density, settings.uiStyle]);
 
   const updateSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((prev) => {
       const next = { ...prev, ...patch };
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      
       if (user) {
         supabase.from('user_preferences').upsert({ 
-          user_id: user.id, 
-          default_filters: next,
-          updated_at: new Date().toISOString()
+          user_id: user.id, default_filters: next 
         }).then();
       }
       return next;
