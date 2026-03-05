@@ -4,8 +4,7 @@ import { fetchMarketDataBatch } from '@/app/actions/fetchMarketData';
 
 const API_KEY = 'Educ3tK6ue_eC33G_3ERTMb0qc7wd3K6';
 
-// ONLY map assets that Polygon supports well on WebSockets. 
-// Unmapped assets (like NAS100, CRUDE) will safely fall back to the 10s polling loop!
+// Mappings for Polygon WebSocket Subscription Channels
 const POLY_MAP: Record<string, { endpoint: string, sub: string, match: string }> = {
   'AAPL': { endpoint: 'stocks', sub: 'A.AAPL', match: 'AAPL' },
   'TSLA': { endpoint: 'stocks', sub: 'A.TSLA', match: 'TSLA' },
@@ -14,6 +13,13 @@ const POLY_MAP: Record<string, { endpoint: string, sub: string, match: string }>
   'BTCUSD': { endpoint: 'crypto', sub: 'XA.BTC-USD', match: 'BTC-USD' },
   'ETHUSD': { endpoint: 'crypto', sub: 'XA.ETH-USD', match: 'ETH-USD' },
   'EURUSD': { endpoint: 'forex', sub: 'CA.EUR/USD', match: 'EUR/USD' },
+};
+
+// Free tier requires the delayed endpoint for stocks
+const POLY_URLS: Record<string, string> = {
+  'stocks': 'wss://delayed.polygon.io/stocks', 
+  'crypto': 'wss://socket.polygon.io/crypto',
+  'forex': 'wss://socket.polygon.io/forex'
 };
 
 export class PolygonProvider extends BaseProvider {
@@ -26,7 +32,9 @@ export class PolygonProvider extends BaseProvider {
     this.isConnected = true;
     this.initSockets();
     
-    // HYBRID ENGINE: Poll Yahoo every 10 seconds for assets not supported by Polygon WS
+    // HYBRID ENGINE: Poll Yahoo every 10 seconds.
+    // This acts as both the primary feed for Indices (NAS100) AND 
+    // a seamless fallback for any Polygon WebSockets that fail to connect.
     this.syncInterval = setInterval(() => {
       this.loadHistory(Array.from(this.symbols));
     }, 10000);
@@ -55,37 +63,50 @@ export class PolygonProvider extends BaseProvider {
       results.forEach(res => {
         if (res) {
           this.state[res.symbol] = res;
-          this.emitTick(res); // Emit tick to update UI with latest exact index prices
+          this.emitTick(res); 
         }
       });
     } catch (e) {
-      console.error('[Polygon] Failed to load history', e);
+      console.error('[MarketData] Failed to load background sync history', e);
     }
   }
 
   private initSockets() {
-    const endpoints = ['stocks', 'crypto', 'forex'];
-    endpoints.forEach(ep => {
-      const ws = new WebSocket(`wss://socket.polygon.io/${ep}`);
-      this.sockets[ep] = ws;
+    Object.entries(POLY_URLS).forEach(([ep, url]) => {
+      try {
+        const ws = new WebSocket(url);
+        this.sockets[ep] = ws;
 
-      ws.onopen = () => {
-        ws.send(JSON.stringify({ action: 'auth', params: API_KEY }));
-      };
+        ws.onopen = () => {
+          ws.send(JSON.stringify({ action: 'auth', params: API_KEY }));
+        };
 
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        data.forEach((msg: any) => {
-          if (msg.ev === 'status' && msg.status === 'auth_success') {
-            this.subscribeToSockets(Array.from(this.symbols), [ep]);
-          }
-          if (msg.ev === 'A' || msg.ev === 'XA' || msg.ev === 'CA') {
-            this.handleTick(msg);
-          }
-        });
-      };
+        ws.onmessage = (event) => {
+          const data = JSON.parse(event.data);
+          data.forEach((msg: any) => {
+            if (msg.ev === 'status' && msg.status === 'auth_success') {
+              this.subscribeToSockets(Array.from(this.symbols), [ep]);
+            } else if (msg.ev === 'status' && msg.status === 'auth_failed') {
+              console.warn(`[Polygon] ${ep} Auth Failed. Relying on background sync.`);
+            }
+            
+            if (msg.ev === 'A' || msg.ev === 'XA' || msg.ev === 'CA') {
+              this.handleTick(msg);
+            }
+          });
+        };
 
-      ws.onerror = (err) => console.error(`[Polygon] ${ep} WS Error`, err);
+        // Gracefully catch connection rejections (403s on Free Tier)
+        ws.onerror = () => {
+          console.warn(`[Polygon] ${ep} stream unavailable. Relying on standard background sync.`);
+        };
+        
+        ws.onclose = () => {
+          // Handled silently. The 10s syncInterval guarantees data continuity.
+        };
+      } catch (e) {
+        console.warn(`[Polygon] Failed to initialize ${ep} socket.`);
+      }
     });
   }
 
