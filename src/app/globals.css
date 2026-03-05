@@ -1,32 +1,45 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #050505;
-  --color-surface: #0a0a0a;
-  --color-surface-highlight: #121212;
+  --color-background: #000000;
+  --color-surface: #050505;
+  --color-surface-highlight: #0a0a0a;
   
-  --color-border: #1a1a1a;
-  --color-border-highlight: #2a2a2a;
+  --color-border: #111111;
+  --color-border-highlight: #222222;
 
-  --color-text-primary: #d4d4d4;
-  --color-text-secondary: #888888;
-  --color-text-tertiary: #444444;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #777777;
+  --color-text-tertiary: #333333;
 
-  --color-accent: #ff9900; /* Bloomberg Amber */
-  --color-positive: #00a35c; /* Muted Green */
-  --color-negative: #c41e3a; /* Muted Red */
-  --color-warning: #d97706;
+  --color-accent: #ffffff;
+  --color-positive: #ffffff; /* Tonal shift handled via opacity in Quant */
+  --color-negative: #ffffff;
+  --color-warning: #ffffff;
 
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
-  --radius-sm: 0px;
-  --radius-md: 0px;
-  --radius-lg: 0px;
+  --font-sans: "Inter", "SF Pro Display", system-ui, sans-serif;
 }
 
-:root {
-  --terminal-header-h: 28px;
-  --terminal-row-h: 22px;
-  --terminal-font-size: 11px;
+/* Quant Theme Overrides */
+[data-theme='quant'] {
+  --color-background: #000000;
+  --color-surface: #000000;
+  --color-border: #0f0f0f;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #666666;
+  --color-accent: #ffffff;
+  font-family: var(--font-sans);
+}
+
+/* Bloomberg Theme Overrides (Preserved) */
+[data-theme='bloomberg'] {
+  --color-background: #050505;
+  --color-surface: #0a0a0a;
+  --color-accent: #ff9900;
+  --color-positive: #00a35c;
+  --color-negative: #c41e3a;
+  font-family: var(--font-mono);
 }
 
 html, body {
@@ -34,108 +47,28 @@ html, body {
   width: 100%;
   background-color: var(--color-background);
   color: var(--color-text-primary);
-  font-family: var(--font-mono);
-  font-size: var(--terminal-font-size);
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
 
-/* Institutional Grid System */
-.terminal-grid {
-  display: grid;
-  gap: 1px;
-  background-color: var(--color-border);
-  height: 100%;
-  width: 100%;
-}
-
-.terminal-panel {
-  background-color: var(--color-background);
-  display: flex;
-  flex-col: column;
-  overflow: hidden;
-}
-
-.terminal-header {
-  height: var(--terminal-header-h);
-  background-color: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  padding: 0 8px;
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-text-secondary);
-  user-select: none;
-}
-
-.terminal-row {
-  height: var(--terminal-row-h);
-  display: flex;
-  align-items: center;
-  padding: 0 8px;
-  border-bottom: 1px solid rgba(255,255,255,0.02);
-  cursor: pointer;
-}
-
-.terminal-row:hover {
-  background-color: var(--color-surface-highlight);
-}
-
-.terminal-row.active {
-  background-color: rgba(255, 153, 0, 0.05);
-  border-left: 2px solid var(--color-accent);
-}
-
-/* Data Table Styling */
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 10px;
-}
-
-.data-table th {
-  text-align: left;
-  padding: 4px 8px;
-  color: var(--color-text-tertiary);
-  text-transform: uppercase;
-  font-weight: 700;
-  border-bottom: 1px solid var(--color-border);
-  background-color: var(--color-surface);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.data-table td {
-  padding: 4px 8px;
-  border-bottom: 1px solid rgba(255,255,255,0.02);
-  white-space: nowrap;
-}
-
-/* Scrollbars */
+/* Minimalist Scrollbars */
 ::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
+  width: 2px;
+  height: 2px;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-border-highlight);
 }
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-tertiary);
+
+/* Quant Specific Utilities */
+.quant-text-positive { color: rgba(255, 255, 255, 0.9); font-weight: 600; }
+.quant-text-negative { color: rgba(255, 255, 255, 0.4); font-weight: 300; }
+
+.quant-panel-enter {
+  animation: slideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Animations - Minimal */
-.fade-in {
-  animation: fadeIn 0.15s ease-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
 }

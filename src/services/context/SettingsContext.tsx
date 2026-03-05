@@ -4,52 +4,31 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
-export type Theme = 'dark' | 'light' | 'oled' | 'bloomberg' | 'terminal-green' | 'classic-blue';
+export type Theme = 'dark' | 'light' | 'oled' | 'bloomberg' | 'quant' | 'terminal-green';
 export type Density = 'compact' | 'standard' | 'spacious';
 export type FontSize = 'xs' | 'sm' | 'md' | 'lg';
-export type AIDepth = 'standard' | 'deep' | 'quant';
-export type FontFamily = 'mono' | 'sans' | 'serif';
-export type BorderStyle = 'none' | 'thin' | 'bold';
 
 type Settings = {
   theme: Theme;
   density: Density;
   fontSize: FontSize;
-  fontFamily: FontFamily;
-  borderStyle: BorderStyle;
   showTicker: boolean;
-  showStatusbar: boolean;
-  showGridLines: boolean;
-  animationsEnabled: boolean;
   impactFilter: 'All' | 'Low' | 'Medium' | 'High';
   currency: string;
-  riskTolerance: 'Conservative' | 'Moderate' | 'Aggressive';
-  aiDepth: AIDepth;
-  autoAnalyze: boolean;
   refreshInterval: number;
-  dataDelayMode: 'realtime' | 'delayed' | 'simulated';
 };
 
 const DEFAULT: Settings = {
-  theme: 'dark',
+  theme: 'quant',
   density: 'compact',
   fontSize: 'sm',
-  fontFamily: 'mono',
-  borderStyle: 'thin',
-  showTicker: true,
-  showStatusbar: true,
-  showGridLines: true,
-  animationsEnabled: true,
+  showTicker: false,
   impactFilter: 'All',
   currency: 'All',
-  riskTolerance: 'Moderate',
-  aiDepth: 'standard',
-  autoAnalyze: true,
   refreshInterval: 30000,
-  dataDelayMode: 'realtime',
 };
 
-const STORAGE_KEY = 'vantage-terminal-settings-v6';
+const STORAGE_KEY = 'vantage-terminal-settings-v7';
 
 const SettingsContext = createContext<{
   settings: Settings;
@@ -72,7 +51,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const loadSettings = async () => {
-      // 1. Load from LocalStorage first for instant UI
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         try {
@@ -80,10 +58,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         } catch (e) {}
       }
 
-      // 2. If user is logged in, fetch from Supabase
       if (user) {
         setIsSyncing(true);
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('user_preferences')
           .select('default_filters')
           .eq('user_id', user.id)
@@ -92,7 +69,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         if (data?.default_filters) {
           const serverSettings = data.default_filters as Partial<Settings>;
           setSettings(prev => ({ ...prev, ...serverSettings }));
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, ...serverSettings }));
         }
         setIsSyncing(false);
       }
@@ -115,10 +91,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
             default_filters: next,
             updated_at: new Date().toISOString()
           })
-          .then(({ error }) => {
-            if (error) console.error("[Settings] Sync failed:", error);
-            setIsSyncing(false);
-          });
+          .then(() => setIsSyncing(false));
       }
       
       return next;
@@ -137,10 +110,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     root.setAttribute('data-theme', settings.theme);
     root.setAttribute('data-density', settings.density);
-    root.setAttribute('data-font-size', settings.fontSize);
-    root.setAttribute('data-font-family', settings.fontFamily);
-    root.setAttribute('data-border-style', settings.borderStyle);
-    root.style.setProperty('--grid-line-opacity', settings.showGridLines ? '1' : '0');
   }, [settings]);
 
   return (
