@@ -1,5 +1,5 @@
 import { MarketSnapshot, ConfluenceResult } from './types';
-import { findUnmitigatedFVGs } from '@/lib/tech-math';
+import { findUnmitigatedFVGs, findSwingPoints } from '@/lib/tech-math';
 
 export class ConfluenceEngine {
   private data: MarketSnapshot;
@@ -43,8 +43,8 @@ export class ConfluenceEngine {
     let trSum = 0;
     for (let i = highs.length - period; i < highs.length; i++) {
       const hl = highs[i] - lows[i];
-      const hc = Math.abs(highs[i] - closes[i - 1]);
-      const lc = Math.abs(lows[i] - closes[i - 1]);
+      const hc = Math.abs(highs[i] - (closes[i - 1] || closes[i]));
+      const lc = Math.abs(lows[i] - (closes[i - 1] || closes[i]));
       trSum += Math.max(hl, hc, lc);
     }
     return trSum / period;
@@ -70,28 +70,95 @@ export class ConfluenceEngine {
     const atr14 = this.ATR(highs, lows, closes, 14);
     const avgVol20 = this.SMA(volumes, 20);
 
-    const recentHigh20 = Math.max(...highs.slice(-21, -1));
-    const recentLow20 = Math.min(...lows.slice(-21, -1));
+    // Bollinger Bands
+    const sma20 = this.SMA(closes, 20);
+    const variance = closes.slice(-20).reduce((a, b) => a + Math.pow(b - sma20, 2), 0) / 20;
+    const stdDev = Math.sqrt(variance);
+    const bbUpper = sma20 + (stdDev * 2);
+    const bbLower = sma20 - (stdDev * 2);
 
-    // Candlestick Math
-    const bodySize = Math.abs(last.close - last.open);
-    const upperWick = last.high - Math.max(last.open, last.close);
-    const lowerWick = Math.min(last.open, last.close) - last.low;
-
-    const isBullEngulf = last.close > prev.open && last.open < prev.close && last.close > prev.high;
-    const isHammer = lowerWick > bodySize * 2 && upperWick < bodySize * 0.5;
-
-    // SMC
+    // SMC & Liquidity
+    const { swingHighs, swingLows } = findSwingPoints(quotes);
     const fvgs = findUnmitigatedFVGs(quotes);
-    const hasBullFVG = fvgs.some(f => f.type === 'BISI' && last.close > f.bottom && last.close < f.top + (atr14 * 0.5));
+    
+    const recentHigh = Math.max(...highs.slice(-20, -1));
+    const recentLow = Math.min(...lows.slice(-20, -1));
+    
+    const isLiquiditySweepHigh = last.high > recentHigh && last.close < recentHigh;
+    const isLiquiditySweepLow = last.low < recentLow && last.close > recentLow;
 
-    return [
+    const results: ConfluenceResult[] = [
       { id: 'MS_HTF', label: 'HTF Trend Alignment', category: 'STRUCTURE', isActive: last.close > sma200, score: 85, description: 'Price is above 200 SMA indicating macro uptrend.' },
-      { id: 'SMC_BISI', label: 'Active Demand FVG', category: 'SMC', isActive: hasBullFVG, score: 90, description: 'Price is respecting an unmitigated bullish price imbalance.' },
-      { id: 'CAN_BULL_ENG', label: 'Bullish Engulfing', category: 'CANDLE', isActive: isBullEngulf, score: 85, description: 'Body fully engulfs prior red candle.' },
-      { id: 'MOM_RSI_OS', label: 'RSI Oversold', category: 'MOMENTUM', isActive: rsi14 < 30, score: 80, description: `RSI reading severely depressed (${rsi14.toFixed(1)}).` },
       { id: 'VOL_CLIMAX', label: 'Volume Climax', category: 'VOLUME', isActive: last.volume > avgVol20 * 2.5, score: 95, description: 'Massive institutional participation detected.' },
-      { id: 'FUN_MAC', label: 'Macro Tailwind', category: 'FUNDAMENTAL', isActive: this.newsSentiment >= 30, score: 90, description: 'Recent news headlines are highly bullish.' }
+      { id: 'FUN_MAC', label: 'Macro Tailwind', category: 'FUNDAMENTAL', isActive: this.newsSentiment >= 30, score: 90, description: 'Recent news headlines are highly bullish.' },
+      
+      // New Confluences
+      { 
+        id: 'BB_REV_UPPER', 
+        label: 'Mean Reversion (Upper)', 
+        category: 'QUANT', 
+        isActive: last.close > bbUpper, 
+        score: 75, 
+        description: 'Price is trading outside the 2-StdDev upper Bollinger Band.' 
+      },
+      { 
+        id: 'BB_REV_LOWER', 
+        label: 'Mean Reversion (Lower)', 
+        category: 'QUANT', 
+        isActive: last.close < bbLower, 
+        score: 75, 
+        description: 'Price is trading outside the 2-StdDev lower Bollinger Band.' 
+      },
+      { 
+        id: 'SMC_SWEEP_H', 
+        label: 'Liquidity Sweep (High)', 
+        category: 'SMC', 
+        isActive: isLiquiditySweepHigh, 
+        score: 92, 
+        description: 'Price swept buy-side liquidity and rejected (Turtle Soup).' 
+      },
+      { 
+        id: 'SMC_SWEEP_L', 
+        label: 'Liquidity Sweep (Low)', 
+        category: 'SMC', 
+        isActive: isLiquiditySweepLow, 
+        score: 92, 
+        description: 'Price swept sell-side liquidity and rejected (Turtle Soup).' 
+      },
+      { 
+        id: 'MOM_RSI_OB', 
+        label: 'RSI Overbought', 
+        category: 'MOMENTUM', 
+        isActive: rsi14 > 70, 
+        score: 70, 
+        description: `RSI is in overextended territory (${rsi14.toFixed(1)}).` 
+      },
+      { 
+        id: 'MOM_RSI_OS', 
+        label: 'RSI Oversold', 
+        category: 'MOMENTUM', 
+        isActive: rsi14 < 30, 
+        score: 70, 
+        description: `RSI is in oversold territory (${rsi14.toFixed(1)}).` 
+      },
+      { 
+        id: 'SMC_FVG_BULL', 
+        label: 'Bullish Imbalance', 
+        category: 'SMC', 
+        isActive: fvgs.some(f => f.type === 'BISI' && last.close > f.bottom && last.close < f.top), 
+        score: 88, 
+        description: 'Price is currently trading within a bullish Fair Value Gap.' 
+      },
+      { 
+        id: 'SMC_FVG_BEAR', 
+        label: 'Bearish Imbalance', 
+        category: 'SMC', 
+        isActive: fvgs.some(f => f.type === 'SIBI' && last.close < f.top && last.close > f.bottom), 
+        score: 88, 
+        description: 'Price is currently trading within a bearish Fair Value Gap.' 
+      }
     ];
+
+    return results;
   }
 }
