@@ -47,6 +47,12 @@ export function EconomicCalendarView() {
   
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
 
+  const weekDates = useMemo(() => {
+    const today = new Date();
+    today.setDate(today.getDate() + (weekOffset * 7));
+    return getFullWeek(today);
+  }, [weekOffset]);
+
   const weekDatesRef = useRef(weekDates);
   const eventsDataRef = useRef(eventsData);
   
@@ -132,12 +138,6 @@ export function EconomicCalendarView() {
       return () => clearTimeout(t);
     }
   }, [targetEventId, loading, weekOffset]);
-
-  const weekDates = useMemo(() => {
-    const today = new Date();
-    today.setDate(today.getDate() + (weekOffset * 7));
-    return getFullWeek(today);
-  }, [weekOffset]);
 
   useEffect(() => {
     setCurrentTime(new Date());

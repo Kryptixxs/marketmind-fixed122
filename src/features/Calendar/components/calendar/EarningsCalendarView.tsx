@@ -18,6 +18,12 @@ export function EarningsCalendarView() {
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
   const [targetEventId, setTargetEventId] = useState<string | null>(null);
 
+  const weekDates = useMemo(() => {
+    const today = new Date();
+    today.setDate(today.getDate() + (weekOffset * 7));
+    return getBusinessWeek(today);
+  }, [weekOffset]);
+
   const weekDatesRef = useRef(weekDates);
   const eventsDataRef = useRef(events);
   
@@ -98,12 +104,6 @@ export function EarningsCalendarView() {
       return () => clearTimeout(t);
     }
   }, [targetEventId, loading, weekOffset]);
-
-  const weekDates = useMemo(() => {
-    const today = new Date();
-    today.setDate(today.getDate() + (weekOffset * 7));
-    return getBusinessWeek(today);
-  }, [weekOffset]);
 
   useEffect(() => {
     const load = async () => {
