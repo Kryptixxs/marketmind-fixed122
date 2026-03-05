@@ -8,9 +8,10 @@ import { TerminalCommandBar } from '@/features/Terminal/components/TerminalComma
 import { ConfluenceScanner } from '@/features/Terminal/components/widgets/ConfluenceScanner';
 import { ICTPanel } from '@/features/Terminal/components/widgets/ICTPanel';
 import { MiniCalendar } from '@/features/Terminal/components/widgets/MiniCalendar';
-import { Wifi, TrendingUp, TrendingDown, Plus, Search, X } from 'lucide-react';
+import { Wifi, TrendingUp, TrendingDown, Plus, Search, X, Loader2 } from 'lucide-react';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
+import { searchSymbols } from '@/app/actions/searchSymbols';
 
 // Clean UI Symbols
 const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'EURUSD', 'BTCUSD'];
@@ -48,7 +49,24 @@ export default function TerminalPage() {
   const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      const res = await searchSymbols(q);
+      setSearchResults(res);
+      setIsSearching(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     const saved = localStorage.getItem('vantage_main_watchlist_v4');
@@ -82,16 +100,32 @@ export default function TerminalPage() {
     if (isSearchOpen && searchInputRef.current) searchInputRef.current.focus();
   }, [isSearchOpen]);
 
-  const handleAddSymbol = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!searchQuery) return;
-    const sym = searchQuery.toUpperCase().trim();
+  const addResolvedSymbol = (sym: string) => {
     if (!watchlist.includes(sym)) {
       setWatchlist(prev => [sym, ...prev]);
     }
     setActiveSymbol(sym);
     setSearchQuery('');
+    setSearchResults([]);
     setIsSearchOpen(false);
+  };
+
+  const handleAddSymbol = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery) return;
+    
+    setIsSearching(true);
+    let symToAdd = searchQuery.toUpperCase().trim();
+    
+    if (searchResults.length > 0) {
+      symToAdd = searchResults[0].symbol;
+    } else {
+      const res = await searchSymbols(symToAdd);
+      if (res.length > 0) symToAdd = res[0].symbol;
+    }
+    
+    addResolvedSymbol(symToAdd);
+    setIsSearching(false);
   };
 
   const handleRemoveSymbol = (e: React.MouseEvent, sym: string) => {
@@ -135,17 +169,36 @@ export default function TerminalPage() {
                     {isSearchOpen && (
                       <>
                         <div className="fixed inset-0 z-40" onClick={() => setIsSearchOpen(false)} />
-                        <div className="absolute top-full left-0 mt-1 w-48 bg-surface-highlight border border-border rounded shadow-xl z-50 p-1">
+                        <div className="absolute top-full left-0 mt-1 w-64 bg-surface-highlight border border-border rounded shadow-2xl z-50 p-1 flex flex-col">
                           <form onSubmit={handleAddSymbol} className="flex items-center gap-2 bg-background border border-border px-2 rounded">
-                            <Search size={10} className="text-text-tertiary" />
+                            <Search size={12} className="text-text-tertiary" />
                             <input
                               ref={searchInputRef}
                               value={searchQuery}
                               onChange={e => setSearchQuery(e.target.value)}
-                              placeholder="Add ticker (e.g. NAS100)"
-                              className="flex-1 bg-transparent border-none outline-none text-[10px] py-1.5 text-text-primary uppercase"
+                              placeholder="Type company name or ticker..."
+                              className="flex-1 bg-transparent border-none outline-none text-xs py-2 text-text-primary uppercase"
                             />
+                            {isSearching && <Loader2 size={12} className="animate-spin text-accent" />}
                           </form>
+                          
+                          {searchResults.length > 0 && (
+                            <div className="flex flex-col mt-1 bg-background rounded overflow-hidden">
+                              {searchResults.map(res => (
+                                <button
+                                  key={res.symbol}
+                                  onClick={() => addResolvedSymbol(res.symbol)}
+                                  className="flex items-center justify-between p-2 hover:bg-surface-highlight text-left border-b border-border/50 last:border-0"
+                                >
+                                  <div className="flex flex-col overflow-hidden pr-2">
+                                    <span className="text-xs font-bold text-text-primary">{res.symbol}</span>
+                                    <span className="text-[10px] text-text-tertiary truncate">{res.name}</span>
+                                  </div>
+                                  <span className="text-[9px] text-text-secondary bg-surface px-1.5 py-0.5 rounded font-mono shrink-0">{res.type}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </>
                     )}

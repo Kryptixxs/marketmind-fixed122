@@ -1,12 +1,14 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Terminal, ChevronRight, Command } from 'lucide-react';
+import { Terminal, ChevronRight, Command, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { searchSymbols } from '@/app/actions/searchSymbols';
 
 export function TerminalCommandBar() {
   const [input, setInput] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [isResolving, setIsResolving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
 
@@ -25,23 +27,29 @@ export function TerminalCommandBar() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isFocused]);
 
-  const handleCommand = (e: React.FormEvent) => {
+  const handleCommand = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cmd = input.toUpperCase().trim();
+    if (!input.trim()) return;
+    
+    const cmd = input.trim();
+    const upperCmd = cmd.toUpperCase();
     
     // Bloomberg-style syntax handling
-    if (cmd === 'CAL' || cmd === 'CALENDAR') router.push('/calendar');
-    else if (cmd === 'NEWS' || cmd === 'WIRE') router.push('/news');
-    else if (cmd === 'ALGO') router.push('/algo');
-    else if (cmd === 'CHARTS' || cmd === 'TA') router.push('/charts');
-    else if (cmd.startsWith('HELP')) alert('VCL Commands: CAL, NEWS, ALGO, TA, [SYMBOL]');
+    if (upperCmd === 'CAL' || upperCmd === 'CALENDAR') { router.push('/calendar'); setInput(''); inputRef.current?.blur(); }
+    else if (upperCmd === 'NEWS' || upperCmd === 'WIRE') { router.push('/news'); setInput(''); inputRef.current?.blur(); }
+    else if (upperCmd === 'ALGO') { router.push('/algo'); setInput(''); inputRef.current?.blur(); }
+    else if (upperCmd === 'CHARTS' || upperCmd === 'TA') { router.push('/charts'); setInput(''); inputRef.current?.blur(); }
+    else if (upperCmd.startsWith('HELP')) { alert('VCL Commands: CAL, NEWS, ALGO, TA, [SYMBOL OR COMPANY NAME]'); setInput(''); }
     else {
-      // Default to symbol lookup/change
-      window.dispatchEvent(new CustomEvent('vantage-symbol-change', { detail: cmd }));
+      // Resolve company name to symbol
+      setIsResolving(true);
+      const results = await searchSymbols(cmd);
+      const sym = results.length > 0 ? results[0].symbol : upperCmd;
+      window.dispatchEvent(new CustomEvent('vantage-symbol-change', { detail: sym }));
+      setIsResolving(false);
+      setInput('');
+      inputRef.current?.blur();
     }
-    
-    setInput('');
-    inputRef.current?.blur();
   };
 
   return (
@@ -50,7 +58,7 @@ export function TerminalCommandBar() {
       ${isFocused ? 'bg-accent/10 border-b border-accent/30' : 'bg-surface border-b border-border'}
     `}>
       <div className="flex items-center gap-2 text-text-tertiary shrink-0">
-        <Terminal size={12} className={isFocused ? 'text-accent' : ''} />
+        {isResolving ? <Loader2 size={12} className="text-accent animate-spin" /> : <Terminal size={12} className={isFocused ? 'text-accent' : ''} />}
         <span className="text-[9px] font-bold uppercase tracking-widest">Command</span>
       </div>
       
