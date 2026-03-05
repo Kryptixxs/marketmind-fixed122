@@ -13,7 +13,6 @@ import { Wifi, TrendingUp, TrendingDown, Plus, Search, X, Loader2, Layout, Maxim
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { searchSymbols } from '@/app/actions/searchSymbols';
-import { calculateInstitutionalOverlays } from '@/lib/chart-overlays';
 import Link from 'next/link';
 
 const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'EURUSD', 'BTCUSD'];
@@ -154,12 +153,6 @@ export default function TerminalPage() {
       low: h.low,
       close: h.close
     }));
-  }, [activeQuote?.history]);
-
-  // Calculate institutional overlays for the chart
-  const overlays = useMemo(() => {
-    if (!activeQuote || !activeQuote.history) return [];
-    return calculateInstitutionalOverlays(activeQuote.history);
   }, [activeQuote?.history]);
 
   return (
@@ -312,7 +305,7 @@ export default function TerminalPage() {
                   >
                     <div className="w-full h-full bg-black relative">
                       {chartData.length > 0 ? (
-                         <TradingChart data={chartData} symbol={activeSymbol} overlays={overlays} />
+                         <TradingChart data={chartData} symbol={activeSymbol} />
                       ) : (
                          <div className="flex items-center justify-center h-full text-[10px] uppercase font-bold tracking-widest text-text-tertiary">Rendering Engine...</div>
                       )}

@@ -2,17 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import * as LightweightCharts from 'lightweight-charts';
-import { ColorType, CrosshairMode, IChartApi, ISeriesApi, SeriesMarker } from 'lightweight-charts';
-
-export interface ChartOverlay {
-  id: string;
-  type: 'level' | 'box';
-  price: number;
-  price2?: number; // For boxes
-  color: string;
-  label: string;
-  style?: number; // 0: Solid, 1: Dotted, 2: Dashed
-}
+import { ColorType, CrosshairMode, IChartApi, ISeriesApi } from 'lightweight-charts';
 
 export interface ChartData {
   time: number;
@@ -24,17 +14,14 @@ export interface ChartData {
 
 export function TradingChart({ 
   data, 
-  symbol = '',
-  overlays = []
+  symbol = ''
 }: { 
   data: ChartData[]; 
   symbol?: string;
-  overlays?: ChartOverlay[];
 }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
-  const priceLinesRef = useRef<any[]>([]);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -94,63 +81,6 @@ export function TradingChart({
       seriesRef.current.setData(unique);
     }
   }, [data]);
-
-  // Update Overlays (Institutional Levels & Boxes)
-  useEffect(() => {
-    if (!seriesRef.current || !chartRef.current || data.length === 0) return;
-
-    // Clear old lines
-    priceLinesRef.current.forEach(line => seriesRef.current?.removePriceLine(line));
-    priceLinesRef.current = [];
-
-    const lastTime = data[data.length - 1].time;
-
-    overlays.forEach(ov => {
-      if (ov.type === 'level') {
-        const line = seriesRef.current!.createPriceLine({
-          price: ov.price,
-          color: ov.color,
-          lineWidth: 1,
-          lineStyle: ov.style || 0,
-          axisLabelVisible: true,
-          title: ov.label,
-        });
-        priceLinesRef.current.push(line);
-      } else if (ov.type === 'box' && ov.price2 !== undefined) {
-        const top = seriesRef.current!.createPriceLine({
-          price: ov.price,
-          color: ov.color,
-          lineWidth: 1,
-          lineStyle: 2,
-          axisLabelVisible: false,
-          title: ov.label,
-        });
-        const bottom = seriesRef.current!.createPriceLine({
-          price: ov.price2,
-          color: ov.color,
-          lineWidth: 1,
-          lineStyle: 2,
-          axisLabelVisible: false,
-        });
-        priceLinesRef.current.push(top, bottom);
-      }
-    });
-
-    // Add on-chart text markers for session levels
-    const markers: SeriesMarker<any>[] = overlays
-      .filter(ov => ov.type === 'level' && ov.label.includes('High'))
-      .map(ov => ({
-        time: lastTime,
-        position: 'inBar',
-        color: ov.color,
-        shape: 'arrowUp',
-        text: ov.label,
-        size: 0,
-      }));
-    
-    seriesRef.current.setMarkers(markers);
-
-  }, [overlays, data]);
 
   return <div ref={chartContainerRef} className="w-full h-full" />;
 }
