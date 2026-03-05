@@ -28,6 +28,7 @@ export default function RegisterPage() {
       email,
       password,
       options: {
+        emailRedirectTo: 'https://mmfinance-five.vercel.app/dashboard',
         data: {
           first_name: firstName,
           last_name: lastName,
