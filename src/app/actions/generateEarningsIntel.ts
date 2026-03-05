@@ -124,11 +124,11 @@ export async function generateEarningsIntel(event: EarningsEvent) {
     newsContext = news.filter(n => n.title.includes(event.ticker) || n.title.includes(event.name.split(' ')[0])).slice(0, 5).map(n => n.title).join('\n');
   } catch (e) {}
 
-  // BUMPED CACHE TO V5 to force a fresh pull for CRWD / TGT
+  // BUMPED CACHE TO V6 to force a fresh pull and clear 'Pending' fallback states
   const getCached = unstable_cache(
     async () => executeEarningsIntel(event, newsContext),
-    [`earnings-intel-v5-${event.ticker}-${event.date}`],
-    { revalidate: 3600 } 
+    [`earnings-intel-v6-${event.ticker}-${event.date}`],
+    { revalidate: 3600 }
   );
 
   return getCached();
