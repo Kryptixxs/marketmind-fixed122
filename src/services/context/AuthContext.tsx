@@ -22,7 +22,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 const BYPASS_KEY = 'vantage_session_bypass';
-const SECRET_SEQUENCE = 'vantage';
+const SECRET_SEQUENCE = '02062010';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -32,10 +32,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   
-  // Use a ref to track the key sequence without triggering re-renders
   const keyBuffer = useRef<string>('');
 
-  // Check for existing bypass on mount
   useEffect(() => {
     const bypass = sessionStorage.getItem(BYPASS_KEY);
     if (bypass === 'true') {
@@ -64,28 +62,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Secret Sequence Listener: typing 'vantage'
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore if user is typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         return;
       }
 
-      // Append key to buffer
-      keyBuffer.current += e.key.toLowerCase();
+      keyBuffer.current += e.key;
       
-      // Keep buffer size manageable
       if (keyBuffer.current.length > SECRET_SEQUENCE.length) {
         keyBuffer.current = keyBuffer.current.slice(-SECRET_SEQUENCE.length);
       }
 
-      // Check for match
       if (keyBuffer.current === SECRET_SEQUENCE) {
-        console.log("[Auth] Institutional Bypass Triggered via Sequence");
         sessionStorage.setItem(BYPASS_KEY, 'true');
         setIsGuest(true);
-        keyBuffer.current = ''; // Reset buffer
+        keyBuffer.current = '';
         router.push('/dashboard');
       }
     };
@@ -94,7 +86,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [router]);
 
-  // Protect private routes
   useEffect(() => {
     if (isLoading) return;
     
