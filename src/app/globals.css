@@ -13,12 +13,23 @@
   --color-text-tertiary: #333333;
 
   --color-accent: #ffffff;
-  --color-positive: #ffffff; /* Tonal shift handled via opacity in Quant */
-  --color-negative: #ffffff;
-  --color-warning: #ffffff;
+  --color-positive: #00ff9d;
+  --color-negative: #ff3333;
+  --color-warning: #ffb302;
 
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
   --font-sans: "Inter", "SF Pro Display", system-ui, sans-serif;
+}
+
+/* FX Desk Theme Overrides */
+[data-theme='fx-desk'] {
+  --color-background: #020202;
+  --color-surface: #080808;
+  --color-border: #1a1a1a;
+  --color-text-primary: #e0e0e0;
+  --color-text-secondary: #888888;
+  --color-accent: #00a3ff; /* Institutional Blue */
+  font-family: var(--font-mono);
 }
 
 /* Quant Theme Overrides */
@@ -32,7 +43,7 @@
   font-family: var(--font-sans);
 }
 
-/* Bloomberg Theme Overrides (Preserved) */
+/* Bloomberg Theme Overrides */
 [data-theme='bloomberg'] {
   --color-background: #050505;
   --color-surface: #0a0a0a;
@@ -60,15 +71,28 @@ html, body {
   background: var(--color-border-highlight);
 }
 
-/* Quant Specific Utilities */
-.quant-text-positive { color: rgba(255, 255, 255, 0.9); font-weight: 600; }
-.quant-text-negative { color: rgba(255, 255, 255, 0.4); font-weight: 300; }
-
-.quant-panel-enter {
-  animation: slideIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+/* FX Desk Specific Utilities */
+.fx-grid-header {
+  background: #111;
+  color: #666;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  border-bottom: 1px solid #222;
 }
 
-@keyframes slideIn {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
+.fx-cell {
+  padding: 4px 8px;
+  border-bottom: 1px solid #111;
+  font-size: 11px;
+}
+
+@keyframes ticker {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-ticker {
+  animation: ticker 30s linear infinite;
 }

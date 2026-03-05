@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback, useEffect } from 'rea
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
-export type Theme = 'dark' | 'light' | 'oled' | 'bloomberg' | 'quant' | 'terminal-green';
+export type Theme = 'dark' | 'light' | 'oled' | 'bloomberg' | 'quant' | 'fx-desk' | 'terminal-green';
 export type Density = 'compact' | 'standard' | 'spacious';
 export type FontSize = 'xs' | 'sm' | 'md' | 'lg';
 
@@ -19,7 +19,7 @@ type Settings = {
 };
 
 const DEFAULT: Settings = {
-  theme: 'quant',
+  theme: 'fx-desk',
   density: 'compact',
   fontSize: 'sm',
   showTicker: false,
@@ -28,7 +28,7 @@ const DEFAULT: Settings = {
   refreshInterval: 30000,
 };
 
-const STORAGE_KEY = 'vantage-terminal-settings-v7';
+const STORAGE_KEY = 'vantage-terminal-settings-v8';
 
 const SettingsContext = createContext<{
   settings: Settings;
