@@ -12,7 +12,7 @@ const RSS_FEEDS: Record<string, { url: string; source: string }[]> = {
     { url: 'https://www.cnbc.com/id/15839135/device/rss/rss.html', source: 'CNBC Markets' },
     { url: 'https://feeds.marketwatch.com/marketwatch/marketpulse/', source: 'MarketWatch' },
     { url: 'https://feeds.finance.yahoo.com/rss/2.0/headline?s=AAPL,MSFT,GOOGL,AMZN&region=US&lang=en-US', source: 'Yahoo Finance' },
-    { url: 'https://www.investopedia.com/feedbuilder/feed/getfeed/?feedName=rss_headline', source: 'Investopedia' },
+    { url: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml', source: 'WSJ Markets' },
   ],
   Crypto: [
     { url: 'https://cointelegraph.com/rss', source: 'CoinTelegraph' },
