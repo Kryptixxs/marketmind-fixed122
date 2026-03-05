@@ -41,25 +41,6 @@ export async function generateFullEventIntel(event: EconomicEvent) {
     ]
   }`;
 
-  // The ultimate fallback in case of rate limits
-  const fallback = {
-    liveBias: "Neutral",
-    predictionAccuracy: 50,
-    smartMoneyPositioning: "Institutions are maintaining delta-neutral profiles ahead of the print.",
-    specificPrediction: "Awaiting data. Significant deviations from consensus will trigger algorithmic re-pricing across related FX pairs and bond yields.",
-    narrative: `Standard release for ${event.currency}. Markets will analyze the data against prevailing central bank policy expectations.`,
-    volatility: event.impact === 'High' ? 'High' : 'Moderate',
-    macroImpact: event.impact === 'High' ? 8 : 5,
-    surpriseThresholdPct: 10,
-    scenarios: [
-      { label: "Hot Print", probability: 33, reaction: `Positive momentum for ${event.currency}.`, bias: "BULLISH" },
-      { label: "In-Line", probability: 34, reaction: "Muted reaction, focus shifts.", bias: "NEUTRAL" },
-      { label: "Cool Print", probability: 33, reaction: `Negative pressure on ${event.currency}.`, bias: "BEARISH" }
-    ],
-    sensitivities: [
-      { symbol: event.currency, sensitivity: "HIGH", expectedMove: "Directional", weight: 9 }
-    ]
-  };
-
-  return await generateAIJSON(prompt, fallback);
+  // If the API key is missing or fails, we return null rather than displaying fake "Smart Money" data.
+  return await generateAIJSON(prompt, null);
 }

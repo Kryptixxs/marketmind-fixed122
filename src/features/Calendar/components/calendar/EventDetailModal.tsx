@@ -9,6 +9,7 @@ import { formatTime } from '@/lib/date-utils';
 import { computeSurprise } from '@/lib/event-intelligence';
 import { addAlert } from '@/lib/alerts';
 import { generateFullEventIntel } from '@/app/actions/generateFullEventIntel';
+import { fetchEventHistory, HistoricalPrint } from '@/app/actions/fetchEventHistory';
 
 interface EventDetailModalProps {
   event: EconomicEvent;
@@ -20,7 +21,10 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
   
   const [intel, setIntel] = useState<any>(null);
   const [isPredicting, setIsPredicting] = useState(true);
+  
   const [showHistory, setShowHistory] = useState(false);
+  const [historyData, setHistoryData] = useState<(HistoricalPrint & { surprise: number, classification: string })[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     async function getPrediction() {
@@ -37,6 +41,25 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
     getPrediction();
   }, [event]);
 
+  // Lazy load the REAL history when the user clicks the "Historical Data" button
+  useEffect(() => {
+    if (showHistory && historyData.length === 0) {
+      setLoadingHistory(true);
+      fetchEventHistory(event.title, event.country).then(data => {
+        const enhanced = data.map(d => {
+          const surp = computeSurprise({ actual: d.actual, forecast: d.forecast });
+          return {
+            ...d,
+            surprise: surp.surprisePct || 0,
+            classification: surp.classification
+          };
+        });
+        setHistoryData(enhanced);
+        setLoadingHistory(false);
+      });
+    }
+  }, [showHistory, event.title, event.country, historyData.length]);
+
   const handleSetAlert = () => {
     addAlert({
       eventId: event.id,
@@ -48,30 +71,6 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
     });
     alert(`Alert set for ${event.title}. You will be notified 5 minutes before the release.`);
   };
-
-  // Generate fake but deterministic historical data based on the current actual/forecast
-  const historyData = useMemo(() => {
-    const baseVal = parseFloat((event.actual || event.forecast || '0').replace(/[^0-9.-]/g, '')) || 0;
-    const unit = (event.actual || event.forecast || '').replace(/[0-9.-]/g, '');
-    
-    return Array.from({ length: 6 }).map((_, i) => {
-      const d = new Date(event.date);
-      d.setMonth(d.getMonth() - (i + 1));
-      const variation = baseVal * 0.1 * (Math.random() > 0.5 ? 1 : -1);
-      const act = baseVal + variation;
-      const est = act - (baseVal * 0.05 * (Math.random() > 0.5 ? 1 : -1));
-      
-      const diff = act - est;
-      const surp = (diff / Math.abs(est)) * 100;
-      
-      return {
-        date: d.toISOString().split('T')[0],
-        actual: `${act.toFixed(2)}${unit}`,
-        forecast: `${est.toFixed(2)}${unit}`,
-        surprise: surp
-      };
-    });
-  }, [event]);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 backdrop-blur-md p-2">
@@ -85,7 +84,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               <h2 className="text-sm font-bold text-text-primary uppercase tracking-tight">
                 {event.title} // {event.country}
               </h2>
-              <span className="text-[8px] text-text-tertiary uppercase tracking-widest font-mono">Terminal ID: {event.id} // GEMINI_2.0_FLASH</span>
+              <span className="text-[8px] text-text-tertiary uppercase tracking-widest font-mono">Terminal ID: {event.id}</span>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -120,7 +119,18 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                   <h3 className="font-bold uppercase tracking-wider">Historical Data Prints</h3>
                 </div>
                 
-                <div className="bg-background border border-border rounded-sm overflow-hidden flex-1">
+                <div className="bg-background border border-border rounded-sm overflow-hidden flex-1 relative">
+                  {loadingHistory ? (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10 gap-3">
+                      <Loader2 size={24} className="animate-spin text-accent" />
+                      <span className="text-[10px] uppercase font-bold text-text-tertiary tracking-widest">Fetching Past Data from Web...</span>
+                    </div>
+                  ) : historyData.length === 0 ? (
+                    <div className="absolute inset-0 flex items-center justify-center text-xs text-text-tertiary uppercase font-bold tracking-widest">
+                      Historical data unavailable
+                    </div>
+                  ) : null}
+
                   <table className="w-full text-left text-sm">
                     <thead className="bg-surface-highlight border-b border-border text-xs text-text-tertiary uppercase font-bold">
                       <tr>
@@ -142,7 +152,7 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                           <td className="p-3 font-mono text-text-secondary">{row.date}</td>
                           <td className="p-3 font-mono text-text-primary">{row.actual}</td>
                           <td className="p-3 font-mono text-text-secondary">{row.forecast}</td>
-                          <td className={`p-3 font-mono text-right ${row.surprise > 0 ? 'text-positive' : 'text-negative'}`}>
+                          <td className={`p-3 font-mono text-right ${row.surprise > 0 ? 'text-positive' : row.surprise < 0 ? 'text-negative' : 'text-text-tertiary'}`}>
                             {row.surprise > 0 ? '+' : ''}{row.surprise.toFixed(2)}%
                           </td>
                         </tr>
@@ -151,7 +161,15 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                   </table>
                 </div>
              </div>
-          ) : intel && (
+          ) : !intel ? (
+            <div className="flex-1 h-full flex flex-col items-center justify-center gap-3 opacity-70">
+              <AlertTriangle size={32} className="text-warning" />
+              <div className="text-center">
+                <h3 className="text-sm font-bold text-text-primary uppercase tracking-widest">AI Intelligence Unavailable</h3>
+                <p className="text-[10px] text-text-tertiary mt-1">Live synthesis could not be generated. Please try again later.</p>
+              </div>
+            </div>
+          ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-in fade-in duration-300">
               
               {/* LEFT COL: Live AI Insights */}
@@ -170,18 +188,18 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                   <div className="grid grid-cols-2 gap-4 pt-2">
                     <div className="space-y-1">
                       <span className="text-[9px] text-text-tertiary uppercase font-bold">Institutional Bias</span>
-                      <div className={`text-sm font-black uppercase ${intel.liveBias.includes('Bullish') ? 'text-positive' : intel.liveBias.includes('Bearish') ? 'text-negative' : 'text-warning'}`}>
-                        {intel.liveBias}
-                        <span className="text-[10px] text-text-secondary font-mono ml-2">({intel.predictionAccuracy}% CONF)</span>
+                      <div className={`text-sm font-black uppercase ${intel.liveBias?.includes('Bullish') ? 'text-positive' : intel.liveBias?.includes('Bearish') ? 'text-negative' : 'text-warning'}`}>
+                        {intel.liveBias || 'Neutral'}
+                        <span className="text-[10px] text-text-secondary font-mono ml-2">({intel.predictionAccuracy || 50}% CONF)</span>
                       </div>
                     </div>
                     <div className="space-y-1">
                       <span className="text-[9px] text-text-tertiary uppercase font-bold">Smart Money Positioning</span>
-                      <p className="text-[10px] text-text-primary leading-snug">{intel.smartMoneyPositioning}</p>
+                      <p className="text-[10px] text-text-primary leading-snug">{intel.smartMoneyPositioning || 'Awaiting data'}</p>
                     </div>
                     <div className="col-span-2 space-y-1 border-t border-accent/10 pt-2">
                       <span className="text-[9px] text-text-tertiary uppercase font-bold">Specific Execution Strategy</span>
-                      <p className="text-[11px] text-text-primary leading-relaxed">{intel.specificPrediction}</p>
+                      <p className="text-[11px] text-text-primary leading-relaxed">{intel.specificPrediction || 'Trading on technicals until data release.'}</p>
                     </div>
                   </div>
                 </div>
@@ -192,30 +210,32 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                     <span className="text-[9px] font-bold uppercase tracking-wider">Historical Macro Narrative</span>
                   </div>
                   <p className="text-[11px] text-text-secondary leading-relaxed bg-surface-highlight/30 p-3 border-l-2 border-border">
-                    {intel.narrative}
+                    {intel.narrative || 'Standard economic release.'}
                   </p>
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-text-tertiary">
-                    <Layers size={12} />
-                    <span className="text-[9px] font-bold uppercase tracking-wider">Probabilistic Scenario Tree</span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {intel.scenarios.map((s: any) => (
-                      <div key={s.label} className="bg-background border border-border p-2 flex flex-col gap-1">
-                        <div className="flex justify-between items-center">
-                          <span className="text-[10px] font-bold text-text-primary">{s.label}</span>
-                          <span className="text-[10px] font-mono text-accent">{s.probability}%</span>
+                {intel.scenarios && intel.scenarios.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-text-tertiary">
+                      <Layers size={12} />
+                      <span className="text-[9px] font-bold uppercase tracking-wider">Probabilistic Scenario Tree</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      {intel.scenarios.map((s: any) => (
+                        <div key={s.label} className="bg-background border border-border p-2 flex flex-col gap-1">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[10px] font-bold text-text-primary">{s.label}</span>
+                            <span className="text-[10px] font-mono text-accent">{s.probability}%</span>
+                          </div>
+                          <p className="text-[9px] text-text-tertiary leading-tight">{s.reaction}</p>
+                          <div className="w-full h-0.5 bg-surface-highlight mt-1">
+                            <div className={`h-full ${s.bias === 'BULLISH' ? 'bg-positive/40' : s.bias === 'BEARISH' ? 'bg-negative/40' : 'bg-warning/40'} transition-all duration-1000`} style={{ width: `${s.probability}%` }} />
+                          </div>
                         </div>
-                        <p className="text-[9px] text-text-tertiary leading-tight">{s.reaction}</p>
-                        <div className="w-full h-0.5 bg-surface-highlight mt-1">
-                          <div className={`h-full ${s.bias === 'BULLISH' ? 'bg-positive/40' : s.bias === 'BEARISH' ? 'bg-negative/40' : 'bg-warning/40'} transition-all duration-1000`} style={{ width: `${s.probability}%` }} />
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
               </div>
 
@@ -223,9 +243,9 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-1 bg-border border border-border">
                   {[
-                    { label: 'Volatility Regime', value: intel.volatility, color: 'text-accent' },
-                    { label: 'Macro Impact', value: `${intel.macroImpact}/10`, color: 'text-text-primary' },
-                    { label: 'Surprise Thresh', value: `${intel.surpriseThresholdPct}%`, color: 'text-text-secondary' }
+                    { label: 'Volatility Regime', value: intel.volatility || 'Moderate', color: 'text-accent' },
+                    { label: 'Macro Impact', value: `${intel.macroImpact || 5}/10`, color: 'text-text-primary' },
+                    { label: 'Surprise Thresh', value: `${intel.surpriseThresholdPct || 10}%`, color: 'text-text-secondary' }
                   ].map(s => (
                     <div key={s.label} className="bg-background p-2 flex flex-col gap-1">
                       <span className="text-[8px] text-text-tertiary uppercase font-bold">{s.label}</span>
@@ -234,29 +254,31 @@ export function EventDetailModal({ event, onClose }: EventDetailModalProps) {
                   ))}
                 </div>
 
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-text-tertiary">
-                    <Target size={12} />
-                    <span className="text-[9px] font-bold uppercase tracking-wider">Asset Sensitivity</span>
-                  </div>
-                  <div className="space-y-1">
-                    {intel.sensitivities.map((asset: any) => (
-                      <div key={asset.symbol} className="bg-background border border-border p-2 flex items-center justify-between">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] font-bold text-text-primary">{asset.symbol}</span>
-                          <span className="text-[8px] text-text-tertiary uppercase">{asset.expectedMove}</span>
+                {intel.sensitivities && intel.sensitivities.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-text-tertiary">
+                      <Target size={12} />
+                      <span className="text-[9px] font-bold uppercase tracking-wider">Asset Sensitivity</span>
+                    </div>
+                    <div className="space-y-1">
+                      {intel.sensitivities.map((asset: any) => (
+                        <div key={asset.symbol} className="bg-background border border-border p-2 flex items-center justify-between">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-bold text-text-primary">{asset.symbol}</span>
+                            <span className="text-[8px] text-text-tertiary uppercase">{asset.expectedMove}</span>
+                          </div>
+                          <div className={`px-2 py-0.5 rounded-sm text-[8px] font-bold uppercase ${
+                            asset.sensitivity === 'HIGH' ? 'bg-negative/20 text-negative border border-negative/30' :
+                            asset.sensitivity === 'MODERATE' ? 'bg-warning/20 text-warning border border-warning/30' :
+                            'bg-positive/20 text-positive border border-positive/30'
+                          }`}>
+                            {asset.sensitivity}
+                          </div>
                         </div>
-                        <div className={`px-2 py-0.5 rounded-sm text-[8px] font-bold uppercase ${
-                          asset.sensitivity === 'HIGH' ? 'bg-negative/20 text-negative border border-negative/30' :
-                          asset.sensitivity === 'MODERATE' ? 'bg-warning/20 text-warning border border-warning/30' :
-                          'bg-positive/20 text-positive border border-positive/30'
-                        }`}>
-                          {asset.sensitivity}
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {surprise.classification !== 'N/A' && (
                   <div className="pt-4 border-t border-border space-y-3">

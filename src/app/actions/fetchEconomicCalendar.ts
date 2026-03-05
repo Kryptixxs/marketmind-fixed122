@@ -5,22 +5,29 @@ import { EconomicEvent } from '@/lib/types';
 const CACHE: Record<string, { data: EconomicEvent[], timestamp: number }> = {};
 const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
-// Strict Tier-1 Market Movers
+// STRICT Day Trading Liquidity Injectors (Tier 1)
 const HIGH_IMPACT_KEYWORDS = [
-  'Nonfarm Payrolls', 'Unemployment Rate', 'CPI', 'PPI', 'GDP', 'FOMC',
-  'Fed Interest Rate', 'Interest Rate Decision', 'Retail Sales', 'ISM Manufacturing',
-  'ISM Services', 'JOLTs', 'Bank of England', 'ECB', 'Meeting Minutes', 'PCE'
+  'CPI', 'Core CPI', 'PPI', 'Core PPI', 'Nonfarm Payroll', 'FOMC', 
+  'Interest Rate Decision', 'Gross Domestic Product', 'GDP', 
+  'ISM Manufacturing', 'ISM Services'
 ];
 
-// Noise filters
+// Secondary movers that can cause intraday chop (Tier 2)
+const MEDIUM_IMPACT_KEYWORDS = [
+  'Jobless Claims', 'Retail Sales', 'PCE', 'Core PCE', 
+  'Consumer Confidence', 'Crude Oil Inventories', 'JOLTs', 
+  'Housing Starts', 'Building Permits', 'Existing Home Sales', 
+  'New Home Sales', 'PMI', 'ADP Employment', 'ECB', 'Bank of England'
+];
+
+// Total noise for a day trader - completely filter these out
 const IGNORED_KEYWORDS = [
-  'Bill Auction', 'Note Auction', 'Bond Auction', 'Tips Auction',
-  'Mortgage Market', 'MBA', 'Redbook', 'API Weekly', 'Rig Count',
-  'Gasoline', 'Heating Oil', 'Cushing', 'Distillate', '3-Month', '6-Month',
-  '4-Week', '8-Week', '52-Week', 'Wasde', 'Natural Gas Storage',
-  'Challenger Job Cuts', 'Chain Store', 'Baskin', 'Money Supply',
-  'Settlement Price', 'HICP', 'Labor Costs', 'Production Price Index',
-  'HCOB', 'Buba', 'Foreign Exchange', 'Reserves'
+  'Auction', 'Speaks', 'Speech', 'Redbook', 'Mortgage', 'MBA', 'API Weekly',
+  'Wasde', 'Challenger', 'Baskin', 'HICP', 'Labor Costs', 'Reserves',
+  'Current Account', 'Trade Balance', 'Export', 'Import', 'Capital Flow',
+  'Foreign Investment', 'Money Supply', 'Bank Lending', 'Business Confidence',
+  'Economic Sentiment', 'Machine Orders', 'Capacity Utilization', 'Baker Hughes',
+  'EIA Natural Gas', 'Consumer Credit', 'Wholesale Inventories', 'Factory Orders'
 ];
 
 const COUNTRY_CODES: Record<string, string> = {
@@ -50,7 +57,8 @@ function cleanText(text: string): string {
 function calculateImpact(title: string): 'High' | 'Medium' | 'Low' {
   const t = title.toLowerCase();
   if (HIGH_IMPACT_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return 'High';
-  return 'Medium';
+  if (MEDIUM_IMPACT_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return 'Medium';
+  return 'Low';
 }
 
 function shouldKeepEvent(title: string, countryCode: string): boolean {
@@ -82,7 +90,6 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
   await Promise.all(datesToFetch.map(async (requestedDate) => {
     try {
       // Shift the requested date right by 1 day for the API query
-      // This counters the API's behavior of returning events shifted by 1 day, effectively shifting them left in the UI.
       const d = new Date(requestedDate);
       d.setUTCDate(d.getUTCDate() + 1);
       const queryDate = d.toISOString().split('T')[0];
@@ -108,7 +115,7 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
 
           return {
             id: `${requestedDate}-${i}`,
-            date: requestedDate, // Bind to the requested date so it renders in the correct column
+            date: requestedDate, 
             time: row.gmt || '00:00',
             country: countryCode,
             currency: CURRENCY_MAP[row.country] || 'USD',
@@ -154,7 +161,6 @@ export async function fetchEconomicCalendar(): Promise<CalendarEvent[]> {
   for (let i = 0; i < 7; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
-    // Use local date string formatting to avoid UTC midnight rollovers
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
