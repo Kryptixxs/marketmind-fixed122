@@ -9,29 +9,49 @@ export async function fetchSingleCompanyEarnings(symbol: string): Promise<Earnin
     const quote = await yahooFinance.quote(symbol);
     if (!quote) return null;
 
-    const ts = quote.earningsTimestamp || quote.earningsTimestampStart;
     let dateStr = 'TBD';
-    
-    if (ts) {
-      // Yahoo sometimes returns ms or seconds. Construct Date safely.
-      const d = new Date(ts);
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      dateStr = `${year}-${month}-${day}`;
-    } else {
-      // AI Fallback: If future date is unknown, find the PREVIOUS earnings date
-      const prompt = `The upcoming earnings date for ticker ${symbol} is not yet announced. 
-      Find the exact date of their MOST RECENT (previous) quarterly earnings report.
-      Return ONLY a JSON object with a single key "date" in "YYYY-MM-DD" format.`;
+
+    // 1. Try quote summary calendar events first (Most reliable method)
+    try {
+      const summary = await yahooFinance.quoteSummary(symbol, { modules: ['calendarEvents'] });
+      const earningsDates = summary?.calendarEvents?.earnings?.earningsDate;
+      if (earningsDates && earningsDates.length > 0 && earningsDates[0]) {
+        const d = new Date(earningsDates[0]);
+        if (!isNaN(d.getTime())) {
+          dateStr = d.toISOString().split('T')[0];
+        }
+      }
+    } catch (err) {
+      console.warn('[SingleEarnings] Calendar events module missing, falling back to quote timestamps.');
+    }
+
+    // 2. Try quote timestamp properties if summary failed (Fixing the Seconds vs Milliseconds bug)
+    if (dateStr === 'TBD') {
+      const ts = quote.earningsTimestamp || quote.earningsTimestampStart || quote.earningsTimestampEnd;
+      if (ts) {
+        // Yahoo returns seconds, JavaScript needs milliseconds. 
+        // If it's less than 100,000,000,000 it's definitely in seconds.
+        const ms = ts < 100000000000 ? ts * 1000 : ts;
+        const d = new Date(ms);
+        if (!isNaN(d.getTime())) {
+          dateStr = d.toISOString().split('T')[0];
+        }
+      }
+    }
+
+    // 3. AI Fallback for unannounced dates (Busted cache key to v4 to clear old failures)
+    if (dateStr === 'TBD') {
+      const prompt = `You are a financial data extractor. Use Google Search to find the EXACT date of the most recent past earnings report, or the next upcoming earnings report for ticker symbol ${symbol}.
+      Return ONLY a raw JSON object with a single key "date" in "YYYY-MM-DD" format. Do not use markdown blocks. Example: {"date": "2024-05-02"}`;
       
-      const fallbackRes = await generateAIJSON(prompt, { date: 'TBD' }, `prev-earnings-${symbol}`, 86400);
+      const fallbackRes = await generateAIJSON(prompt, { date: 'TBD' }, `earnings-date-v4-${symbol}`, 86400);
       
       if (fallbackRes && fallbackRes.date && fallbackRes.date.match(/^\d{4}-\d{2}-\d{2}$/)) {
         dateStr = fallbackRes.date;
       }
     }
 
+    // Format the market cap nicely for the UI card
     let mcap = '-';
     if (quote.marketCap) {
       if (quote.marketCap >= 1e12) mcap = (quote.marketCap / 1e12).toFixed(2) + 'T';
@@ -43,8 +63,9 @@ export async function fetchSingleCompanyEarnings(symbol: string): Promise<Earnin
       id: `single-yf-${symbol}-${dateStr}`,
       ticker: symbol.toUpperCase(),
       name: quote.shortName || quote.longName || symbol,
-      date: dateStr,
-      time: 'tbd', // We don't get exact time from Yahoo's base quote
+      // ULTIMATE FALLBACK: If everything fails, put it on today so the user can still click it to read the AI report!
+      date: dateStr !== 'TBD' ? dateStr : new Date().toISOString().split('T')[0],
+      time: 'tbd',
       epsEst: quote.epsForward || quote.epsCurrentYear || null,
       epsAct: null,
       revEst: null,

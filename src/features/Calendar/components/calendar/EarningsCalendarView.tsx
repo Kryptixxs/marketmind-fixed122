@@ -55,7 +55,7 @@ export function EarningsCalendarView() {
     try {
       const singleEvent = await fetchSingleCompanyEarnings(symbol);
       
-      if (singleEvent && singleEvent.date !== 'TBD') {
+      if (singleEvent) {
         // Calculate how many weeks away this date is (can be negative for past events)
         const today = new Date();
         const todayMonday = getMonday(today);
@@ -83,7 +83,7 @@ export function EarningsCalendarView() {
         // Trigger the highlight animation
         setTargetEventId(`event-${singleEvent.id}`);
       } else {
-        alert(`Could not locate upcoming or historical earnings data for ${symbol}.`);
+        alert(`Could not locate financial data for ${symbol}.`);
       }
     } finally {
       setIsGlobalSearching(false);
