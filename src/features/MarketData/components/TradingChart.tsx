@@ -2,7 +2,16 @@
 
 import { useEffect, useRef } from 'react';
 import * as LightweightCharts from 'lightweight-charts';
-import { ColorType, CrosshairMode, IChartApi } from 'lightweight-charts';
+import { ColorType, CrosshairMode, IChartApi, ISeriesApi } from 'lightweight-charts';
+
+export interface ChartOverlay {
+  type: 'level' | 'box' | 'marker';
+  price: number;
+  price2?: number; // For boxes
+  color: string;
+  label: string;
+  style?: number; // 0: Solid, 1: Dotted, 2: Dashed
+}
 
 export interface ChartData {
   time: number;
@@ -15,14 +24,16 @@ export interface ChartData {
 export function TradingChart({ 
   data, 
   symbol = '',
+  overlays = []
 }: { 
   data: ChartData[]; 
   symbol?: string;
+  overlays?: ChartOverlay[];
 }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  // Use any to avoid type conflicts between v4 and v5 ISeriesApi definitions
-  const seriesRef = useRef<any>(null);
+  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const priceLinesRef = useRef<any[]>([]);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -34,8 +45,8 @@ export function TradingChart({
         textColor: '#a1a1aa',
       },
       grid: {
-        vertLines: { color: 'rgba(39, 39, 42, 0.4)' },
-        horzLines: { color: 'rgba(39, 39, 42, 0.4)' },
+        vertLines: { color: 'rgba(39, 39, 42, 0.2)' },
+        horzLines: { color: 'rgba(39, 39, 42, 0.2)' },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
@@ -50,25 +61,15 @@ export function TradingChart({
         timeVisible: true, 
         secondsVisible: false 
       },
-      watermark: {
-        visible: !!symbol,
-        fontSize: 48,
-        horzAlign: 'center',
-        vertAlign: 'center',
-        color: 'rgba(255, 255, 255, 0.04)',
-        text: symbol,
-      }
     });
 
-    const seriesOptions = {
+    const candlestickSeries = chart.addCandlestickSeries({
       upColor: '#00ff9d',
       downColor: '#ff3333',
       borderVisible: false,
       wickUpColor: '#00ff9d',
       wickDownColor: '#ff3333',
-    };
-
-    const candlestickSeries = chart.addCandlestickSeries(seriesOptions);
+    });
 
     chartRef.current = chart;
     seriesRef.current = candlestickSeries;
@@ -76,28 +77,44 @@ export function TradingChart({
     return () => {
       chart.remove();
     };
-  }, [symbol]);
+  }, []);
 
+  // Update Data
   useEffect(() => {
     if (seriesRef.current && data && data.length > 0) {
-      // Clean, sort, and deduplicate timestamps (canvas engine requires strictly ascending time)
       const sorted = [...data].sort((a, b) => a.time - b.time);
       const unique = [];
       for (const d of sorted) {
         if (unique.length === 0 || d.time > unique[unique.length - 1].time) {
           unique.push(d);
-        } else if (d.time === unique[unique.length - 1].time) {
-          unique[unique.length - 1] = d;
         }
       }
-      
-      try {
-        seriesRef.current.setData(unique);
-      } catch(e) {
-        console.error("Chart rendering error", e);
-      }
+      seriesRef.current.setData(unique);
     }
-  }, [data, symbol]);
+  }, [data]);
+
+  // Update Overlays (Institutional Levels)
+  useEffect(() => {
+    if (!seriesRef.current) return;
+
+    // Clear old lines
+    priceLinesRef.current.forEach(line => seriesRef.current?.removePriceLine(line));
+    priceLinesRef.current = [];
+
+    overlays.forEach(ov => {
+      if (ov.type === 'level') {
+        const line = seriesRef.current!.createPriceLine({
+          price: ov.price,
+          color: ov.color,
+          lineWidth: 1,
+          lineStyle: ov.style || 0,
+          axisLabelVisible: true,
+          title: ov.label,
+        });
+        priceLinesRef.current.push(line);
+      }
+    });
+  }, [overlays]);
 
   return <div ref={chartContainerRef} className="w-full h-full" />;
 }
