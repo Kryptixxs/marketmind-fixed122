@@ -3,6 +3,7 @@ import "./globals.css";
 import { SettingsProvider } from '@/services/context/SettingsContext';
 import { LayoutWrapper } from '@/features/Terminal/components/LayoutWrapper';
 import { AuthProvider } from '@/services/context/AuthContext';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: "VANTAGE TERMINAL // v4.0",
@@ -32,6 +33,7 @@ export default function RootLayout({
             </LayoutWrapper>
           </SettingsProvider>
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
