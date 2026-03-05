@@ -23,12 +23,12 @@
 }
 
 :root {
-  /* Default Dark */
+  /* Default Dark - Darkened borders for institutional feel */
   --bg-main: #050505;
   --bg-surface: #0d0d0f;
   --bg-surface-hi: #161618;
-  --border-main: #1f1f22;
-  --border-hi: #2d2d30;
+  --border-main: #161618; /* Darkened from #1f1f22 */
+  --border-hi: #242427;   /* Darkened from #2d2d30 */
   --text-main: #e4e4e7;
   --text-dim: #a1a1aa;
   --text-muted: #52525b;
@@ -40,7 +40,7 @@
   --base-font-size: 12px;
   --panel-padding: 10px;
   --panel-header-h: 32px;
-  --grid-gap: 2px;
+  --grid-gap: 1px; /* Tighter grid */
   --grid-line-opacity: 1;
 }
 
@@ -49,16 +49,16 @@
   --bg-main: #000000;
   --bg-surface: #000000;
   --bg-surface-hi: #0a0a0a;
-  --border-main: #111111;
-  --border-hi: #1a1a1a;
+  --border-main: #0a0a0a;
+  --border-hi: #141414;
 }
 
 [data-theme='bloomberg'] {
   --bg-main: #000033;
   --bg-surface: #000044;
   --bg-surface-hi: #000066;
-  --border-main: #000088;
-  --border-hi: #0000aa;
+  --border-main: #000055;
+  --border-hi: #000077;
   --text-main: #ffffff;
   --text-dim: #cccccc;
   --text-muted: #999999;
@@ -69,8 +69,8 @@
   --bg-main: #0a0a0a;
   --bg-surface: #0f0f0f;
   --bg-surface-hi: #1a1a1a;
-  --border-main: #003300;
-  --border-hi: #004400;
+  --border-main: #002200;
+  --border-hi: #003300;
   --text-main: #00ff00;
   --text-dim: #00cc00;
   --text-muted: #006600;
@@ -81,8 +81,8 @@
   --bg-main: #001f3f;
   --bg-surface: #003366;
   --bg-surface-hi: #004080;
-  --border-main: #0059b3;
-  --border-hi: #0073e6;
+  --border-main: #004d99;
+  --border-hi: #0066cc;
   --text-main: #ffffff;
   --text-dim: #b3d9ff;
   --text-muted: #66b3ff;
@@ -93,8 +93,8 @@
   --bg-main: #ffffff;
   --bg-surface: #f4f4f5;
   --bg-surface-hi: #e4e4e7;
-  --border-main: #d4d4d8;
-  --border-hi: #a1a1aa;
+  --border-main: #e4e4e7;
+  --border-hi: #d4d4d8;
   --text-main: #09090b;
   --text-dim: #3f3f46;
   --text-muted: #71717a;
@@ -106,14 +106,14 @@
   --base-font-size: 14px;
   --panel-padding: 14px;
   --panel-header-h: 40px;
-  --grid-gap: 4px;
+  --grid-gap: 2px;
 }
 
 [data-density='spacious'] {
   --base-font-size: 16px;
   --panel-padding: 20px;
   --panel-header-h: 48px;
-  --grid-gap: 6px;
+  --grid-gap: 4px;
 }
 
 /* Font Family Overrides */
@@ -153,9 +153,9 @@ html, body {
   padding: var(--panel-padding);
 }
 
-/* Grid line visibility control */
+/* Fixed border color logic - removed invalid rgba wrapper */
 .border, .border-b, .border-r, .border-t, .border-l {
-  border-color: rgba(var(--color-border), var(--grid-line-opacity));
+  border-color: var(--color-border);
 }
 
 @keyframes ticker {
