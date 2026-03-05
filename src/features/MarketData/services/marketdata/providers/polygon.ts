@@ -4,13 +4,9 @@ import { fetchMarketDataBatch } from '@/app/actions/fetchMarketData';
 
 const API_KEY = 'Educ3tK6ue_eC33G_3ERTMb0qc7wd3K6';
 
-// Mapping internal symbols to Polygon WebSocket Subscription Channels
+// ONLY map assets that Polygon supports well on WebSockets. 
+// Unmapped assets (like NAS100, CRUDE) will safely fall back to the 10s polling loop!
 const POLY_MAP: Record<string, { endpoint: string, sub: string, match: string }> = {
-  'NAS100': { endpoint: 'stocks', sub: 'A.QQQ', match: 'QQQ' },
-  'SPX500': { endpoint: 'stocks', sub: 'A.SPY', match: 'SPY' },
-  'US30': { endpoint: 'stocks', sub: 'A.DIA', match: 'DIA' },
-  'CRUDE': { endpoint: 'stocks', sub: 'A.USO', match: 'USO' },
-  'GOLD': { endpoint: 'stocks', sub: 'A.GLD', match: 'GLD' },
   'AAPL': { endpoint: 'stocks', sub: 'A.AAPL', match: 'AAPL' },
   'TSLA': { endpoint: 'stocks', sub: 'A.TSLA', match: 'TSLA' },
   'NVDA': { endpoint: 'stocks', sub: 'A.NVDA', match: 'NVDA' },
@@ -24,22 +20,27 @@ export class PolygonProvider extends BaseProvider {
   private sockets: Record<string, WebSocket> = {};
   private state: Record<string, Tick> = {};
   private isConnected = false;
+  private syncInterval: NodeJS.Timeout | null = null;
 
   protected onConnect() {
     this.isConnected = true;
     this.initSockets();
+    
+    // HYBRID ENGINE: Poll Yahoo every 10 seconds for assets not supported by Polygon WS
+    this.syncInterval = setInterval(() => {
+      this.loadHistory(Array.from(this.symbols));
+    }, 10000);
   }
 
   protected onDisconnect() {
     this.isConnected = false;
+    if (this.syncInterval) clearInterval(this.syncInterval);
     Object.values(this.sockets).forEach(ws => ws.close());
     this.sockets = {};
   }
 
   protected onSubscribe(symbols: string[]) {
-    // 1. Fetch history payload
     this.loadHistory(symbols);
-    // 2. Subscribe to live WS stream
     this.subscribeToSockets(symbols);
   }
 
@@ -54,7 +55,7 @@ export class PolygonProvider extends BaseProvider {
       results.forEach(res => {
         if (res) {
           this.state[res.symbol] = res;
-          this.emitTick(res);
+          this.emitTick(res); // Emit tick to update UI with latest exact index prices
         }
       });
     } catch (e) {
@@ -78,7 +79,6 @@ export class PolygonProvider extends BaseProvider {
           if (msg.ev === 'status' && msg.status === 'auth_success') {
             this.subscribeToSockets(Array.from(this.symbols), [ep]);
           }
-          // A = Stocks second agg, XA = Crypto second agg, CA = Forex second agg
           if (msg.ev === 'A' || msg.ev === 'XA' || msg.ev === 'CA') {
             this.handleTick(msg);
           }
@@ -113,7 +113,7 @@ export class PolygonProvider extends BaseProvider {
     if (!mapEntry) return;
     const internalSym = mapEntry[0];
 
-    const price = msg.c; // Close price of the aggregated second
+    const price = msg.c; 
     const prevTick = this.state[internalSym];
     if (!prevTick) return;
 
@@ -121,12 +121,10 @@ export class PolygonProvider extends BaseProvider {
     let changePercent = prevTick.changePercent;
     
     if (prevTick.history && prevTick.history.length > 0) {
-      // Calculate dynamic change from the daily open to stay accurate
       const openPrice = prevTick.history[0].open; 
       change = price - openPrice;
       changePercent = (change / openPrice) * 100;
       
-      // Update the live chart candle
       const lastCandle = prevTick.history[prevTick.history.length - 1];
       lastCandle.close = price;
       lastCandle.high = Math.max(lastCandle.high, price);

@@ -13,11 +13,22 @@ export interface MarketData {
   name?: string;
 }
 
-// Internal app symbols mapped to Yahoo ETF proxies to match Polygon's real-time feeds
+// Map internal symbols to their exact Yahoo Finance Index/Futures equivalents
 const YF_MAP: Record<string, string> = {
-  'NAS100': 'QQQ', 'SPX500': 'SPY', 'US30': 'DIA', 'CRUDE': 'USO', 'GOLD': 'GLD',
-  'EURUSD': 'EURUSD=X', 'BTCUSD': 'BTC-USD', 'ETHUSD': 'ETH-USD', 'VIX': '^VIX', 'DXY': 'UUP',
-  'AAPL': 'AAPL', 'TSLA': 'TSLA', 'NVDA': 'NVDA', 'MSFT': 'MSFT'
+  'NAS100': '^NDX', 
+  'SPX500': '^GSPC', 
+  'US30': '^DJI', 
+  'CRUDE': 'CL=F', 
+  'GOLD': 'GC=F',
+  'EURUSD': 'EURUSD=X', 
+  'BTCUSD': 'BTC-USD', 
+  'ETHUSD': 'ETH-USD', 
+  'VIX': '^VIX', 
+  'DXY': 'DX-Y.NYB',
+  'AAPL': 'AAPL', 
+  'TSLA': 'TSLA', 
+  'NVDA': 'NVDA', 
+  'MSFT': 'MSFT'
 };
 
 function getRangeForInterval(interval: string) {
@@ -47,7 +58,7 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
           'User-Agent': 'Mozilla/5.0',
           'Accept': 'application/json'
         },
-        next: { revalidate: 15 }
+        next: { revalidate: 10 } // Reduced cache time for faster polling
       });
       
       if (yfRes.ok) {
