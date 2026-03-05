@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  ChevronLeft, ChevronRight, Search
+  ChevronLeft, ChevronRight, Search, Loader2
 } from 'lucide-react';
 import { fetchEarningsBatch } from '@/app/actions/fetchEarningsBatch';
 import { EarningsEvent } from '@/lib/types';
-import { getBusinessWeek, toISODateString } from '@/lib/date-utils';
+import { getBusinessWeek, toISODateString, getMonday } from '@/lib/date-utils';
 import { EarningsDetailModal } from './EarningsDetailModal';
 
 export function EarningsCalendarView() {
@@ -15,6 +15,89 @@ export function EarningsCalendarView() {
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<EarningsEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isGlobalSearching, setIsGlobalSearching] = useState(false);
+  const [targetEventId, setTargetEventId] = useState<string | null>(null);
+
+  const weekDatesRef = useRef(weekDates);
+  const eventsDataRef = useRef(events);
+  
+  useEffect(() => { weekDatesRef.current = weekDates; }, [weekDates]);
+  useEffect(() => { eventsDataRef.current = events; }, [events]);
+
+  useEffect(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (query.length < 2) return; // 2 chars minimum for tickers
+
+    const timer = setTimeout(async () => {
+      const currentEventsData = eventsDataRef.current;
+      const currentWeekDates = weekDatesRef.current;
+
+      const currentWeekEvents = currentWeekDates.flatMap(d => currentEventsData[d.dateStr] || []);
+      let match = currentWeekEvents.find(e => e.ticker.toLowerCase().includes(query) || e.name.toLowerCase().includes(query));
+      
+      if (match) {
+        setTargetEventId(`event-${match.id}`);
+        return;
+      }
+
+      setIsGlobalSearching(true);
+      const dates = [];
+      const now = new Date();
+      for (let i = -7; i < 28; i++) {
+         const d = new Date();
+         d.setDate(now.getDate() + i);
+         dates.push(toISODateString(d));
+      }
+      
+      try {
+        const futureData = await fetchEarningsBatch(dates);
+        setEvents(prev => ({...prev, ...futureData}));
+        
+        const allFuture = Object.values(futureData).flat();
+        match = allFuture.find(e => e.ticker.toLowerCase().includes(query) || e.name.toLowerCase().includes(query));
+        
+        if (match) {
+          const today = new Date();
+          const todayMonday = getMonday(today);
+          todayMonday.setHours(0,0,0,0);
+          
+          const matchDate = new Date(match.date + 'T12:00:00');
+          const matchMonday = getMonday(matchDate);
+          matchMonday.setHours(0,0,0,0);
+          
+          const diffTime = matchMonday.getTime() - todayMonday.getTime();
+          const diffWeeks = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7));
+          
+          setWeekOffset(diffWeeks);
+          setTargetEventId(`event-${match.id}`);
+        }
+      } finally {
+        setIsGlobalSearching(false);
+      }
+    }, 800);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (targetEventId && !loading) {
+      const t = setTimeout(() => {
+        const el = document.getElementById(targetEventId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.style.transition = 'all 0.5s';
+          el.style.backgroundColor = 'rgba(0, 255, 157, 0.2)';
+          el.style.borderColor = 'var(--color-accent)';
+          setTimeout(() => {
+            el.style.backgroundColor = '';
+            el.style.borderColor = '';
+          }, 2000);
+          setTargetEventId(null);
+        }
+      }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [targetEventId, loading, weekOffset]);
 
   const weekDates = useMemo(() => {
     const today = new Date();
@@ -46,7 +129,7 @@ export function EarningsCalendarView() {
           <div className="h-4 w-[1px] bg-border" />
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 bg-background border border-border px-2 py-1.5 rounded-md focus-within:border-accent/50 transition-colors">
-              <Search size={14} className="text-text-tertiary" />
+              {isGlobalSearching ? <Loader2 size={14} className="text-accent animate-spin" /> : <Search size={14} className="text-text-tertiary" />}
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -80,8 +163,9 @@ export function EarningsCalendarView() {
                  ) : dayEvents.length === 0 ? (
                     <div className="text-center text-[10px] text-text-tertiary mt-4">No Earnings</div>
                  ) : dayEvents.map(e => (
-                   <div 
-                     key={e.id} 
+                   <div
+                     id={`event-${e.id}`}
+                     key={e.id}
                      onClick={() => setSelectedEvent(e)}
                      className="p-2 bg-background border border-border rounded hover:border-accent/40 hover:bg-surface-highlight transition-all cursor-pointer group"
                    >

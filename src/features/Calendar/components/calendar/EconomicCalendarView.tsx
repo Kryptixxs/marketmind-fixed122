@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { 
-  ChevronLeft, ChevronRight, Download, Filter
+import {
+  ChevronLeft, ChevronRight, Download, Filter, Loader2, Search
 } from 'lucide-react';
 import { fetchEconomicCalendarBatch } from '@/app/actions/fetchEconomicCalendar';
 import { EconomicEvent } from '@/lib/types';
-import { getFullWeek, toISODateString } from '@/lib/date-utils';
+import { getFullWeek, toISODateString, getMonday } from '@/lib/date-utils';
 import { EventDetailModal } from './EventDetailModal';
 import { computeSurprise, getEventIntel } from '@/lib/event-intelligence';
 import { makeEconomicEventId } from '@/lib/event-id';
@@ -42,8 +42,96 @@ export function EconomicCalendarView() {
   const [loading, setLoading] = useState(true);
   const [selectedEvent, setSelectedEvent] = useState<EconomicEvent | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isGlobalSearching, setIsGlobalSearching] = useState(false);
+  const [targetEventId, setTargetEventId] = useState<string | null>(null);
   
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
+
+  const weekDatesRef = useRef(weekDates);
+  const eventsDataRef = useRef(eventsData);
+  
+  useEffect(() => { weekDatesRef.current = weekDates; }, [weekDates]);
+  useEffect(() => { eventsDataRef.current = eventsData; }, [eventsData]);
+
+  // Intelligent Global Search & Auto-Jump
+  useEffect(() => {
+    const query = searchQuery.trim().toLowerCase();
+    if (query.length < 3) return;
+
+    const timer = setTimeout(async () => {
+      const currentEventsData = eventsDataRef.current;
+      const currentWeekDates = weekDatesRef.current;
+
+      // 1. Check if the event is already visible in the current week
+      const currentWeekEvents = currentWeekDates.flatMap(d => currentEventsData[d.dateStr] || []);
+      let match = currentWeekEvents.find(e => e.title.toLowerCase().includes(query));
+      
+      if (match) {
+        setTargetEventId(`event-${match.id}`);
+        return;
+      }
+
+      // 2. If not found locally, trigger a global background fetch (Lookback 1 week, forward 4 weeks)
+      setIsGlobalSearching(true);
+      const dates = [];
+      const now = new Date();
+      for (let i = -7; i < 28; i++) {
+         const d = new Date();
+         d.setDate(now.getDate() + i);
+         dates.push(toISODateString(d));
+      }
+      
+      try {
+        const futureData = await fetchEconomicCalendarBatch(dates);
+        setEventsData(prev => ({...prev, ...futureData}));
+        
+        const allFuture = Object.values(futureData).flat();
+        match = allFuture.find(e => e.title.toLowerCase().includes(query));
+        
+        if (match) {
+          // Calculate the exact week offset to jump to
+          const today = new Date();
+          const todayMonday = getMonday(today);
+          todayMonday.setHours(0,0,0,0);
+          
+          const matchDate = new Date(match.date + 'T12:00:00'); // Midday to prevent timezone drift
+          const matchMonday = getMonday(matchDate);
+          matchMonday.setHours(0,0,0,0);
+          
+          const diffTime = matchMonday.getTime() - todayMonday.getTime();
+          const diffWeeks = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7));
+          
+          setWeekOffset(diffWeeks);
+          setTargetEventId(`event-${match.id}`);
+        }
+      } finally {
+        setIsGlobalSearching(false);
+      }
+    }, 800); // Debounce to prevent spamming while typing
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Smooth scroll and highlight effect when an event is targeted
+  useEffect(() => {
+    if (targetEventId && !loading) {
+      const t = setTimeout(() => {
+        const el = document.getElementById(targetEventId);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          el.style.transition = 'all 0.5s';
+          el.style.backgroundColor = 'rgba(0, 255, 157, 0.2)'; // Highlight in accent color
+          el.style.borderColor = 'var(--color-accent)';
+          setTimeout(() => {
+            el.style.backgroundColor = '';
+            el.style.borderColor = '';
+          }, 2000);
+          setTargetEventId(null);
+        }
+      }, 300); // Give DOM time to render if we just changed weeks
+      return () => clearTimeout(t);
+    }
+  }, [targetEventId, loading, weekOffset]);
 
   const weekDates = useMemo(() => {
     const today = new Date();
@@ -152,7 +240,7 @@ export function EconomicCalendarView() {
           
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 bg-background border border-border px-2 py-1.5 rounded-md focus-within:border-accent/50 transition-colors">
-              <Search size={14} className="text-text-tertiary" />
+              {isGlobalSearching ? <Loader2 size={14} className="text-accent animate-spin" /> : <Search size={14} className="text-text-tertiary" />}
               <input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -231,7 +319,8 @@ export function EconomicCalendarView() {
                           const isMajorSurprise = surprise.surprisePct && Math.abs(surprise.surprisePct) >= (intel.surpriseThresholdPct * thresholdMultiplier);
 
                           return (
-                            <div 
+                            <div
+                              id={`event-${event.id}`}
                               key={event.id}
                               onClick={() => handleEventClick(event)}
                               className={`
