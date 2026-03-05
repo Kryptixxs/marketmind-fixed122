@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import TradingViewChart from '@/features/MarketData/components/TradingViewChart';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { TradingChart } from '@/features/MarketData/components/TradingChart';
 import { TradeSetupPanel } from '@/features/Terminal/components/widgets/TradeSetupPanel';
 import {
   Plus,
@@ -9,7 +9,6 @@ import {
   Settings,
   Maximize2,
   ChevronDown,
-  Clock,
   X,
   Search,
   Loader2,
@@ -20,25 +19,25 @@ import { useMarketData } from '@/features/MarketData/services/marketdata/useMark
 const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'AAPL', 'NVDA', 'BTCUSD'];
 
 const TIMEFRAMES = [
-  { label: '1M', yf: '1m', tv: '1' },
-  { label: '5M', yf: '5m', tv: '5' },
-  { label: '15M', yf: '15m', tv: '15' },
-  { label: '1H', yf: '60m', tv: '60' },
-  { label: '4H', yf: '60m', tv: '240' },
-  { label: '1D', yf: '1d', tv: 'D' },
+  { label: '1M', yf: '1m' },
+  { label: '5M', yf: '5m' },
+  { label: '15M', yf: '15m' },
+  { label: '1H', yf: '60m' },
+  { label: '4H', yf: '60m' },
+  { label: '1D', yf: '1d' },
 ];
 
-const TV_WIDGET_MAP: Record<string, { tv: string, label: string }> = {
-  'NAS100': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
-  'SPX500': { tv: 'PEPPERSTONE:US500', label: 'S&P 500' },
-  'US30': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones' },
-  'CRUDE': { tv: 'TVC:USOIL', label: 'Crude Oil' },
-  'GOLD': { tv: 'TVC:GOLD', label: 'Gold' },
-  'EURUSD': { tv: 'FX:EURUSD', label: 'EUR/USD' },
-  'BTCUSD': { tv: 'BINANCE:BTCUSDT', label: 'Bitcoin' },
-  'AAPL': { tv: 'NASDAQ:AAPL', label: 'Apple Inc.' },
-  'TSLA': { tv: 'NASDAQ:TSLA', label: 'Tesla Inc.' },
-  'NVDA': { tv: 'NASDAQ:NVDA', label: 'Nvidia Corp.' },
+const LABEL_MAP: Record<string, string> = {
+  'NAS100': 'Nasdaq 100',
+  'SPX500': 'S&P 500',
+  'US30': 'Dow Jones',
+  'CRUDE': 'Crude Oil',
+  'GOLD': 'Gold',
+  'EURUSD': 'EUR/USD',
+  'BTCUSD': 'Bitcoin',
+  'AAPL': 'Apple Inc.',
+  'TSLA': 'Tesla Inc.',
+  'NVDA': 'Nvidia Corp.',
 };
 
 export default function ChartsPage() {
@@ -102,8 +101,18 @@ export default function ChartsPage() {
     if (activeSymbol === sym && newList.length > 0) setActiveSymbol(newList[0]);
   };
 
-  const getTVSymbol = (sym: string) => TV_WIDGET_MAP[sym]?.tv || sym;
-  const getLabel = (sym: string) => TV_WIDGET_MAP[sym]?.label || 'Equities/Crypto';
+  const getLabel = (sym: string) => LABEL_MAP[sym] || 'Equities/Crypto';
+
+  const chartData = useMemo(() => {
+    if (!activeQuote || !activeQuote.history) return [];
+    return activeQuote.history.map(h => ({
+      time: Math.floor(h.timestamp / 1000),
+      open: h.open,
+      high: h.high,
+      low: h.low,
+      close: h.close
+    }));
+  }, [activeQuote?.history]);
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden min-h-0">
@@ -211,7 +220,11 @@ export default function ChartsPage() {
         </div>
 
         <div className="flex-1 bg-black relative min-h-[400px] md:min-h-0 flex flex-col border-b md:border-b-0 md:border-r border-border">
-          <TradingViewChart symbol={getTVSymbol(activeSymbol)} interval={timeframe.tv} />
+          {chartData.length > 0 ? (
+             <TradingChart data={chartData} symbol={activeSymbol} />
+          ) : (
+             <div className="flex items-center justify-center h-full text-[10px] uppercase font-bold tracking-widest text-text-tertiary">Rendering Engine...</div>
+          )}
         </div>
 
         <div className="w-full md:w-80 bg-surface flex flex-col shrink-0 h-auto min-h-[400px] md:h-full">

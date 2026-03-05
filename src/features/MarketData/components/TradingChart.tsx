@@ -1,88 +1,99 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { createChart, ColorType, IChartApi, CandlestickSeries } from 'lightweight-charts';
+import { createChart, ColorType, CrosshairMode, IChartApi, ISeriesApi } from 'lightweight-charts';
+
+export interface ChartData {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
 
 export function TradingChart({ 
   data, 
-  scrollToTime
+  symbol = '',
 }: { 
-  data: any[]; 
-  scrollToTime?: number;
+  data: ChartData[]; 
+  symbol?: string;
 }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<any>(null);
+  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
     const chart = createChart(chartContainerRef.current, {
+      autoSize: true,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
-        textColor: '#a0a0a0',
+        textColor: '#a1a1aa',
       },
       grid: {
-        vertLines: { color: '#2e2e2e' },
-        horzLines: { color: '#2e2e2e' },
+        vertLines: { color: 'rgba(39, 39, 42, 0.4)' },
+        horzLines: { color: 'rgba(39, 39, 42, 0.4)' },
       },
-      width: chartContainerRef.current.clientWidth,
-      height: chartContainerRef.current.clientHeight,
-      timeScale: {
-        timeVisible: true,
-        secondsVisible: false,
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: { width: 1, color: '#52525b', style: 3, labelBackgroundColor: '#18181b' },
+        horzLine: { width: 1, color: '#52525b', style: 3, labelBackgroundColor: '#18181b' },
       },
+      rightPriceScale: { 
+        borderColor: 'rgba(39, 39, 42, 0.8)',
+      },
+      timeScale: { 
+        borderColor: 'rgba(39, 39, 42, 0.8)', 
+        timeVisible: true, 
+        secondsVisible: false 
+      },
+      watermark: {
+        visible: !!symbol,
+        fontSize: 48,
+        horzAlign: 'center',
+        vertAlign: 'center',
+        color: 'rgba(255, 255, 255, 0.04)',
+        text: symbol,
+      }
     });
 
-    const candlestickSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#22c55e',
-      downColor: '#ef4444',
+    const candlestickSeries = chart.addCandlestickSeries({
+      upColor: '#00ff9d',
+      downColor: '#ff3333',
       borderVisible: false,
-      wickUpColor: '#22c55e',
-      wickDownColor: '#ef4444',
+      wickUpColor: '#00ff9d',
+      wickDownColor: '#ff3333',
     });
-
-    candlestickSeries.setData(data);
 
     chartRef.current = chart;
     seriesRef.current = candlestickSeries;
 
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({
-          width: chartContainerRef.current.clientWidth,
-          height: chartContainerRef.current.clientHeight,
-        });
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-
     return () => {
-      window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, []); // Only run once to initialize
+  }, [symbol]);
 
-  // Handle data updates
   useEffect(() => {
-    if (seriesRef.current && data.length > 0) {
-      seriesRef.current.setData(data);
-    }
-  }, [data]);
-
-  // Handle scroll to time (Historical Replay)
-  useEffect(() => {
-    if (chartRef.current && scrollToTime) {
-      const dataIndex = data.findIndex(d => d.time >= scrollToTime);
-      if (dataIndex !== -1) {
-        chartRef.current.timeScale().setVisibleLogicalRange({
-          from: Math.max(0, dataIndex - 30),
-          to: dataIndex + 30
-        });
+    if (seriesRef.current && data && data.length > 0) {
+      // Clean, sort, and deduplicate timestamps (canvas engine requires strictly ascending time)
+      const sorted = [...data].sort((a, b) => a.time - b.time);
+      const unique = [];
+      for (const d of sorted) {
+        if (unique.length === 0 || d.time > unique[unique.length - 1].time) {
+          unique.push(d);
+        } else if (d.time === unique[unique.length - 1].time) {
+          unique[unique.length - 1] = d;
+        }
+      }
+      
+      try {
+        seriesRef.current.setData(unique as any);
+      } catch(e) {
+        console.error("Chart rendering error", e);
       }
     }
-  }, [scrollToTime, data]);
+  }, [data, symbol]);
 
   return <div ref={chartContainerRef} className="w-full h-full" />;
 }

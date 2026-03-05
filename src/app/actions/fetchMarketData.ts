@@ -13,9 +13,6 @@ export interface MarketData {
   name?: string;
 }
 
-// The API key you provided
-const USER_API_KEY = 'PKVLZNTCJ643CG7JSGIXZQN2MC';
-
 // Internal app symbols to Yahoo chart symbols
 const YF_MAP: Record<string, string> = {
   'NAS100': 'NQ=F', 'SPX500': 'ES=F', 'US30': 'YM=F', 'CRUDE': 'CL=F', 'GOLD': 'GC=F',
@@ -23,80 +20,32 @@ const YF_MAP: Record<string, string> = {
   'AAPL': 'AAPL', 'TSLA': 'TSLA', 'NVDA': 'NVDA', 'MSFT': 'MSFT'
 };
 
+function getRangeForInterval(interval: string) {
+  switch (interval) {
+    case '1m': return '1d';
+    case '5m': return '5d';
+    case '15m': return '5d';
+    case '60m': return '1mo';
+    case '1d': return '6mo';
+    case '1wk': return '2y';
+    case '1mo': return '5y';
+    default: return '1mo';
+  }
+}
+
 export async function fetchMarketDataBatch(symbols: string[], interval: string = '15m'): Promise<(MarketData | null)[]> {
   if (!symbols || symbols.length === 0) return [];
   
   const results = await Promise.all(symbols.map(async (sym) => {
     try {
       // ---------------------------------------------------------
-      // LAYER 1: DEDICATED CRYPTO ENGINE (BINANCE API)
-      // 100% Uptime, real-time, immune to Vercel/Cloud blocks
-      // ---------------------------------------------------------
-      if (sym === 'BTCUSD' || sym === 'ETHUSD' || sym === 'BTC-USD' || sym === 'ETH-USD') {
-        const binanceSym = sym.replace('USD', 'USDT').replace('-', '');
-        const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${binanceSym}`, { next: { revalidate: 10 } });
-        if (res.ok) {
-          const data = await res.json();
-          const price = parseFloat(data.lastPrice);
-          return {
-            symbol: sym,
-            name: sym.includes('BTC') ? 'Bitcoin' : 'Ethereum',
-            price,
-            change: parseFloat(data.priceChange),
-            changePercent: parseFloat(data.priceChangePercent),
-            currency: 'USD',
-            marketState: '24/7',
-            history: [] // Sparkline history is intentionally skipped for speed here
-          };
-        }
-      }
-
-      // ---------------------------------------------------------
-      // LAYER 2: POLYGON.IO (Using your API Key)
-      // ---------------------------------------------------------
-      const polyMap: Record<string, { type: string, sym: string }> = {
-        'AAPL': { type: 'stocks', sym: 'AAPL' },
-        'TSLA': { type: 'stocks', sym: 'TSLA' },
-        'NVDA': { type: 'stocks', sym: 'NVDA' },
-        'MSFT': { type: 'stocks', sym: 'MSFT' },
-        'EURUSD': { type: 'forex', sym: 'C:EURUSD' }
-      };
-
-      if (polyMap[sym]) {
-        const { type, sym: pSym } = polyMap[sym];
-        const locale = type === 'stocks' ? 'us' : 'global';
-        const polyUrl = `https://api.polygon.io/v2/snapshot/locale/${locale}/markets/${type}/tickers/${pSym}?apiKey=${USER_API_KEY}`;
-        
-        const polyRes = await fetch(polyUrl, { next: { revalidate: 15 } });
-        if (polyRes.ok) {
-          const data = await polyRes.json();
-          if (data.ticker) {
-            const t = data.ticker;
-            // Get the most up-to-date real price
-            const price = t.min?.c || t.day?.c || t.prevDay?.c;
-            if (price) {
-              return {
-                symbol: sym,
-                name: sym,
-                price,
-                change: t.todaysChange || 0,
-                changePercent: t.todaysChangePerc || 0,
-                currency: 'USD',
-                marketState: 'REGULAR',
-                history: []
-              };
-            }
-          }
-        }
-      }
-
-      // ---------------------------------------------------------
-      // LAYER 3: YAHOO V8 CHART BYPASS
-      // Used for Indices/Futures (NAS100, VIX) not available on free tiers.
-      // Bypasses the blocked NPM package by calling the raw HTTP endpoint with masked headers.
+      // RAW OHLCV CHART INGESTION
+      // We bypass the npm package to pull raw json arrays directly 
+      // from the HTTP endpoint to feed our custom canvas charts.
       // ---------------------------------------------------------
       const yfSym = YF_MAP[sym] || sym;
-      const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yfSym}?interval=15m&range=1d`;
+      const range = getRangeForInterval(interval);
+      const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yfSym}?interval=${interval}&range=${range}`;
       
       const yfRes = await fetch(yfUrl, { 
         headers: { 
@@ -121,17 +70,17 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
             const q = result.indicators.quote[0];
             history = result.timestamp.map((t: number, idx: number) => ({
               timestamp: t * 1000,
-              open: q.open[idx] || price,
-              high: q.high[idx] || price,
-              low: q.low[idx] || price,
-              close: q.close[idx] || price,
+              open: q.open[idx] !== null ? q.open[idx] : price,
+              high: q.high[idx] !== null ? q.high[idx] : price,
+              low: q.low[idx] !== null ? q.low[idx] : price,
+              close: q.close[idx] !== null ? q.close[idx] : price,
               volume: q.volume?.[idx] || 0
             })).filter((h: OHLCV) => h.close !== null);
           }
 
           return {
             symbol: sym,
-            name: meta.shortName || meta.symbol,
+            name: meta.shortName || sym,
             price,
             change,
             changePercent,
@@ -142,7 +91,6 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
         }
       }
 
-      // NO SYNTHETIC DATA. If all real sources fail, return null to show '---'.
       return null;
 
     } catch (error) {

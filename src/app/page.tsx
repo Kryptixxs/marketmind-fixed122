@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Widget } from '@/components/ui/Widget';
-import TradingViewChart from '@/features/MarketData/components/TradingViewChart';
+import { TradingChart } from '@/features/MarketData/components/TradingChart';
 import { NewsFeed } from '@/features/News/components/NewsFeed';
 import { TerminalCommandBar } from '@/features/Terminal/components/TerminalCommandBar';
 import { ConfluenceScanner } from '@/features/Terminal/components/widgets/ConfluenceScanner';
@@ -16,21 +16,21 @@ import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'reac
 const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'EURUSD', 'BTCUSD'];
 const MACRO_SYMBOLS = ['VIX', 'DXY'];
 
-// Map the clean symbols to the preferred TradingView sources
-const TV_WIDGET_MAP: Record<string, { tv: string, label: string }> = {
-  'NAS100': { tv: 'PEPPERSTONE:NAS100', label: 'Nasdaq 100' },
-  'SPX500': { tv: 'PEPPERSTONE:US500', label: 'S&P 500' },
-  'US30': { tv: 'PEPPERSTONE:US30', label: 'Dow Jones' },
-  'CRUDE': { tv: 'TVC:USOIL', label: 'Crude Oil' },
-  'GOLD': { tv: 'TVC:GOLD', label: 'Gold' },
-  'EURUSD': { tv: 'FX:EURUSD', label: 'EUR/USD' },
-  'BTCUSD': { tv: 'BINANCE:BTCUSDT', label: 'Bitcoin' },
-  'ETHUSD': { tv: 'BINANCE:ETHUSDT', label: 'Ethereum' },
-  'VIX': { tv: 'CBOE:VIX', label: 'Volatility Index' },
-  'DXY': { tv: 'TVC:DXY', label: 'US Dollar Index' },
-  'AAPL': { tv: 'NASDAQ:AAPL', label: 'Apple Inc.' },
-  'TSLA': { tv: 'NASDAQ:TSLA', label: 'Tesla Inc.' },
-  'NVDA': { tv: 'NASDAQ:NVDA', label: 'Nvidia Corp.' },
+// Map the clean symbols to the preferred labels
+const LABEL_MAP: Record<string, string> = {
+  'NAS100': 'Nasdaq 100',
+  'SPX500': 'S&P 500',
+  'US30': 'Dow Jones',
+  'CRUDE': 'Crude Oil',
+  'GOLD': 'Gold',
+  'EURUSD': 'EUR/USD',
+  'BTCUSD': 'Bitcoin',
+  'ETHUSD': 'Ethereum',
+  'VIX': 'Volatility Index',
+  'DXY': 'US Dollar Index',
+  'AAPL': 'Apple Inc.',
+  'TSLA': 'Tesla Inc.',
+  'NVDA': 'Nvidia Corp.',
 };
 
 const TIMEFRAMES = [
@@ -102,9 +102,18 @@ export default function TerminalPage() {
   };
 
   const activeQuote = marketData[activeSymbol];
+  const getLabel = (sym: string) => LABEL_MAP[sym] || 'Equities/Crypto';
 
-  const getTVSymbol = (sym: string) => TV_WIDGET_MAP[sym]?.tv || sym;
-  const getLabel = (sym: string) => TV_WIDGET_MAP[sym]?.label || 'Equities/Crypto';
+  const chartData = useMemo(() => {
+    if (!activeQuote || !activeQuote.history) return [];
+    return activeQuote.history.map(h => ({
+      time: Math.floor(h.timestamp / 1000), // Convert ms to seconds for lightweight-charts
+      open: h.open,
+      high: h.high,
+      low: h.low,
+      close: h.close
+    }));
+  }, [activeQuote?.history]);
 
   return (
     <div className="h-full w-full bg-background flex flex-col overflow-hidden min-h-0">
@@ -200,12 +209,16 @@ export default function TerminalPage() {
                             </button>
                           ))}
                         </div>
-                        <span className="text-positive flex items-center gap-1 text-[8px] whitespace-nowrap"><Wifi size={8} /> Polygon Feed</span>
+                        <span className="text-positive flex items-center gap-1 text-[8px] whitespace-nowrap"><Wifi size={8} /> Live Feed</span>
                       </div>
                     }
                   >
-                    <div className="w-full h-full bg-black">
-                      <TradingViewChart symbol={getTVSymbol(activeSymbol)} interval={timeframe.tv} />
+                    <div className="w-full h-full bg-black relative">
+                      {chartData.length > 0 ? (
+                         <TradingChart data={chartData} symbol={activeSymbol} />
+                      ) : (
+                         <div className="flex items-center justify-center h-full text-[10px] uppercase font-bold tracking-widest text-text-tertiary">Rendering Engine...</div>
+                      )}
                     </div>
                   </Widget>
                 </div>
