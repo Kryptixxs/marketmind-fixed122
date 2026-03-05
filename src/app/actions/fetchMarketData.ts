@@ -31,15 +31,23 @@ const YF_MAP: Record<string, string> = {
   'MSFT': 'MSFT'
 };
 
+/**
+ * Returns the maximum valid range for a given interval to maximize candle count.
+ * Yahoo Finance Limits:
+ * - 1m: 7d max
+ * - 2m-90m: 60d max
+ * - 60m: 730d max
+ * - 1d+: max
+ */
 function getRangeForInterval(interval: string) {
   switch (interval) {
-    case '1m': return '1d';
-    case '5m': return '5d';
-    case '15m': return '5d';
-    case '60m': return '1mo';
-    case '1d': return '6mo';
-    case '1wk': return '2y';
-    case '1mo': return '5y';
+    case '1m': return '7d';
+    case '5m': return '60d';
+    case '15m': return '60d';
+    case '60m': return '730d';
+    case '1d': return 'max';
+    case '1wk': return 'max';
+    case '1mo': return 'max';
     default: return '1mo';
   }
 }
@@ -58,7 +66,7 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
           'User-Agent': 'Mozilla/5.0',
           'Accept': 'application/json'
         },
-        next: { revalidate: 10 } // Reduced cache time for faster polling
+        next: { revalidate: 10 }
       });
       
       if (yfRes.ok) {
@@ -68,7 +76,7 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
           const meta = result.meta;
           const price = meta.regularMarketPrice;
           
-          if (price == null) return null; // Safe guard against missing data
+          if (price == null) return null;
           
           const prevClose = meta.previousClose || price;
           const change = price - prevClose;

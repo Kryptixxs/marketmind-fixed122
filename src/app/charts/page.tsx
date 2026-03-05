@@ -24,7 +24,7 @@ const TIMEFRAMES = [
   { label: '5M', yf: '5m' },
   { label: '15M', yf: '15m' },
   { label: '1H', yf: '60m' },
-  { label: '4H', yf: '60m' },
+  { label: '4H', yf: '60m' }, // Note: Yahoo Finance doesn't support native 4H, using 1H as base
   { label: '1D', yf: '1d' },
 ];
 
