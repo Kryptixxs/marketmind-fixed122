@@ -7,27 +7,31 @@ const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
 // STRICT Day Trading Liquidity Injectors (Tier 1)
 const HIGH_IMPACT_KEYWORDS = [
-  'CPI', 'Core CPI', 'PPI', 'Core PPI', 'Nonfarm Payroll', 'FOMC', 
-  'Interest Rate Decision', 'Gross Domestic Product', 'GDP', 
-  'ISM Manufacturing', 'ISM Services'
+  'cpi', 'consumer price index', 'ppi', 'producer price index', 'pce', 'personal consumption', 
+  'nonfarm payroll', 'non-farm', 'employment situation', 'fomc', 'interest rate decision', 
+  'rate decision', 'gross domestic product', 'gdp', 'ism manufacturing', 'ism services', 
+  'ism non-manufacturing', 'powell', 'lagarde', 'bailey', 'ueda', 'boj', 'ecb', 'bank of england',
+  'bank of canada', 'boc', 'rba', 'rbnz', 'snb'
 ];
 
 // Secondary movers that can cause intraday chop (Tier 2)
 const MEDIUM_IMPACT_KEYWORDS = [
-  'Jobless Claims', 'Retail Sales', 'PCE', 'Core PCE', 
-  'Consumer Confidence', 'Crude Oil Inventories', 'JOLTs', 
-  'Housing Starts', 'Building Permits', 'Existing Home Sales', 
-  'New Home Sales', 'PMI', 'ADP Employment', 'ECB', 'Bank of England'
+  'jobless claims', 'retail sales', 'consumer confidence', 'michigan', 'consumer sentiment', 
+  'crude oil inventories', 'eia crude', 'jolts', 'housing starts', 'building permits', 
+  'existing home sales', 'new home sales', 'pmi', 'purchasing managers', 'adp', 
+  'employment change', 'unemployment rate', 'average hourly earnings', 'durable goods', 
+  'industrial production', 'trade balance', 'beige book', 'philadelphia fed', 'empire state', 
+  'richmond fed', 'chicago pmi'
 ];
 
-// Total noise for a day trader - completely filter these out
+// Explicitly ignored noise (safety net to prevent weird overlaps)
 const IGNORED_KEYWORDS = [
-  'Auction', 'Speaks', 'Speech', 'Redbook', 'Mortgage', 'MBA', 'API Weekly',
-  'Wasde', 'Challenger', 'Baskin', 'HICP', 'Labor Costs', 'Reserves',
-  'Current Account', 'Trade Balance', 'Export', 'Import', 'Capital Flow',
-  'Foreign Investment', 'Money Supply', 'Bank Lending', 'Business Confidence',
-  'Economic Sentiment', 'Machine Orders', 'Capacity Utilization', 'Baker Hughes',
-  'EIA Natural Gas', 'Consumer Credit', 'Wholesale Inventories', 'Factory Orders'
+  'auction', 'redbook', 'mortgage', 'mba', 'api weekly', 'wasde', 'challenger', 
+  'baskin', 'hicp', 'labor costs', 'reserves', 'reserve assets', 'current account', 
+  'export', 'import', 'capital flow', 'foreign investment', 'money supply', 
+  'bank lending', 'business confidence', 'economic sentiment', 'machine orders', 
+  'capacity utilization', 'baker hughes', 'eia natural gas', 'consumer credit', 
+  'wholesale inventories', 'factory orders', 'bill allotment', 'coincident', 'leading index'
 ];
 
 const COUNTRY_CODES: Record<string, string> = {
@@ -56,15 +60,26 @@ function cleanText(text: string): string {
 
 function calculateImpact(title: string): 'High' | 'Medium' | 'Low' {
   const t = title.toLowerCase();
-  if (HIGH_IMPACT_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return 'High';
-  if (MEDIUM_IMPACT_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return 'Medium';
+  if (HIGH_IMPACT_KEYWORDS.some(k => t.includes(k))) return 'High';
+  if (MEDIUM_IMPACT_KEYWORDS.some(k => t.includes(k))) return 'Medium';
   return 'Low';
 }
 
 function shouldKeepEvent(title: string, countryCode: string): boolean {
   const t = title.toLowerCase();
-  if (IGNORED_KEYWORDS.some(k => t.includes(k.toLowerCase()))) return false;
+  
+  // 1. Drop explicitly ignored noise
+  if (IGNORED_KEYWORDS.some(k => t.includes(k))) return false;
+  
+  // 2. Only track major global economies
   if (!MAJOR_COUNTRY_CODES.includes(countryCode)) return false;
+  
+  // 3. STRICT DAY TRADING FILTER:
+  // If it doesn't match our High or Medium keywords, it is designated as 'Low' impact noise.
+  // We completely filter these out so they never clutter the terminal.
+  const impact = calculateImpact(title);
+  if (impact === 'Low') return false;
+
   return true;
 }
 
@@ -89,7 +104,7 @@ export async function fetchEconomicCalendarBatch(dates: string[]): Promise<Recor
 
   await Promise.all(datesToFetch.map(async (requestedDate) => {
     try {
-      // Shift the requested date right by 1 day for the API query
+      // Shift the requested date right by 1 day for the API query timezone fix
       const d = new Date(requestedDate);
       d.setUTCDate(d.getUTCDate() + 1);
       const queryDate = d.toISOString().split('T')[0];
