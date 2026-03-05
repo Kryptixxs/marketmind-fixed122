@@ -24,15 +24,14 @@ import { NotificationsPanel } from './notifications/NotificationsPanel';
 
 const NAV_ITEMS = [
   { href: '/dashboard', icon: LayoutGrid, label: 'Workspace', key: '1', fnLabel: 'F1' },
-  { href: '/calendar', icon: Calendar, label: 'Calendar', key: '2', fnLabel: 'F2' },
-  { href: '/charts', icon: LineChart, label: 'Technical', key: '3', fnLabel: 'F3' },
-  { href: '/confluences', icon: Zap, label: 'Confluence', key: '4', fnLabel: 'F4' },
-  { href: '/news', icon: Newspaper, label: 'Wire', key: '5', fnLabel: 'F5' },
-  { href: '/algo', icon: Cpu, label: 'Algos', key: '6', fnLabel: 'F6' },
-  { href: '/risk', icon: Shield, label: 'Risk', key: '7', fnLabel: 'F7' },
-  { href: '/portfolio', icon: Briefcase, label: 'Portfolio', key: '8', fnLabel: 'F8' },
-  { href: '/execution', icon: ArrowUpDown, label: 'Execution', key: '9', fnLabel: 'F9' },
-  { href: '/research', icon: Brain, label: 'Research', key: '0', fnLabel: 'F10' },
+  { href: '/fi', icon: BarChart3, label: 'Fixed Income', key: '2', fnLabel: 'FI' },
+  { href: '/options', icon: Zap, label: 'Derivatives', key: '3', fnLabel: 'OVME' },
+  { href: '/screener', icon: Search, label: 'Screener', key: '4', fnLabel: 'EQS' },
+  { href: '/fa', icon: Newspaper, label: 'Fundamentals', key: '5', fnLabel: 'FA' },
+  { href: '/risk', icon: Shield, label: 'Risk', key: '6', fnLabel: 'RISK' },
+  { href: '/portfolio', icon: Briefcase, label: 'Portfolio', key: '7', fnLabel: 'PORT' },
+  { href: '/calendar', icon: Calendar, label: 'Calendar', key: '8', fnLabel: 'ECO' },
+  { href: '/execution', icon: ArrowUpDown, label: 'Execution', key: '9', fnLabel: 'EMS' },
 ];
 
 export function Sidebar() {
