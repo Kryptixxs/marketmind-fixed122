@@ -16,6 +16,8 @@ type Settings = {
   impactFilter: 'All' | 'Low' | 'Medium' | 'High';
   currency: string;
   refreshInterval: number;
+  strategy: 'Scalper' | 'Swing' | 'Macro';
+  riskTolerance: 'Conservative' | 'Standard' | 'Aggressive';
 };
 
 const DEFAULT: Settings = {
@@ -26,6 +28,8 @@ const DEFAULT: Settings = {
   impactFilter: 'All',
   currency: 'All',
   refreshInterval: 30000,
+  strategy: 'Swing',
+  riskTolerance: 'Standard',
 };
 
 const STORAGE_KEY = 'vantage-terminal-settings-v8';

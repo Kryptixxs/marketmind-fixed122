@@ -19,6 +19,7 @@ export interface EventIntel {
   macroImpact: number; // 1-10
   narrative: string;
   positioning: string;
+  logic: string;
   scenarios: ScenarioRow[];
   sensitivities: AssetSensitivity[];
   surpriseThresholdPct: number;
@@ -47,6 +48,7 @@ const RULES: Record<string, Partial<EventIntel>> = {
   "CPI": {
     volatility: 'High',
     macroImpact: 10,
+    logic: "Core inflation gauge. Higher than forecast is Bullish for USD and Bearish for Equities.",
     narrative: "Core inflation remains the primary driver of Fed terminal rate expectations. Markets are hyper-sensitive to any deviation that challenges the 'disinflation' trend.",
     positioning: "Crowded long in front-end yields; Neutral equities.",
     surpriseThresholdPct: 5,
@@ -65,6 +67,7 @@ const RULES: Record<string, Partial<EventIntel>> = {
   "Nonfarm Payrolls": {
     volatility: 'Extreme',
     macroImpact: 10,
+    logic: "Primary labor market health indicator. Stronger NFP suggests a resilient economy.",
     narrative: "Labor market resilience is the last pillar of the 'higher for longer' argument. A significant miss would trigger immediate recession re-pricing.",
     positioning: "Short Gamma in ES; Long USD.",
     surpriseThresholdPct: 15,
@@ -83,6 +86,7 @@ const RULES: Record<string, Partial<EventIntel>> = {
   "FOMC": {
     volatility: 'Extreme',
     macroImpact: 10,
+    logic: "The single most important driver of global liquidity.",
     narrative: "The Fed's forward guidance is the single most important variable for global liquidity. Focus is on the 'Dot Plot' and Powell's tone regarding the neutral rate.",
     positioning: "Short Volatility; Long Duration.",
     surpriseThresholdPct: 2,
@@ -101,6 +105,7 @@ const RULES: Record<string, Partial<EventIntel>> = {
   "Retail Sales": {
     volatility: 'Moderate',
     macroImpact: 7,
+    logic: "Consumer spending is 70% of US GDP.",
     narrative: "Consumer spending is 70% of US GDP. This is the ultimate 'real-time' health check for the economy.",
     positioning: "Neutral; Retail-heavy.",
     surpriseThresholdPct: 10,
@@ -128,6 +133,7 @@ export function getEventIntel(event: EconomicEvent): EventIntel {
       macroImpact: rule.macroImpact || 5,
       narrative: rule.narrative || '',
       positioning: rule.positioning || 'Neutral / Balanced',
+      logic: rule.logic || '',
       scenarios: rule.scenarios || [],
       sensitivities: rule.sensitivities || [],
       surpriseThresholdPct: rule.surpriseThresholdPct || 10
@@ -140,6 +146,7 @@ export function getEventIntel(event: EconomicEvent): EventIntel {
     macroImpact: event.impact === 'High' ? 8 : 4,
     narrative: `Standard ${event.currency} release. Focus is on deviation from consensus to gauge local economic momentum.`,
     positioning: "Retail-heavy; Institutional neutral.",
+    logic: `Standard ${event.currency} economic release.`,
     scenarios: [
       { label: 'Beat', probability: 33, reaction: `Positive for ${event.currency}.`, bias: 'BULLISH' },
       { label: 'In-Line', probability: 34, reaction: 'Neutral reaction.', bias: 'NEUTRAL' },
