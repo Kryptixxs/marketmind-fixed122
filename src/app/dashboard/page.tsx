@@ -9,7 +9,7 @@ import { ConfluenceScanner } from '@/features/Terminal/components/widgets/Conflu
 import { ICTPanel } from '@/features/Terminal/components/widgets/ICTPanel';
 import { MiniCalendar } from '@/features/Terminal/components/widgets/MiniCalendar';
 import { MarketInternals } from '@/features/Terminal/components/widgets/MarketInternals';
-import { Wifi, TrendingUp, TrendingDown, Plus, Search, X, Loader2, Layout, Maximize2, Info, ExternalLink, Cpu, Globe, ShieldCheck, Clock } from 'lucide-center';
+import { Wifi, TrendingUp, TrendingDown, Plus, Search, X, Loader2, Layout, Maximize2, Info, ExternalLink, Cpu, Globe, ShieldCheck, Clock } from 'lucide-react';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { searchSymbols } from '@/app/actions/searchSymbols';
