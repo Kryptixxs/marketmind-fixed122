@@ -8,26 +8,38 @@ export function useMarketData(symbols: string[], interval: string = '15m') {
   const [data, setData] = useState<Record<string, Tick>>({});
   const [error, setError] = useState<string | null>(null);
   
-  // Unique ID for this hook instance's subscription
   const subId = useRef(Math.random().toString(36).substring(7)).current;
-  const provider = getProvider();
-
-  // Sync interval to provider
-  useEffect(() => {
-    if (provider.setInterval) {
-      provider.setInterval(interval);
-    }
-  }, [interval, provider]);
 
   useEffect(() => {
     if (symbols.length === 0) return;
+
+    const provider = getProvider();
+    if (!provider) return;
+
+    // Sync interval to provider
+    if (provider.setInterval) {
+      provider.setInterval(interval);
+    }
+
+    // Create a local buffer to prevent excessive React re-renders
+    let tickBuffer: Record<string, Tick> = {};
+    let animationFrameId: number;
+
+    const flushBuffer = () => {
+      if (Object.keys(tickBuffer).length > 0) {
+        setData(prev => ({ ...prev, ...tickBuffer }));
+        tickBuffer = {};
+      }
+      animationFrameId = requestAnimationFrame(flushBuffer);
+    };
+
+    animationFrameId = requestAnimationFrame(flushBuffer);
 
     const config = {
       id: subId,
       onTick: (tick: Tick) => {
         if (symbols.includes(tick.symbol)) {
-          // Let React 18 auto-batch these rapid state updates
-          setData(prev => ({ ...prev, [tick.symbol]: tick }));
+          tickBuffer[tick.symbol] = tick;
         }
       },
       onError: (err: Error) => {
@@ -39,10 +51,11 @@ export function useMarketData(symbols: string[], interval: string = '15m') {
     provider.subscribe(symbols);
 
     return () => {
+      cancelAnimationFrame(animationFrameId);
       provider.unsubscribe(symbols);
       provider.disconnect(config);
     };
-  }, [symbols.join(',')]);
+  }, [symbols.join(','), interval]);
 
   return { data, error };
 }
