@@ -336,29 +336,29 @@ export function EconomicCalendarView() {
                               key={event.id}
                               onClick={() => handleEventClick(event)}
                               className={`
-                                relative p-1.5 rounded bg-surface border border-border/50 shadow-sm hover:border-accent/50 hover:bg-surface-highlight transition-all cursor-pointer
+                                relative p-2 rounded bg-surface border border-border/50 shadow-sm hover:border-accent/50 hover:bg-surface-highlight transition-all cursor-pointer
                                 ${IMPACT_COLORS[event.impact] || IMPACT_COLORS.Low}
                                 ${isMajorSurprise ? 'ring-1 ring-accent ring-offset-1 ring-offset-background' : ''}
                               `}
                             >
-                              <div className="flex items-center justify-between gap-2 mb-1">
-                                <div className="flex items-center gap-1.5">
+                              <div className="flex items-center justify-between gap-2 mb-1.5">
+                                <div className="flex items-center gap-2">
                                   {event.country && (
-                                    <img 
+                                    <img
                                       src={`https://flagcdn.com/w20/${event.country.toLowerCase()}.png`}
-                                      className="w-3 h-2 object-cover rounded-[1px] opacity-80"
+                                      className="w-4 h-2.5 object-cover rounded-[1px] opacity-90"
                                       alt=""
                                     />
                                   )}
-                                  <span className="text-[9px] font-mono text-text-secondary leading-none">{event.time}</span>
+                                  <span className="text-[10px] font-mono font-medium text-text-secondary leading-none">{event.time}</span>
                                 </div>
-                                {isMajorSurprise && <span className="text-[8px] font-bold text-accent animate-pulse">SURPRISE</span>}
+                                {isMajorSurprise && <span className="text-[9px] font-bold text-accent animate-pulse">SURPRISE</span>}
                               </div>
-                              <div className="text-[10px] font-medium leading-tight text-text-primary line-clamp-2 mb-1">{event.title}</div>
+                              <div className="text-xs font-medium leading-snug text-text-primary line-clamp-2 mb-1.5">{event.title}</div>
                               {(event.actual || event.forecast) && (
-                                <div className="flex items-center gap-2 text-[9px] font-mono border-t border-black/10 pt-1 mt-1 opacity-80">
+                                <div className="flex items-center gap-2 text-[10px] font-mono border-t border-border/50 pt-1.5 mt-1">
                                   {event.actual && (
-                                    <span className={surprise.classification === 'HOT' ? 'text-negative' : surprise.classification === 'COOL' ? 'text-positive' : 'text-text-secondary'}>
+                                    <span className={`font-bold ${surprise.classification === 'HOT' ? 'text-negative' : surprise.classification === 'COOL' ? 'text-positive' : 'text-text-secondary'}`}>
                                       {event.actual}
                                     </span>
                                   )}

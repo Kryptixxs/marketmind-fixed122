@@ -110,13 +110,13 @@ export function ICTPanel({ tick, timeframeLabel = '15m' }: { tick?: Tick, timefr
 
   return (
     <div className="p-2 h-full flex flex-col gap-2 relative">
-      <div className="flex items-center justify-between mb-1 shrink-0">
-        <div className="text-[8px] text-text-tertiary uppercase font-bold tracking-widest flex items-center gap-1.5">
-          <Target size={10} /> SMC Arrays ({timeframeLabel})
+      <div className="flex items-center justify-between mb-2 shrink-0">
+        <div className="text-[10px] text-text-tertiary uppercase font-bold tracking-widest flex items-center gap-1.5">
+          <Target size={12} /> SMC Arrays ({timeframeLabel})
         </div>
         {newsSentiment !== 0 && (
-          <div className={`text-[8px] font-bold uppercase flex items-center gap-1 ${newsSentiment > 0 ? 'text-positive' : 'text-negative'}`}>
-            <Newspaper size={10} /> News Bias
+          <div className={`text-[10px] font-bold uppercase flex items-center gap-1 ${newsSentiment > 0 ? 'text-positive' : 'text-negative'}`}>
+            <Newspaper size={12} /> News Bias
           </div>
         )}
       </div>
@@ -124,62 +124,62 @@ export function ICTPanel({ tick, timeframeLabel = '15m' }: { tick?: Tick, timefr
       {isPredicting || !aiPrediction ? (
         <div className="bg-surface-highlight border border-border p-4 rounded-sm flex flex-col items-center justify-center text-center gap-2">
           <Loader2 size={16} className="animate-spin text-accent" />
-          <span className="text-[9px] text-text-tertiary uppercase font-bold">Generating Custom AI Bias...</span>
+          <span className="text-[10px] text-text-tertiary uppercase font-bold">Generating Custom AI Bias...</span>
         </div>
       ) : (
-        <div className="bg-surface-highlight border border-border p-3 rounded-sm flex flex-col gap-2">
-          <div className="flex flex-col items-center justify-center text-center pb-2 border-b border-border/50">
-            <span className="text-[9px] text-text-tertiary uppercase font-bold mb-1 flex items-center gap-1"><Brain size={10} className="text-accent"/> Custom AI Bias</span>
-            <span className={`text-lg font-black tracking-tighter uppercase ${aiPrediction.biasColor}`}>{aiPrediction.algoBias}</span>
+        <div className="bg-surface-highlight border border-border p-4 rounded-sm flex flex-col gap-3">
+          <div className="flex flex-col items-center justify-center text-center pb-3 border-b border-border/50">
+            <span className="text-[10px] text-text-tertiary uppercase font-bold mb-1 flex items-center gap-1.5"><Brain size={12} className="text-accent"/> Custom AI Bias</span>
+            <span className={`text-xl font-black tracking-tight uppercase ${aiPrediction.biasColor}`}>{aiPrediction.algoBias}</span>
           </div>
-          <p className="text-[10px] text-text-primary leading-snug">
+          <p className="text-xs text-text-primary leading-relaxed">
             {aiPrediction.customAnalysis}
           </p>
         </div>
       )}
       
-      <div className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar">
-        <div className="grid grid-cols-2 gap-1">
-          <div className="bg-surface-highlight/30 border border-border/50 p-2 rounded-sm flex flex-col">
-            <span className="text-[8px] text-text-tertiary uppercase font-bold flex items-center gap-1"><ArrowUpRight size={8}/> Fractal BSL</span>
-            <span className="text-[10px] font-mono text-text-primary mt-0.5">{mathData.buysideLiquidity.toFixed(2)}</span>
+      <div className="flex-1 space-y-2 overflow-y-auto custom-scrollbar pt-1">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="bg-surface-highlight/30 border border-border/50 p-2.5 rounded-sm flex flex-col">
+            <span className="text-[10px] text-text-tertiary uppercase font-bold flex items-center gap-1"><ArrowUpRight size={10}/> Fractal BSL</span>
+            <span className="text-xs font-mono font-medium text-text-primary mt-1">{mathData.buysideLiquidity.toFixed(2)}</span>
           </div>
-          <div className="bg-surface-highlight/30 border border-border/50 p-2 rounded-sm flex flex-col">
-            <span className="text-[8px] text-text-tertiary uppercase font-bold flex items-center gap-1"><ArrowDownRight size={8}/> Fractal SSL</span>
-            <span className="text-[10px] font-mono text-text-primary mt-0.5">{mathData.sellsideLiquidity.toFixed(2)}</span>
+          <div className="bg-surface-highlight/30 border border-border/50 p-2.5 rounded-sm flex flex-col">
+            <span className="text-[10px] text-text-tertiary uppercase font-bold flex items-center gap-1"><ArrowDownRight size={10}/> Fractal SSL</span>
+            <span className="text-xs font-mono font-medium text-text-primary mt-1">{mathData.sellsideLiquidity.toFixed(2)}</span>
           </div>
         </div>
 
-        <div className="bg-surface-highlight/30 border border-border/50 p-2 rounded-sm flex items-center justify-between">
-          <span className="text-[9px] text-text-tertiary uppercase font-bold">Structure ({timeframeLabel})</span>
-          <span className={`text-[9px] font-mono font-bold ${mathData.isDiscount ? 'text-positive' : 'text-negative'}`}>
+        <div className="bg-surface-highlight/30 border border-border/50 p-2.5 rounded-sm flex items-center justify-between">
+          <span className="text-[10px] text-text-tertiary uppercase font-bold">Structure ({timeframeLabel})</span>
+          <span className={`text-xs font-mono font-bold ${mathData.isDiscount ? 'text-positive' : 'text-negative'}`}>
             {mathData.structure} • {mathData.isDiscount ? 'DISCOUNT' : 'PREMIUM'}
           </span>
         </div>
 
         {mathData.sweep && (
-          <div className="bg-warning/10 border border-warning/20 p-2 rounded-sm flex items-center justify-between">
-            <span className="text-[9px] text-warning uppercase font-bold flex items-center gap-1"><Zap size={10}/> Sweep Detected</span>
-            <span className="text-[9px] font-mono font-bold text-warning">{mathData.sweep.type}</span>
+          <div className="bg-warning/10 border border-warning/20 p-2.5 rounded-sm flex items-center justify-between">
+            <span className="text-[10px] text-warning uppercase font-bold flex items-center gap-1"><Zap size={12}/> Sweep Detected</span>
+            <span className="text-xs font-mono font-bold text-warning">{mathData.sweep.type}</span>
           </div>
         )}
 
-        <div className="bg-surface-highlight/30 border border-border/50 p-2 rounded-sm flex flex-col gap-1.5">
-          <span className="text-[9px] text-text-tertiary uppercase font-bold flex items-center gap-1">
-            <Crosshair size={10} /> Nearest Active FVGs
+        <div className="bg-surface-highlight/30 border border-border/50 p-2.5 rounded-sm flex flex-col gap-2">
+          <span className="text-[10px] text-text-tertiary uppercase font-bold flex items-center gap-1">
+            <Crosshair size={12} /> Nearest Active FVGs
           </span>
           {mathData.fvgs.length > 0 ? mathData.fvgs.map((fvg, i) => (
-            <div key={i} className="flex justify-between items-center bg-background border border-border/50 px-2 py-1 rounded-sm">
+            <div key={i} className="flex justify-between items-center bg-background border border-border/50 px-2.5 py-1.5 rounded-sm">
               <div className="flex items-center gap-2">
-                <div className={`w-1.5 h-1.5 rounded-full ${fvg.type === 'BISI' ? 'bg-positive' : 'bg-negative'}`} />
-                <span className="text-[9px] font-bold text-text-primary">{fvg.type === 'BISI' ? 'Demand' : 'Supply'}</span>
+                <div className={`w-2 h-2 rounded-full ${fvg.type === 'BISI' ? 'bg-positive' : 'bg-negative'}`} />
+                <span className="text-[10px] font-bold text-text-primary">{fvg.type === 'BISI' ? 'Demand' : 'Supply'}</span>
               </div>
               <div className="flex flex-col items-end">
-                <span className="text-[9px] font-mono text-text-secondary">{fvg.bottom.toFixed(2)} - {fvg.top.toFixed(2)}</span>
+                <span className="text-[10px] font-mono text-text-secondary">{fvg.bottom.toFixed(2)} - {fvg.top.toFixed(2)}</span>
               </div>
             </div>
           )) : (
-             <span className="text-[9px] text-text-tertiary font-mono italic">Price is balanced. No immediate gaps.</span>
+             <span className="text-[10px] text-text-tertiary font-mono italic">Price is balanced. No immediate gaps.</span>
           )}
         </div>
       </div>
