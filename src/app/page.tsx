@@ -5,7 +5,6 @@ import { Widget } from '@/components/ui/Widget';
 import TradingViewChart from '@/features/MarketData/components/TradingViewChart';
 import { NewsFeed } from '@/features/News/components/NewsFeed';
 import { TerminalCommandBar } from '@/features/Terminal/components/TerminalCommandBar';
-import { CorrelationMatrix } from '@/features/Terminal/components/widgets/CorrelationMatrix';
 import { ConfluenceScanner } from '@/features/Terminal/components/widgets/ConfluenceScanner';
 import { ICTPanel } from '@/features/Terminal/components/widgets/ICTPanel';
 import { MiniCalendar } from '@/features/Terminal/components/widgets/MiniCalendar';
@@ -116,87 +115,67 @@ export default function TerminalPage() {
 
           {/* --- LEFT COLUMN --- */}
           <Panel defaultSize={20} minSize={15} id="left-panel">
-            <PanelGroup orientation="vertical">
-              <Panel defaultSize={60} minSize={30} id="watchlist">
-                <div className="h-full w-full p-px bg-background">
-                  <Widget
-                    title="Market Watch // Institutional"
-                    actions={
-                      <div className="relative">
-                        <button onClick={() => setIsSearchOpen(true)} className="p-1 hover:bg-white/10 rounded transition-colors text-text-tertiary hover:text-text-primary" title="Add Ticker">
-                          <Plus size={12} />
-                        </button>
-                        {isSearchOpen && (
-                          <>
-                            <div className="fixed inset-0 z-40" onClick={() => setIsSearchOpen(false)} />
-                            <div className="absolute top-full left-0 mt-1 w-48 bg-surface-highlight border border-border rounded shadow-xl z-50 p-1">
-                              <form onSubmit={handleAddSymbol} className="flex items-center gap-2 bg-background border border-border px-2 rounded">
-                                <Search size={10} className="text-text-tertiary" />
-                                <input
-                                  ref={searchInputRef}
-                                  value={searchQuery}
-                                  onChange={e => setSearchQuery(e.target.value)}
-                                  placeholder="Add ticker (e.g. NAS100)"
-                                  className="flex-1 bg-transparent border-none outline-none text-[10px] py-1.5 text-text-primary uppercase"
-                                />
-                              </form>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    }
-                  >
-                    <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
-                      {watchlist.map(sym => {
-                        const data = marketData[sym];
-                        const isPositive = data?.change >= 0;
-
-                        return (
-                          <div
-                            key={sym}
-                            onClick={() => setActiveSymbol(sym)}
-                            className={`flex justify-between items-center px-3 py-2 border-b border-border/20 cursor-pointer group transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
-                          >
-                            <div className="flex flex-col">
-                              <div className="flex items-center gap-1">
-                                <span className="font-bold text-[10px] text-text-primary">{sym}</span>
-                                <button onClick={(e) => handleRemoveSymbol(e, sym)} className="opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-negative"><X size={10} /></button>
-                              </div>
-                              <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{getLabel(sym)}</span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                              <span className="text-[10px] font-mono font-bold text-text-primary">
-                                {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
-                              </span>
-                              <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
-                                {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
-                                <span>{data ? `${Math.abs(data.changePercent).toFixed(2)}%` : '--'}</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </Widget>
-                </div>
-              </Panel>
-
-              <PanelResizeHandle className="h-0.5 w-full bg-border/50 hover:bg-accent transition-colors" />
-
-              <Panel defaultSize={40} minSize={20} id="correlation">
-                <div className="h-full w-full p-px bg-background">
-                  <Widget title={`Cross-Asset Correlation (${timeframe.label})`}>
-                    {activeQuote && activeQuote.history && activeQuote.history.length > 0 ? (
-                      <div className="overflow-y-auto h-full custom-scrollbar">
-                        <CorrelationMatrix activeTick={activeQuote} marketData={marketData} />
-                      </div>
-                    ) : (
-                      <div className="flex h-full items-center justify-center text-text-tertiary text-[10px]">Loading Math...</div>
+            <div className="h-full w-full p-px bg-background">
+              <Widget
+                title="Market Watch // Institutional"
+                actions={
+                  <div className="relative">
+                    <button onClick={() => setIsSearchOpen(true)} className="p-1 hover:bg-white/10 rounded transition-colors text-text-tertiary hover:text-text-primary" title="Add Ticker">
+                      <Plus size={12} />
+                    </button>
+                    {isSearchOpen && (
+                      <>
+                        <div className="fixed inset-0 z-40" onClick={() => setIsSearchOpen(false)} />
+                        <div className="absolute top-full left-0 mt-1 w-48 bg-surface-highlight border border-border rounded shadow-xl z-50 p-1">
+                          <form onSubmit={handleAddSymbol} className="flex items-center gap-2 bg-background border border-border px-2 rounded">
+                            <Search size={10} className="text-text-tertiary" />
+                            <input
+                              ref={searchInputRef}
+                              value={searchQuery}
+                              onChange={e => setSearchQuery(e.target.value)}
+                              placeholder="Add ticker (e.g. NAS100)"
+                              className="flex-1 bg-transparent border-none outline-none text-[10px] py-1.5 text-text-primary uppercase"
+                            />
+                          </form>
+                        </div>
+                      </>
                     )}
-                  </Widget>
+                  </div>
+                }
+              >
+                <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
+                  {watchlist.map(sym => {
+                    const data = marketData[sym];
+                    const isPositive = data?.change >= 0;
+
+                    return (
+                      <div
+                        key={sym}
+                        onClick={() => setActiveSymbol(sym)}
+                        className={`flex justify-between items-center px-3 py-2 border-b border-border/20 cursor-pointer group transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
+                      >
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1">
+                            <span className="font-bold text-[10px] text-text-primary">{sym}</span>
+                            <button onClick={(e) => handleRemoveSymbol(e, sym)} className="opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-negative"><X size={10} /></button>
+                          </div>
+                          <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{getLabel(sym)}</span>
+                        </div>
+                        <div className="flex flex-col items-end">
+                          <span className="text-[10px] font-mono font-bold text-text-primary">
+                            {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
+                          </span>
+                          <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
+                            {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
+                            <span>{data ? `${Math.abs(data.changePercent).toFixed(2)}%` : '--'}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </Panel>
-            </PanelGroup>
+              </Widget>
+            </div>
           </Panel>
 
           <PanelResizeHandle className="w-0.5 h-full bg-border/50 hover:bg-accent transition-colors" />
