@@ -56,12 +56,10 @@ export function Sidebar() {
   return (
     <>
       <div className="w-full h-14 md:w-12 md:h-full bg-surface border-t md:border-t-0 md:border-r border-border flex flex-row md:flex-col items-center md:py-3 z-50 shrink-0 overflow-x-auto md:overflow-x-visible hide-scrollbar">
-        {/* Brand Icon - Hidden on mobile to save nav space */}
         <Link href="/dashboard" className="hidden md:flex mb-6 text-accent hover:opacity-80 transition-opacity">
           <Terminal size={20} />
         </Link>
 
-        {/* Nav Items */}
         <nav className="flex flex-row md:flex-col gap-2 md:gap-2 px-2 flex-1 md:flex-none justify-evenly md:justify-start w-full min-w-max">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
@@ -86,7 +84,6 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Bottom / Right Action Icons */}
         <div className="flex flex-row md:flex-col gap-2 md:gap-2 px-2 md:mt-auto justify-evenly md:justify-start w-full md:w-auto items-center min-w-max border-l md:border-l-0 md:border-t border-border/50 pl-2 md:pl-0 md:pt-4 ml-2 md:ml-0">
           <button
             onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
@@ -106,14 +103,6 @@ export function Sidebar() {
           >
             <Settings size={18} className="md:w-4 md:h-4" />
           </button>
-
-          <div className="hidden md:block w-full h-[1px] bg-border my-1"></div>
-
-          {/* Connection Status */}
-          <div className="hidden md:flex w-full flex-col items-center gap-2 py-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse" title="System Status: Connected"></div>
-            <div className="text-[8px] font-mono text-text-tertiary rotate-90 mt-2">v5.0</div>
-          </div>
         </div>
       </div>
 

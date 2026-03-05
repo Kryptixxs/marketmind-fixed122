@@ -1,19 +1,18 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { Search, Filter, CheckCircle2, XCircle, Loader2, Zap, AlertTriangle } from 'lucide-react';
+import { Search, CheckCircle2, XCircle, Loader2, Zap, AlertTriangle } from 'lucide-react';
 import { ConfluenceEngine } from '@/features/Terminal/services/confluence/engine';
 import { ConfluenceResult, ConfluenceCategory } from '@/features/Terminal/services/confluence/types';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { TerminalCommandBar } from '@/features/Terminal/components/TerminalCommandBar';
 
 export default function ConfluencePage() {
-  const [activeSymbol, setActiveSymbol] = useState('NQ=F');
+  const [activeSymbol, setActiveSymbol] = useState('NAS100');
   const [results, setResults] = useState<ConfluenceResult[]>([]);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<ConfluenceCategory | 'ALL'>('ALL');
 
-  // Fetch real data
   const { data } = useMarketData([activeSymbol]);
   const tick = data[activeSymbol];
 
@@ -32,9 +31,8 @@ export default function ConfluencePage() {
       quotes: tick.history
     });
     
-    // Calculate all 160+ metrics
     setResults(engine.calculateAll());
-  }, [tick]);
+  }, [tick, activeSymbol]);
 
   const loading = !tick || !tick.history || tick.history.length < 50;
 
@@ -62,22 +60,10 @@ export default function ConfluencePage() {
             <input 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search 160+ indicators..."
+              placeholder="Search indicators..."
               className="bg-transparent border-none outline-none text-[10px] font-mono w-48 uppercase text-text-primary"
             />
           </div>
-        </div>
-        
-        <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar">
-          {['ALL', 'STRUCTURE', 'SMC', 'SR', 'MA', 'MOMENTUM', 'VOLUME', 'CANDLE', 'QUANT', 'DERIVATIVES'].map(cat => (
-            <button
-              key={cat}
-              onClick={() => setFilter(cat as any)}
-              className={`px-2 py-1 text-[9px] font-bold rounded-sm border transition-all whitespace-nowrap ${filter === cat ? 'bg-accent/10 border-accent/50 text-accent' : 'bg-surface-highlight border-border text-text-tertiary hover:text-text-secondary'}`}
-            >
-              {cat}
-            </button>
-          ))}
         </div>
       </div>
 
@@ -85,7 +71,7 @@ export default function ConfluencePage() {
         {loading ? (
           <div className="h-full flex flex-col items-center justify-center gap-3 opacity-50">
             <Loader2 size={32} className="animate-spin text-accent" />
-            <span className="text-[12px] font-bold uppercase tracking-widest text-text-primary">Loading live OHLCV for {activeSymbol}...</span>
+            <span className="text-[12px] font-bold uppercase tracking-widest text-text-primary">Loading live data for {activeSymbol}...</span>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
@@ -98,24 +84,11 @@ export default function ConfluencePage() {
                   </div>
                   {res.isActive ? <CheckCircle2 size={14} className="text-positive shrink-0" /> : <XCircle size={14} className="text-text-tertiary shrink-0" />}
                 </div>
-                <p className="text-[9px] text-text-secondary leading-tight mb-3 h-6 overflow-hidden">{res.description}</p>
-                
-                {/* Footer status row */}
-                {res.isActive ? (
+                <p className="text-[9px] text-text-secondary leading-tight mb-3">{res.description}</p>
+                {res.isActive && (
                   <div className="flex items-center justify-between pt-2 border-t border-accent/10">
                     <span className="text-[8px] font-bold text-accent uppercase">Confidence</span>
                     <span className="text-[10px] font-mono font-bold text-accent">{res.score}%</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1 pt-2 border-t border-border/50">
-                     {res.description.includes('Requires') ? (
-                       <>
-                         <AlertTriangle size={10} className="text-warning" />
-                         <span className="text-[8px] font-bold text-warning uppercase">Missing Feed</span>
-                       </>
-                     ) : (
-                       <span className="text-[8px] font-bold text-text-tertiary uppercase">Inactive</span>
-                     )}
                   </div>
                 )}
               </div>

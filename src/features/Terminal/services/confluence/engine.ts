@@ -61,14 +61,11 @@ export class ConfluenceEngine {
 
     const last = quotes[quotes.length - 1];
     const prev = quotes[quotes.length - 2];
-    const prev2 = quotes[quotes.length - 3];
 
     // Core indicators
     const ema9 = this.EMA(closes, 9);
     const ema20 = this.EMA(closes, 20);
-    const ema50 = this.EMA(closes, 50);
     const sma200 = this.SMA(closes, 200);
-
     const rsi14 = this.RSI(closes, 14);
     const atr14 = this.ATR(highs, lows, closes, 14);
     const avgVol20 = this.SMA(volumes, 20);
@@ -76,46 +73,25 @@ export class ConfluenceEngine {
     const recentHigh20 = Math.max(...highs.slice(-21, -1));
     const recentLow20 = Math.min(...lows.slice(-21, -1));
 
-    // Strict Candlestick Math
+    // Candlestick Math
     const bodySize = Math.abs(last.close - last.open);
-    const range = last.high - last.low;
     const upperWick = last.high - Math.max(last.open, last.close);
     const lowerWick = Math.min(last.open, last.close) - last.low;
 
     const isBullEngulf = last.close > prev.open && last.open < prev.close && last.close > prev.high;
-    const isBearEngulf = last.close < prev.open && last.open > prev.close && last.close < prev.low;
-    const isHammer = lowerWick > bodySize * 2 && upperWick < bodySize * 0.5 && range > atr14 * 0.8;
-    const isShootingStar = upperWick > bodySize * 2 && lowerWick < bodySize * 0.5 && range > atr14 * 0.8;
+    const isHammer = lowerWick > bodySize * 2 && upperWick < bodySize * 0.5;
 
-    // Advanced SMC
+    // SMC
     const fvgs = findUnmitigatedFVGs(quotes);
     const hasBullFVG = fvgs.some(f => f.type === 'BISI' && last.close > f.bottom && last.close < f.top + (atr14 * 0.5));
-    const hasBearFVG = fvgs.some(f => f.type === 'SIBI' && last.close < f.top && last.close > f.bottom - (atr14 * 0.5));
 
     return [
-      // === STRUCTURE ===
-      { id: 'MS_HTF', label: 'Higher timeframe trend alignment', category: 'STRUCTURE', isActive: last.close > sma200, score: 85, description: 'Price is above 200 SMA indicating macro uptrend.' },
-      { id: 'MS_MSS', label: 'Market structure shift (MSS)', category: 'STRUCTURE', isActive: last.close < recentLow20, score: 95, description: 'Price closed below recent 20-period swing low.' },
-
-      // === SMC ===
-      { id: 'SMC_BISI', label: 'Active BISI (Demand FVG)', category: 'SMC', isActive: hasBullFVG, score: 90, description: 'Price is respecting an unmitigated bullish price imbalance.' },
-      { id: 'SMC_SIBI', label: 'Active SIBI (Supply FVG)', category: 'SMC', isActive: hasBearFVG, score: 90, description: 'Price is rejecting an unmitigated bearish price imbalance.' },
-      { id: 'SMC_OTE', label: 'Optimal trade entry (OTE 62–79%)', category: 'SMC', isActive: last.close >= recentLow20 + (recentHigh20 - recentLow20) * 0.62 && last.close <= recentLow20 + (recentHigh20 - recentLow20) * 0.79, score: 95, description: 'Deep retracement into algorithmic killzone.' },
-
-      // === CANDLES ===
-      { id: 'CAN_BULL_ENG', label: 'True Bullish Engulfing', category: 'CANDLE', isActive: isBullEngulf, score: 85, description: 'Body fully engulfs prior red candle AND takes its high.' },
-      { id: 'CAN_BEAR_ENG', label: 'True Bearish Engulfing', category: 'CANDLE', isActive: isBearEngulf, score: 85, description: 'Body fully engulfs prior green candle AND takes its low.' },
-      { id: 'CAN_HAM', label: 'Hammer Rejection', category: 'CANDLE', isActive: isHammer, score: 80, description: 'Long wick rejecting lower prices with high confidence.' },
-      { id: 'CAN_STAR', label: 'Shooting Star Rejection', category: 'CANDLE', isActive: isShootingStar, score: 80, description: 'Aggressive selling at the highs.' },
-
-      // === MOMENTUM & VOL ===
-      { id: 'MOM_RSI_OS', label: 'RSI oversold', category: 'MOMENTUM', isActive: rsi14 < 30, score: 80, description: `RSI reading severely depressed (${rsi14.toFixed(1)}).` },
-      { id: 'MOM_RSI_OB', label: 'RSI overbought', category: 'MOMENTUM', isActive: rsi14 > 70, score: 80, description: `RSI reading highly extended (${rsi14.toFixed(1)}).` },
-      { id: 'VOL_CLIMAX', label: 'Volume climax', category: 'VOLUME', isActive: last.volume > avgVol20 * 3, score: 95, description: 'Massive institutional participation (>3x avg).' },
-
-      // === FUNDAMENTAL / NEWS (Injected dynamically) ===
-      { id: 'FUN_MAC', label: 'Macro/News Tailwind', category: 'FUNDAMENTAL', isActive: this.newsSentiment >= 30, score: 90, description: 'Recent news headlines are highly bullish, providing a fundamental tailwind.' },
-      { id: 'FUN_HEAD', label: 'Macro/News Headwind', category: 'FUNDAMENTAL', isActive: this.newsSentiment <= -30, score: 90, description: 'Recent news headlines are highly bearish, creating heavy selling pressure.' }
+      { id: 'MS_HTF', label: 'HTF Trend Alignment', category: 'STRUCTURE', isActive: last.close > sma200, score: 85, description: 'Price is above 200 SMA indicating macro uptrend.' },
+      { id: 'SMC_BISI', label: 'Active Demand FVG', category: 'SMC', isActive: hasBullFVG, score: 90, description: 'Price is respecting an unmitigated bullish price imbalance.' },
+      { id: 'CAN_BULL_ENG', label: 'Bullish Engulfing', category: 'CANDLE', isActive: isBullEngulf, score: 85, description: 'Body fully engulfs prior red candle.' },
+      { id: 'MOM_RSI_OS', label: 'RSI Oversold', category: 'MOMENTUM', isActive: rsi14 < 30, score: 80, description: `RSI reading severely depressed (${rsi14.toFixed(1)}).` },
+      { id: 'VOL_CLIMAX', label: 'Volume Climax', category: 'VOLUME', isActive: last.volume > avgVol20 * 2.5, score: 95, description: 'Massive institutional participation detected.' },
+      { id: 'FUN_MAC', label: 'Macro Tailwind', category: 'FUNDAMENTAL', isActive: this.newsSentiment >= 30, score: 90, description: 'Recent news headlines are highly bullish.' }
     ];
   }
 }
