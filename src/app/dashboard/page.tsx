@@ -13,7 +13,13 @@ import { MarketInternals } from '@/features/Terminal/components/widgets/MarketIn
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { useSettings } from '@/services/context/SettingsContext';
 
-const WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'EURUSD', 'BTCUSD'];
+const WATCHLIST = [
+  'NAS100', 'SPX500', 'US30', 'RUSSELL', 'DAX40', 
+  'GOLD', 'SILVER', 'CRUDE', 'NATGAS',
+  'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD',
+  'BTCUSD', 'ETHUSD', 'SOLUSD',
+  'VIX', 'DXY', 'US10Y'
+];
 
 const TIMEFRAMES = [
   { label: '1M', yf: '1m' },
@@ -79,7 +85,7 @@ export default function TerminalPage() {
                           className={`cursor-pointer hover:bg-surface-highlight transition-colors ${activeSymbol === sym ? 'bg-accent/5' : ''}`}
                         >
                           <td className={`font-bold ${activeSymbol === sym ? 'text-accent' : ''}`}>{sym}</td>
-                          <td className="text-right font-mono">{tick?.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                          <td className="text-right font-mono">{tick?.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
                           <td className={`text-right font-mono ${isPos ? 'text-positive' : 'text-negative'}`}>
                             {isPos ? '+' : ''}{tick?.changePercent.toFixed(2)}%
                           </td>

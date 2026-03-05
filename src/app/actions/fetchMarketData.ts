@@ -15,16 +15,39 @@ export interface MarketData {
 
 // Map internal symbols to their exact Yahoo Finance Index/Futures equivalents
 const YF_MAP: Record<string, string> = {
+  // Indices
   'NAS100': '^NDX', 
   'SPX500': '^GSPC', 
   'US30': '^DJI', 
+  'RUSSELL': '^RUT',
+  'DAX40': '^GDAXI',
+  'FTSE100': '^FTSE',
+  'NIKKEI': '^N225',
+  
+  // Commodities
   'CRUDE': 'CL=F', 
   'GOLD': 'GC=F',
+  'SILVER': 'SI=F',
+  'NATGAS': 'NG=F',
+  
+  // Forex
   'EURUSD': 'EURUSD=X', 
+  'GBPUSD': 'GBPUSD=X',
+  'USDJPY': 'JPY=X',
+  'AUDUSD': 'AUDUSD=X',
+  'USDCAD': 'CAD=X',
+  
+  // Crypto
   'BTCUSD': 'BTC-USD', 
   'ETHUSD': 'ETH-USD', 
+  'SOLUSD': 'SOL-USD',
+  
+  // Vitals
   'VIX': '^VIX', 
   'DXY': 'DX-Y.NYB',
+  'US10Y': '^TNX',
+  
+  // Equities
   'AAPL': 'AAPL', 
   'TSLA': 'TSLA', 
   'NVDA': 'NVDA', 
@@ -33,11 +56,6 @@ const YF_MAP: Record<string, string> = {
 
 /**
  * Returns the maximum valid range for a given interval to maximize candle count.
- * Yahoo Finance Limits:
- * - 1m: 7d max
- * - 2m-90m: 60d max
- * - 60m: 730d max
- * - 1d+: max
  */
 function getRangeForInterval(interval: string) {
   switch (interval) {
