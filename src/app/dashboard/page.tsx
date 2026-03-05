@@ -160,12 +160,12 @@ export default function TerminalPage() {
       <TerminalCommandBar />
 
       {showWelcome && (
-        <div className="bg-accent/10 border-b border-accent/20 px-4 py-2 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-300">
+        <div className="bg-accent/10 border-b border-accent/20 px-4 py-1.5 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-300">
           <div className="flex items-center gap-3">
-            <div className="w-6 h-6 bg-accent text-accent-text rounded-full flex items-center justify-center">
-              <Info size={14} />
+            <div className="w-5 h-5 bg-accent text-accent-text rounded-full flex items-center justify-center">
+              <Info size={12} />
             </div>
-            <p className="text-[11px] font-bold text-text-primary uppercase tracking-wider">
+            <p className="text-[10px] font-bold text-text-primary uppercase tracking-wider">
               Welcome to Vantage v4.0. Use the <code className="bg-background px-1 rounded text-accent">/</code> key to search symbols or navigate.
             </p>
           </div>
@@ -180,7 +180,7 @@ export default function TerminalPage() {
 
           {/* --- LEFT COLUMN --- */}
           <Panel defaultSize={20} minSize={15} id="left-panel">
-            <div className="h-full w-full p-px bg-background flex flex-col gap-px">
+            <div className="h-full w-full bg-background flex flex-col gap-px">
               <div className="flex-1 min-h-0">
                 <Widget
                   title="Market Watch"
@@ -240,7 +240,7 @@ export default function TerminalPage() {
                         <div
                           key={sym}
                           onClick={() => setActiveSymbol(sym)}
-                          className={`flex justify-between items-center px-3 py-2 border-b border-border/20 cursor-pointer group transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
+                          className={`flex justify-between items-center px-3 py-1.5 border-b border-border/20 cursor-pointer group transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
                         >
                           <div className="flex flex-col">
                             <div className="flex items-center gap-1">
@@ -264,7 +264,7 @@ export default function TerminalPage() {
                   </div>
                 </Widget>
               </div>
-              <div className="h-32 shrink-0">
+              <div className="h-28 shrink-0">
                 <Widget title="Market Internals">
                   <MarketInternals tick={activeQuote} />
                 </Widget>
@@ -272,13 +272,13 @@ export default function TerminalPage() {
             </div>
           </Panel>
 
-          <PanelResizeHandle className="w-0.5 h-full bg-border/50 hover:bg-accent transition-colors" />
+          <PanelResizeHandle className="w-px h-full bg-border hover:bg-accent transition-colors" />
 
           {/* --- CENTER COLUMN --- */}
           <Panel defaultSize={60} minSize={40} id="center-panel">
             <PanelGroup orientation="vertical">
               <Panel defaultSize={70} minSize={40} id="chart">
-                <div className="h-full w-full p-px bg-background">
+                <div className="h-full w-full bg-background">
                   <Widget
                     title={`${activeSymbol} • ${getLabel(activeSymbol)}`}
                     actions={
@@ -309,20 +309,20 @@ export default function TerminalPage() {
                 </div>
               </Panel>
 
-              <PanelResizeHandle className="h-0.5 w-full bg-border/50 hover:bg-accent transition-colors" />
+              <PanelResizeHandle className="h-px w-full bg-border hover:bg-accent transition-colors" />
 
               <Panel defaultSize={30} minSize={20} id="bottom-modules">
                 <PanelGroup orientation="horizontal">
                   <Panel defaultSize={50} minSize={30} id="ict-panel">
-                    <div className="h-full w-full p-px bg-background">
+                    <div className="h-full w-full bg-background">
                       <Widget title="ICT Structure Engine">
                         <ICTPanel tick={activeQuote} timeframeLabel={timeframe.label} />
                       </Widget>
                     </div>
                   </Panel>
-                  <PanelResizeHandle className="w-0.5 h-full bg-border/50 hover:bg-accent transition-colors" />
+                  <PanelResizeHandle className="w-px h-full bg-border hover:bg-accent transition-colors" />
                   <Panel defaultSize={50} minSize={30} id="confluences">
-                    <div className="h-full w-full p-px bg-background">
+                    <div className="h-full w-full bg-background">
                       <Widget title="Terminal Confluences">
                         <ConfluenceScanner symbol={activeSymbol} timeframeLabel={timeframe.label} />
                       </Widget>
@@ -333,13 +333,13 @@ export default function TerminalPage() {
             </PanelGroup>
           </Panel>
 
-          <PanelResizeHandle className="w-0.5 h-full bg-border/50 hover:bg-accent transition-colors" />
+          <PanelResizeHandle className="w-px h-full bg-border hover:bg-accent transition-colors" />
 
           {/* --- RIGHT COLUMN --- */}
           <Panel defaultSize={20} minSize={15} id="right-panel">
             <PanelGroup orientation="vertical">
               <Panel defaultSize={40} minSize={20} id="calendar">
-                <div className="h-full w-full p-px bg-background">
+                <div className="h-full w-full bg-background">
                   <Widget 
                     title="Economic Calendar"
                     actions={
@@ -353,10 +353,10 @@ export default function TerminalPage() {
                 </div>
               </Panel>
 
-              <PanelResizeHandle className="h-0.5 w-full bg-border/50 hover:bg-accent transition-colors" />
+              <PanelResizeHandle className="h-px w-full bg-border hover:bg-accent transition-colors" />
 
               <Panel defaultSize={60} minSize={30} id="news">
-                <div className="h-full w-full p-px bg-background">
+                <div className="h-full w-full bg-background">
                   <Widget 
                     title="Intelligence Wire"
                     actions={

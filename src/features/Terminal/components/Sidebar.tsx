@@ -13,7 +13,9 @@ import {
   Search,
   Bell,
   Calendar,
-  Zap
+  Zap,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { SettingsModal } from '@/components/ui/SettingsModal';
 import { NotificationsPanel } from './notifications/NotificationsPanel';
@@ -32,35 +34,43 @@ export function Sidebar() {
   const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-
       const item = NAV_ITEMS.find(i => i.key === e.key);
       if (item) {
         e.preventDefault();
         router.push(item.href);
       }
-
-      if (e.key === 's' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        setIsSettingsOpen(true);
-      }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [router]);
 
   return (
     <>
-      <div className="w-full h-14 md:w-12 md:h-full bg-surface border-t md:border-t-0 md:border-r border-border flex flex-row md:flex-col items-center md:py-3 z-50 shrink-0 overflow-x-auto md:overflow-x-visible hide-scrollbar">
-        <Link href="/dashboard" className="hidden md:flex mb-6 text-accent hover:opacity-80 transition-opacity">
-          <Terminal size={20} />
-        </Link>
+      <div className={`
+        h-full bg-surface border-r border-border flex flex-col transition-all duration-300 z-50 shrink-0
+        ${isExpanded ? 'w-48' : 'w-12'}
+      `}>
+        {/* Brand Header */}
+        <div className="h-12 flex items-center px-3 border-b border-border bg-background justify-between">
+          <Link href="/dashboard" className="flex items-center gap-2 text-accent hover:opacity-80 transition-opacity overflow-hidden">
+            <Terminal size={20} className="shrink-0" />
+            {isExpanded && <span className="font-black tracking-tighter text-sm uppercase">Vantage</span>}
+          </Link>
+          <button 
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1 hover:bg-surface-highlight rounded text-text-tertiary hover:text-text-primary transition-colors"
+          >
+            {isExpanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+          </button>
+        </div>
 
-        <nav className="flex flex-row md:flex-col gap-2 md:gap-2 px-2 flex-1 md:flex-none justify-evenly md:justify-start w-full min-w-max">
+        {/* Navigation */}
+        <nav className="flex-1 py-4 flex flex-col gap-1 px-2">
           {NAV_ITEMS.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
             return (
@@ -68,41 +78,53 @@ export function Sidebar() {
                 key={item.href}
                 href={item.href}
                 className={`
-                  group relative flex items-center justify-center w-10 h-10 md:w-8 md:h-8 rounded-[2px] transition-colors
+                  flex items-center gap-3 h-9 px-2 rounded-[2px] transition-all group
                   ${isActive
                     ? 'bg-accent/10 text-accent border border-accent/20'
                     : 'text-text-tertiary hover:text-text-primary hover:bg-surface-highlight'}
                 `}
-                title={`${item.label} (${item.key})`}
+                title={item.label}
               >
-                <item.icon size={18} className="md:w-4 md:h-4" strokeWidth={1.5} />
-                <span className="hidden md:block absolute left-full ml-2 px-1.5 py-0.5 bg-surface border border-border text-[8px] text-text-secondary rounded opacity-0 group-hover:opacity-100 pointer-events-none whitespace-nowrap z-[100]">
-                  {item.label} <span className="text-accent ml-1">{item.key}</span>
-                </span>
+                <item.icon size={16} className="shrink-0" strokeWidth={isActive ? 2.5 : 1.5} />
+                {isExpanded && (
+                  <div className="flex-1 flex justify-between items-center overflow-hidden">
+                    <span className="text-[11px] font-bold uppercase tracking-wider truncate">{item.label}</span>
+                    <span className="text-[9px] font-mono opacity-40 group-hover:opacity-100">{item.key}</span>
+                  </div>
+                )}
               </Link>
             );
           })}
         </nav>
 
-        <div className="flex flex-row md:flex-col gap-2 md:gap-2 px-2 md:mt-auto justify-evenly md:justify-start w-full md:w-auto items-center min-w-max border-l md:border-l-0 md:border-t border-border/50 pl-2 md:pl-0 md:pt-4 ml-2 md:ml-0">
+        {/* Bottom Actions */}
+        <div className="p-2 flex flex-col gap-1 border-t border-border/50">
           <button
             onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
-            className="flex items-center justify-center w-10 h-10 md:w-8 md:h-8 text-text-secondary hover:text-text-primary transition-colors"
+            className="flex items-center gap-3 h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
           >
-            <Search size={18} className="md:w-4 md:h-4" />
+            <Search size={16} className="shrink-0" />
+            {isExpanded && <span className="text-[11px] font-bold uppercase tracking-wider">Search</span>}
           </button>
           <button
             onClick={() => setIsNotificationsOpen(true)}
-            className="flex items-center justify-center w-10 h-10 md:w-8 md:h-8 text-text-secondary hover:text-text-primary transition-colors"
+            className="flex items-center gap-3 h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
           >
-            <Bell size={18} className="md:w-4 md:h-4" />
+            <Bell size={16} className="shrink-0" />
+            {isExpanded && <span className="text-[11px] font-bold uppercase tracking-wider">Alerts</span>}
           </button>
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="flex items-center justify-center w-10 h-10 md:w-8 md:h-8 text-text-secondary hover:text-text-primary transition-colors"
+            className="flex items-center gap-3 h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
           >
-            <Settings size={18} className="md:w-4 md:h-4" />
+            <Settings size={16} className="shrink-0" />
+            {isExpanded && <span className="text-[11px] font-bold uppercase tracking-wider">Settings</span>}
           </button>
+          
+          <div className="h-8 flex items-center px-2 mt-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse shrink-0" />
+            {isExpanded && <span className="ml-3 text-[8px] font-bold text-text-tertiary uppercase tracking-widest">System Live</span>}
+          </div>
         </div>
       </div>
 
