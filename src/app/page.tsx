@@ -155,7 +155,7 @@ export default function TerminalPage() {
                 <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
                   {watchlist.map(sym => {
                     const data = marketData[sym];
-                    const isPositive = data?.change >= 0;
+                    const isPositive = data?.changePercent != null ? data.changePercent >= 0 : true;
 
                     return (
                       <div
@@ -172,11 +172,11 @@ export default function TerminalPage() {
                         </div>
                         <div className="flex flex-col items-end">
                           <span className="text-[10px] font-mono font-bold text-text-primary">
-                            {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
+                            {data && data.price != null ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
                           </span>
                           <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
                             {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
-                            <span>{data ? `${Math.abs(data.changePercent).toFixed(2)}%` : '--'}</span>
+                            <span>{data && data.changePercent != null ? `${Math.abs(data.changePercent).toFixed(2)}%` : '--'}</span>
                           </div>
                         </div>
                       </div>

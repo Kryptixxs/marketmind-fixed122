@@ -67,9 +67,12 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
         if (result && result.meta) {
           const meta = result.meta;
           const price = meta.regularMarketPrice;
-          const prevClose = meta.previousClose;
+          
+          if (price == null) return null; // Safe guard against missing data
+          
+          const prevClose = meta.previousClose || price;
           const change = price - prevClose;
-          const changePercent = (change / prevClose) * 100;
+          const changePercent = prevClose !== 0 ? (change / prevClose) * 100 : 0;
 
           let history: OHLCV[] = [];
           if (result.timestamp && result.indicators?.quote?.[0]) {

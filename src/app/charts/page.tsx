@@ -181,7 +181,7 @@ export default function ChartsPage() {
           <div className="flex-1 overflow-y-auto custom-scrollbar">
             {watchlist.map(sym => {
               const data = marketData[sym];
-              const isPositive = data?.change >= 0;
+              const isPositive = data?.changePercent != null ? data.changePercent >= 0 : true;
 
               return (
                 <div
@@ -205,10 +205,10 @@ export default function ChartsPage() {
                     ) : (
                       <>
                         <span className="text-[11px] font-mono font-bold text-text-primary">
-                          {data ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
+                          {data && data.price != null ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
                         </span>
                         <span className={`text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
-                          {data ? `${isPositive ? '+' : ''}${data.changePercent.toFixed(2)}%` : '--'}
+                          {data && data.changePercent != null ? `${isPositive ? '+' : ''}${data.changePercent.toFixed(2)}%` : '--'}
                         </span>
                       </>
                     )}
