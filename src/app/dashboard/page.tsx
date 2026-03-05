@@ -9,7 +9,7 @@ import { ConfluenceScanner } from '@/features/Terminal/components/widgets/Conflu
 import { ICTPanel } from '@/features/Terminal/components/widgets/ICTPanel';
 import { MiniCalendar } from '@/features/Terminal/components/widgets/MiniCalendar';
 import { MarketInternals } from '@/features/Terminal/components/widgets/MarketInternals';
-import { Wifi, TrendingUp, TrendingDown, Plus, Search, X, Loader2, Layout, Maximize2, Info, ExternalLink } from 'lucide-react';
+import { Wifi, TrendingUp, TrendingDown, Plus, Search, X, Loader2, Layout, Maximize2, Info, ExternalLink, Cpu, Globe, ShieldCheck, Clock } from 'lucide-react';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { searchSymbols } from '@/app/actions/searchSymbols';
@@ -45,7 +45,7 @@ const TIMEFRAMES = [
 export default function TerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("NAS100");
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]);
-  const [showWelcome, setShowWelcome] = useState(true);
+  const [systemTime, setSystemTime] = useState('');
 
   const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -53,6 +53,13 @@ export default function TerminalPage() {
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSystemTime(new Date().toUTCString().split(' ')[4]);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     const q = searchQuery.trim();
@@ -71,21 +78,14 @@ export default function TerminalPage() {
 
   useEffect(() => {
     const saved = localStorage.getItem('vantage_main_watchlist_v4');
-    const welcomeDismissed = localStorage.getItem('vantage_welcome_dismissed');
     if (saved) {
       try { setWatchlist(JSON.parse(saved)); } catch (e) { }
     }
-    if (welcomeDismissed) setShowWelcome(false);
   }, []);
 
   useEffect(() => {
     localStorage.setItem('vantage_main_watchlist_v4', JSON.stringify(watchlist));
   }, [watchlist]);
-
-  const dismissWelcome = () => {
-    setShowWelcome(false);
-    localStorage.setItem('vantage_welcome_dismissed', 'true');
-  };
 
   const allSymbols = [...new Set([...watchlist, ...MACRO_SYMBOLS])];
   const { data: marketData } = useMarketData(allSymbols, timeframe.yf);
@@ -159,29 +159,13 @@ export default function TerminalPage() {
     <div className="h-full w-full bg-background flex flex-col overflow-hidden min-h-0">
       <TerminalCommandBar />
 
-      {showWelcome && (
-        <div className="bg-accent/10 border-b border-accent/20 px-4 py-1.5 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-300">
-          <div className="flex items-center gap-3">
-            <div className="w-5 h-5 bg-accent text-accent-text rounded-full flex items-center justify-center">
-              <Info size={12} />
-            </div>
-            <p className="text-[10px] font-bold text-text-primary uppercase tracking-wider">
-              Welcome to Vantage v4.0. Use the <code className="bg-background px-1 rounded text-accent">/</code> key to search symbols or navigate.
-            </p>
-          </div>
-          <button onClick={dismissWelcome} className="text-text-tertiary hover:text-text-primary transition-colors">
-            <X size={14} />
-          </button>
-        </div>
-      )}
-
       <div className="flex-1 w-full flex overflow-hidden">
         <PanelGroup orientation="horizontal" className="w-full h-full">
 
           {/* --- LEFT COLUMN --- */}
-          <Panel defaultSize={20} minSize={15} id="left-panel">
+          <Panel defaultSize={18} minSize={15} id="left-panel">
             <PanelGroup orientation="vertical">
-              <Panel defaultSize={75} minSize={30} id="watchlist-panel">
+              <Panel defaultSize={70} minSize={30} id="watchlist-panel">
                 <div className="h-full w-full bg-background p-px">
                   <Widget
                     title="Market Watch"
@@ -189,21 +173,21 @@ export default function TerminalPage() {
                       <div className="relative">
                         <button 
                           onClick={() => setIsSearchOpen(true)} 
-                          className="flex items-center gap-1 px-2 py-0.5 bg-accent/10 border border-accent/30 text-accent rounded-sm text-[9px] font-bold uppercase hover:bg-accent/20 transition-all"
+                          className="flex items-center gap-1 px-1.5 py-0.5 bg-accent/10 border border-accent/30 text-accent rounded-sm text-[8px] font-bold uppercase hover:bg-accent/20 transition-all"
                         >
-                          <Plus size={10} /> Add Symbol
+                          <Plus size={8} /> Add
                         </button>
                         {isSearchOpen && (
                           <>
                             <div className="fixed inset-0 z-40" onClick={() => setIsSearchOpen(false)} />
-                            <div className="absolute top-full left-0 mt-1 w-64 bg-surface-highlight border border-border rounded shadow-2xl z-50 p-1 flex flex-col">
+                            <div className="absolute top-full left-0 mt-1 w-64 bg-surface-highlight border border-border shadow-2xl z-50 p-1 flex flex-col">
                               <form onSubmit={handleAddSymbol} className="flex items-center gap-2 bg-background border border-border px-2 rounded">
                                 <Search size={12} className="text-text-tertiary" />
                                 <input
                                   ref={searchInputRef}
                                   value={searchQuery}
                                   onChange={e => setSearchQuery(e.target.value)}
-                                  placeholder="Type company name or ticker..."
+                                  placeholder="Ticker..."
                                   className="flex-1 bg-transparent border-none outline-none text-xs py-2 text-text-primary uppercase"
                                 />
                                 {isSearching && <Loader2 size={12} className="animate-spin text-accent" />}
@@ -241,12 +225,12 @@ export default function TerminalPage() {
                           <div
                             key={sym}
                             onClick={() => setActiveSymbol(sym)}
-                            className={`flex justify-between items-center px-3 py-1.5 border-b border-border/20 cursor-pointer group transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
+                            className={`flex justify-between items-center px-2 py-1 border-b border-border/10 cursor-pointer group transition-colors ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
                           >
                             <div className="flex flex-col">
                               <div className="flex items-center gap-1">
                                 <span className="font-bold text-[10px] text-text-primary">{sym}</span>
-                                <button onClick={(e) => handleRemoveSymbol(e, sym)} className="opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-negative"><X size={10} /></button>
+                                <button onClick={(e) => handleRemoveSymbol(e, sym)} className="opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-negative"><X size={8} /></button>
                               </div>
                               <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{getLabel(sym)}</span>
                             </div>
@@ -255,7 +239,6 @@ export default function TerminalPage() {
                                 {data && data.price != null ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
                               </span>
                               <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
-                                {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
                                 <span>{data && data.changePercent != null ? `${Math.abs(data.changePercent).toFixed(2)}%` : '--'}</span>
                               </div>
                             </div>
@@ -267,7 +250,7 @@ export default function TerminalPage() {
                 </div>
               </Panel>
               <PanelResizeHandle className="h-px w-full bg-border hover:bg-accent transition-colors" />
-              <Panel defaultSize={25} minSize={15} id="internals-panel">
+              <Panel defaultSize={30} minSize={15} id="internals-panel">
                 <div className="h-full w-full bg-background p-px">
                   <Widget title="Market Internals">
                     <MarketInternals tick={activeQuote} />
@@ -280,9 +263,9 @@ export default function TerminalPage() {
           <PanelResizeHandle className="w-px h-full bg-border hover:bg-accent transition-colors" />
 
           {/* --- CENTER COLUMN --- */}
-          <Panel defaultSize={60} minSize={40} id="center-panel">
+          <Panel defaultSize={64} minSize={40} id="center-panel">
             <PanelGroup orientation="vertical">
-              <Panel defaultSize={70} minSize={40} id="chart">
+              <Panel defaultSize={75} minSize={40} id="chart">
                 <div className="h-full w-full p-px bg-background">
                   <Widget
                     title={`${activeSymbol} • ${getLabel(activeSymbol)}`}
@@ -293,13 +276,13 @@ export default function TerminalPage() {
                             <button
                               key={tf.label}
                               onClick={() => setTimeframe(tf)}
-                              className={`px-1.5 py-0.5 text-[9px] font-bold rounded-sm transition-colors whitespace-nowrap ${timeframe.label === tf.label ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
+                              className={`px-1.5 py-0.5 text-[8px] font-bold rounded-sm transition-colors whitespace-nowrap ${timeframe.label === tf.label ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-primary'}`}
                             >
                               {tf.label}
                             </button>
                           ))}
                         </div>
-                        <span className="text-positive flex items-center gap-1 text-[8px] whitespace-nowrap"><Wifi size={8} /> Live Feed</span>
+                        <span className="text-positive flex items-center gap-1 text-[8px] whitespace-nowrap"><Wifi size={8} /> Live</span>
                       </div>
                     }
                   >
@@ -307,7 +290,7 @@ export default function TerminalPage() {
                       {chartData.length > 0 ? (
                          <TradingChart data={chartData} symbol={activeSymbol} />
                       ) : (
-                         <div className="flex items-center justify-center h-full text-[10px] uppercase font-bold tracking-widest text-text-tertiary">Rendering Engine...</div>
+                         <div className="flex items-center justify-center h-full text-[9px] uppercase font-bold tracking-widest text-text-tertiary">Syncing Engine...</div>
                       )}
                     </div>
                   </Widget>
@@ -316,11 +299,11 @@ export default function TerminalPage() {
 
               <PanelResizeHandle className="h-0.5 w-full bg-border/50 hover:bg-accent transition-colors" />
 
-              <Panel defaultSize={30} minSize={20} id="bottom-modules">
+              <Panel defaultSize={25} minSize={20} id="bottom-modules">
                 <PanelGroup orientation="horizontal">
                   <Panel defaultSize={50} minSize={30} id="ict-panel">
                     <div className="h-full w-full p-px bg-background">
-                      <Widget title="ICT Structure Engine">
+                      <Widget title="ICT Structure">
                         <ICTPanel tick={activeQuote} timeframeLabel={timeframe.label} />
                       </Widget>
                     </div>
@@ -328,7 +311,7 @@ export default function TerminalPage() {
                   <PanelResizeHandle className="w-0.5 h-full bg-border/50 hover:bg-accent transition-colors" />
                   <Panel defaultSize={50} minSize={30} id="confluences">
                     <div className="h-full w-full p-px bg-background">
-                      <Widget title="Terminal Confluences">
+                      <Widget title="Confluence Matrix">
                         <ConfluenceScanner symbol={activeSymbol} timeframeLabel={timeframe.label} />
                       </Widget>
                     </div>
@@ -341,15 +324,15 @@ export default function TerminalPage() {
           <PanelResizeHandle className="w-0.5 h-full bg-border/50 hover:bg-accent transition-colors" />
 
           {/* --- RIGHT COLUMN --- */}
-          <Panel defaultSize={20} minSize={15} id="right-panel">
+          <Panel defaultSize={18} minSize={15} id="right-panel">
             <PanelGroup orientation="vertical">
-              <Panel defaultSize={40} minSize={20} id="calendar">
+              <Panel defaultSize={35} minSize={20} id="calendar">
                 <div className="h-full w-full p-px bg-background">
                   <Widget 
-                    title="Economic Calendar"
+                    title="Macro Calendar"
                     actions={
-                      <Link href="/calendar" className="text-[9px] font-bold text-accent hover:underline flex items-center gap-1">
-                        FULL VIEW <ExternalLink size={10} />
+                      <Link href="/calendar" className="text-[8px] font-bold text-accent hover:underline flex items-center gap-1">
+                        FULL <ExternalLink size={8} />
                       </Link>
                     }
                   >
@@ -360,13 +343,13 @@ export default function TerminalPage() {
 
               <PanelResizeHandle className="h-0.5 w-full bg-border/50 hover:bg-accent transition-colors" />
 
-              <Panel defaultSize={60} minSize={30} id="news">
+              <Panel defaultSize={65} minSize={30} id="news">
                 <div className="h-full w-full p-px bg-background">
                   <Widget 
                     title="Intelligence Wire"
                     actions={
-                      <Link href="/news" className="text-[9px] font-bold text-accent hover:underline flex items-center gap-1">
-                        FULL WIRE <ExternalLink size={10} />
+                      <Link href="/news" className="text-[8px] font-bold text-accent hover:underline flex items-center gap-1">
+                        WIRE <ExternalLink size={8} />
                       </Link>
                     }
                   >
@@ -378,6 +361,34 @@ export default function TerminalPage() {
           </Panel>
 
         </PanelGroup>
+      </div>
+
+      {/* System Status Bar */}
+      <div className="h-6 bg-surface border-t border-border flex items-center justify-between px-3 shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse" />
+            <span className="text-[9px] font-bold uppercase tracking-widest text-text-secondary">Gateway: US-EAST-1</span>
+          </div>
+          <div className="flex items-center gap-2 text-[9px] text-text-tertiary">
+            <Cpu size={10} />
+            <span className="font-mono uppercase">Engine: V4.0.2-STABLE</span>
+          </div>
+          <div className="flex items-center gap-2 text-[9px] text-text-tertiary">
+            <Globe size={10} />
+            <span className="font-mono uppercase">Nodes: 12 Active</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-[9px] text-text-tertiary">
+            <ShieldCheck size={10} className="text-accent" />
+            <span className="font-mono uppercase">Encrypted Session</span>
+          </div>
+          <div className="flex items-center gap-2 text-[9px] font-mono text-text-secondary">
+            <Clock size={10} />
+            <span>{systemTime} UTC</span>
+          </div>
+        </div>
       </div>
     </div>
   );
