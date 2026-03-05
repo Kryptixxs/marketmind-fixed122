@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { useRouter, usePathname } from 'next/navigation';
@@ -22,6 +22,7 @@ const AuthContext = createContext<AuthContextType>({
 });
 
 const BYPASS_KEY = 'vantage_session_bypass';
+const SECRET_SEQUENCE = 'vantage';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -30,6 +31,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  
+  // Use a ref to track the key sequence without triggering re-renders
+  const keyBuffer = useRef<string>('');
 
   // Check for existing bypass on mount
   useEffect(() => {
@@ -60,13 +64,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Secret Key Listener: Ctrl + Shift + Alt + Enter
+  // Secret Sequence Listener: typing 'vantage'
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.ctrlKey && e.shiftKey && e.altKey && e.key === 'Enter') {
-        console.log("[Auth] Institutional Bypass Triggered");
+      // Ignore if user is typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      // Append key to buffer
+      keyBuffer.current += e.key.toLowerCase();
+      
+      // Keep buffer size manageable
+      if (keyBuffer.current.length > SECRET_SEQUENCE.length) {
+        keyBuffer.current = keyBuffer.current.slice(-SECRET_SEQUENCE.length);
+      }
+
+      // Check for match
+      if (keyBuffer.current === SECRET_SEQUENCE) {
+        console.log("[Auth] Institutional Bypass Triggered via Sequence");
         sessionStorage.setItem(BYPASS_KEY, 'true');
         setIsGuest(true);
+        keyBuffer.current = ''; // Reset buffer
         router.push('/dashboard');
       }
     };
