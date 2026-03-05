@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Terminal, User, Mail, Lock, Building, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Terminal, User, Mail, Lock, Building, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function RegisterPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -21,6 +22,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccess(null);
 
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -38,7 +40,15 @@ export default function RegisterPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push('/dashboard');
+      // If Supabase requires email confirmation, session will be null
+      if (data.session) {
+        router.push('/dashboard');
+      } else {
+        setSuccess("Application received! Please check your email to verify your account before logging in.");
+        setLoading(false);
+        // Clear password for security
+        setPassword('');
+      }
     }
   };
 
@@ -60,6 +70,13 @@ export default function RegisterPage() {
             <div className="p-3 bg-negative/10 border border-negative/30 rounded flex items-start gap-2 text-negative text-sm">
               <AlertCircle size={16} className="shrink-0 mt-0.5" />
               <span>{error}</span>
+            </div>
+          )}
+          
+          {success && (
+            <div className="p-3 bg-positive/10 border border-positive/30 rounded flex items-start gap-2 text-positive text-sm">
+              <CheckCircle2 size={16} className="shrink-0 mt-0.5" />
+              <span>{success}</span>
             </div>
           )}
 
@@ -135,8 +152,8 @@ export default function RegisterPage() {
 
           <button 
             type="submit" 
-            disabled={loading}
-            className="w-full h-12 bg-text-primary text-background font-bold uppercase tracking-widest rounded-sm hover:bg-text-secondary transition-colors flex items-center justify-center gap-2 mt-4"
+            disabled={loading || !!success}
+            className="w-full h-12 bg-text-primary text-background font-bold uppercase tracking-widest rounded-sm hover:bg-text-secondary transition-colors flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
           >
             {loading ? <Loader2 size={18} className="animate-spin" /> : <>Submit Application <ArrowRight size={18} /></>}
           </button>
