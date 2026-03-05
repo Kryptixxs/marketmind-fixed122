@@ -24,7 +24,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="flex flex-col-reverse md:flex-row h-[100dvh] w-full overflow-hidden bg-background text-text-primary antialiased">
+      <body className="flex flex-col-reverse md:flex-row h-[100dvh] w-full overflow-hidden antialiased">
         <AuthProvider>
           <SettingsProvider>
             <LayoutWrapper>

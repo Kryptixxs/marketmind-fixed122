@@ -1,107 +1,170 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #000000;
-  --color-surface: #09090b; /* Zinc 950 */
-  --color-surface-highlight: #18181b; /* Zinc 900 */
+  /* Map standard classes to dynamic variables */
+  --color-background: var(--theme-bg-base);
+  --color-surface: var(--theme-bg-panel);
+  --color-surface-highlight: var(--theme-bg-header);
   
-  --color-border: #27272a; /* Zinc 800 */
-  --color-border-highlight: #3f3f46; /* Zinc 700 */
+  --color-border: var(--theme-border-subtle);
+  --color-border-strong: var(--theme-border-strong);
 
-  --color-text-primary: #f4f4f5; /* Zinc 100 */
-  --color-text-secondary: #a1a1aa; /* Zinc 400 */
-  --color-text-tertiary: #52525b; /* Zinc 600 */
+  --color-text-primary: var(--theme-text-main);
+  --color-text-secondary: var(--theme-text-muted);
+  --color-text-tertiary: var(--theme-text-muted);
+  --color-text-hi: var(--theme-text-hi);
 
-  --color-accent: #00ff9d; /* Spring Green */
-  --color-accent-dim: rgba(0, 255, 157, 0.1);
-  --color-accent-text: #000000;
-
-  --color-positive: #00ff9d;
-  --color-negative: #ff3333;
-  --color-warning: #ffb302;
+  --color-accent: var(--theme-accent);
+  --color-positive: var(--theme-up);
+  --color-negative: var(--theme-down);
+  --color-warning: var(--theme-warn);
 
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
-  --radius-sm: 2px;
-  --radius-md: 4px;
 }
 
-/* ── Reset & Base ── */
+/* 1. THEME DEFINITIONS */
+:root, [data-theme="dark"] {
+  --theme-bg-base: #000000;
+  --theme-bg-panel: #09090b;
+  --theme-bg-header: #121214;
+  --theme-border-subtle: #27272a;
+  --theme-border-strong: #3f3f46;
+  --theme-text-main: #d4d4d8;
+  --theme-text-muted: #71717a;
+  --theme-text-hi: #ffffff;
+  --theme-accent: #00ff9d;
+  --theme-up: #00ff9d;
+  --theme-down: #ff3333;
+  --theme-warn: #eab308;
+}
+
+[data-theme="oled"] {
+  --theme-bg-base: #000000;
+  --theme-bg-panel: #000000;
+  --theme-bg-header: #050505;
+  --theme-border-subtle: #111111;
+  --theme-border-strong: #222222;
+  --theme-text-main: #aaaaaa;
+  --theme-text-muted: #444444;
+  --theme-text-hi: #ffffff;
+  --theme-accent: #ffffff;
+  --theme-up: #00ff00;
+  --theme-down: #ff0000;
+  --theme-warn: #cc9900;
+}
+
+[data-theme="bloomberg"] {
+  --theme-bg-base: #000000;
+  --theme-bg-panel: #000000;
+  --theme-bg-header: #000033;
+  --theme-border-subtle: #331f00;
+  --theme-border-strong: #ff9900;
+  --theme-text-main: #ff9900;
+  --theme-text-muted: #995c00;
+  --theme-text-hi: #ffcc00;
+  --theme-accent: #ff9900;
+  --theme-up: #00ff00;
+  --theme-down: #ff0000;
+  --theme-warn: #ffff00;
+}
+
+[data-theme="classic-terminal"] {
+  --theme-bg-base: #000000;
+  --theme-bg-panel: #000a00;
+  --theme-bg-header: #001100;
+  --theme-border-subtle: #003300;
+  --theme-border-strong: #00ff00;
+  --theme-text-main: #00ff00;
+  --theme-text-muted: #006600;
+  --theme-text-hi: #ccffcc;
+  --theme-accent: #00ff00;
+  --theme-up: #00ff00;
+  --theme-down: #ff3333;
+  --theme-warn: #ffcc00;
+}
+
+/* 2. DENSITY DEFINITIONS */
+:root, [data-density="compact"] {
+  --size-font-base: 10px;
+  --space-panel-pad: 4px;
+  --space-header-h: 22px;
+}
+
+[data-density="standard"] {
+  --size-font-base: 12px;
+  --space-panel-pad: 8px;
+  --space-header-h: 28px;
+}
+
+[data-density="spacious"] {
+  --size-font-base: 14px;
+  --space-panel-pad: 12px;
+  --space-header-h: 34px;
+}
+
+/* ── Brutalist Reset ── */
 *, *::before, *::after {
   box-sizing: border-box;
+  border-radius: 0 !important; /* Force sharp edges */
 }
 
 html, body {
   height: 100%;
   width: 100%;
-  overflow: hidden; /* Terminal feel: no window scrolling */
-  background-color: var(--color-background);
-  color: var(--color-text-primary);
-  font-family: var(--font-mono); /* Force mono everywhere */
-  font-size: 11px; /* Reduced base size for higher density */
+  overflow: hidden;
+  background-color: var(--theme-bg-base);
+  color: var(--theme-text-main);
+  font-family: var(--font-mono);
+  font-size: var(--size-font-base);
   -webkit-font-smoothing: antialiased;
 }
 
-/* ── Scrollbars ── */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: var(--color-surface);
-}
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 0;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-tertiary);
-}
-
-/* ── Utilities ── */
+/* ── Component Classes ── */
 .panel-header {
-  height: 24px; /* More compact header */
+  height: var(--space-header-h);
+  padding: 0 var(--space-panel-pad);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 6px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  font-size: 9px;
-  text-transform: uppercase;
+  background: var(--theme-bg-header);
+  border-bottom: 1px solid var(--theme-border-strong);
+  font-size: 0.9em;
   font-weight: 700;
-  letter-spacing: 0.05em;
-  color: var(--color-text-secondary);
-  user-select: none;
+  text-transform: uppercase;
+  color: var(--theme-text-hi);
 }
 
 .panel-content {
-  background: var(--color-background);
+  background: var(--theme-bg-panel);
+  padding: var(--space-panel-pad);
   overflow: auto;
-  height: calc(100% - 24px);
+  height: calc(100% - var(--space-header-h));
 }
 
-.mono-num {
-  font-feature-settings: "tnum" on, "lnum" on;
+.terminal-btn {
+  border: 1px solid var(--theme-border-strong);
+  background: var(--theme-bg-panel);
+  color: var(--theme-text-main);
+  text-transform: uppercase;
+  font-weight: bold;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.terminal-btn:hover {
+  background: var(--theme-accent);
+  color: var(--theme-bg-base);
+  border-color: var(--theme-accent);
 }
 
-.custom-scrollbar::-webkit-scrollbar {
-  width: 4px;
+.terminal-input {
+  background: var(--theme-bg-base);
+  border: 1px solid var(--theme-border-strong);
+  color: var(--theme-text-main);
+  padding: 4px 8px;
+  outline: none;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-tertiary);
-}
-
-/* ── Animations ── */
-@keyframes liquid-fade {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-in {
-  animation: liquid-fade 0.3s ease-out forwards;
-}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--theme-bg-base); }
+::-webkit-scrollbar-thumb { background: var(--theme-border-strong); }
+::-webkit-scrollbar-thumb:hover { background: var(--theme-accent); }
