@@ -61,6 +61,15 @@ function DataMatrixBackground() {
 
 function LiveTicker() {
   const { data: tickerData } = useMarketData(['NAS100', 'SPX500', 'US30', 'GOLD', 'CRUDE', 'BTCUSD', 'EURUSD']);
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return <div className="h-7 bg-surface border-b border-border" />;
+  }
   
   return (
     <div className="h-7 bg-surface border-b border-border flex items-center overflow-hidden whitespace-nowrap">
@@ -83,8 +92,10 @@ function LiveTicker() {
 
 function TerminalPreview() {
   const [time, setTime] = useState('');
+  const [mounted, setMounted] = useState(false);
   
   useEffect(() => {
+    setMounted(true);
     const t = setInterval(() => setTime(new Date().toUTCString().split(' ')[4]), 1000);
     return () => clearInterval(t);
   }, []);
@@ -97,7 +108,7 @@ function TerminalPreview() {
           <span className="bb-fn-key bb-fn-key-amber text-[8px]">F1</span>
           <span className="text-[9px] font-bold text-accent tracking-wider">VANTAGE TERMINAL</span>
         </div>
-        <div className="text-[9px] text-text-tertiary font-mono">{time} UTC // LIVE</div>
+        <div className="text-[9px] text-text-tertiary font-mono">{time || '--:--:--'} UTC // LIVE</div>
       </div>
       
       {/* Grid layout */}
@@ -109,7 +120,7 @@ function TerminalPreview() {
             <div key={s} className={`flex justify-between items-center text-[9px] px-1 py-0.5 ${i === 0 ? 'bg-accent/10 border-l-2 border-accent' : ''}`}>
               <span className="font-bold text-text-primary">{s}</span>
               <span className={`tabular-nums ${i % 3 === 0 ? 'text-positive' : 'text-negative'}`}>
-                {i % 3 === 0 ? '+' : '-'}{(Math.random() * 2).toFixed(2)}%
+                {i % 3 === 0 ? '+' : '-'}{mounted ? (Math.random() * 2).toFixed(2) : '0.00'}%
               </span>
             </div>
           ))}

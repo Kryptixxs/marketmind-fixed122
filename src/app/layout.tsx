@@ -1,8 +1,21 @@
 import type { Metadata, Viewport } from "next";
+import { JetBrains_Mono, Inter } from "next/font/google";
 import "./globals.css";
 import { SettingsProvider } from '@/services/context/SettingsContext';
 import { LayoutWrapper } from '@/features/Terminal/components/LayoutWrapper';
 import { AuthProvider } from '@/services/context/AuthContext';
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-jetbrains-mono",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+});
 
 export const metadata: Metadata = {
   title: "VANTAGE TERMINAL // Bloomberg-Grade Intelligence",
@@ -23,12 +36,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
-      </head>
+    <html lang="en" className={`${jetbrainsMono.variable} ${inter.variable}`}>
       <body className="flex flex-col-reverse md:flex-row h-[100dvh] w-full overflow-hidden bg-background text-text-primary antialiased">
         <AuthProvider>
           <SettingsProvider>
