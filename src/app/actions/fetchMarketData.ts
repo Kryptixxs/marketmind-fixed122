@@ -13,10 +13,10 @@ export interface MarketData {
   name?: string;
 }
 
-// Internal app symbols to Yahoo chart symbols
+// Internal app symbols mapped to Yahoo ETF proxies to match Polygon's real-time feeds
 const YF_MAP: Record<string, string> = {
-  'NAS100': 'NQ=F', 'SPX500': 'ES=F', 'US30': 'YM=F', 'CRUDE': 'CL=F', 'GOLD': 'GC=F',
-  'EURUSD': 'EURUSD=X', 'BTCUSD': 'BTC-USD', 'ETHUSD': 'ETH-USD', 'VIX': '^VIX', 'DXY': 'DX-Y.NYB',
+  'NAS100': 'QQQ', 'SPX500': 'SPY', 'US30': 'DIA', 'CRUDE': 'USO', 'GOLD': 'GLD',
+  'EURUSD': 'EURUSD=X', 'BTCUSD': 'BTC-USD', 'ETHUSD': 'ETH-USD', 'VIX': '^VIX', 'DXY': 'UUP',
   'AAPL': 'AAPL', 'TSLA': 'TSLA', 'NVDA': 'NVDA', 'MSFT': 'MSFT'
 };
 
@@ -38,18 +38,13 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
   
   const results = await Promise.all(symbols.map(async (sym) => {
     try {
-      // ---------------------------------------------------------
-      // RAW OHLCV CHART INGESTION
-      // We bypass the npm package to pull raw json arrays directly 
-      // from the HTTP endpoint to feed our custom canvas charts.
-      // ---------------------------------------------------------
       const yfSym = YF_MAP[sym] || sym;
       const range = getRangeForInterval(interval);
       const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yfSym}?interval=${interval}&range=${range}`;
       
       const yfRes = await fetch(yfUrl, { 
         headers: { 
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'User-Agent': 'Mozilla/5.0',
           'Accept': 'application/json'
         },
         next: { revalidate: 15 }
