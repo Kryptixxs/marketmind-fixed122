@@ -4,10 +4,7 @@ import { EarningsEvent } from '@/lib/types';
 
 export async function fetchEarnings(dateStr: string): Promise<EarningsEvent[]> {
   try {
-    // FIX: Use the exact requested local date string to prevent shifting Friday -> Saturday
     const queryDate = dateStr;
-
-    // Switch to NASDAQ API which is more stable for public access
     const url = `https://api.nasdaq.com/api/calendar/earnings?date=${queryDate}`;
     
     const response = await fetch(url, {
@@ -32,7 +29,7 @@ export async function fetchEarnings(dateStr: string): Promise<EarningsEvent[]> {
       return [];
     }
 
-    return json.data.rows.map((row: any, i: number) => {
+    const mapped = json.data.rows.map((row: any, i: number) => {
       const safeFloat = (val: string | undefined): number | null => {
         if (!val) return null;
         const cleaned = val.toString().replace(/[$,%]/g, '');
@@ -64,7 +61,23 @@ export async function fetchEarnings(dateStr: string): Promise<EarningsEvent[]> {
         sector: 'Unknown',
         marketCap,
       };
-    }).slice(0, 20); // Limit to top 20 to keep the UI clean
+    });
+
+    // CRITICAL FIX: Sort by Market Cap descending before slicing
+    // This ensures massive companies like TSLA/NVDA are never omitted on busy earnings days
+    mapped.sort((a: any, b: any) => {
+      const parseCap = (cap: string) => {
+        if (!cap || cap === '-' || cap === 'N/A') return 0;
+        let val = parseFloat(cap.replace(/[^0-9.]/g, ''));
+        if (cap.toUpperCase().includes('T')) val *= 1000000000000;
+        else if (cap.toUpperCase().includes('B')) val *= 1000000000;
+        else if (cap.toUpperCase().includes('M')) val *= 1000000;
+        return isNaN(val) ? 0 : val;
+      };
+      return parseCap(b.marketCap) - parseCap(a.marketCap);
+    });
+
+    return mapped.slice(0, 60); // Safely return top 60 companies by value
   } catch (error) {
     console.error(`Error fetching earnings for ${dateStr}:`, error);
     return [];

@@ -5,6 +5,7 @@ import {
   ChevronLeft, ChevronRight, Search, Loader2
 } from 'lucide-react';
 import { fetchEarningsBatch } from '@/app/actions/fetchEarningsBatch';
+import { searchEarningsDate } from '@/app/actions/searchEarningsDate';
 import { EarningsEvent } from '@/lib/types';
 import { getBusinessWeek, toISODateString, getMonday } from '@/lib/date-utils';
 import { EarningsDetailModal } from './EarningsDetailModal';
@@ -17,6 +18,7 @@ export function EarningsCalendarView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isGlobalSearching, setIsGlobalSearching] = useState(false);
   const [targetEventId, setTargetEventId] = useState<string | null>(null);
+  const [targetTicker, setTargetTicker] = useState<string | null>(null);
 
   const weekDates = useMemo(() => {
     const today = new Date();
@@ -30,59 +32,48 @@ export function EarningsCalendarView() {
   useEffect(() => { weekDatesRef.current = weekDates; }, [weekDates]);
   useEffect(() => { eventsDataRef.current = events; }, [events]);
 
+  // Priority Matcher Logic
+  const findBestMatch = (eventList: EarningsEvent[], query: string) => {
+    const q = query.toLowerCase();
+    const exactTicker = eventList.find(e => e.ticker.toLowerCase() === q);
+    if (exactTicker) return exactTicker;
+    
+    const prefixTicker = eventList.find(e => e.ticker.toLowerCase().startsWith(q));
+    if (prefixTicker) return prefixTicker;
+    
+    const exactNameWord = eventList.find(e => e.name.toLowerCase().split(/[\s-]/).includes(q));
+    if (exactNameWord) return exactNameWord;
+    
+    return eventList.find(e => e.name.toLowerCase().includes(q));
+  };
+
   useEffect(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (query.length < 2) return; // 2 chars minimum for tickers
+    if (query.length < 2) return;
 
     const timer = setTimeout(async () => {
       const currentEventsData = eventsDataRef.current;
       const currentWeekDates = weekDatesRef.current;
 
-      // Priority Matcher: Guarantees Exact Tickers > Partial Tickers > Exact Names > Partial Names
-      const findBestMatch = (eventList: EarningsEvent[]) => {
-        const exactTicker = eventList.find(e => e.ticker.toLowerCase() === query);
-        if (exactTicker) return exactTicker;
-        
-        const prefixTicker = eventList.find(e => e.ticker.toLowerCase().startsWith(query));
-        if (prefixTicker) return prefixTicker;
-        
-        const exactNameWord = eventList.find(e => e.name.toLowerCase().split(/[\s-]/).includes(query));
-        if (exactNameWord) return exactNameWord;
-        
-        return eventList.find(e => e.name.toLowerCase().includes(query));
-      };
-
+      // 1. Look in the currently rendered week first
       const currentWeekEvents = currentWeekDates.flatMap(d => currentEventsData[d.dateStr] || []);
-      let match = findBestMatch(currentWeekEvents);
+      let match = findBestMatch(currentWeekEvents, query);
       
       if (match) {
         setTargetEventId(`event-${match.id}`);
         return;
       }
 
+      // 2. If not found locally, query Yahoo Finance for the exact earnings date
       setIsGlobalSearching(true);
-      const dates = [];
-      const now = new Date();
-      // Expanded search window from 4 weeks to 6 weeks forward to catch more events
-      for (let i = -7; i < 42; i++) {
-         const d = new Date();
-         d.setDate(now.getDate() + i);
-         dates.push(toISODateString(d));
-      }
-      
       try {
-        const futureData = await fetchEarningsBatch(dates);
-        setEvents(prev => ({...prev, ...futureData}));
-        
-        const allFuture = Object.values(futureData).flat();
-        match = findBestMatch(allFuture);
-        
-        if (match) {
+        const exactMatch = await searchEarningsDate(query);
+        if (exactMatch) {
           const today = new Date();
           const todayMonday = getMonday(today);
           todayMonday.setHours(0,0,0,0);
           
-          const matchDate = new Date(match.date + 'T12:00:00');
+          const matchDate = new Date(exactMatch.date + 'T12:00:00');
           const matchMonday = getMonday(matchDate);
           matchMonday.setHours(0,0,0,0);
           
@@ -90,7 +81,7 @@ export function EarningsCalendarView() {
           const diffWeeks = Math.round(diffTime / (1000 * 60 * 60 * 24 * 7));
           
           setWeekOffset(diffWeeks);
-          setTargetEventId(`event-${match.id}`);
+          setTargetTicker(exactMatch.symbol); // Queue this ticker to be highlighted once data loads
         }
       } finally {
         setIsGlobalSearching(false);
@@ -99,6 +90,18 @@ export function EarningsCalendarView() {
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  // Watch for new data arriving after a week jump to highlight the target ticker
+  useEffect(() => {
+    if (targetTicker && !loading) {
+      const allLoaded = Object.values(events).flat();
+      const match = allLoaded.find(e => e.ticker === targetTicker);
+      if (match) {
+        setTargetEventId(`event-${match.id}`);
+        setTargetTicker(null); // Clear queue
+      }
+    }
+  }, [events, loading, targetTicker]);
 
   useEffect(() => {
     if (targetEventId && !loading) {
@@ -159,13 +162,19 @@ export function EarningsCalendarView() {
       <div className="flex-1 grid grid-cols-5 gap-1 overflow-hidden min-h-0">
         {weekDates.map((day) => {
           const isToday = day.dateStr === toISODateString(new Date());
-          const dayEvents = (events[day.dateStr] || []).filter(e => {
-            if (!searchQuery) return true;
+          let dayEvents = events[day.dateStr] || [];
+          
+          if (searchQuery) {
             const q = searchQuery.toLowerCase();
-            const t = e.ticker.toLowerCase();
-            const n = e.name.toLowerCase();
-            return t === q || t.startsWith(q) || n.includes(q);
-          });
+            dayEvents = dayEvents.filter(e => {
+              const t = e.ticker.toLowerCase();
+              const n = e.name.toLowerCase();
+              return t === q || t.startsWith(q) || n.includes(q);
+            });
+          } else {
+            // If not searching, limit to top 15 by market cap to keep UI clean and fast
+            dayEvents = dayEvents.slice(0, 15);
+          }
 
           return (
             <div key={day.dateStr} className={`flex flex-col border border-border rounded-sm overflow-hidden ${isToday ? 'bg-surface-highlight/10' : 'bg-surface'}`}>
@@ -222,7 +231,6 @@ export function EarningsCalendarView() {
         })}
       </div>
 
-      {/* Render the new detail modal when a row is clicked */}
       {selectedEvent && (
         <EarningsDetailModal 
           event={selectedEvent} 
