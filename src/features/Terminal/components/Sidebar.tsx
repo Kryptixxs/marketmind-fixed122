@@ -13,9 +13,7 @@ import {
   Search,
   Bell,
   Calendar,
-  Zap,
-  ChevronLeft,
-  ChevronRight
+  Zap
 } from 'lucide-react';
 import { SettingsModal } from '@/components/ui/SettingsModal';
 import { NotificationsPanel } from './notifications/NotificationsPanel';
@@ -34,7 +32,7 @@ export function Sidebar() {
   const router = useRouter();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -51,22 +49,20 @@ export function Sidebar() {
 
   return (
     <>
-      <div className={`
-        h-full bg-surface border-r border-border flex flex-col transition-all duration-300 z-50 shrink-0
-        ${isExpanded ? 'w-48' : 'w-12'}
-      `}>
+      <div 
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className={`
+          h-full bg-surface border-r border-border flex flex-col transition-all duration-300 z-50 shrink-0
+          ${isHovered ? 'w-48 shadow-2xl' : 'w-12'}
+        `}
+      >
         {/* Brand Header */}
-        <div className="h-12 flex items-center px-3 border-b border-border bg-background justify-between">
+        <div className="h-12 flex items-center px-3 border-b border-border bg-background">
           <Link href="/dashboard" className="flex items-center gap-2 text-accent hover:opacity-80 transition-opacity overflow-hidden">
             <Terminal size={20} className="shrink-0" />
-            {isExpanded && <span className="font-black tracking-tighter text-sm uppercase">Vantage</span>}
+            {isHovered && <span className="font-black tracking-tighter text-sm uppercase">Vantage</span>}
           </Link>
-          <button 
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1 hover:bg-surface-highlight rounded text-text-tertiary hover:text-text-primary transition-colors"
-          >
-            {isExpanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-          </button>
         </div>
 
         {/* Navigation */}
@@ -86,7 +82,7 @@ export function Sidebar() {
                 title={item.label}
               >
                 <item.icon size={16} className="shrink-0" strokeWidth={isActive ? 2.5 : 1.5} />
-                {isExpanded && (
+                {isHovered && (
                   <div className="flex-1 flex justify-between items-center overflow-hidden">
                     <span className="text-[11px] font-bold uppercase tracking-wider truncate">{item.label}</span>
                     <span className="text-[9px] font-mono opacity-40 group-hover:opacity-100">{item.key}</span>
@@ -104,26 +100,26 @@ export function Sidebar() {
             className="flex items-center gap-3 h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
           >
             <Search size={16} className="shrink-0" />
-            {isExpanded && <span className="text-[11px] font-bold uppercase tracking-wider">Search</span>}
+            {isHovered && <span className="text-[11px] font-bold uppercase tracking-wider">Search</span>}
           </button>
           <button
             onClick={() => setIsNotificationsOpen(true)}
             className="flex items-center gap-3 h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
           >
             <Bell size={16} className="shrink-0" />
-            {isExpanded && <span className="text-[11px] font-bold uppercase tracking-wider">Alerts</span>}
+            {isHovered && <span className="text-[11px] font-bold uppercase tracking-wider">Alerts</span>}
           </button>
           <button
             onClick={() => setIsSettingsOpen(true)}
             className="flex items-center gap-3 h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
           >
             <Settings size={16} className="shrink-0" />
-            {isExpanded && <span className="text-[11px] font-bold uppercase tracking-wider">Settings</span>}
+            {isHovered && <span className="text-[11px] font-bold uppercase tracking-wider">Settings</span>}
           </button>
           
           <div className="h-8 flex items-center px-2 mt-2">
             <div className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse shrink-0" />
-            {isExpanded && <span className="ml-3 text-[8px] font-bold text-text-tertiary uppercase tracking-widest">System Live</span>}
+            {isHovered && <span className="ml-3 text-[8px] font-bold text-text-tertiary uppercase tracking-widest">System Live</span>}
           </div>
         </div>
       </div>

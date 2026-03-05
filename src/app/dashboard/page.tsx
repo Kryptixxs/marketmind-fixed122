@@ -180,96 +180,101 @@ export default function TerminalPage() {
 
           {/* --- LEFT COLUMN --- */}
           <Panel defaultSize={20} minSize={15} id="left-panel">
-            <div className="h-full w-full bg-background flex flex-col gap-px">
-              <div className="flex-1 min-h-0">
-                <Widget
-                  title="Market Watch"
-                  actions={
-                    <div className="relative">
-                      <button 
-                        onClick={() => setIsSearchOpen(true)} 
-                        className="flex items-center gap-1 px-2 py-0.5 bg-accent/10 border border-accent/30 text-accent rounded-sm text-[9px] font-bold uppercase hover:bg-accent/20 transition-all"
-                      >
-                        <Plus size={10} /> Add Symbol
-                      </button>
-                      {isSearchOpen && (
-                        <>
-                          <div className="fixed inset-0 z-40" onClick={() => setIsSearchOpen(false)} />
-                          <div className="absolute top-full left-0 mt-1 w-64 bg-surface-highlight border border-border rounded shadow-2xl z-50 p-1 flex flex-col">
-                            <form onSubmit={handleAddSymbol} className="flex items-center gap-2 bg-background border border-border px-2 rounded">
-                              <Search size={12} className="text-text-tertiary" />
-                              <input
-                                ref={searchInputRef}
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                placeholder="Type company name or ticker..."
-                                className="flex-1 bg-transparent border-none outline-none text-xs py-2 text-text-primary uppercase"
-                              />
-                              {isSearching && <Loader2 size={12} className="animate-spin text-accent" />}
-                            </form>
-                            
-                            {searchResults.length > 0 && (
-                              <div className="flex flex-col mt-1 bg-background rounded overflow-hidden">
-                                {searchResults.map(res => (
-                                  <button
-                                    key={res.symbol}
-                                    onClick={() => addResolvedSymbol(res.symbol)}
-                                    className="flex items-center justify-between p-2 hover:bg-surface-highlight text-left border-b border-border/50 last:border-0"
-                                  >
-                                    <div className="flex flex-col overflow-hidden pr-2">
-                                      <span className="text-xs font-bold text-text-primary">{res.symbol}</span>
-                                      <span className="text-[10px] text-text-tertiary truncate">{res.name}</span>
-                                    </div>
-                                    <span className="text-[9px] text-text-secondary bg-surface px-1.5 py-0.5 rounded font-mono shrink-0">{res.type}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  }
-                >
-                  <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
-                    {watchlist.map(sym => {
-                      const data = marketData[sym];
-                      const isPositive = data?.changePercent != null ? data.changePercent >= 0 : true;
-
-                      return (
-                        <div
-                          key={sym}
-                          onClick={() => setActiveSymbol(sym)}
-                          className={`flex justify-between items-center px-3 py-1.5 border-b border-border/20 cursor-pointer group transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
+            <PanelGroup orientation="vertical">
+              <Panel defaultSize={75} minSize={30} id="watchlist-panel">
+                <div className="h-full w-full bg-background p-px">
+                  <Widget
+                    title="Market Watch"
+                    actions={
+                      <div className="relative">
+                        <button 
+                          onClick={() => setIsSearchOpen(true)} 
+                          className="flex items-center gap-1 px-2 py-0.5 bg-accent/10 border border-accent/30 text-accent rounded-sm text-[9px] font-bold uppercase hover:bg-accent/20 transition-all"
                         >
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-1">
-                              <span className="font-bold text-[10px] text-text-primary">{sym}</span>
-                              <button onClick={(e) => handleRemoveSymbol(e, sym)} className="opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-negative"><X size={10} /></button>
+                          <Plus size={10} /> Add Symbol
+                        </button>
+                        {isSearchOpen && (
+                          <>
+                            <div className="fixed inset-0 z-40" onClick={() => setIsSearchOpen(false)} />
+                            <div className="absolute top-full left-0 mt-1 w-64 bg-surface-highlight border border-border rounded shadow-2xl z-50 p-1 flex flex-col">
+                              <form onSubmit={handleAddSymbol} className="flex items-center gap-2 bg-background border border-border px-2 rounded">
+                                <Search size={12} className="text-text-tertiary" />
+                                <input
+                                  ref={searchInputRef}
+                                  value={searchQuery}
+                                  onChange={e => setSearchQuery(e.target.value)}
+                                  placeholder="Type company name or ticker..."
+                                  className="flex-1 bg-transparent border-none outline-none text-xs py-2 text-text-primary uppercase"
+                                />
+                                {isSearching && <Loader2 size={12} className="animate-spin text-accent" />}
+                              </form>
+                              
+                              {searchResults.length > 0 && (
+                                <div className="flex flex-col mt-1 bg-background rounded overflow-hidden">
+                                  {searchResults.map(res => (
+                                    <button
+                                      key={res.symbol}
+                                      onClick={() => addResolvedSymbol(res.symbol)}
+                                      className="flex items-center justify-between p-2 hover:bg-surface-highlight text-left border-b border-border/50 last:border-0"
+                                    >
+                                      <div className="flex flex-col overflow-hidden pr-2">
+                                        <span className="text-xs font-bold text-text-primary">{res.symbol}</span>
+                                        <span className="text-[10px] text-text-tertiary truncate">{res.name}</span>
+                                      </div>
+                                      <span className="text-[9px] text-text-secondary bg-surface px-1.5 py-0.5 rounded font-mono shrink-0">{res.type}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                            <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{getLabel(sym)}</span>
-                          </div>
-                          <div className="flex flex-col items-end">
-                            <span className="text-[10px] font-mono font-bold text-text-primary">
-                              {data && data.price != null ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
-                            </span>
-                            <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
-                              {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
-                              <span>{data && data.changePercent != null ? `${Math.abs(data.changePercent).toFixed(2)}%` : '--'}</span>
+                          </>
+                        )}
+                      </div>
+                    }
+                  >
+                    <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
+                      {watchlist.map(sym => {
+                        const data = marketData[sym];
+                        const isPositive = data?.changePercent != null ? data.changePercent >= 0 : true;
+
+                        return (
+                          <div
+                            key={sym}
+                            onClick={() => setActiveSymbol(sym)}
+                            className={`flex justify-between items-center px-3 py-1.5 border-b border-border/20 cursor-pointer group transition-colors ${activeSymbol === sym ? 'bg-accent/10 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'}`}
+                          >
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1">
+                                <span className="font-bold text-[10px] text-text-primary">{sym}</span>
+                                <button onClick={(e) => handleRemoveSymbol(e, sym)} className="opacity-0 group-hover:opacity-100 text-text-tertiary hover:text-negative"><X size={10} /></button>
+                              </div>
+                              <span className="text-[8px] text-text-tertiary uppercase tracking-tighter">{getLabel(sym)}</span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                              <span className="text-[10px] font-mono font-bold text-text-primary">
+                                {data && data.price != null ? data.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
+                              </span>
+                              <div className={`flex items-center gap-1 text-[9px] font-mono ${isPositive ? 'text-positive' : 'text-negative'}`}>
+                                {isPositive ? <TrendingUp size={8} /> : <TrendingDown size={8} />}
+                                <span>{data && data.changePercent != null ? `${Math.abs(data.changePercent).toFixed(2)}%` : '--'}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Widget>
-              </div>
-              <div className="h-28 shrink-0">
-                <Widget title="Market Internals">
-                  <MarketInternals tick={activeQuote} />
-                </Widget>
-              </div>
-            </div>
+                        );
+                      })}
+                    </div>
+                  </Widget>
+                </div>
+              </Panel>
+              <PanelResizeHandle className="h-px w-full bg-border hover:bg-accent transition-colors" />
+              <Panel defaultSize={25} minSize={15} id="internals-panel">
+                <div className="h-full w-full bg-background p-px">
+                  <Widget title="Market Internals">
+                    <MarketInternals tick={activeQuote} />
+                  </Widget>
+                </div>
+              </Panel>
+            </PanelGroup>
           </Panel>
 
           <PanelResizeHandle className="w-px h-full bg-border hover:bg-accent transition-colors" />
@@ -278,7 +283,7 @@ export default function TerminalPage() {
           <Panel defaultSize={60} minSize={40} id="center-panel">
             <PanelGroup orientation="vertical">
               <Panel defaultSize={70} minSize={40} id="chart">
-                <div className="h-full w-full bg-background">
+                <div className="h-full w-full p-px bg-background">
                   <Widget
                     title={`${activeSymbol} • ${getLabel(activeSymbol)}`}
                     actions={
@@ -309,20 +314,20 @@ export default function TerminalPage() {
                 </div>
               </Panel>
 
-              <PanelResizeHandle className="h-px w-full bg-border hover:bg-accent transition-colors" />
+              <PanelResizeHandle className="h-0.5 w-full bg-border/50 hover:bg-accent transition-colors" />
 
               <Panel defaultSize={30} minSize={20} id="bottom-modules">
                 <PanelGroup orientation="horizontal">
                   <Panel defaultSize={50} minSize={30} id="ict-panel">
-                    <div className="h-full w-full bg-background">
+                    <div className="h-full w-full p-px bg-background">
                       <Widget title="ICT Structure Engine">
                         <ICTPanel tick={activeQuote} timeframeLabel={timeframe.label} />
                       </Widget>
                     </div>
                   </Panel>
-                  <PanelResizeHandle className="w-px h-full bg-border hover:bg-accent transition-colors" />
+                  <PanelResizeHandle className="w-0.5 h-full bg-border/50 hover:bg-accent transition-colors" />
                   <Panel defaultSize={50} minSize={30} id="confluences">
-                    <div className="h-full w-full bg-background">
+                    <div className="h-full w-full p-px bg-background">
                       <Widget title="Terminal Confluences">
                         <ConfluenceScanner symbol={activeSymbol} timeframeLabel={timeframe.label} />
                       </Widget>
@@ -333,13 +338,13 @@ export default function TerminalPage() {
             </PanelGroup>
           </Panel>
 
-          <PanelResizeHandle className="w-px h-full bg-border hover:bg-accent transition-colors" />
+          <PanelResizeHandle className="w-0.5 h-full bg-border/50 hover:bg-accent transition-colors" />
 
           {/* --- RIGHT COLUMN --- */}
           <Panel defaultSize={20} minSize={15} id="right-panel">
             <PanelGroup orientation="vertical">
               <Panel defaultSize={40} minSize={20} id="calendar">
-                <div className="h-full w-full bg-background">
+                <div className="h-full w-full p-px bg-background">
                   <Widget 
                     title="Economic Calendar"
                     actions={
@@ -353,10 +358,10 @@ export default function TerminalPage() {
                 </div>
               </Panel>
 
-              <PanelResizeHandle className="h-px w-full bg-border hover:bg-accent transition-colors" />
+              <PanelResizeHandle className="h-0.5 w-full bg-border/50 hover:bg-accent transition-colors" />
 
               <Panel defaultSize={60} minSize={30} id="news">
-                <div className="h-full w-full bg-background">
+                <div className="h-full w-full p-px bg-background">
                   <Widget 
                     title="Intelligence Wire"
                     actions={
