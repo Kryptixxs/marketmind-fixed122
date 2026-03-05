@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { SettingsModal } from '@/components/ui/SettingsModal';
 import { LayoutSettingsModal } from '@/components/ui/LayoutSettingsModal';
+import { CommandPalette } from './CommandPalette';
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isLayoutOpen, setIsLayoutOpen] = useState(false);
 
   useEffect(() => {
-    // Listen for custom events
     const handleOpenSettings = () => setIsSettingsOpen(true);
     const handleOpenLayout = () => setIsLayoutOpen(true);
 
@@ -23,12 +25,24 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // Determine if we are on a public marketing/auth page
+  const isPublicPage = pathname === '/' || pathname === '/login' || pathname === '/register';
+
+  if (isPublicPage) {
+    return (
+      <main className="w-full min-h-[100dvh] bg-background text-text-primary overflow-x-hidden">
+        {children}
+      </main>
+    );
+  }
+
   return (
     <>
       <Sidebar />
       <main className="flex-1 flex flex-col min-w-0 min-h-0 bg-background relative overflow-hidden">
         {children}
       </main>
+      <CommandPalette />
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
       <LayoutSettingsModal isOpen={isLayoutOpen} onClose={() => setIsLayoutOpen(false)} />
     </>

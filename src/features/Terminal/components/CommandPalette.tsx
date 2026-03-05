@@ -75,7 +75,7 @@ export function CommandPalette() {
     setOpen(false);
     setTimeout(() => {
       window.dispatchEvent(new CustomEvent('vantage-symbol-change', { detail: sym }));
-      if (pathname !== '/' && pathname !== '/charts') {
+      if (pathname !== '/dashboard' && pathname !== '/charts') {
         router.push('/charts');
       }
     }, 50);
@@ -103,7 +103,7 @@ export function CommandPalette() {
         <CommandSeparator />
 
         <CommandGroup heading="Navigation">
-          <CommandItem onSelect={() => handleNav('/')} value="workspace dashboard home">
+          <CommandItem onSelect={() => handleNav('/dashboard')} value="workspace dashboard home">
             <LineChart className="mr-2 h-4 w-4" />
             <span>Workspace / Dashboard</span>
           </CommandItem>

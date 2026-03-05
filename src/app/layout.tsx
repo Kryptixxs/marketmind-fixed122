@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SettingsProvider } from '@/services/context/SettingsContext';
-import { CommandPalette } from '@/features/Terminal/components/CommandPalette';
 import { LayoutWrapper } from '@/features/Terminal/components/LayoutWrapper';
 
 export const metadata: Metadata = {
@@ -9,7 +8,6 @@ export const metadata: Metadata = {
   description: "Institutional Intelligence",
 };
 
-// Explicitly define the viewport to allow zooming and ensure proper mobile scaling
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -30,7 +28,6 @@ export default function RootLayout({
           <LayoutWrapper>
             {children}
           </LayoutWrapper>
-          <CommandPalette />
         </SettingsProvider>
       </body>
     </html>

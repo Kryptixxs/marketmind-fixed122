@@ -19,7 +19,7 @@ import { SettingsModal } from '@/components/ui/SettingsModal';
 import { NotificationsPanel } from './notifications/NotificationsPanel';
 
 const NAV_ITEMS = [
-  { href: '/', icon: LayoutGrid, label: 'Workspace', key: '1' },
+  { href: '/dashboard', icon: LayoutGrid, label: 'Workspace', key: '1' },
   { href: '/calendar', icon: Calendar, label: 'Calendar', key: '2' },
   { href: '/charts', icon: LineChart, label: 'Technical', key: '3' },
   { href: '/confluences', icon: Zap, label: 'Confluences', key: '4' },
@@ -57,7 +57,7 @@ export function Sidebar() {
     <>
       <div className="w-full h-14 md:w-12 md:h-full bg-surface border-t md:border-t-0 md:border-r border-border flex flex-row md:flex-col items-center md:py-3 z-50 shrink-0 overflow-x-auto md:overflow-x-visible hide-scrollbar">
         {/* Brand Icon - Hidden on mobile to save nav space */}
-        <Link href="/" className="hidden md:flex mb-6 text-accent hover:opacity-80 transition-opacity">
+        <Link href="/dashboard" className="hidden md:flex mb-6 text-accent hover:opacity-80 transition-opacity">
           <Terminal size={20} />
         </Link>
 
