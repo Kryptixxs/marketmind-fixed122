@@ -7,7 +7,7 @@ import { Terminal, User, Mail, Lock, Building, ArrowRight, Loader2, AlertCircle,
 import { supabase } from '@/integrations/supabase/client';
 
 // Hardcoded valid institutional invite codes
-const VALID_CODES = ['VANTAGE2026', 'ALPHA_TEST', 'BETA_ACCESS', 'QUANT_PRO'];
+const VALID_CODES = ['VANTAGE2026', 'ALPHA_TEST', 'BETA_ACCESS', 'QUANT_PRO', 'VANTAGE_PRO_2026'];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -60,12 +60,9 @@ export default function RegisterPage() {
       }
     } else {
       // MANUAL REVIEW: No valid code provided
-      // In a production app, we would save this to an 'applications' table.
-      // For now, we simulate the submission and inform the user.
       setTimeout(() => {
         setSuccess("Application submitted for manual review. Our compliance team will contact you at your work email if your firm is approved for an allocation.");
         setLoading(false);
-        // Clear sensitive fields
         setPassword('');
         setInviteCode('');
       }, 1500);
@@ -94,7 +91,7 @@ export default function RegisterPage() {
           )}
           
           {success && (
-            <div className="p-4 bg-accent/10 border border-accent/30 rounded flex items-start gap-3 text-accent text-xs leading-relaxed">
+            <div className="p-4 bg-accent/10 border border-accent/20 rounded flex items-start gap-3 text-accent text-xs leading-relaxed">
               <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
               <span>{success}</span>
             </div>
