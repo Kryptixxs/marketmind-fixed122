@@ -15,10 +15,20 @@ import { useSettings } from '@/services/context/SettingsContext';
 
 const WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'EURUSD', 'BTCUSD'];
 
+const TIMEFRAMES = [
+  { label: '1M', yf: '1m' },
+  { label: '5M', yf: '5m' },
+  { label: '15M', yf: '15m' },
+  { label: '1H', yf: '60m' },
+  { label: '1D', yf: '1d' },
+];
+
 export default function TerminalPage() {
   const { settings } = useSettings();
   const [activeSymbol, setActiveSymbol] = useState("NAS100");
-  const { data: marketData } = useMarketData(WATCHLIST);
+  const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]);
+  
+  const { data: marketData } = useMarketData(WATCHLIST, timeframe.yf);
 
   useEffect(() => {
     const handleSymbolChange = (e: any) => setActiveSymbol(e.detail);
@@ -56,7 +66,6 @@ export default function TerminalPage() {
                       <th>Symbol</th>
                       <th className="text-right">Last</th>
                       <th className="text-right">% Chg</th>
-                      <th className="text-right">RVOL</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -67,14 +76,13 @@ export default function TerminalPage() {
                         <tr 
                           key={sym} 
                           onClick={() => setActiveSymbol(sym)}
-                          className={activeSymbol === sym ? 'bg-surface-highlight' : ''}
+                          className={`cursor-pointer hover:bg-surface-highlight transition-colors ${activeSymbol === sym ? 'bg-accent/5' : ''}`}
                         >
-                          <td className="font-bold">{sym}</td>
+                          <td className={`font-bold ${activeSymbol === sym ? 'text-accent' : ''}`}>{sym}</td>
                           <td className="text-right font-mono">{tick?.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
                           <td className={`text-right font-mono ${isPos ? 'text-positive' : 'text-negative'}`}>
                             {isPos ? '+' : ''}{tick?.changePercent.toFixed(2)}%
                           </td>
-                          <td className="text-right font-mono text-text-secondary">1.2x</td>
                         </tr>
                       );
                     })}
@@ -90,7 +98,22 @@ export default function TerminalPage() {
           <Panel defaultSize={60} minSize={40}>
             <PanelGroup orientation="vertical">
               <Panel defaultSize={70}>
-                <TerminalPanel title={`Price Analytics // ${activeSymbol}`}>
+                <TerminalPanel 
+                  title={`Price Analytics // ${activeSymbol}`}
+                  actions={
+                    <div className="flex items-center gap-1">
+                      {TIMEFRAMES.map(tf => (
+                        <button
+                          key={tf.label}
+                          onClick={() => setTimeframe(tf)}
+                          className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition-colors ${timeframe.label === tf.label ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-secondary'}`}
+                        >
+                          {tf.label}
+                        </button>
+                      ))}
+                    </div>
+                  }
+                >
                   <div className="w-full h-full bg-black">
                     <TradingChart data={chartData} symbol={activeSymbol} />
                   </div>

@@ -12,7 +12,8 @@ import {
   X,
   Search,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { searchSymbols } from '@/app/actions/searchSymbols';
@@ -24,7 +25,7 @@ const TIMEFRAMES = [
   { label: '5M', yf: '5m' },
   { label: '15M', yf: '15m' },
   { label: '1H', yf: '60m' },
-  { label: '4H', yf: '60m' }, // Note: Yahoo Finance doesn't support native 4H, using 1H as base
+  { label: '4H', yf: '60m' }, 
   { label: '1D', yf: '1d' },
 ];
 
@@ -71,8 +72,6 @@ export default function ChartsPage() {
     const saved = localStorage.getItem('vantage_charts_watchlist_v4');
     if (saved) {
       try { setWatchlist(JSON.parse(saved)); } catch (e) { }
-    } else {
-      localStorage.setItem('vantage_charts_watchlist_v4', JSON.stringify(DEFAULT_WATCHLIST));
     }
   }, []);
 
@@ -150,8 +149,8 @@ export default function ChartsPage() {
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden min-h-0">
-      <div className="h-auto min-h-[40px] py-2 border-b border-border bg-surface flex flex-wrap items-center px-4 justify-between shrink-0 z-20 gap-2">
-        <div className="flex items-center gap-4 md:gap-6 relative flex-wrap">
+      <div className="h-10 border-b border-border bg-surface flex items-center px-4 justify-between shrink-0 z-20">
+        <div className="flex items-center gap-6 relative">
 
           <div
             className="flex items-center gap-2 cursor-pointer hover:bg-white/5 px-2 py-1 rounded transition-colors"
@@ -198,9 +197,10 @@ export default function ChartsPage() {
             </>
           )}
 
-          <div className="hidden sm:block h-4 w-[1px] bg-border" />
+          <div className="h-4 w-[1px] bg-border" />
 
-          <div className="flex items-center gap-1 overflow-x-auto hide-scrollbar max-w-full">
+          {/* TIMEFRAME SELECTOR */}
+          <div className="flex items-center gap-1">
             {TIMEFRAMES.map(tf => (
               <button
                 key={tf.label}
@@ -214,17 +214,17 @@ export default function ChartsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 ml-auto">
+        <div className="flex items-center gap-4">
           {loading && <Loader2 size={14} className="animate-spin text-text-tertiary" />}
           {streamError && <span title={streamError}><AlertCircle size={14} className="text-negative" /></span>}
-          <button className="hidden sm:block p-1.5 text-text-tertiary hover:text-text-primary" title="Layout Settings (Coming Soon)"><Layout size={16} /></button>
+          <button className="p-1.5 text-text-tertiary hover:text-text-primary" title="Layout Settings (Coming Soon)"><Layout size={16} /></button>
           <button className="p-1.5 text-text-tertiary hover:text-text-primary" title="Fullscreen" onClick={() => document.documentElement.requestFullscreen()}><Maximize2 size={16} /></button>
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden min-h-0">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
 
-        <div className="w-full md:w-56 border-b md:border-b-0 md:border-r border-border bg-surface flex flex-col shrink-0 h-[200px] md:h-full min-h-[200px]">
+        <div className="w-full md:w-56 border-b md:border-b-0 md:border-r border-border bg-surface flex flex-col shrink-0 h-[200px] md:h-full">
           <div className="p-3 border-b border-border flex items-center justify-between shrink-0 bg-surface-highlight">
             <span className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">Watchlist</span>
             <button onClick={() => setIsSearchOpen(true)} className="p-1 hover:bg-white/5 rounded text-text-tertiary hover:text-text-primary">
@@ -278,6 +278,21 @@ export default function ChartsPage() {
           ) : (
              <div className="flex items-center justify-center h-full text-[10px] uppercase font-bold tracking-widest text-text-tertiary">Rendering Engine...</div>
           )}
+          
+          <div className="absolute top-4 left-4 p-3 bg-surface/80 backdrop-blur border border-border rounded-sm pointer-events-none flex flex-col gap-1">
+            <div className="flex items-center gap-3">
+              <span className="text-lg font-bold text-text-primary">{activeSymbol}</span>
+              {activeQuote && (
+                <span className={`text-xs font-mono ${activeQuote.changePercent >= 0 ? 'text-positive' : 'text-negative'}`}>
+                  {activeQuote.changePercent >= 0 ? '+' : ''}{activeQuote.changePercent.toFixed(2)}%
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-text-tertiary uppercase font-bold">
+              <Clock size={10} />
+              <span>{timeframe.label} Interval</span>
+            </div>
+          </div>
         </div>
 
         <div className="w-full md:w-80 bg-surface flex flex-col shrink-0 h-auto min-h-[400px] md:h-full">
