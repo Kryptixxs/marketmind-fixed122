@@ -10,8 +10,10 @@ import { ConfluenceScanner } from '@/features/Terminal/components/widgets/Conflu
 import { ICTPanel } from '@/features/Terminal/components/widgets/ICTPanel';
 import { MiniCalendar } from '@/features/Terminal/components/widgets/MiniCalendar';
 import { MarketInternals } from '@/features/Terminal/components/widgets/MarketInternals';
+import { SessionTracker } from '@/features/Terminal/components/widgets/SessionTracker';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { useSettings } from '@/services/context/SettingsContext';
+import { Activity, TrendingUp, TrendingDown, Globe, Zap, BarChart3 } from 'lucide-react';
 
 const WATCHLIST = [
   'NAS100', 'SPX500', 'US30', 'RUSSELL', 'DAX40', 
@@ -63,15 +65,15 @@ export default function TerminalPage() {
         <PanelGroup orientation="horizontal" className="w-full h-full">
           
           {/* --- MARKET MONITOR (LEFT) --- */}
-          <Panel defaultSize={20} minSize={15}>
+          <Panel defaultSize={18} minSize={12}>
             <TerminalPanel title="Market Monitor">
               <div className="h-full overflow-y-auto custom-scrollbar">
-                <table className="data-table">
+                <table className="data-table w-full">
                   <thead>
                     <tr>
-                      <th>Symbol</th>
+                      <th className="text-left">Sym</th>
                       <th className="text-right">Last</th>
-                      <th className="text-right">% Chg</th>
+                      <th className="text-right">Chg%</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -82,12 +84,12 @@ export default function TerminalPage() {
                         <tr 
                           key={sym} 
                           onClick={() => setActiveSymbol(sym)}
-                          className={`cursor-pointer hover:bg-surface-highlight transition-colors ${activeSymbol === sym ? 'bg-accent/5' : ''}`}
+                          className={`cursor-pointer hover:bg-surface-highlight transition-colors group ${activeSymbol === sym ? 'bg-accent/5' : ''}`}
                         >
-                          <td className={`font-bold ${activeSymbol === sym ? 'text-accent' : ''}`}>{sym}</td>
-                          <td className="text-right font-mono">{tick?.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</td>
-                          <td className={`text-right font-mono ${isPos ? 'text-positive' : 'text-negative'}`}>
-                            {isPos ? '+' : ''}{tick?.changePercent.toFixed(2)}%
+                          <td className={`font-bold py-1.5 ${activeSymbol === sym ? 'text-accent' : 'text-text-primary'}`}>{sym}</td>
+                          <td className="text-right font-mono text-[10px]">{tick?.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                          <td className={`text-right font-mono text-[10px] ${isPos ? 'text-positive' : 'text-negative'}`}>
+                            {tick ? `${isPos ? '+' : ''}${tick.changePercent.toFixed(2)}%` : '---'}
                           </td>
                         </tr>
                       );
@@ -98,12 +100,12 @@ export default function TerminalPage() {
             </TerminalPanel>
           </Panel>
 
-          <PanelResizeHandle className="w-px bg-border" />
+          <PanelResizeHandle className="w-px bg-border hover:bg-accent/50 transition-colors" />
 
           {/* --- PRICE ANALYTICS (CENTER) --- */}
-          <Panel defaultSize={60} minSize={40}>
+          <Panel defaultSize={62} minSize={40}>
             <PanelGroup orientation="vertical">
-              <Panel defaultSize={70}>
+              <Panel defaultSize={65}>
                 <TerminalPanel 
                   title={`Price Analytics // ${activeSymbol}`}
                   actions={
@@ -112,7 +114,7 @@ export default function TerminalPage() {
                         <button
                           key={tf.label}
                           onClick={() => setTimeframe(tf)}
-                          className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition-colors ${timeframe.label === tf.label ? 'bg-accent/20 text-accent' : 'text-text-tertiary hover:text-text-secondary'}`}
+                          className={`px-1.5 py-0.5 text-[9px] font-bold rounded transition-colors ${timeframe.label === tf.label ? 'bg-accent/20 text-accent border border-accent/30' : 'text-text-tertiary hover:text-text-secondary'}`}
                         >
                           {tf.label}
                         </button>
@@ -120,30 +122,52 @@ export default function TerminalPage() {
                     </div>
                   }
                 >
-                  <div className="w-full h-full bg-black">
+                  <div className="w-full h-full bg-black relative">
                     <TradingChart data={chartData} symbol={activeSymbol} />
+                    
+                    {/* Floating Data Overlay */}
+                    <div className="absolute top-2 left-2 p-2 bg-surface/60 backdrop-blur-md border border-border rounded-sm pointer-events-none flex flex-col gap-1 z-10">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-black text-text-primary uppercase tracking-tighter">{activeSymbol}</span>
+                        {activeQuote && (
+                          <span className={`text-[10px] font-mono font-bold ${activeQuote.changePercent >= 0 ? 'text-positive' : 'text-negative'}`}>
+                            {activeQuote.changePercent >= 0 ? '▲' : '▼'} {Math.abs(activeQuote.changePercent).toFixed(2)}%
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 text-[8px] text-text-tertiary font-bold uppercase">
+                        <Zap size={8} className="text-accent" />
+                        <span>{timeframe.label} Interval // Real-time Feed</span>
+                      </div>
+                    </div>
                   </div>
                 </TerminalPanel>
               </Panel>
               
-              <PanelResizeHandle className="h-px bg-border" />
+              <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
 
               {/* --- ANALYTICS MATRIX (BOTTOM) --- */}
-              <Panel defaultSize={30}>
+              <Panel defaultSize={35}>
                 <PanelGroup orientation="horizontal">
-                  <Panel defaultSize={33}>
+                  <Panel defaultSize={25}>
                     <TerminalPanel title="Market Internals">
                       <MarketInternals tick={activeQuote} />
                     </TerminalPanel>
                   </Panel>
                   <PanelResizeHandle className="w-px bg-border" />
-                  <Panel defaultSize={34}>
+                  <Panel defaultSize={25}>
+                    <TerminalPanel title="Session Monitor">
+                      <SessionTracker tick={activeQuote} />
+                    </TerminalPanel>
+                  </Panel>
+                  <PanelResizeHandle className="w-px bg-border" />
+                  <Panel defaultSize={25}>
                     <TerminalPanel title="Structure & Flow">
                       <ICTPanel tick={activeQuote} />
                     </TerminalPanel>
                   </Panel>
                   <PanelResizeHandle className="w-px bg-border" />
-                  <Panel defaultSize={33}>
+                  <Panel defaultSize={25}>
                     <TerminalPanel title="Confluence Engine">
                       <ConfluenceScanner symbol={activeSymbol} />
                     </TerminalPanel>
@@ -153,7 +177,7 @@ export default function TerminalPage() {
             </PanelGroup>
           </Panel>
 
-          <PanelResizeHandle className="w-px bg-border" />
+          <PanelResizeHandle className="w-px bg-border hover:bg-accent/50 transition-colors" />
 
           {/* --- INTELLIGENCE (RIGHT) --- */}
           <Panel defaultSize={20} minSize={15}>
@@ -163,7 +187,7 @@ export default function TerminalPage() {
                   <MiniCalendar />
                 </TerminalPanel>
               </Panel>
-              <PanelResizeHandle className="h-px bg-border" />
+              <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
               <Panel defaultSize={60}>
                 <TerminalPanel title="Live Intelligence">
                   <NewsFeed activeSymbol={activeSymbol} />
