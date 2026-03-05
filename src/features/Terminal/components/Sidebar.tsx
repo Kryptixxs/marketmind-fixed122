@@ -18,6 +18,7 @@ import {
   Briefcase,
   ArrowUpDown,
   Brain,
+  BarChart3,
 } from 'lucide-react';
 import { SettingsModal } from '@/components/ui/SettingsModal';
 import { NotificationsPanel } from './notifications/NotificationsPanel';
