@@ -4,10 +4,8 @@ import { EarningsEvent } from '@/lib/types';
 
 export async function fetchEarnings(dateStr: string): Promise<EarningsEvent[]> {
   try {
-    // Shift date right by 1 to fix the API's timezone offset, effectively shifting events left by 1 day in the UI
-    const d = new Date(dateStr);
-    d.setUTCDate(d.getUTCDate() + 1);
-    const queryDate = d.toISOString().split('T')[0];
+    // FIX: Use the exact requested local date string to prevent shifting Friday -> Saturday
+    const queryDate = dateStr;
 
     // Switch to NASDAQ API which is more stable for public access
     const url = `https://api.nasdaq.com/api/calendar/earnings?date=${queryDate}`;
@@ -20,7 +18,7 @@ export async function fetchEarnings(dateStr: string): Promise<EarningsEvent[]> {
         'Referer': 'https://www.nasdaq.com/',
         'Accept-Language': 'en-US,en;q=0.9',
       },
-      next: { revalidate: 3600 }
+      next: { revalidate: 3600 } // Cache NASDAQ API response for 1 hour
     });
 
     if (!response.ok) {
@@ -56,7 +54,7 @@ export async function fetchEarnings(dateStr: string): Promise<EarningsEvent[]> {
         id: `${dateStr}-${row.symbol}-${i}`,
         ticker: row.symbol?.toUpperCase() || 'N/A',
         name: row.name || 'Unknown',
-        date: dateStr, // Bind to requested date to correct the display column
+        date: dateStr,
         time,
         epsEst,
         epsAct,
@@ -66,7 +64,7 @@ export async function fetchEarnings(dateStr: string): Promise<EarningsEvent[]> {
         sector: 'Unknown',
         marketCap,
       };
-    }).slice(0, 20); 
+    }).slice(0, 20); // Limit to top 20 to keep the UI clean
   } catch (error) {
     console.error(`Error fetching earnings for ${dateStr}:`, error);
     return [];
