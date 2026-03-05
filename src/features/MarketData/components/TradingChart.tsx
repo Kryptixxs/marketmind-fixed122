@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { createChart, ColorType, CrosshairMode, IChartApi, ISeriesApi } from 'lightweight-charts';
+import * as LightweightCharts from 'lightweight-charts';
+import { ColorType, CrosshairMode, IChartApi } from 'lightweight-charts';
 
 export interface ChartData {
   time: number;
@@ -20,12 +21,13 @@ export function TradingChart({
 }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  // Use any to avoid type conflicts between v4 and v5 ISeriesApi definitions
+  const seriesRef = useRef<any>(null);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
-    const chart = createChart(chartContainerRef.current, {
+    const chart = LightweightCharts.createChart(chartContainerRef.current, {
       autoSize: true,
       layout: {
         background: { type: ColorType.Solid, color: 'transparent' },
@@ -58,13 +60,25 @@ export function TradingChart({
       }
     });
 
-    const candlestickSeries = chart.addCandlestickSeries({
+    const seriesOptions = {
       upColor: '#00ff9d',
       downColor: '#ff3333',
       borderVisible: false,
       wickUpColor: '#00ff9d',
       wickDownColor: '#ff3333',
-    });
+    };
+
+    let candlestickSeries;
+    
+    // Handle both lightweight-charts v4 and v5 APIs dynamically
+    if (typeof (chart as any).addCandlestickSeries === 'function') {
+      // v4 API
+      candlestickSeries = (chart as any).addCandlestickSeries(seriesOptions);
+    } else {
+      // v5 API
+      // @ts-ignore
+      candlestickSeries = chart.addSeries(LightweightCharts.CandlestickSeries, seriesOptions);
+    }
 
     chartRef.current = chart;
     seriesRef.current = candlestickSeries;
@@ -88,7 +102,7 @@ export function TradingChart({
       }
       
       try {
-        seriesRef.current.setData(unique as any);
+        seriesRef.current.setData(unique);
       } catch(e) {
         console.error("Chart rendering error", e);
       }
