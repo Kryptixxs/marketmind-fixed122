@@ -23,5 +23,5 @@ export async function analyzeEventIntel(event: EconomicEvent) {
       - reaction: string
       - bias: "BULLISH" | "BEARISH" | "NEUTRAL"`;
 
-  return await generateAIJSON(prompt);
+  return await generateAIJSON(prompt, null, `event-intel-v1-${event.id}`, 3600);
 }

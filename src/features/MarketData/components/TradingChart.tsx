@@ -22,6 +22,7 @@ export function TradingChart({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const lineSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
   const lastDataRef = useRef<ChartData[]>([]);
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export function TradingChart({
     });
 
     const candlestickSeries = chart.addCandlestickSeries({
-      upColor: 'transparent',
+      upColor: '#10b981',
       borderUpColor: '#10b981',
       wickUpColor: '#10b981',
       downColor: '#ef4444',
@@ -71,8 +72,17 @@ export function TradingChart({
       wickVisible: true,
     });
 
+    const lineSeries = chart.addLineSeries({
+      color: '#22d3ee',
+      lineWidth: 2,
+      crosshairMarkerVisible: false,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    });
+
     chartRef.current = chart;
     seriesRef.current = candlestickSeries;
+    lineSeriesRef.current = lineSeries;
 
     return () => {
       chart.remove();
@@ -80,7 +90,7 @@ export function TradingChart({
   }, []);
 
   useEffect(() => {
-    if (!seriesRef.current || !data || data.length === 0) return;
+    if (!seriesRef.current || !lineSeriesRef.current || !data || data.length === 0) return;
 
     const sorted = [...data].sort((a, b) => a.time - b.time);
     const unique: ChartData[] = [];
@@ -97,8 +107,10 @@ export function TradingChart({
 
     if (prevUnique && lastUnique.time >= prevUnique.time && unique.length === lastDataRef.current.length) {
       seriesRef.current.update(lastUnique);
+      lineSeriesRef.current.update({ time: lastUnique.time as any, value: lastUnique.close });
     } else {
       seriesRef.current.setData(unique);
+      lineSeriesRef.current.setData(unique.map((d) => ({ time: d.time as any, value: d.close })));
     }
 
     lastDataRef.current = unique;

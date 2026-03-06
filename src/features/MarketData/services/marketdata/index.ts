@@ -1,13 +1,20 @@
 import { MarketDataProvider } from './types';
+import { HybridProvider } from './providers/hybrid';
 import { YahooPollingProvider } from './providers/yahoo-polling';
 
 let globalProvider: MarketDataProvider | null = null;
 
 export function getProvider(): MarketDataProvider {
   if (!globalProvider) {
-    // Using high-frequency polling (2s) of the official Yahoo Finance API
-    // This ensures the data is 'correct' and matches real exchange prices.
-    globalProvider = new YahooPollingProvider(2000); 
+    const finnhubKey = typeof window !== 'undefined'
+      ? (process.env.NEXT_PUBLIC_FINNHUB_API_KEY || '')
+      : '';
+
+    if (finnhubKey) {
+      globalProvider = new HybridProvider(finnhubKey);
+    } else {
+      globalProvider = new HybridProvider();
+    }
   }
   return globalProvider;
 }

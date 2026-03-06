@@ -77,8 +77,8 @@ export function Sidebar() {
   return (
     <>
       <div className={`
-        h-full bg-surface border-r border-border flex flex-col transition-all duration-200 z-50 shrink-0 relative
-        ${expanded ? 'w-52' : 'w-[52px]'}
+        h-full bg-surface border-r border-border flex flex-col transition-all duration-200 shrink-0 overflow-hidden
+        ${expanded ? 'w-48' : 'w-12'}
       `}>
         {/* Logo */}
         <div className="h-11 flex items-center justify-center border-b border-border bg-background shrink-0">
@@ -166,12 +166,14 @@ export function Sidebar() {
         </div>
 
         {/* Expand Toggle */}
-        <button
-          onClick={() => setExpanded(e => !e)}
-          className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-surface border border-border rounded-full flex items-center justify-center text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all z-10 shadow-lg"
-        >
-          {expanded ? <ChevronLeft size={12} /> : <ChevronRight size={12} />}
-        </button>
+        <div className="border-t border-border shrink-0">
+          <button
+            onClick={() => setExpanded(e => !e)}
+            className="w-full flex items-center justify-center h-7 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-colors"
+          >
+            {expanded ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
+          </button>
+        </div>
       </div>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />

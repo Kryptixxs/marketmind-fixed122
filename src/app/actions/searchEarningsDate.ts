@@ -1,6 +1,6 @@
 'use server';
 
-import yahooFinance from 'yahoo-finance2';
+import { yahooFinance } from '@/lib/yahoo-client';
 
 export async function searchEarningsDate(query: string): Promise<{ date: string, symbol: string } | null> {
   try {

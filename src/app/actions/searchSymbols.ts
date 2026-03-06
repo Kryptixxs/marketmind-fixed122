@@ -1,6 +1,6 @@
 'use server';
 
-import yahooFinance from 'yahoo-finance2';
+import { yahooFinance } from '@/lib/yahoo-client';
 
 export async function searchSymbols(query: string) {
   if (!query || query.trim().length < 1) return [];

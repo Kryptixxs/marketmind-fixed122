@@ -1,6 +1,5 @@
 'use server';
 
-import yahooFinance from 'yahoo-finance2';
 import { OHLCV } from '@/features/MarketData/services/marketdata/types';
 
 export interface MarketData {
@@ -14,84 +13,175 @@ export interface MarketData {
   name?: string;
 }
 
-const YF_MAP: Record<string, string> = {
-  'NAS100': '^NDX', 
-  'SPX500': '^GSPC', 
-  'US30': '^DJI', 
-  'RUSSELL': '^RUT',
-  'DAX40': '^GDAXI',
-  'FTSE100': '^FTSE',
-  'NIKKEI': '^N225',
-  'CRUDE': 'CL=F', 
-  'GOLD': 'GC=F',
-  'SILVER': 'SI=F',
-  'NATGAS': 'NG=F',
-  'EURUSD': 'EURUSD=X', 
-  'GBPUSD': 'GBPUSD=X',
-  'USDJPY': 'JPY=X',
-  'BTCUSD': 'BTC-USD', 
-  'ETHUSD': 'ETH-USD', 
-  'VIX': '^VIX', 
-  'DXY': 'DX-Y.NYB',
-  'US10Y': '^TNX',
-  'AAPL': 'AAPL', 
-  'TSLA': 'TSLA', 
-  'NVDA': 'NVDA', 
-  'MSFT': 'MSFT'
+const FINNHUB_MAP: Record<string, string> = {
+  AAPL: 'AAPL', NVDA: 'NVDA', MSFT: 'MSFT', TSLA: 'TSLA', GOOGL: 'GOOGL', AMZN: 'AMZN', META: 'META', AMD: 'AMD',
+  NFLX: 'NFLX', DIS: 'DIS', PYPL: 'PYPL', INTC: 'INTC', UBER: 'UBER', CRM: 'CRM', ORCL: 'ORCL', ADBE: 'ADBE',
+  CSCO: 'CSCO', QCOM: 'QCOM', AVGO: 'AVGO', TXN: 'TXN',
+
+  NAS100: 'QQQ', SPX500: 'SPY', US30: 'DIA', RUSSELL: 'IWM',
+  DAX40: 'EWG', FTSE100: 'EWU', NIKKEI: 'EWJ', HSI: 'EWH', AS51: 'EWA',
+  GOLD: 'GLD', SILVER: 'SLV', CRUDE: 'USO', NATGAS: 'UNG', COPPER: 'CPER', PLATINUM: 'PPLT',
+  DXY: 'UUP', VIX: 'VIXY', US10Y: 'IEF', US2Y: 'SHY', MOVE: 'TLT',
+
+  EURUSD: 'OANDA:EUR_USD',
+  GBPUSD: 'OANDA:GBP_USD',
+  USDJPY: 'OANDA:USD_JPY',
+  AUDUSD: 'OANDA:AUD_USD',
+  USDCAD: 'OANDA:USD_CAD',
+  USDCHF: 'OANDA:USD_CHF',
+  NZDUSD: 'OANDA:NZD_USD',
+
+  BTCUSD: 'BINANCE:BTCUSDT',
+  ETHUSD: 'BINANCE:ETHUSDT',
+  SOLUSD: 'BINANCE:SOLUSDT',
+  BNBUSD: 'BINANCE:BNBUSDT',
+  XRPUSD: 'BINANCE:XRPUSDT',
+  ADAUSD: 'BINANCE:ADAUSDT',
 };
+
+const FINNHUB_KEY = process.env.FINNHUB_API_KEY || process.env.NEXT_PUBLIC_FINNHUB_API_KEY || '';
+
+// --- Quote-only cache (lightweight, no history) ---
+interface QuoteCache { price: number; change: number; changePercent: number; ts: number; }
+const QUOTE_CACHE = new Map<string, QuoteCache>();
+const QUOTE_TTL = 6_000;
+
+// --- Candle cache (per-symbol, longer TTL) ---
+interface CandleCache { history: OHLCV[]; ts: number; }
+const CANDLE_CACHE = new Map<string, CandleCache>();
+const CANDLE_TTL = 90_000;
+
+let activeReqs = 0;
+const MAX_CONCURRENT = 4;
+const queue: Array<() => void> = [];
+
+async function withConcurrency<T>(fn: () => Promise<T>): Promise<T> {
+  if (activeReqs >= MAX_CONCURRENT) {
+    await new Promise<void>(resolve => queue.push(resolve));
+  }
+  activeReqs++;
+  try { return await fn(); }
+  finally { activeReqs--; queue.shift()?.(); }
+}
+
+function isForex(sym: string) {
+  return ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD'].includes(sym);
+}
+
+function isCrypto(sym: string) {
+  return ['BTCUSD', 'ETHUSD', 'SOLUSD', 'BNBUSD', 'XRPUSD', 'ADAUSD'].includes(sym);
+}
+
+function stockSymbol(sym: string): string | null {
+  const mapped = FINNHUB_MAP[sym];
+  if (!mapped) return sym;
+  if (mapped.includes(':')) return null;
+  return mapped;
+}
+
+async function fetchQuote(sym: string): Promise<QuoteCache | null> {
+  const now = Date.now();
+  const cached = QUOTE_CACHE.get(sym);
+  if (cached && now - cached.ts < QUOTE_TTL) return cached;
+
+  if (!FINNHUB_KEY) return cached || null;
+
+  const finnhubSym = FINNHUB_MAP[sym] || sym;
+  try {
+    const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(finnhubSym)}&token=${FINNHUB_KEY}`;
+    const res = await withConcurrency(() => fetch(url).then(r => r.ok ? r.json() : null));
+    if (!res || res.c === 0) return cached || null;
+
+    const entry: QuoteCache = {
+      price: res.c ?? 0,
+      change: res.d ?? 0,
+      changePercent: res.dp ?? 0,
+      ts: now,
+    };
+    QUOTE_CACHE.set(sym, entry);
+    return entry;
+  } catch {
+    return cached || null;
+  }
+}
+
+const YAHOO_CHART_MAP: Record<string, string> = {
+  NAS100: 'QQQ', SPX500: 'SPY', US30: 'DIA', RUSSELL: 'IWM',
+  DAX40: 'EWG', FTSE100: 'EWU', NIKKEI: 'EWJ', HSI: 'EWH', AS51: 'EWA',
+  GOLD: 'GLD', SILVER: 'SLV', CRUDE: 'USO', NATGAS: 'UNG', COPPER: 'CPER', PLATINUM: 'PPLT',
+  DXY: 'UUP', VIX: 'VIXY', US10Y: 'IEF', US2Y: 'SHY', MOVE: 'TLT',
+  BTCUSD: 'BTC-USD', ETHUSD: 'ETH-USD', SOLUSD: 'SOL-USD',
+  BNBUSD: 'BNB-USD', XRPUSD: 'XRP-USD', ADAUSD: 'ADA-USD',
+  EURUSD: 'EURUSD=X', GBPUSD: 'GBPUSD=X', USDJPY: 'JPY=X',
+  AUDUSD: 'AUDUSD=X', USDCAD: 'USDCAD=X', USDCHF: 'USDCHF=X', NZDUSD: 'NZDUSD=X',
+};
+
+export async function fetchSymbolCandles(symbol: string): Promise<OHLCV[]> {
+  const now = Date.now();
+  const cached = CANDLE_CACHE.get(symbol);
+  if (cached && now - cached.ts < CANDLE_TTL) return cached.history;
+
+  const ySym = YAHOO_CHART_MAP[symbol] || symbol;
+
+  try {
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ySym)}?interval=15m&range=5d`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    });
+    if (!res.ok) return cached?.history || [];
+
+    const json = await res.json();
+    const result = json?.chart?.result?.[0];
+    if (!result?.timestamp?.length) return cached?.history || [];
+
+    const ts: number[] = result.timestamp;
+    const q = result.indicators?.quote?.[0];
+    if (!q) return cached?.history || [];
+
+    const history: OHLCV[] = [];
+    for (let i = 0; i < ts.length; i++) {
+      const c = q.close?.[i];
+      if (c == null || c === 0) continue;
+      history.push({
+        timestamp: ts[i] * 1000,
+        open: q.open?.[i] ?? c,
+        high: q.high?.[i] ?? c,
+        low: q.low?.[i] ?? c,
+        close: c,
+        volume: q.volume?.[i] ?? 0,
+      });
+    }
+
+    if (history.length > 0) {
+      CANDLE_CACHE.set(symbol, { history, ts: now });
+    }
+    return history;
+  } catch {
+    return cached?.history || [];
+  }
+}
+
+async function fetchSingle(sym: string): Promise<MarketData | null> {
+  const quote = await fetchQuote(sym);
+  if (!quote) return null;
+
+  return {
+    symbol: sym,
+    name: sym,
+    price: quote.price,
+    change: quote.change,
+    changePercent: quote.changePercent,
+    currency: isForex(sym) ? sym.slice(3) : 'USD',
+    marketState: 'REGULAR',
+    history: [],
+  };
+}
 
 export async function fetchMarketDataBatch(symbols: string[], interval: string = '15m'): Promise<(MarketData | null)[]> {
   if (!symbols || symbols.length === 0) return [];
-  
-  const results = await Promise.all(symbols.map(async (sym) => {
-    try {
-      const yfSym = YF_MAP[sym] || sym;
-      
-      // Fetch both quote (for real-time price) and chart (for history)
-      const [quote, chart] = await Promise.all([
-        yahooFinance.quote(yfSym),
-        yahooFinance.chart(yfSym, { interval: interval as any, period1: '1mo' })
-      ]);
-
-      if (!quote) return null;
-
-      const price = quote.regularMarketPrice || quote.postMarketPrice || 0;
-      const change = quote.regularMarketChange || 0;
-      const changePercent = quote.regularMarketChangePercent || 0;
-
-      let history: OHLCV[] = [];
-      if (chart && chart.quotes) {
-        history = chart.quotes.map((q: any) => ({
-          timestamp: q.date.getTime(),
-          open: q.open ?? price,
-          high: q.high ?? price,
-          low: q.low ?? price,
-          close: q.close ?? price,
-          volume: q.volume ?? 0
-        })).filter((h: OHLCV) => h.close !== null);
-      }
-
-      return {
-        symbol: sym,
-        name: quote.shortName || quote.longName || sym,
-        price,
-        change,
-        changePercent,
-        currency: quote.currency || 'USD',
-        marketState: quote.marketState || 'REGULAR',
-        history
-      };
-
-    } catch (error) {
-      console.warn(`[MarketData] Failed fetching ${sym}`, error);
-      return null;
-    }
-  }));
-
-  return results;
+  return Promise.all(symbols.map(sym => fetchSingle(sym)));
 }
 
 export async function fetchMarketData(symbol: string, interval: string = '15m'): Promise<MarketData | null> {
-  const batch = await fetchMarketDataBatch([symbol], interval);
-  return batch.length > 0 ? batch[0] : null;
+  return fetchSingle(symbol);
 }
