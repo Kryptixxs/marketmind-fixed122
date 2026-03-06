@@ -35,20 +35,8 @@ export async function fetchSymbolCandles(symbol: string): Promise<OHLCV[]> {
 
 export async function fetchMarketDataBatch(symbols: string[], interval: string = '15m'): Promise<(MarketData | null)[]> {
   if (!symbols?.length) return [];
-
-  return symbols.map((symbol) => {
-    const q = makeSimQuote(symbol);
-    return {
-      symbol,
-      name: q.name,
-      price: q.price,
-      change: q.change,
-      changePercent: q.changePercent,
-      currency: isForex(symbol) ? symbol.slice(3) : 'USD',
-      marketState: 'REGULAR',
-      history: toOHLCV(makeSimHistory(symbol, interval, 180)),
-    };
-  });
+  const results = await Promise.all(symbols.map((symbol) => fetchMarketData(symbol, interval)));
+  return results;
 }
 
 export async function fetchMarketData(symbol: string, interval: string = '15m'): Promise<MarketData | null> {

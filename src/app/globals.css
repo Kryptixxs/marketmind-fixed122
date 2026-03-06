@@ -91,6 +91,46 @@ html, body {
   border-bottom: 1px solid var(--color-border);
 }
 
+/* ── Density System ── */
+:root[data-density="compact"] {
+  --terminal-header-h: 28px;
+  --panel-header-h: 30px;
+  --table-th-py: 4px;
+  --table-th-px: 7px;
+  --table-td-py: 3px;
+  --table-td-px: 7px;
+  --table-font: 10px;
+}
+
+:root[data-density="standard"] {
+  --terminal-header-h: 30px;
+  --panel-header-h: 32px;
+  --table-th-py: 5px;
+  --table-th-px: 8px;
+  --table-td-py: 4px;
+  --table-td-px: 8px;
+  --table-font: 10px;
+}
+
+:root[data-density="spacious"] {
+  --terminal-header-h: 34px;
+  --panel-header-h: 36px;
+  --table-th-py: 6px;
+  --table-th-px: 10px;
+  --table-td-py: 6px;
+  --table-td-px: 10px;
+  --table-font: 11px;
+}
+
+.terminal-header {
+  height: var(--terminal-header-h, 30px);
+}
+
+.panel-header {
+  height: var(--panel-header-h, 32px);
+  min-height: var(--panel-header-h, 32px);
+}
+
 /* ── Data Tables ── */
 .data-table {
   width: 100%;
@@ -99,7 +139,7 @@ html, body {
 
 .data-table th {
   text-align: left;
-  padding: 5px 8px;
+  padding: var(--table-th-py, 5px) var(--table-th-px, 8px);
   color: var(--color-text-tertiary);
   text-transform: uppercase;
   font-weight: 700;
@@ -113,10 +153,10 @@ html, body {
 }
 
 .data-table td {
-  padding: 4px 8px;
+  padding: var(--table-td-py, 4px) var(--table-td-px, 8px);
   border-bottom: 1px solid rgba(30, 41, 59, 0.4);
   white-space: nowrap;
-  font-size: 10px;
+  font-size: var(--table-font, 10px);
   font-variant-numeric: tabular-nums;
 }
 

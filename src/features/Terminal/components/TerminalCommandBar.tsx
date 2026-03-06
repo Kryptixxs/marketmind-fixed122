@@ -43,7 +43,7 @@ export function TerminalCommandBar() {
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Enter command (e.g. 'stocks load NVDA', 'cd calendar', 'help')"
+          placeholder="Type command (e.g. 'GO BMON', 'AAPL GP', 'GO NEWS', 'HELP')"
           className="w-full bg-transparent border-none outline-none text-[10px] font-mono text-text-primary placeholder:text-text-tertiary uppercase"
         />
       </form>

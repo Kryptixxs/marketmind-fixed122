@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutGrid,
   LineChart,
@@ -53,6 +53,7 @@ const NAV_SECTIONS = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { signOut } = useAuth();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -66,13 +67,13 @@ export function Sidebar() {
         const allItems = NAV_SECTIONS.flatMap(s => s.items);
         const idx = parseInt(e.key) - 1;
         if (allItems[idx]) {
-          window.location.href = allItems[idx].href;
+          router.push(allItems[idx].href);
         }
       }
     };
     window.addEventListener('keydown', down);
     return () => window.removeEventListener('keydown', down);
-  }, []);
+  }, [router]);
 
   return (
     <>

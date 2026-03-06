@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react';
 import { fetchNews } from '@/app/actions/fetchNews';
 import { Loader2, ExternalLink, Radio, Clock, Newspaper } from 'lucide-react';
+import { useTunnel } from '@/features/Terminal/context/TunnelContext';
 
 const CATEGORIES = ['General', 'Stock', 'Crypto', 'Forex'];
 
 export default function NewsPage() {
+  const { push } = useTunnel();
   const [category, setCategory] = useState('General');
   const [articles, setArticles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,10 +69,20 @@ export default function NewsPage() {
           <div className="p-4 max-w-6xl mx-auto">
             {/* Featured Article */}
             {featured && (
-              <a
-                href={featured.link}
-                target="_blank"
-                className="block bg-surface border border-border rounded-lg p-6 mb-4 hover:border-accent/30 transition-all group"
+              <button
+                onClick={() =>
+                  push({
+                    type: 'ARTICLE',
+                    id: `featured-${featured.source}-${featured.time}`,
+                    title: featured.title,
+                    label: featured.title,
+                    source: featured.source,
+                    time: featured.time,
+                    snippet: featured.contentSnippet,
+                    link: featured.link,
+                  })
+                }
+                className="w-full text-left block bg-surface border border-border rounded-lg p-6 mb-4 hover:border-accent/30 transition-all group"
               >
                 <div className="flex items-center gap-2 mb-3">
                   <span className="badge badge-accent">{featured.source}</span>
@@ -86,17 +98,27 @@ export default function NewsPage() {
                     {featured.contentSnippet}
                   </p>
                 )}
-              </a>
+              </button>
             )}
 
             {/* Article Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {rest.map((article: any, i: number) => (
-                <a
+                <button
                   key={i}
-                  href={article.link}
-                  target="_blank"
-                  className="bg-surface border border-border rounded-lg p-4 hover:border-accent/30 transition-all group flex flex-col"
+                  onClick={() =>
+                    push({
+                      type: 'ARTICLE',
+                      id: `news-${article.source}-${article.time}-${i}`,
+                      title: article.title,
+                      label: article.title,
+                      source: article.source,
+                      time: article.time,
+                      snippet: article.contentSnippet,
+                      link: article.link,
+                    })
+                  }
+                  className="text-left bg-surface border border-border rounded-lg p-4 hover:border-accent/30 transition-all group flex flex-col"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-[9px] font-bold text-accent uppercase">{article.source}</span>
@@ -114,7 +136,7 @@ export default function NewsPage() {
                     <ExternalLink size={9} />
                     <span className="text-[9px] font-bold uppercase tracking-wider">Read More</span>
                   </div>
-                </a>
+                </button>
               ))}
             </div>
           </div>

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { searchSymbols } from '@/app/actions/searchSymbols';
+import { useTunnel } from '@/features/Terminal/context/TunnelContext';
 
 const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'AAPL', 'NVDA', 'BTCUSD'];
 
@@ -32,6 +33,7 @@ const LABEL_MAP: Record<string, string> = {
 };
 
 export default function ChartsPage() {
+  const { push } = useTunnel();
   const [activeSymbol, setActiveSymbol] = useState('NAS100');
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]);
   const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
@@ -235,7 +237,10 @@ export default function ChartsPage() {
               return (
                 <div
                   key={sym}
-                  onClick={() => setActiveSymbol(sym)}
+                  onClick={() => {
+                    setActiveSymbol(sym);
+                    push({ type: 'SYMBOL', symbol: sym, label: sym });
+                  }}
                   className={`px-3 py-2 border-b border-border/30 flex items-center justify-between cursor-pointer transition-all group ${
                     isActive ? 'bg-accent/5 border-l-2 border-l-accent' : 'hover:bg-surface-highlight border-l-2 border-l-transparent'
                   }`}

@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
+import { useTunnel } from '@/features/Terminal/context/TunnelContext';
 import {
   Filter, ArrowUpDown, ArrowUpRight, ArrowDownRight, Loader2,
   TrendingUp, Search, BarChart3, Zap,
@@ -50,6 +52,8 @@ const PRESETS = [
 ];
 
 export default function ScreenerPage() {
+  const router = useRouter();
+  const { push } = useTunnel();
   const { data: marketData } = useMarketData(SCREENER_UNIVERSE);
   const [search, setSearch] = useState('');
   const [activePreset, setActivePreset] = useState('All');
@@ -95,7 +99,7 @@ export default function ScreenerPage() {
 
   const handleSymbolClick = (sym: string) => {
     window.dispatchEvent(new CustomEvent('vantage-symbol-change', { detail: sym }));
-    window.location.href = '/charts';
+    push({ type: 'SYMBOL', symbol: sym, label: LABELS[sym] || sym });
   };
 
   const stats = useMemo(() => {
@@ -117,6 +121,13 @@ export default function ScreenerPage() {
           </div>
 
           <div className="h-5 w-px bg-border hidden md:block" />
+          <button
+            onClick={() => router.push('/charts')}
+            className="hidden md:inline-flex items-center gap-1 px-2 py-1 text-[9px] font-bold uppercase tracking-wider rounded border border-border text-text-tertiary hover:text-text-secondary hover:border-border-highlight transition-colors"
+          >
+            <Zap size={10} />
+            Full Chart
+          </button>
 
           {/* Quick Stats */}
           <div className="hidden md:flex items-center gap-4">

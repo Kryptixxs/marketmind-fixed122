@@ -10,6 +10,17 @@ export type FontSize = 'xs' | 'sm' | 'md' | 'lg';
 export type AIDepth = 'standard' | 'deep' | 'quant';
 export type FontFamily = 'mono' | 'sans' | 'serif';
 export type BorderStyle = 'none' | 'thin' | 'bold';
+export type WorkspacePreset = 'BMON' | 'FLOW' | 'MACRO' | 'RISK';
+export type WorkspaceLayout = {
+  showDepth: boolean;
+  showRisk: boolean;
+  showMacro: boolean;
+  showBlotter: boolean;
+  showMovers: boolean;
+  leftWidth: number;
+  rightWidth: number;
+  bottomHeight: number;
+};
 
 type Settings = {
   theme: Theme;
@@ -28,6 +39,15 @@ type Settings = {
   autoAnalyze: boolean;
   refreshInterval: number;
   dataDelayMode: 'realtime' | 'delayed' | 'simulated';
+  activeWorkspace: WorkspacePreset;
+  workspaceLayouts: Record<WorkspacePreset, WorkspaceLayout>;
+};
+
+const DEFAULT_WORKSPACE_LAYOUTS: Record<WorkspacePreset, WorkspaceLayout> = {
+  BMON: { showDepth: true, showRisk: true, showMacro: true, showBlotter: true, showMovers: true, leftWidth: 240, rightWidth: 320, bottomHeight: 44 },
+  FLOW: { showDepth: true, showRisk: false, showMacro: false, showBlotter: true, showMovers: true, leftWidth: 240, rightWidth: 340, bottomHeight: 40 },
+  MACRO: { showDepth: false, showRisk: false, showMacro: true, showBlotter: false, showMovers: true, leftWidth: 240, rightWidth: 340, bottomHeight: 48 },
+  RISK: { showDepth: false, showRisk: true, showMacro: false, showBlotter: true, showMovers: false, leftWidth: 250, rightWidth: 330, bottomHeight: 42 },
 };
 
 const DEFAULT: Settings = {
@@ -47,6 +67,8 @@ const DEFAULT: Settings = {
   autoAnalyze: true,
   refreshInterval: 30000,
   dataDelayMode: 'realtime',
+  activeWorkspace: 'BMON',
+  workspaceLayouts: DEFAULT_WORKSPACE_LAYOUTS,
 };
 
 const STORAGE_KEY = 'vantage-terminal-settings-v6';

@@ -3,6 +3,7 @@
 import { makePrototypeNews } from '@/lib/prototype-data';
 
 interface NewsItem {
+  id: string;
   title: string;
   link: string;
   source: string;
@@ -13,8 +14,9 @@ interface NewsItem {
   pubDate: number;
 }
 
-export async function fetchNews(category: string): Promise<NewsItem[]> {
-  return makePrototypeNews(category).map((item) => ({
+export async function fetchNews(category: string, symbolHint?: string): Promise<NewsItem[]> {
+  return makePrototypeNews(category, symbolHint).map((item, i) => ({
+    id: `${category}-${symbolHint || 'global'}-${i}-${item.pubDate}`,
     title: item.title,
     link: item.link,
     source: item.source,

@@ -1,3 +1,12 @@
+import {
+  dispatchSymbol,
+  dispatchWorkspace,
+  resolveRouteAlias,
+  resolveSymbolFunction,
+  resolveWorkspaceAlias,
+  WORKSPACE_FUNCTIONS,
+} from './command-registry';
+
 export interface CommandResult {
   type: 'NAV' | 'DATA' | 'ERROR' | 'INFO';
   message: string;
@@ -17,32 +26,6 @@ export class TerminalCommandEngine {
     'terminal': ['settings', 'clear', 'exit']
   };
 
-  private routes: Record<string, string> = {
-    'dashboard': '/dashboard',
-    'home': '/dashboard',
-    'charts': '/charts',
-    'markets': '/charts',
-    'screener': '/screener',
-    'screen': '/screener',
-    'portfolio': '/portfolio',
-    'port': '/portfolio',
-    'calendar': '/calendar',
-    'cal': '/calendar',
-    'news': '/news',
-    'wire': '/news',
-    'confluences': '/confluences',
-    'quant': '/confluences',
-    'algo': '/algo',
-    'backtest': '/algo',
-    'tools': '/tools',
-    'options': '/tools/options',
-    'forex': '/tools/forex',
-    'futures': '/tools/futures',
-    'settings': '/account',
-    'account': '/account',
-    'billing': '/billing',
-  };
-
   public parse(input: string): CommandResult {
     const parts = input.toLowerCase().trim().split(' ');
     const cmd = parts[0];
@@ -51,15 +34,41 @@ export class TerminalCommandEngine {
 
     this.history.push(input);
 
-    if (cmd === 'cd' || cmd === 'goto' || cmd === 'go') {
-      const route = this.routes[sub];
+    if (cmd === 'cd' || cmd === 'goto') {
+      const route = resolveRouteAlias(sub);
       if (route) return { type: 'NAV', message: `→ ${sub}`, path: route };
       return { type: 'NAV', message: `→ ${sub}`, path: `/${sub}` };
     }
 
+    // Bloomberg-style: "go <function>" where function can be route, workspace, or symbol.
+    if (cmd === 'go') {
+      if (!sub) return { type: 'INFO', message: 'Usage: GO <function|symbol>' };
+      const workspace = resolveWorkspaceAlias(sub);
+      if (workspace) {
+        dispatchWorkspace(workspace);
+        return { type: 'INFO', message: `Workspace ${workspace} loaded` };
+      }
+      const route = resolveRouteAlias(sub);
+      if (route) return { type: 'NAV', message: `→ ${sub.toUpperCase()}`, path: route };
+      if (sub.length <= 8) {
+        dispatchSymbol(sub);
+        return { type: 'DATA', message: `Loaded ${sub.toUpperCase()} monitor` };
+      }
+    }
+
+    // Symbol-function pattern: "<symbol> <fn>" e.g. "aapl gp"
+    if (cmd.length <= 8 && sub) {
+      const symbol = cmd.toUpperCase();
+      const symbolFn = resolveSymbolFunction(sub);
+      if (symbolFn) {
+        dispatchSymbol(symbol);
+        return { type: 'NAV', message: `${symbol} ${symbolFn.label}`, path: symbolFn.path };
+      }
+    }
+
     if (cmd === 'stocks') {
       if (sub === 'load' && args[0]) {
-        window.dispatchEvent(new CustomEvent('vantage-symbol-change', { detail: args[0].toUpperCase() }));
+        dispatchSymbol(args[0]);
         return { type: 'DATA', message: `Loaded ${args[0].toUpperCase()}` };
       }
       return { type: 'INFO', message: `STOCKS: ${this.modules.stocks.join(', ')}` };
@@ -67,7 +76,7 @@ export class TerminalCommandEngine {
 
     if (cmd === 'crypto') {
       if (sub === 'price' && args[0]) {
-        window.dispatchEvent(new CustomEvent('vantage-symbol-change', { detail: args[0].toUpperCase() }));
+        dispatchSymbol(args[0]);
         return { type: 'DATA', message: `Streaming ${args[0].toUpperCase()}` };
       }
       return { type: 'INFO', message: `CRYPTO: ${this.modules.crypto.join(', ')}` };
@@ -78,15 +87,15 @@ export class TerminalCommandEngine {
     if (cmd === 'help' || cmd === '?') {
       return {
         type: 'INFO',
-        message: `Modules: ${Object.keys(this.modules).join(', ')} | Routes: cd <page> | Direct: <SYMBOL>`
+        message: `GO <route|symbol|workspace> | <symbol> GP/NEWS/OPT/FA | Workspaces: ${WORKSPACE_FUNCTIONS.map((w) => w.code).join('/')}`
       };
     }
 
-    const route = this.routes[cmd];
+    const route = resolveRouteAlias(cmd);
     if (route) return { type: 'NAV', message: `→ ${cmd}`, path: route };
 
     if (cmd.length <= 6 && !sub) {
-      window.dispatchEvent(new CustomEvent('vantage-symbol-change', { detail: cmd.toUpperCase() }));
+      dispatchSymbol(cmd);
       return { type: 'DATA', message: `→ ${cmd.toUpperCase()}` };
     }
 
