@@ -5,8 +5,8 @@ import { LayoutWrapper } from '@/features/Terminal/components/LayoutWrapper';
 import { AuthProvider } from '@/services/context/AuthContext';
 
 export const metadata: Metadata = {
-  title: "VANTAGE TERMINAL // v4.0",
-  description: "Institutional Intelligence",
+  title: "VANTAGE TERMINAL",
+  description: "Institutional-Grade Market Intelligence Platform",
 };
 
 export const viewport: Viewport = {
@@ -14,7 +14,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true,
-  themeColor: "#000000",
+  themeColor: "#060a13",
 };
 
 export default function RootLayout({
@@ -24,6 +24,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+      </head>
       <body className="flex flex-col-reverse md:flex-row h-[100dvh] w-full overflow-hidden bg-background text-text-primary antialiased">
         <AuthProvider>
           <SettingsProvider>

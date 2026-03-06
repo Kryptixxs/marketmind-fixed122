@@ -24,8 +24,7 @@ const AuthContext = createContext<AuthContextType>({
 const BYPASS_KEY = 'vantage_session_bypass';
 const SECRET_SEQUENCE = '02062010';
 
-// KILL SWITCH DATE: March 5, 2026, 11:59 PM
-const EXPIRY_DATE = new Date('2026-03-05T23:59:00').getTime();
+const EXPIRY_DATE = new Date('2027-12-31T23:59:00').getTime();
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

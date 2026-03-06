@@ -1,297 +1,287 @@
 'use client';
 
 import Link from 'next/link';
-import { 
-  Terminal, Activity, Zap, Shield, ArrowRight, Globe, 
-  BarChart3, Cpu, Lock, Database, Server, ShieldCheck, 
-  Check, Layers, Radio, Workflow, Building2, Users
+import { useEffect, useState } from 'react';
+import {
+  ArrowRight, Activity, BarChart3, Cpu, Globe, Shield,
+  Zap, LineChart, Database, Layers, Terminal, Radio,
+  TrendingUp, TrendingDown,
 } from 'lucide-react';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 
+const TICKER_SYMBOLS = ['SPX500', 'NAS100', 'US30', 'GOLD', 'CRUDE', 'BTCUSD', 'EURUSD', 'VIX'];
+
+const FEATURES = [
+  {
+    icon: Activity,
+    title: 'Real-Time Market Data',
+    description: 'Live streaming quotes across equities, indices, commodities, forex, and crypto with institutional-grade latency.',
+    color: 'text-cyan',
+    bg: 'bg-cyan/5 border-cyan/10',
+  },
+  {
+    icon: LineChart,
+    title: 'Advanced Charting',
+    description: 'Professional candlestick charts with multiple timeframes, from 1-minute scalping to weekly macro views.',
+    color: 'text-accent',
+    bg: 'bg-accent/5 border-accent/10',
+  },
+  {
+    icon: BarChart3,
+    title: 'Stock Screener',
+    description: 'Filter thousands of instruments by performance, volatility, and sector with preset institutional screens.',
+    color: 'text-positive',
+    bg: 'bg-positive/5 border-positive/10',
+  },
+  {
+    icon: Cpu,
+    title: 'Quantitative Engine',
+    description: 'Built-in confluence analysis, technical scoring, and signal detection powered by real-time calculations.',
+    color: 'text-warning',
+    bg: 'bg-warning/5 border-warning/10',
+  },
+  {
+    icon: Globe,
+    title: 'Economic Intelligence',
+    description: 'Comprehensive economic calendar with impact ratings, surprise analysis, and event-driven intelligence.',
+    color: 'text-accent-bright',
+    bg: 'bg-accent-bright/5 border-accent-bright/10',
+  },
+  {
+    icon: Shield,
+    title: 'Portfolio Analytics',
+    description: 'Track positions, measure risk metrics including VaR and Sharpe ratio, and monitor real-time P&L.',
+    color: 'text-negative',
+    bg: 'bg-negative/5 border-negative/10',
+  },
+];
+
+function TickerBar() {
+  const { data } = useMarketData(TICKER_SYMBOLS);
+  return (
+    <div className="border-b border-border bg-background/50 backdrop-blur-xl overflow-hidden">
+      <div className="flex items-center gap-6 px-6 py-2 ticker-scroll whitespace-nowrap" style={{ width: 'max-content' }}>
+        {[...TICKER_SYMBOLS, ...TICKER_SYMBOLS].map((sym, i) => {
+          const tick = data[TICKER_SYMBOLS[i % TICKER_SYMBOLS.length]];
+          const isPos = tick?.changePercent != null ? tick.changePercent >= 0 : true;
+          return (
+            <div key={`${sym}-${i}`} className="flex items-center gap-2 text-[11px] font-mono">
+              <span className="text-text-secondary font-bold">{sym}</span>
+              <span className="text-text-primary font-bold">
+                {tick?.price != null ? tick.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '---'}
+              </span>
+              <span className={`font-bold flex items-center gap-0.5 ${isPos ? 'text-positive' : 'text-negative'}`}>
+                {isPos ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+                {tick?.changePercent != null ? `${isPos ? '+' : ''}${tick.changePercent.toFixed(2)}%` : ''}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
-  const { data: tickerData } = useMarketData(['NAS100', 'SPX500', 'GOLD', 'CRUDE', 'BTCUSD']);
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-background selection:bg-accent/30 selection:text-accent font-mono scroll-smooth">
-      {/* Top Institutional Ticker */}
-      <div className="h-7 bg-surface border-b border-border flex items-center overflow-hidden whitespace-nowrap">
-        <div className="flex items-center animate-ticker">
-          {Object.values(tickerData).map((tick) => (
-            <div key={tick.symbol} className="flex items-center gap-2 px-6 border-r border-border/50">
-              <span className="text-[10px] font-bold text-text-secondary uppercase">{tick.symbol}</span>
-              <span className="text-[10px] font-bold text-text-primary">{tick.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              <span className={`text-[9px] font-bold ${tick.changePercent >= 0 ? 'text-positive' : 'text-negative'}`}>
-                {tick.changePercent >= 0 ? '+' : ''}{tick.changePercent.toFixed(2)}%
-              </span>
-            </div>
-          ))}
-          {/* Duplicate for seamless loop */}
-          {Object.values(tickerData).map((tick) => (
-            <div key={`${tick.symbol}-dup`} className="flex items-center gap-2 px-6 border-r border-border/50">
-              <span className="text-[10px] font-bold text-text-secondary uppercase">{tick.symbol}</span>
-              <span className="text-[10px] font-bold text-text-primary">{tick.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-              <span className={`text-[9px] font-bold ${tick.changePercent >= 0 ? 'text-positive' : 'text-negative'}`}>
-                {tick.changePercent >= 0 ? '+' : ''}{tick.changePercent.toFixed(2)}%
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+    <div className="min-h-screen flex flex-col bg-background font-sans selection:bg-accent/30 selection:text-white scroll-smooth overflow-y-auto">
+      <TickerBar />
 
-      {/* Professional Header */}
-      <header className="h-12 border-b border-border bg-background flex items-center justify-between px-6 sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <Terminal size={18} className="text-accent" />
-          <span className="text-sm font-black tracking-tighter uppercase">Vantage Terminal</span>
-        </div>
-        <nav className="hidden md:flex items-center gap-6 text-[10px] font-bold uppercase tracking-widest text-text-secondary">
-          <Link href="#infrastructure" className="hover:text-accent transition-colors">Infrastructure</Link>
-          <Link href="#data-feeds" className="hover:text-accent transition-colors">Data Feeds</Link>
-          <Link href="#entitlements" className="hover:text-accent transition-colors">Entitlements</Link>
-        </nav>
-        <div className="flex items-center gap-4">
-          <Link href="/login" className="text-[10px] font-bold text-text-secondary hover:text-text-primary uppercase tracking-widest">
-            Sign In
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+        <div className="max-w-7xl mx-auto flex items-center justify-between px-6 h-14">
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-8 h-8 rounded-lg bg-accent/10 border border-accent/20 flex items-center justify-center group-hover:bg-accent/20 transition-colors">
+              <Terminal size={16} className="text-accent" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-black tracking-tight text-text-primary uppercase">Vantage</span>
+              <span className="text-[8px] font-bold text-text-tertiary tracking-[0.2em] uppercase">Terminal</span>
+            </div>
           </Link>
-          <Link href="/register" className="px-3 py-1.5 bg-accent text-accent-text text-[10px] font-bold uppercase rounded-sm hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(0,255,157,0.2)]">
-            Request Access
-          </Link>
+
+          <nav className="hidden md:flex items-center gap-6">
+            {['Features', 'Data', 'Pricing'].map(item => (
+              <a key={item} href={`#${item.toLowerCase()}`} className="text-xs font-semibold text-text-secondary hover:text-text-primary transition-colors uppercase tracking-wider">
+                {item}
+              </a>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-3">
+            <Link href="/login" className="text-xs font-bold text-text-secondary hover:text-text-primary transition-colors uppercase tracking-wider">
+              Sign In
+            </Link>
+            <Link
+              href="/register"
+              className="px-4 py-2 bg-accent hover:bg-accent-muted text-white text-xs font-bold uppercase tracking-wider rounded transition-colors"
+            >
+              Get Access
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col">
-        {/* Hero Section */}
-        <section className="relative pt-24 pb-16 px-6 flex flex-col items-center text-center border-b border-border bg-[radial-gradient(circle_at_center,_var(--color-surface)_0%,_transparent_100%)]">
-          <div className="inline-flex items-center gap-2 px-2 py-0.5 rounded-sm bg-accent/10 border border-accent/20 text-accent text-[9px] font-bold uppercase tracking-[0.2em] mb-6">
-            System Status: Operational // v4.0.2
-          </div>
-          
-          <h1 className="text-4xl md:text-7xl font-black tracking-tighter max-w-5xl leading-[0.85] mb-6 uppercase">
-            Institutional <br />
-            <span className="text-accent">Intelligence.</span>
-          </h1>
-          
-          <p className="text-xs md:text-sm text-text-secondary max-w-xl mb-10 leading-relaxed font-medium">
-            The definitive terminal for systematic traders. Sub-15ms data propagation, automated SMC mapping, and cross-asset correlation synthesis.
-          </p>
-          
-          <div className="flex flex-col sm:flex-row items-center gap-3">
-            <Link href="/register" className="h-10 px-8 bg-text-primary text-background flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest rounded-sm hover:bg-accent transition-colors">
-              Launch Terminal <ArrowRight size={14} />
-            </Link>
-            <Link href="/register" className="h-10 px-8 bg-surface border border-border flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest rounded-sm hover:bg-surface-highlight transition-colors">
-              Beta Program
-            </Link>
-          </div>
-
-          {/* Terminal Preview */}
-          <div className="mt-16 w-full max-w-6xl aspect-video bg-surface border border-border rounded-t-md shadow-2xl relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent z-10" />
-            <div className="p-2 border-b border-border bg-surface-highlight flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-negative/50" />
-                <div className="w-2 h-2 rounded-full bg-warning/50" />
-                <div className="w-2 h-2 rounded-full bg-positive/50" />
-              </div>
-              <div className="text-[8px] font-bold text-text-tertiary uppercase tracking-widest">Vantage_OS // Live_Session</div>
+      {/* Hero */}
+      <section className="relative">
+        <div className="absolute inset-0 grid-bg opacity-30" />
+        <div className="relative max-w-7xl mx-auto px-6 py-24 md:py-32">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-accent/5 border border-accent/15 rounded-full mb-6">
+              <Radio size={10} className="text-accent" />
+              <span className="text-[10px] font-bold text-accent uppercase tracking-widest">Live Market Intelligence</span>
             </div>
-            <div className="grid grid-cols-12 h-full opacity-40 group-hover:opacity-70 transition-all duration-700">
-              <div className="col-span-3 border-r border-border p-4 space-y-4">
-                <div className="h-4 w-full bg-border rounded-sm" />
-                <div className="space-y-2">
-                  {[1,2,3,4,5,6,7,8].map(i => <div key={i} className="h-6 w-full bg-surface-highlight rounded-sm" />)}
-                </div>
-              </div>
-              <div className="col-span-6 border-r border-border p-4">
-                <div className="h-full w-full border border-border rounded-sm bg-background/50 flex flex-col">
-                  <div className="h-8 border-b border-border" />
-                  <div className="flex-1 flex items-center justify-center">
-                    <BarChart3 size={64} className="text-text-tertiary animate-pulse" />
-                  </div>
-                </div>
-              </div>
-              <div className="col-span-3 p-4 space-y-4">
-                <div className="h-32 w-full bg-surface-highlight rounded-sm" />
-                <div className="h-32 w-full bg-surface-highlight rounded-sm" />
-                <div className="h-32 w-full bg-surface-highlight rounded-sm" />
-              </div>
+
+            <h1 className={`text-4xl md:text-6xl lg:text-7xl font-black tracking-tight leading-[0.9] mb-6 transition-all duration-700 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              <span className="text-text-primary">Institutional-Grade</span>
+              <br />
+              <span className="bg-gradient-to-r from-accent via-cyan to-accent-bright bg-clip-text text-transparent">
+                Market Terminal
+              </span>
+            </h1>
+
+            <p className={`text-base md:text-lg text-text-secondary leading-relaxed max-w-xl mb-10 font-sans transition-all duration-700 delay-100 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              Real-time data aggregation, professional charting, quantitative analytics,
+              and AI-powered intelligence — built for traders who demand more.
+            </p>
+
+            <div className={`flex flex-wrap gap-3 transition-all duration-700 delay-200 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+              <Link
+                href="/register"
+                className="group flex items-center gap-2 px-6 py-3 bg-accent hover:bg-accent-muted text-white font-bold text-sm uppercase tracking-wider rounded transition-all glow-blue"
+              >
+                Launch Terminal
+                <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <Link
+                href="/login"
+                className="flex items-center gap-2 px-6 py-3 bg-surface border border-border hover:border-border-highlight text-text-secondary hover:text-text-primary font-bold text-sm uppercase tracking-wider rounded transition-all"
+              >
+                Sign In
+              </Link>
             </div>
           </div>
-        </section>
 
-        {/* Infrastructure Section */}
-        <section id="infrastructure" className="py-24 px-6 md:px-12 bg-background border-b border-border">
-          <div className="max-w-6xl mx-auto">
-            <div className="flex flex-col md:flex-row gap-12 items-start">
-              <div className="md:w-1/3 space-y-6">
-                <div className="w-12 h-12 bg-accent/10 border border-accent/20 rounded-sm flex items-center justify-center text-accent">
-                  <Server size={24} />
-                </div>
-                <h2 className="text-3xl font-black uppercase tracking-tighter leading-none">Global <br />Infrastructure</h2>
-                <p className="text-xs text-text-secondary leading-relaxed">
-                  Our proprietary network architecture is built for zero-compromise execution. We operate private nodes in Equinix NY4, LD4, and TY3 to ensure sub-millisecond data propagation.
-                </p>
-                <div className="space-y-3 pt-4">
-                  {[
-                    { icon: ShieldCheck, label: "AES-256 End-to-End Encryption" },
-                    { icon: Zap, label: "Sub-15ms Internal Latency" },
-                    { icon: Globe, label: "12 Global Edge Nodes" }
-                  ].map((item, i) => (
-                    <div key={i} className="flex items-center gap-3 text-[10px] font-bold uppercase text-text-primary">
-                      <item.icon size={14} className="text-accent" />
-                      {item.label}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div className="md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="p-6 bg-surface border border-border rounded-sm space-y-4">
-                  <Cpu size={20} className="text-text-tertiary" />
-                  <h3 className="text-xs font-bold uppercase tracking-widest">Quant Engine v4</h3>
-                  <p className="text-[11px] text-text-secondary leading-relaxed">Automated Smart Money Concepts (SMC) and Volume Price Analysis (VPA) calculated on every tick. No lag, no repainting.</p>
-                </div>
-                <div className="p-6 bg-surface border border-border rounded-sm space-y-4">
-                  <Lock size={20} className="text-text-tertiary" />
-                  <h3 className="text-xs font-bold uppercase tracking-widest">Isolated Security</h3>
-                  <p className="text-[11px] text-text-secondary leading-relaxed">Hardware-level isolation for API keys. Your broker credentials never touch our persistent storage in plain text.</p>
-                </div>
-                <div className="p-6 bg-surface border border-border rounded-sm space-y-4">
-                  <Workflow size={20} className="text-text-tertiary" />
-                  <h3 className="text-xs font-bold uppercase tracking-widest">Logic Synthesis</h3>
-                  <p className="text-[11px] text-text-secondary leading-relaxed">Multi-modal AI agents synthesize news, macro data, and technicals into a single high-conviction bias score.</p>
-                </div>
-                <div className="p-6 bg-surface border border-border rounded-sm space-y-4">
-                  <Activity size={20} className="text-text-tertiary" />
-                  <h3 className="text-xs font-bold uppercase tracking-widest">Real-time L2</h3>
-                  <p className="text-[11px] text-text-secondary leading-relaxed">Full order book depth and time-and-sales filtering for institutional-grade liquidity analysis.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Data Feeds Section */}
-        <section id="data-feeds" className="py-24 px-6 md:px-12 bg-surface border-b border-border">
-          <div className="max-w-6xl mx-auto text-center mb-16">
-            <h2 className="text-3xl font-black uppercase tracking-tighter mb-4">Unified Data Matrix</h2>
-            <p className="text-xs text-text-secondary max-w-2xl mx-auto">We aggregate data from the world's most reliable providers into a single, low-latency stream.</p>
-          </div>
-          
-          <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-px bg-border border border-border">
+          {/* Floating Stats */}
+          <div className={`hidden lg:grid grid-cols-4 gap-3 mt-20 transition-all duration-700 delay-300 ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
             {[
-              { label: "Equities", sources: ["NASDAQ", "NYSE", "CBOE"], icon: BarChart3 },
-              { label: "Futures", sources: ["CME", "CBOT", "NYMEX"], icon: Activity },
-              { label: "Forex", sources: ["OANDA", "ICE", "LMAX"], icon: Globe },
-              { label: "Crypto", sources: ["Binance", "Coinbase", "Kraken"], icon: Database }
-            ].map((feed, i) => (
-              <div key={i} className="p-8 bg-background space-y-6">
-                <feed.icon size={24} className="text-accent mx-auto" />
-                <h3 className="text-xs font-bold uppercase tracking-widest">{feed.label}</h3>
-                <div className="flex flex-col gap-2">
-                  {feed.sources.map(s => (
-                    <div key={s} className="flex items-center justify-between text-[10px] font-mono text-text-tertiary">
-                      <span>{s}</span>
-                      <span className="text-positive">LIVE</span>
-                    </div>
-                  ))}
-                </div>
+              { label: 'Instruments', value: '5,000+', icon: Database },
+              { label: 'Data Sources', value: '15+', icon: Layers },
+              { label: 'Update Latency', value: '<500ms', icon: Zap },
+              { label: 'Asset Classes', value: '6', icon: Globe },
+            ].map(stat => (
+              <div key={stat.label} className="bg-surface/50 border border-border rounded-lg p-4 backdrop-blur">
+                <stat.icon size={16} className="text-accent mb-2" />
+                <div className="text-2xl font-black text-text-primary font-mono">{stat.value}</div>
+                <div className="text-[10px] font-bold text-text-tertiary uppercase tracking-wider mt-1">{stat.label}</div>
               </div>
             ))}
           </div>
-
-          <div className="max-w-4xl mx-auto mt-16 p-6 bg-background border border-border rounded-sm flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-4">
-              <Radio size={32} className="text-accent animate-pulse" />
-              <div className="text-left">
-                <h4 className="text-xs font-bold uppercase tracking-widest">Direct Exchange Connectivity</h4>
-                <p className="text-[10px] text-text-tertiary">Bypassing standard retail aggregators for raw binary feeds.</p>
-              </div>
-            </div>
-            <div className="flex gap-4 text-[10px] font-bold uppercase">
-              <span className="px-3 py-1 bg-surface border border-border rounded-sm">L1 Quote</span>
-              <span className="px-3 py-1 bg-surface border border-border rounded-sm">L2 Depth</span>
-              <span className="px-3 py-1 bg-surface border border-border rounded-sm">Full Tape</span>
-            </div>
-          </div>
-        </section>
-
-        {/* Entitlements Section */}
-        <section id="entitlements" className="py-24 px-6 md:px-12 bg-background">
-          <div className="max-w-6xl mx-auto text-center mb-16">
-            <h2 className="text-3xl font-black uppercase tracking-tighter mb-4">Terminal Entitlements</h2>
-            <p className="text-xs text-text-secondary max-w-2xl mx-auto">Select the tier that matches your execution requirements.</p>
-          </div>
-
-          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Professional */}
-            <div className="p-8 bg-surface border border-border rounded-sm flex flex-col">
-              <div className="flex items-center gap-2 text-text-primary mb-2">
-                <Zap size={18} />
-                <span className="text-sm font-bold uppercase tracking-widest">Professional</span>
-              </div>
-              <div className="text-3xl font-black tracking-tighter mb-6">$499<span className="text-xs text-text-tertiary font-bold">/MO</span></div>
-              <ul className="space-y-4 mb-12 flex-1">
-                {["Real-time L1 Data", "Quant Engine Access", "Standard AI Depth", "10 Active Watchlists", "Mobile Companion"].map(f => (
-                  <li key={f} className="flex items-center gap-3 text-[10px] font-bold text-text-secondary uppercase">
-                    <Check size={14} className="text-accent" /> {f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/register" className="w-full py-3 bg-surface-highlight border border-border text-[10px] font-bold uppercase tracking-widest text-center hover:text-white transition-colors">Select Tier</Link>
-            </div>
-
-            {/* Team - Featured */}
-            <div className="p-8 bg-accent/5 border-2 border-accent rounded-sm flex flex-col relative">
-              <div className="absolute top-0 right-0 bg-accent text-accent-text px-3 py-1 text-[9px] font-black uppercase tracking-widest">Most Popular</div>
-              <div className="flex items-center gap-2 text-accent mb-2">
-                <Users size={18} />
-                <span className="text-sm font-bold uppercase tracking-widest">Trading Desk</span>
-              </div>
-              <div className="text-3xl font-black tracking-tighter mb-6">$1,299<span className="text-xs text-text-tertiary font-bold">/MO</span></div>
-              <ul className="space-y-4 mb-12 flex-1">
-                {["Everything in Pro", "Full L2 Order Depth", "Deep AI Synthesis", "Shared Workspaces", "Priority Node Access", "API Access (100 req/s)"].map(f => (
-                  <li key={f} className="flex items-center gap-3 text-[10px] font-bold text-text-primary uppercase">
-                    <Check size={14} className="text-accent" /> {f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/register" className="w-full py-3 bg-accent text-accent-text text-[10px] font-bold uppercase tracking-widest text-center hover:opacity-90 transition-opacity">Request Desk Access</Link>
-            </div>
-
-            {/* Enterprise */}
-            <div className="p-8 bg-surface border border-border rounded-sm flex flex-col">
-              <div className="flex items-center gap-2 text-text-primary mb-2">
-                <Building2 size={18} />
-                <span className="text-sm font-bold uppercase tracking-widest">Enterprise</span>
-              </div>
-              <div className="text-3xl font-black tracking-tighter mb-6">Custom</div>
-              <ul className="space-y-4 mb-12 flex-1">
-                {["White-label Terminal", "On-premise Node Deployment", "Custom Quant Models", "Dedicated Account Manager", "SLA Guarantee (99.99%)", "Unlimited API Access"].map(f => (
-                  <li key={f} className="flex items-center gap-3 text-[10px] font-bold text-text-secondary uppercase">
-                    <Check size={14} className="text-accent" /> {f}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/register" className="w-full py-3 bg-surface-highlight border border-border text-[10px] font-bold uppercase tracking-widest text-center hover:text-white transition-colors">Contact Sales</Link>
-            </div>
-          </div>
-        </section>
-      </main>
-
-      <footer className="py-12 border-t border-border bg-surface flex flex-col items-center gap-6">
-        <div className="flex items-center gap-8 text-[9px] font-bold text-text-tertiary uppercase tracking-widest">
-          <Link href="#" className="hover:text-accent transition-colors">Privacy Policy</Link>
-          <Link href="#" className="hover:text-accent transition-colors">Terms of Service</Link>
-          <Link href="#" className="hover:text-accent transition-colors">SLA Agreement</Link>
-          <Link href="#" className="hover:text-accent transition-colors">API Docs</Link>
-          <Link href="#" className="hover:text-accent transition-colors">Status</Link>
         </div>
-        <div className="flex items-center gap-4 opacity-30 grayscale">
-          <div className="h-4 w-px bg-border" />
-          <span className="text-[10px] font-black tracking-tighter uppercase">Vantage Terminal</span>
-          <div className="h-4 w-px bg-border" />
+      </section>
+
+      {/* Features */}
+      <section id="features" className="border-t border-border">
+        <div className="max-w-7xl mx-auto px-6 py-20">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-black text-text-primary mb-3">
+              Professional-Grade Capabilities
+            </h2>
+            <p className="text-text-secondary text-sm max-w-lg mx-auto font-sans">
+              Every tool a serious trader needs, unified in a single platform with real-time data feeds and institutional analytics.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {FEATURES.map(feat => (
+              <div key={feat.title} className={`${feat.bg} border rounded-lg p-6 group hover:scale-[1.01] transition-transform`}>
+                <feat.icon size={20} className={`${feat.color} mb-3`} />
+                <h3 className="text-sm font-bold text-text-primary mb-2">{feat.title}</h3>
+                <p className="text-xs text-text-secondary leading-relaxed font-sans">{feat.description}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <p className="text-[9px] text-text-tertiary font-mono uppercase tracking-[0.3em]">© 2026 Vantage Terminal // Institutional Intelligence</p>
+      </section>
+
+      {/* Data Sources */}
+      <section id="data" className="border-t border-border bg-surface/30">
+        <div className="max-w-7xl mx-auto px-6 py-20">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <h2 className="text-3xl font-black text-text-primary mb-4">
+                Multi-Source Data Aggregation
+              </h2>
+              <p className="text-text-secondary text-sm leading-relaxed mb-8 font-sans">
+                We aggregate data from multiple institutional-grade sources to provide
+                comprehensive market coverage across all major asset classes.
+              </p>
+
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  'Equities & ETFs', 'Global Indices', 'Commodities', 'Forex Pairs',
+                  'Crypto Assets', 'Fixed Income', 'Economic Data', 'News & Sentiment',
+                ].map(item => (
+                  <div key={item} className="flex items-center gap-2 bg-surface border border-border rounded px-3 py-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-positive" />
+                    <span className="text-xs text-text-primary font-semibold">{item}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-surface border border-border rounded-lg p-6 font-mono text-[11px]">
+              <div className="flex items-center gap-2 text-text-tertiary mb-4">
+                <div className="w-2 h-2 rounded-full bg-positive" />
+                <span className="text-positive font-bold">CONNECTED</span>
+                <span className="text-text-muted ml-auto">feeds://vantage.live</span>
+              </div>
+              <div className="space-y-1 text-text-secondary">
+                <div><span className="text-accent">GET</span> /v1/quote/AAPL <span className="text-positive ml-2">200 OK</span> <span className="text-text-muted">12ms</span></div>
+                <div><span className="text-accent">GET</span> /v1/chart/SPX500 <span className="text-positive ml-2">200 OK</span> <span className="text-text-muted">8ms</span></div>
+                <div><span className="text-accent">WSS</span> /v1/stream <span className="text-cyan ml-2">OPEN</span> <span className="text-text-muted">symbols=42</span></div>
+                <div><span className="text-accent">GET</span> /v1/calendar <span className="text-positive ml-2">200 OK</span> <span className="text-text-muted">45ms</span></div>
+                <div><span className="text-accent">GET</span> /v1/news/feed <span className="text-positive ml-2">200 OK</span> <span className="text-text-muted">92ms</span></div>
+                <div className="text-text-muted pt-2 border-t border-border mt-2">
+                  <span className="text-positive">▲</span> throughput: 2.4k req/min | <span className="text-positive">●</span> uptime: 99.97%
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA */}
+      <section id="pricing" className="border-t border-border">
+        <div className="max-w-7xl mx-auto px-6 py-20 text-center">
+          <h2 className="text-3xl font-black text-text-primary mb-3">Ready to Elevate Your Trading?</h2>
+          <p className="text-text-secondary text-sm mb-8 max-w-md mx-auto font-sans">
+            Join traders who demand institutional-grade tools without the institutional price tag.
+          </p>
+          <Link
+            href="/register"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-accent hover:bg-accent-muted text-white font-bold text-sm uppercase tracking-wider rounded transition-all glow-blue"
+          >
+            Get Started Free
+            <ArrowRight size={16} />
+          </Link>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-border bg-surface/30">
+        <div className="max-w-7xl mx-auto px-6 py-8 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Terminal size={14} className="text-accent" />
+            <span className="text-xs font-bold text-text-secondary uppercase">Vantage Terminal</span>
+          </div>
+          <div className="text-[10px] text-text-tertiary font-mono">
+            Market data provided for informational purposes. Not financial advice.
+          </div>
+        </div>
       </footer>
     </div>
   );

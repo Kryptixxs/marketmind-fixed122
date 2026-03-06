@@ -1,5 +1,3 @@
-import { useRouter } from 'next/navigation';
-
 export interface CommandResult {
   type: 'NAV' | 'DATA' | 'ERROR' | 'INFO';
   message: string;
@@ -9,8 +7,7 @@ export interface CommandResult {
 
 export class TerminalCommandEngine {
   private history: string[] = [];
-  
-  // OpenBB-style Module Hierarchy
+
   private modules = {
     'stocks': ['load', 'quote', 'options', 'insider', 'financials'],
     'crypto': ['price', 'onchain', 'defi'],
@@ -18,6 +15,32 @@ export class TerminalCommandEngine {
     'economy': ['gdp', 'cpi', 'rates'],
     'fixedincome': ['yields', 'spreads'],
     'terminal': ['settings', 'clear', 'exit']
+  };
+
+  private routes: Record<string, string> = {
+    'dashboard': '/dashboard',
+    'home': '/dashboard',
+    'charts': '/charts',
+    'markets': '/charts',
+    'screener': '/screener',
+    'screen': '/screener',
+    'portfolio': '/portfolio',
+    'port': '/portfolio',
+    'calendar': '/calendar',
+    'cal': '/calendar',
+    'news': '/news',
+    'wire': '/news',
+    'confluences': '/confluences',
+    'quant': '/confluences',
+    'algo': '/algo',
+    'backtest': '/algo',
+    'tools': '/tools',
+    'options': '/tools/options',
+    'forex': '/tools/forex',
+    'futures': '/tools/futures',
+    'settings': '/account',
+    'account': '/account',
+    'billing': '/billing',
   };
 
   public parse(input: string): CommandResult {
@@ -28,46 +51,45 @@ export class TerminalCommandEngine {
 
     this.history.push(input);
 
-    // 1. Navigation Commands
-    if (cmd === 'cd' || cmd === 'goto') {
-      return { type: 'NAV', message: `Navigating to ${sub}...`, path: `/${sub}` };
+    if (cmd === 'cd' || cmd === 'goto' || cmd === 'go') {
+      const route = this.routes[sub];
+      if (route) return { type: 'NAV', message: `→ ${sub}`, path: route };
+      return { type: 'NAV', message: `→ ${sub}`, path: `/${sub}` };
     }
 
-    // 2. Module Routing (OpenBB Style)
     if (cmd === 'stocks') {
       if (sub === 'load' && args[0]) {
         window.dispatchEvent(new CustomEvent('vantage-symbol-change', { detail: args[0].toUpperCase() }));
-        return { type: 'DATA', message: `Loaded ${args[0].toUpperCase()} into workspace.` };
+        return { type: 'DATA', message: `Loaded ${args[0].toUpperCase()}` };
       }
-      return { type: 'INFO', message: `STOCKS MODULE: ${this.modules.stocks.join(', ')}` };
+      return { type: 'INFO', message: `STOCKS: ${this.modules.stocks.join(', ')}` };
     }
 
     if (cmd === 'crypto') {
       if (sub === 'price' && args[0]) {
         window.dispatchEvent(new CustomEvent('vantage-symbol-change', { detail: args[0].toUpperCase() }));
-        return { type: 'DATA', message: `Streaming ${args[0].toUpperCase()} price feed.` };
+        return { type: 'DATA', message: `Streaming ${args[0].toUpperCase()}` };
       }
-      return { type: 'INFO', message: `CRYPTO MODULE: ${this.modules.crypto.join(', ')}` };
+      return { type: 'INFO', message: `CRYPTO: ${this.modules.crypto.join(', ')}` };
     }
 
-    // 3. System Commands
-    if (cmd === 'clear') {
-      return { type: 'INFO', message: 'TERMINAL_BUFFER_CLEARED' };
-    }
+    if (cmd === 'clear') return { type: 'INFO', message: 'Buffer cleared' };
 
-    if (cmd === 'help') {
-      return { 
-        type: 'INFO', 
-        message: `AVAILABLE MODULES: ${Object.keys(this.modules).join(', ')}. Use 'stocks load AAPL' or 'cd calendar'.` 
+    if (cmd === 'help' || cmd === '?') {
+      return {
+        type: 'INFO',
+        message: `Modules: ${Object.keys(this.modules).join(', ')} | Routes: cd <page> | Direct: <SYMBOL>`
       };
     }
 
-    // 4. Fallback: Direct Symbol Lookup
-    if (cmd.length <= 5 && !sub) {
+    const route = this.routes[cmd];
+    if (route) return { type: 'NAV', message: `→ ${cmd}`, path: route };
+
+    if (cmd.length <= 6 && !sub) {
       window.dispatchEvent(new CustomEvent('vantage-symbol-change', { detail: cmd.toUpperCase() }));
-      return { type: 'DATA', message: `Switching context to ${cmd.toUpperCase()}...` };
+      return { type: 'DATA', message: `→ ${cmd.toUpperCase()}` };
     }
 
-    return { type: 'ERROR', message: `COMMAND_NOT_FOUND: '${cmd}'. Type 'help' for available modules.` };
+    return { type: 'ERROR', message: `Unknown: '${cmd}'. Type 'help' for commands.` };
   }
 }

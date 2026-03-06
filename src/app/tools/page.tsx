@@ -1,69 +1,60 @@
 'use client';
 
 import Link from 'next/link';
-import { Calculator, Activity, ArrowUpRight, Percent, DollarSign, Globe } from 'lucide-react';
+import { Calculator, DollarSign, BarChart3, Wrench, ArrowRight, Percent, Globe } from 'lucide-react';
 
 const TOOLS = [
   {
-    title: "Forex Position Size",
-    desc: "Calculate lot size based on risk percentage and stop loss distance.",
+    href: '/tools/options',
+    icon: Calculator,
+    title: 'Options Calculator',
+    description: 'Black-Scholes pricing with Greeks visualization. Calculate P&L, breakeven, and risk for any options strategy.',
+    color: 'text-accent',
+    bg: 'bg-accent/5 border-accent/10 hover:border-accent/30',
+  },
+  {
+    href: '/tools/forex',
     icon: Globe,
-    href: "/tools/forex",
-    color: "text-blue-400",
-    bg: "bg-blue-400/10"
+    title: 'Forex Position Sizer',
+    description: 'Calculate optimal lot size based on account balance, risk percentage, and stop loss distance.',
+    color: 'text-cyan',
+    bg: 'bg-cyan/5 border-cyan/10 hover:border-cyan/30',
   },
   {
-    title: "Futures Risk Calc",
-    desc: "Determine contract size for ES, NQ, CL and other futures markets.",
-    icon: Activity,
-    href: "/tools/futures",
-    color: "text-orange-400",
-    bg: "bg-orange-400/10"
-  },
-  {
-    title: "Options Profit Calc",
-    desc: "Visualizer and payoff calculator for basic options strategies.",
-    icon: Percent,
-    href: "/tools/options",
-    color: "text-green-400",
-    bg: "bg-green-400/10"
+    href: '/tools/futures',
+    icon: BarChart3,
+    title: 'Futures Risk Calculator',
+    description: 'Compute margin requirements, tick values, and position sizing for major futures contracts.',
+    color: 'text-warning',
+    bg: 'bg-warning/5 border-warning/10 hover:border-warning/30',
   },
 ];
 
 export default function ToolsPage() {
   return (
-    <div className="flex-1 p-6 bg-background overflow-y-auto custom-scrollbar">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
-           <div className="w-10 h-10 rounded-sm bg-surface border border-border flex items-center justify-center">
-             <Calculator size={20} className="text-text-primary" />
-           </div>
-           <div>
-             <h1 className="text-2xl font-bold text-text-primary">Trading Tools</h1>
-             <p className="text-sm text-text-secondary">Professional grade calculators for risk management.</p>
-           </div>
+    <div className="h-full flex flex-col bg-background overflow-y-auto custom-scrollbar">
+      <div className="border-b border-border bg-surface p-3 shrink-0">
+        <div className="flex items-center gap-2">
+          <Wrench size={14} className="text-accent" />
+          <span className="text-xs font-bold uppercase tracking-widest text-text-primary">Trading Tools</span>
         </div>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {TOOLS.map((tool) => (
-            <Link 
+      <div className="p-4 max-w-4xl mx-auto w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {TOOLS.map(tool => (
+            <Link
               key={tool.href}
               href={tool.href}
-              className="group bg-surface border border-border p-6 rounded-sm hover:border-accent/50 transition-all hover:bg-surface-highlight"
+              className={`${tool.bg} border rounded-lg p-5 group transition-all flex flex-col`}
             >
-              <div className="flex justify-between items-start mb-4">
-                <div className={`w-10 h-10 rounded-sm ${tool.bg} flex items-center justify-center`}>
-                  <tool.icon size={20} className={tool.color} />
-                </div>
-                <ArrowUpRight size={16} className="text-text-tertiary group-hover:text-accent transition-colors" />
+              <tool.icon size={20} className={`${tool.color} mb-3`} />
+              <h3 className="text-xs font-bold text-text-primary mb-1.5 uppercase tracking-wider">{tool.title}</h3>
+              <p className="text-[10px] text-text-secondary leading-relaxed flex-1 font-sans">{tool.description}</p>
+              <div className="flex items-center gap-1 mt-4 pt-3 border-t border-border/30">
+                <span className={`text-[9px] font-bold uppercase tracking-wider ${tool.color} group-hover:underline`}>Open Tool</span>
+                <ArrowRight size={10} className={`${tool.color} group-hover:translate-x-0.5 transition-transform`} />
               </div>
-              
-              <h3 className="text-lg font-bold text-text-primary mb-2 group-hover:text-accent transition-colors">
-                {tool.title}
-              </h3>
-              <p className="text-sm text-text-secondary leading-relaxed">
-                {tool.desc}
-              </p>
             </Link>
           ))}
         </div>

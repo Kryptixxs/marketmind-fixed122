@@ -12,11 +12,11 @@ export interface ChartData {
   close: number;
 }
 
-export function TradingChart({ 
-  data, 
+export function TradingChart({
+  data,
   symbol = ''
-}: { 
-  data: ChartData[]; 
+}: {
+  data: ChartData[];
   symbol?: string;
 }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -30,48 +30,43 @@ export function TradingChart({
     const chart = LightweightCharts.createChart(chartContainerRef.current, {
       autoSize: true,
       layout: {
-        background: { type: ColorType.Solid, color: '#050505' },
-        textColor: '#888888',
+        background: { type: ColorType.Solid, color: '#060a13' },
+        textColor: '#475569',
         fontFamily: 'JetBrains Mono, monospace',
+        fontSize: 10,
       },
       localization: {
-        // Automatically sync to user's browser locale and timezone
         locale: navigator.language,
       },
       grid: {
-        vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
-        horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
+        vertLines: { color: 'rgba(30, 41, 59, 0.4)' },
+        horzLines: { color: 'rgba(30, 41, 59, 0.4)' },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { width: 1, color: '#444444', style: 3, labelBackgroundColor: '#121212' },
-        horzLine: { width: 1, color: '#444444', style: 3, labelBackgroundColor: '#121212' },
+        vertLine: { width: 1, color: '#334155', style: 3, labelBackgroundColor: '#131c2e' },
+        horzLine: { width: 1, color: '#334155', style: 3, labelBackgroundColor: '#131c2e' },
       },
-      rightPriceScale: { 
-        borderColor: '#1a1a1a',
+      rightPriceScale: {
+        borderColor: '#1e293b',
         autoScale: true,
         alignLabels: true,
       },
-      timeScale: { 
-        borderColor: '#1a1a1a', 
-        timeVisible: true, 
+      timeScale: {
+        borderColor: '#1e293b',
+        timeVisible: true,
         secondsVisible: false,
         barSpacing: 10,
       },
     });
 
-    // --- HOLO CANDLE STYLING ---
     const candlestickSeries = chart.addCandlestickSeries({
-      // Bullish (Up) - Hollow
-      upColor: 'transparent', 
-      borderUpColor: '#00ff9d',
-      wickUpColor: '#00ff9d',
-      
-      // Bearish (Down) - Solid
-      downColor: '#ff3333',
-      borderDownColor: '#ff3333',
-      wickDownColor: '#ff3333',
-      
+      upColor: 'transparent',
+      borderUpColor: '#10b981',
+      wickUpColor: '#10b981',
+      downColor: '#ef4444',
+      borderDownColor: '#ef4444',
+      wickDownColor: '#ef4444',
       borderVisible: true,
       wickVisible: true,
     });
@@ -100,11 +95,9 @@ export function TradingChart({
     const lastUnique = unique[unique.length - 1];
     const prevUnique = lastDataRef.current[lastDataRef.current.length - 1];
 
-    // If we are just updating the current candle (live tick), use update()
     if (prevUnique && lastUnique.time >= prevUnique.time && unique.length === lastDataRef.current.length) {
       seriesRef.current.update(lastUnique);
     } else {
-      // If the whole dataset changed (timeframe/symbol swap), use setData()
       seriesRef.current.setData(unique);
     }
 
