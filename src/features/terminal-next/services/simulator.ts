@@ -6,6 +6,7 @@ import {
   MicrostructureStats,
   OrderBookLevel,
   Quote,
+  ReferenceSecurityProfile,
   TapePrint,
   TerminalState,
   VolatilityRegime,
@@ -42,6 +43,129 @@ const ALERTS = [
   'RATES VOL RISING INTO DATA WINDOW',
   'LIQUIDITY THINNING AROUND MACRO EVENT WINDOW',
 ];
+
+const PROFILE_BASE: Record<string, Omit<ReferenceSecurityProfile, 'symbol' | 'dailyBars'>> = {
+  'AAPL US': {
+    sector: 'Technology',
+    industry: 'Consumer Electronics',
+    marketCapBn: 3012,
+    floatBn: 15.6,
+    country: 'US',
+    exchange: 'NASDAQ',
+    ratings: { sp: 'AA+', moodys: 'Aa1', fitch: 'AA+' },
+    earningsDates: ['2026-04-30', '2026-07-29'],
+  },
+  'MSFT US': {
+    sector: 'Technology',
+    industry: 'Software Infrastructure',
+    marketCapBn: 3228,
+    floatBn: 7.4,
+    country: 'US',
+    exchange: 'NASDAQ',
+    ratings: { sp: 'AAA', moodys: 'Aaa', fitch: 'AAA' },
+    earningsDates: ['2026-04-24', '2026-07-23'],
+  },
+  'NVDA US': {
+    sector: 'Technology',
+    industry: 'Semiconductors',
+    marketCapBn: 2254,
+    floatBn: 2.5,
+    country: 'US',
+    exchange: 'NASDAQ',
+    ratings: { sp: 'A+', moodys: 'A1', fitch: 'A+' },
+    earningsDates: ['2026-05-21', '2026-08-20'],
+  },
+  'META US': {
+    sector: 'Communication Services',
+    industry: 'Internet Content',
+    marketCapBn: 1284,
+    floatBn: 2.2,
+    country: 'US',
+    exchange: 'NASDAQ',
+    ratings: { sp: 'AA-', moodys: 'Aa3', fitch: 'AA-' },
+    earningsDates: ['2026-04-23', '2026-07-30'],
+  },
+  'AMZN US': {
+    sector: 'Consumer Discretionary',
+    industry: 'Internet Retail',
+    marketCapBn: 1914,
+    floatBn: 9.9,
+    country: 'US',
+    exchange: 'NASDAQ',
+    ratings: { sp: 'AA', moodys: 'A1', fitch: 'AA' },
+    earningsDates: ['2026-04-25', '2026-07-31'],
+  },
+  'TSLA US': {
+    sector: 'Consumer Discretionary',
+    industry: 'Automobiles',
+    marketCapBn: 684,
+    floatBn: 2.9,
+    country: 'US',
+    exchange: 'NASDAQ',
+    ratings: { sp: 'BBB', moodys: 'Baa3', fitch: 'BBB' },
+    earningsDates: ['2026-04-22', '2026-07-24'],
+  },
+  'SPX Index': {
+    sector: 'Index',
+    industry: 'Equity Benchmark',
+    marketCapBn: 45600,
+    floatBn: 35.2,
+    country: 'US',
+    exchange: 'INDEX',
+    ratings: { sp: 'N/A', moodys: 'N/A', fitch: 'N/A' },
+    earningsDates: ['2026-04-15', '2026-07-15'],
+  },
+  'NDX Index': {
+    sector: 'Index',
+    industry: 'Tech Benchmark',
+    marketCapBn: 21400,
+    floatBn: 18.5,
+    country: 'US',
+    exchange: 'INDEX',
+    ratings: { sp: 'N/A', moodys: 'N/A', fitch: 'N/A' },
+    earningsDates: ['2026-04-16', '2026-07-16'],
+  },
+  'US10Y Govt': {
+    sector: 'Rates',
+    industry: 'Sovereign Bond',
+    marketCapBn: 0,
+    floatBn: 0,
+    country: 'US',
+    exchange: 'OTC',
+    ratings: { sp: 'AA+', moodys: 'Aaa', fitch: 'AA+' },
+    earningsDates: ['2026-04-01', '2026-07-01'],
+  },
+  'EURUSD Curncy': {
+    sector: 'FX',
+    industry: 'Spot FX',
+    marketCapBn: 0,
+    floatBn: 0,
+    country: 'EU/US',
+    exchange: 'OTC',
+    ratings: { sp: 'N/A', moodys: 'N/A', fitch: 'N/A' },
+    earningsDates: ['2026-04-10', '2026-07-10'],
+  },
+  'USDJPY Curncy': {
+    sector: 'FX',
+    industry: 'Spot FX',
+    marketCapBn: 0,
+    floatBn: 0,
+    country: 'US/JP',
+    exchange: 'OTC',
+    ratings: { sp: 'N/A', moodys: 'N/A', fitch: 'N/A' },
+    earningsDates: ['2026-04-11', '2026-07-11'],
+  },
+  'XAUUSD Cmdty': {
+    sector: 'Commodities',
+    industry: 'Precious Metals',
+    marketCapBn: 0,
+    floatBn: 0,
+    country: 'Global',
+    exchange: 'OTC',
+    ratings: { sp: 'N/A', moodys: 'N/A', fitch: 'N/A' },
+    earningsDates: ['2026-04-05', '2026-07-05'],
+  },
+};
 
 const hash = (x: string) => Array.from(x).reduce((a, c) => a + c.charCodeAt(0), 0);
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
@@ -89,6 +213,38 @@ export function seedQuotes(): Quote[] {
     liquidityScore: 50,
     momentum: 0,
   }));
+}
+
+export function seedReferenceProfiles(seed: number): Record<string, ReferenceSecurityProfile> {
+  const out: Record<string, ReferenceSecurityProfile> = {};
+  for (const u of UNIVERSE) {
+    const base = PROFILE_BASE[u.symbol];
+    const rand = mulberry32(seed + hash(u.symbol));
+    const dailyBars = Array.from({ length: 45 }, (_, i) => {
+      const drift = Math.sin((i + 1) * 0.2 + hash(u.symbol) * 0.001) * 0.8;
+      const noise = (rand() - 0.5) * 0.6;
+      const pct = (drift + noise) / 100;
+      const close = Number((u.base * (1 + pct)).toFixed(4));
+      return {
+        date: `2026-02-${String(i + 1).padStart(2, '0')}`,
+        close,
+        volume: Math.round(100_000 + rand() * 2_000_000),
+      };
+    });
+    out[u.symbol] = {
+      symbol: u.symbol,
+      sector: base?.sector ?? 'Unknown',
+      industry: base?.industry ?? 'Unknown',
+      marketCapBn: base?.marketCapBn ?? 0,
+      floatBn: base?.floatBn ?? 0,
+      country: base?.country ?? 'N/A',
+      exchange: base?.exchange ?? 'N/A',
+      ratings: base?.ratings ?? { sp: 'N/A', moodys: 'N/A', fitch: 'N/A' },
+      earningsDates: base?.earningsDates ?? ['2026-04-01', '2026-07-01'],
+      dailyBars,
+    };
+  }
+  return out;
 }
 
 function seededNoise(seed: number, symbol: string, tick: number) {

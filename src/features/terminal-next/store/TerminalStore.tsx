@@ -2,9 +2,9 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { parseCommand } from '../services/commandParser';
-import { buildTickBatch, getUniverseSymbols, seedQuotes } from '../services/simulator';
+import { buildTickBatch, getUniverseSymbols, seedQuotes, seedReferenceProfiles } from '../services/simulator';
 import { resolveFunctionDeck } from '../services/functionRouter';
-import { DeltaState, FunctionCode, TerminalState } from '../types';
+import { DeltaState, FunctionCode, TerminalFunction, TerminalState } from '../types';
 import { deriveRiskSnapshot } from '../selectors/riskSelectors';
 
 type TerminalAction =
@@ -12,6 +12,8 @@ type TerminalAction =
   | { type: 'SET_COMMAND'; payload: string }
   | { type: 'EXECUTE_COMMAND'; payload?: string }
   | { type: 'SET_FUNCTION'; payload: FunctionCode }
+  | { type: 'SET_ACTIVE_FUNCTION'; payload: TerminalFunction }
+  | { type: 'SET_ACTIVE_SUBTAB'; payload?: string }
   | { type: 'SET_ANALYTICS_TAB'; payload: TerminalState['analyticsTab'] }
   | { type: 'SET_RIGHT_TAB'; payload: TerminalState['rightRailTab'] }
   | { type: 'SET_FEED_TAB'; payload: TerminalState['feedTab'] }
@@ -38,6 +40,13 @@ const MAX_CADENCE_MS = 1000;
 const SAFE_CADENCE_MS = Math.max(MIN_CADENCE_MS, Math.min(MAX_CADENCE_MS, SIM_CADENCE_MS));
 
 const TerminalContext = createContext<TerminalContextType | null>(null);
+
+function toActiveFunction(code: FunctionCode): TerminalFunction {
+  if (code === 'DES' || code === 'FA' || code === 'HP' || code === 'WEI' || code === 'YAS' || code === 'OVME' || code === 'PORT') {
+    return code;
+  }
+  return 'EXEC';
+}
 
 function getClockStrings(tickMs: number) {
   const d = new Date(tickMs);
@@ -93,9 +102,11 @@ const initialState: TerminalState = {
   tick: 0,
   tickMs: 1_711_800_000_000,
   activeSymbol: 'AAPL US',
-  commandInput: 'AAPL US EQUITY DES GO',
+  commandInput: 'AAPL US EXEC GO',
   security: { ticker: 'AAPL', market: 'US', assetClass: 'EQUITY' },
   functionCode: 'DES',
+  activeFunction: 'EXEC',
+  activeSubTab: undefined,
   analyticsTab: 'OVERVIEW',
   rightRailTab: 'DEPTH',
   feedTab: 'NEWS',
@@ -130,6 +141,7 @@ const initialState: TerminalState = {
     regime: 'TREND',
     exposureBySector: [],
   },
+  referenceBySymbol: seedReferenceProfiles(31051990),
   delta: emptyDelta(),
 };
 
@@ -166,6 +178,7 @@ function applyTick(state: TerminalState, nextTick: number): TerminalState {
     barsBySymbol: batch.barsBySymbol,
     microstructure: batch.micro,
     risk,
+    activeSubTab: state.activeSubTab,
     activeSymbol: nextActiveSymbol,
     delta,
     systemFeed: [...executionLines, ...state.systemFeed].slice(0, 30),
@@ -178,14 +191,30 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
   if (action.type === 'SET_COMMAND') return { ...state, commandInput: action.payload };
 
   if (action.type === 'SET_FUNCTION') {
-    const normalized = `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''} ${state.security.assetClass} ${action.payload} GO`;
+    const activeFunction = toActiveFunction(action.payload);
+    const normalized = `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''} ${action.payload} GO`;
     return {
       ...state,
       functionCode: action.payload,
+      activeFunction,
+      activeSubTab: undefined,
       commandInput: normalized,
-      systemFeed: [`FUNCTION SWITCHED TO ${action.payload}`, ...state.systemFeed].slice(0, 30),
+      systemFeed: [`FUNCTION CONTEXT -> ${activeFunction}`, ...state.systemFeed].slice(0, 30),
     };
   }
+
+  if (action.type === 'SET_ACTIVE_FUNCTION') {
+    const command = `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''} ${action.payload} GO`;
+    return {
+      ...state,
+      activeFunction: action.payload,
+      activeSubTab: undefined,
+      commandInput: command,
+      systemFeed: [`FUNCTION CONTEXT -> ${action.payload}`, ...state.systemFeed].slice(0, 30),
+    };
+  }
+
+  if (action.type === 'SET_ACTIVE_SUBTAB') return { ...state, activeSubTab: action.payload };
 
   if (action.type === 'SET_ANALYTICS_TAB') return { ...state, analyticsTab: action.payload };
   if (action.type === 'SET_RIGHT_TAB') return { ...state, rightRailTab: action.payload };
@@ -198,7 +227,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       ...state,
       security: { ticker, market, assetClass },
       activeSymbol: `${ticker}${market ? ` ${market}` : ''}`,
-      commandInput: `${ticker}${market ? ` ${market}` : ''} ${assetClass} ${state.functionCode} GO`,
+      commandInput: `${ticker}${market ? ` ${market}` : ''} ${state.activeFunction} GO`,
       systemFeed: [`SYMBOL CONTEXT -> ${ticker}${market ? ` ${market}` : ''}`, ...state.systemFeed].slice(0, 30),
     };
   }
@@ -214,13 +243,16 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       };
     }
 
+    const transitionLine = result.activeFunction !== state.activeFunction ? `FUNCTION CONTEXT -> ${result.activeFunction}` : '';
     return {
       ...state,
       commandInput: result.normalized,
       security: result.security,
       activeSymbol: `${result.security.ticker}${result.security.market ? ` ${result.security.market}` : ''}`,
       functionCode: result.functionCode,
-      systemFeed: [`LOADED ${result.normalized}`, ...state.systemFeed].slice(0, 30),
+      activeFunction: result.activeFunction,
+      activeSubTab: undefined,
+      systemFeed: [transitionLine, `LOADED ${result.normalized}`, ...state.systemFeed].filter(Boolean).slice(0, 30),
     };
   }
 
@@ -258,7 +290,7 @@ export function TerminalProvider({ children }: { children: React.ReactNode }) {
     return {
       state,
       dispatch,
-      deckRows: resolveFunctionDeck(state.functionCode, { state, risk: state.risk, micro: state.microstructure }),
+      deckRows: resolveFunctionDeck(state.activeFunction, { state, risk: state.risk, micro: state.microstructure }),
       deskStats: { adv, dec, breadth, avgMove, spread, latency },
       clocks: getClockStrings(state.tickMs),
     };

@@ -1,6 +1,6 @@
-import { AssetClass, CommandResult, FunctionCode, SecurityContext } from '../types';
+import { AssetClass, CommandResult, FunctionCode, SecurityContext, TerminalFunction } from '../types';
 
-const FUNCTION_CODES: FunctionCode[] = ['DES', 'FA', 'WEI', 'HP', 'YAS', 'TOP', 'ECO', 'NI', 'OVME', 'PORT'];
+const FUNCTION_CODES: FunctionCode[] = ['EXEC', 'DES', 'FA', 'WEI', 'HP', 'YAS', 'TOP', 'ECO', 'NI', 'OVME', 'PORT'];
 const ASSET_CLASSES: AssetClass[] = ['EQUITY', 'CORP', 'GOVT', 'CMDTY', 'CURNCY'];
 
 const normalize = (value: string) =>
@@ -10,6 +10,26 @@ const normalize = (value: string) =>
     .trim()
     .toUpperCase();
 
+function inferAssetClass(market: string): AssetClass {
+  if (market === 'GOVT') return 'GOVT';
+  if (market === 'CURNCY') return 'CURNCY';
+  if (market === 'CMDTY') return 'CMDTY';
+  if (market === 'INDEX') return 'EQUITY';
+  return 'EQUITY';
+}
+
+function mapActiveFunction(functionCode: FunctionCode): TerminalFunction {
+  if (functionCode === 'EXEC') return 'EXEC';
+  if (functionCode === 'DES') return 'DES';
+  if (functionCode === 'FA') return 'FA';
+  if (functionCode === 'HP') return 'HP';
+  if (functionCode === 'WEI') return 'WEI';
+  if (functionCode === 'YAS') return 'YAS';
+  if (functionCode === 'OVME') return 'OVME';
+  if (functionCode === 'PORT') return 'PORT';
+  return 'EXEC';
+}
+
 function parseSecurity(tokens: string[]): SecurityContext | null {
   if (tokens.length === 3) {
     const [ticker, market, asset] = tokens;
@@ -18,9 +38,15 @@ function parseSecurity(tokens: string[]): SecurityContext | null {
   }
 
   if (tokens.length === 2) {
-    const [ticker, asset] = tokens;
-    if (!ASSET_CLASSES.includes(asset as AssetClass)) return null;
-    return { ticker, market: '', assetClass: asset as AssetClass };
+    const [a, b] = tokens;
+    if (ASSET_CLASSES.includes(b as AssetClass)) {
+      return { ticker: a, market: '', assetClass: b as AssetClass };
+    }
+    return { ticker: a, market: b, assetClass: inferAssetClass(b) };
+  }
+
+  if (tokens.length === 1) {
+    return { ticker: tokens[0], market: '', assetClass: 'EQUITY' };
   }
 
   return null;
@@ -35,8 +61,8 @@ export function parseCommand(input: string): CommandResult {
     return { ok: false, normalized, error: 'COMMAND MUST END WITH GO' };
   }
 
-  if (tokens.length < 4) {
-    return { ok: false, normalized, error: 'FORMAT: <TICKER> <ASSET_CLASS> <FUNCTION> GO' };
+  if (tokens.length < 3) {
+    return { ok: false, normalized, error: 'FORMAT: <TICKER> <FUNCTION> GO OR <TICKER> <MARKET> <ASSET> <FUNCTION> GO' };
   }
 
   const functionToken = tokens[tokens.length - 2] as FunctionCode;
@@ -50,14 +76,15 @@ export function parseCommand(input: string): CommandResult {
     return {
       ok: false,
       normalized,
-      error: 'SECURITY FORMAT INVALID. USE TICKER MARKET ASSET OR TICKER ASSET',
+      error: 'SECURITY FORMAT INVALID. USE TICKER FUNCTION GO OR TICKER MARKET ASSET FUNCTION GO',
     };
   }
 
   return {
     ok: true,
-    normalized: `${security.ticker}${security.market ? ` ${security.market}` : ''} ${security.assetClass} ${functionToken} GO`,
+    normalized: `${security.ticker}${security.market ? ` ${security.market}` : ''} ${functionToken} GO`,
     security,
     functionCode: functionToken,
+    activeFunction: mapActiveFunction(functionToken),
   };
 }

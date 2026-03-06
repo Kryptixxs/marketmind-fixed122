@@ -1,6 +1,6 @@
 'use client';
 
-import { AssetClass, FunctionCode } from '../types';
+import { AssetClass, FunctionCode, TerminalFunction } from '../types';
 import { useTerminalStore } from '../store/TerminalStore';
 
 const KEYBAR = [
@@ -13,14 +13,14 @@ const KEYBAR = [
   { label: 'GO', role: 'go' },
 ] as const;
 
-const FUNCTION_CODES: FunctionCode[] = ['DES', 'FA', 'WEI', 'HP', 'YAS', 'TOP', 'ECO', 'NI', 'OVME', 'PORT'];
+const FUNCTION_CODES: TerminalFunction[] = ['EXEC', 'DES', 'FA', 'HP', 'WEI', 'YAS', 'OVME', 'PORT'];
 
 export function CommandKeyBar() {
   const { state, dispatch } = useTerminalStore();
 
   const applyAsset = (assetClass: AssetClass) => {
     const security = { ...state.security, assetClass };
-    const normalized = `${security.ticker}${security.market ? ` ${security.market}` : ''} ${assetClass} ${state.functionCode} GO`;
+    const normalized = `${security.ticker}${security.market ? ` ${security.market}` : ''} ${state.activeFunction} GO`;
     dispatch({ type: 'SET_COMMAND', payload: normalized });
     dispatch({ type: 'EXECUTE_COMMAND', payload: normalized });
   };
@@ -52,10 +52,16 @@ export function CommandKeyBar() {
         <button
           key={f}
           onClick={() => {
-            dispatch({ type: 'SET_FUNCTION', payload: f });
-            dispatch({ type: 'EXECUTE_COMMAND' });
+            if (f === 'EXEC') {
+              dispatch({ type: 'SET_ACTIVE_FUNCTION', payload: 'EXEC' });
+              dispatch({ type: 'SET_COMMAND', payload: `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''} EXEC GO` });
+              dispatch({ type: 'EXECUTE_COMMAND' });
+            } else {
+              dispatch({ type: 'SET_FUNCTION', payload: f as FunctionCode });
+              dispatch({ type: 'EXECUTE_COMMAND' });
+            }
           }}
-          className={`h-5 px-1 border text-[9px] font-bold shrink-0 ${state.functionCode === f ? 'bg-[#113328] border-[#2a7b60] text-[#99f1d6]' : 'bg-[#0e1522] border-[#28344a] text-[#9eb3cf]'}`}
+          className={`h-5 px-1 border text-[9px] font-bold shrink-0 ${state.activeFunction === f ? 'bg-[#113328] border-[#2a7b60] text-[#99f1d6]' : 'bg-[#0e1522] border-[#28344a] text-[#9eb3cf]'}`}
         >
           {f}
         </button>

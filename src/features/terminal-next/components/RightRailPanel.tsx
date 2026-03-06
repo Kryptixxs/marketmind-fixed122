@@ -88,7 +88,7 @@ export function RightRailPanel() {
           {state.alerts.map((a) => (
             <button
               key={a}
-              onClick={() => dispatch({ type: 'SET_COMMAND', payload: `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''} ${state.security.assetClass} ${state.functionCode} GO` })}
+              onClick={() => dispatch({ type: 'SET_COMMAND', payload: `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''} ${state.activeFunction} GO` })}
               className={`w-full text-left text-[9px] px-1 py-0.5 border-b border-[#142034] text-[#dbe7f7] ${
                 a.includes('[ACTIVE]') || a.includes('[SWEEP]') ? 'bg-[#2f1830] text-[#ffd5ff]' : ''
               }`}

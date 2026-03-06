@@ -20,7 +20,7 @@ export function AnalyticsPanel() {
   }, [state.quotes, state.security.market, state.security.ticker]);
 
   const bars = state.barsBySymbol[active?.symbol ?? ''] ?? [];
-  const moduleDef = resolveFunctionModule(state.functionCode);
+  const moduleDef = resolveFunctionModule(state.activeFunction);
   const recentBars = bars.slice(-48);
   const high = Math.max(...recentBars.map((b) => b.high), active?.high ?? 0);
   const low = Math.min(...recentBars.map((b) => b.low), active?.low ?? 0);
@@ -68,7 +68,7 @@ export function AnalyticsPanel() {
   return (
     <section className="bg-[#070e18] min-h-0 overflow-hidden flex flex-col">
       <div className="h-5 px-1 border-b border-[#1a2433] bg-[#0b1320] flex items-center justify-between text-[10px]">
-        <span className="text-[#9bc3e8] font-bold">{state.security.ticker} {state.security.market} &lt;{state.functionCode}&gt; {moduleDef.title.toUpperCase()}</span>
+        <span className="text-[#9bc3e8] font-bold">{state.security.ticker} {state.security.market} &lt;{state.activeFunction}&gt; {moduleDef.title.toUpperCase()}</span>
         <div className="flex items-center gap-1">
           <span className={`text-[9px] ${moduleDef.isDeferred ? 'text-[#ffb2c8]' : 'text-[#7f99ba]'}`}>{moduleDef.track === 'A' ? 'TRACK-A' : 'TRACK-B'}</span>
           {(['OVERVIEW', 'FACTORS', 'EVENTS'] as const).map((tab) => (

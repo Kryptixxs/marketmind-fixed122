@@ -1,4 +1,5 @@
-export type FunctionCode = 'DES' | 'FA' | 'WEI' | 'HP' | 'YAS' | 'TOP' | 'ECO' | 'NI' | 'OVME' | 'PORT';
+export type FunctionCode = 'EXEC' | 'DES' | 'FA' | 'WEI' | 'HP' | 'YAS' | 'TOP' | 'ECO' | 'NI' | 'OVME' | 'PORT';
+export type TerminalFunction = 'EXEC' | 'DES' | 'FA' | 'HP' | 'WEI' | 'YAS' | 'OVME' | 'PORT';
 
 export type AssetClass = 'EQUITY' | 'CORP' | 'GOVT' | 'CMDTY' | 'CURNCY';
 
@@ -79,6 +80,25 @@ export type IntradayBar = {
   ma21: number;
 };
 
+export type ReferenceDailyBar = {
+  date: string;
+  close: number;
+  volume: number;
+};
+
+export type ReferenceSecurityProfile = {
+  symbol: string;
+  sector: string;
+  industry: string;
+  marketCapBn: number;
+  floatBn: number;
+  country: string;
+  exchange: string;
+  ratings: { sp: string; moodys: string; fitch: string };
+  earningsDates: string[];
+  dailyBars: ReferenceDailyBar[];
+};
+
 export type VolatilityRegime = 'TREND' | 'MEAN_REVERT' | 'VOL_EXPANSION';
 
 export type SweepIndicator = {
@@ -122,6 +142,7 @@ export type CommandResult =
       normalized: string;
       security: SecurityContext;
       functionCode: FunctionCode;
+      activeFunction: TerminalFunction;
     }
   | {
       ok: false;
@@ -141,6 +162,8 @@ export type TerminalState = {
   commandInput: string;
   security: SecurityContext;
   functionCode: FunctionCode;
+  activeFunction: TerminalFunction;
+  activeSubTab?: string;
   analyticsTab: AnalyticsTab;
   rightRailTab: RightRailTab;
   feedTab: FeedTab;
@@ -155,5 +178,6 @@ export type TerminalState = {
   barsBySymbol: Record<string, IntradayBar[]>;
   microstructure: MicrostructureStats;
   risk: RiskSnapshot;
+  referenceBySymbol: Record<string, ReferenceSecurityProfile>;
   delta: DeltaState;
 };

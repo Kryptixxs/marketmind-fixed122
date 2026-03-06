@@ -3,7 +3,7 @@ import { FunctionModuleContext, FunctionModuleDefinition } from '../function-mod
 import { FunctionCode } from '../types';
 
 const FALLBACK: FunctionModuleDefinition = {
-  code: 'DES',
+  code: 'EXEC',
   title: 'Fallback',
   track: 'A',
   latencyBudgetMs: 3,
