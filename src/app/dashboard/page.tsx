@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import { TerminalCommandBar } from '@/features/Terminal/components/TerminalCommandBar';
 import { TradingChart } from '@/features/MarketData/components/TradingChart';
 import { NewsFeed } from '@/features/News/components/NewsFeed';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
-import { fetchSymbolCandles } from '@/app/actions/fetchMarketData';
-import { OHLCV } from '@/features/MarketData/services/marketdata/types';
 import { Loader2 } from 'lucide-react';
 
 const MARKET_CATEGORIES: Record<string, string[]> = {
@@ -46,35 +44,9 @@ function PanelHeader({ color, title, right }: { color: string; title: string; ri
 export default function DashboardPage() {
   const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
   const [activeCategory, setActiveCategory] = useState('Equities');
-  const [candleHistory, setCandleHistory] = useState<OHLCV[]>([]);
-  const [loadingCandles, setLoadingCandles] = useState(false);
   const { data: marketData } = useMarketData(ALL_SYMBOLS);
 
   const selectedTick = marketData[selectedSymbol];
-
-  const loadCandles = useCallback(async (sym: string) => {
-    setLoadingCandles(true);
-    try {
-      const candles = await fetchSymbolCandles(sym);
-      setCandleHistory(candles);
-    } catch { setCandleHistory([]); }
-    finally { setLoadingCandles(false); }
-  }, []);
-
-  useEffect(() => {
-    setCandleHistory([]);
-    loadCandles(selectedSymbol);
-  }, [selectedSymbol, loadCandles]);
-
-  const chartData = useMemo(() => {
-    const base = candleHistory.length > 0 ? candleHistory : (selectedTick?.history || []);
-    if (base.length === 0) return [];
-    return base.map(h => ({
-      time: Math.floor(h.timestamp / 1000),
-      open: h.open, high: h.high, low: h.low, close: h.close,
-    }));
-  }, [candleHistory, selectedTick?.history]);
-
   const categorySymbols = MARKET_CATEGORIES[activeCategory] || [];
 
   const topMovers = useMemo(() => {
@@ -177,16 +149,7 @@ export default function DashboardPage() {
                 ) : undefined}
               />
               <div className="flex-1 min-h-0 bg-background">
-                {chartData.length > 0 ? (
-                  <TradingChart key={selectedSymbol} data={chartData} symbol={selectedSymbol} />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full gap-2">
-                    <Loader2 size={18} className="animate-spin text-accent" />
-                    <span className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">
-                      {loadingCandles ? 'Loading chart...' : `Waiting for ${selectedSymbol}...`}
-                    </span>
-                  </div>
-                )}
+                <TradingChart key={selectedSymbol} symbol={selectedSymbol} />
               </div>
             </div>
           </div>
