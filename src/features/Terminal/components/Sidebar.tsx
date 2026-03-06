@@ -13,18 +13,22 @@ import {
   Search,
   Bell,
   Calendar,
-  Zap
+  Zap,
+  Database,
+  Globe,
+  BarChart3
 } from 'lucide-react';
 import { SettingsModal } from '@/components/ui/SettingsModal';
 import { NotificationsPanel } from './notifications/NotificationsPanel';
 
-const NAV_ITEMS = [
+const MODULES = [
   { href: '/dashboard', icon: LayoutGrid, label: 'Workspace', key: '1' },
-  { href: '/calendar', icon: Calendar, label: 'Calendar', key: '2' },
-  { href: '/charts', icon: LineChart, label: 'Technical', key: '3' },
-  { href: '/confluences', icon: Zap, label: 'Confluences', key: '4' },
-  { href: '/news', icon: Newspaper, label: 'Wire', key: '5' },
+  { href: '/calendar', icon: Calendar, label: 'Economy', key: '2' },
+  { href: '/charts', icon: LineChart, label: 'Stocks', key: '3' },
+  { href: '/confluences', icon: Zap, label: 'Quant', key: '4' },
+  { href: '/news', icon: Newspaper, label: 'News', key: '5' },
   { href: '/algo', icon: Cpu, label: 'Algos', key: '6' },
+  { href: '/tools', icon: Database, label: 'Fundamental', key: '7' },
 ];
 
 export function Sidebar() {
@@ -33,19 +37,6 @@ export function Sidebar() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      const item = NAV_ITEMS.find(i => i.key === e.key);
-      if (item) {
-        e.preventDefault();
-        router.push(item.href);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [router]);
 
   return (
     <>
@@ -57,7 +48,6 @@ export function Sidebar() {
           ${isHovered ? 'w-48 shadow-2xl' : 'w-12'}
         `}
       >
-        {/* Brand Header */}
         <div className="h-12 flex items-center px-3 border-b border-border bg-background">
           <Link href="/dashboard" className="flex items-center gap-2 text-accent hover:opacity-80 transition-opacity overflow-hidden">
             <Terminal size={20} className="shrink-0" />
@@ -65,9 +55,8 @@ export function Sidebar() {
           </Link>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 py-4 flex flex-col gap-1 px-2">
-          {NAV_ITEMS.map((item) => {
+          {MODULES.map((item) => {
             const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
             return (
               <Link
@@ -93,15 +82,7 @@ export function Sidebar() {
           })}
         </nav>
 
-        {/* Bottom Actions */}
         <div className="p-2 flex flex-col gap-1 border-t border-border/50">
-          <button
-            onClick={() => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))}
-            className="flex items-center gap-3 h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
-          >
-            <Search size={16} className="shrink-0" />
-            {isHovered && <span className="text-[11px] font-bold uppercase tracking-wider">Search</span>}
-          </button>
           <button
             onClick={() => setIsNotificationsOpen(true)}
             className="flex items-center gap-3 h-9 px-2 text-text-tertiary hover:text-text-primary hover:bg-surface-highlight transition-all rounded-[2px]"
@@ -116,11 +97,6 @@ export function Sidebar() {
             <Settings size={16} className="shrink-0" />
             {isHovered && <span className="text-[11px] font-bold uppercase tracking-wider">Settings</span>}
           </button>
-          
-          <div className="h-8 flex items-center px-2 mt-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-positive animate-pulse shrink-0" />
-            {isHovered && <span className="ml-3 text-[8px] font-bold text-text-tertiary uppercase tracking-widest">System Live</span>}
-          </div>
         </div>
       </div>
 
