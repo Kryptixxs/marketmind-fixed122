@@ -79,12 +79,48 @@ function stockSymbol(sym: string): string | null {
   return mapped;
 }
 
+const YAHOO_QUOTE_MAP: Record<string, string> = {
+  NAS100: 'QQQ', SPX500: 'SPY', US30: 'DIA', RUSSELL: 'IWM',
+  DAX40: 'EWG', FTSE100: 'EWU', NIKKEI: 'EWJ', HSI: 'EWH', AS51: 'EWA',
+  GOLD: 'GLD', SILVER: 'SLV', CRUDE: 'USO', NATGAS: 'UNG', COPPER: 'CPER', PLATINUM: 'PPLT',
+  DXY: 'UUP', VIX: 'VIXY', US10Y: 'IEF', US2Y: 'SHY', MOVE: 'TLT',
+  BTCUSD: 'BTC-USD', ETHUSD: 'ETH-USD', SOLUSD: 'SOL-USD',
+  BNBUSD: 'BNB-USD', XRPUSD: 'XRP-USD', ADAUSD: 'ADA-USD',
+  EURUSD: 'EURUSD=X', GBPUSD: 'GBPUSD=X', USDJPY: 'JPY=X',
+  AUDUSD: 'AUDUSD=X', USDCAD: 'USDCAD=X', USDCHF: 'USDCHF=X', NZDUSD: 'NZDUSD=X',
+};
+
+async function fetchYahooQuote(sym: string, now: number, cached?: QuoteCache): Promise<QuoteCache | null> {
+  const ySym = YAHOO_QUOTE_MAP[sym] || sym;
+  try {
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(ySym)}`;
+    const res = await withConcurrency(() => fetch(url).then(r => r.ok ? r.json() : null));
+    const q = res?.quoteResponse?.result?.[0];
+    if (!q || !Number.isFinite(q.regularMarketPrice) || q.regularMarketPrice <= 0) {
+      return cached || null;
+    }
+
+    const entry: QuoteCache = {
+      price: q.regularMarketPrice ?? 0,
+      change: q.regularMarketChange ?? 0,
+      changePercent: q.regularMarketChangePercent ?? 0,
+      ts: now,
+    };
+    QUOTE_CACHE.set(sym, entry);
+    return entry;
+  } catch {
+    return cached || null;
+  }
+}
+
 async function fetchQuote(sym: string): Promise<QuoteCache | null> {
   const now = Date.now();
   const cached = QUOTE_CACHE.get(sym);
   if (cached && now - cached.ts < QUOTE_TTL) return cached;
 
-  if (!FINNHUB_KEY) return cached || null;
+  if (!FINNHUB_KEY) {
+    return fetchYahooQuote(sym, now, cached);
+  }
 
   const finnhubSym = FINNHUB_MAP[sym] || sym;
   try {
@@ -101,7 +137,7 @@ async function fetchQuote(sym: string): Promise<QuoteCache | null> {
     QUOTE_CACHE.set(sym, entry);
     return entry;
   } catch {
-    return cached || null;
+    return fetchYahooQuote(sym, now, cached);
   }
 }
 
