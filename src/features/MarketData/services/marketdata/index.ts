@@ -1,12 +1,11 @@
 import { MarketDataProvider } from './types';
-import { PolygonProvider } from './providers/polygon';
+import { HybridProvider } from './providers/hybrid';
 
 let globalProvider: MarketDataProvider | null = null;
 
 export function getProvider(): MarketDataProvider {
   if (!globalProvider) {
-    // Upgraded to true real-time WebSockets via Polygon.io
-    globalProvider = new PolygonProvider(); 
+    globalProvider = new HybridProvider();
   }
   return globalProvider;
 }
