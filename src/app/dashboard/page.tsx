@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Panel, Group as PanelGroup, Separator as PanelResizeHandle } from 'react-resizable-panels';
 import { TerminalCommandBar } from '@/features/Terminal/components/TerminalCommandBar';
 import { TerminalPanel } from '@/features/Terminal/components/TerminalPanel';
@@ -15,8 +15,15 @@ const WATCHLIST = ['NAS100', 'SPX500', 'US30', 'RUSSELL', 'DAX40', 'GOLD', 'CRUD
 
 export default function PeakTerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("NAS100");
+  const [mounted, setMounted] = useState(false);
+  
   const { data: marketData } = useMarketData(WATCHLIST);
   const activeQuote = marketData[activeSymbol];
+
+  // Fix hydration mismatch by tracking mount state
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const quantMetrics = useMemo(() => {
     if (!activeQuote || !activeQuote.history) return null;
@@ -67,7 +74,8 @@ export default function PeakTerminalPage() {
                             {tick ? `${isPos ? '+' : ''}${tick.changePercent.toFixed(2)}%` : '---'}
                           </td>
                           <td className="text-right font-mono text-text-tertiary hidden xl:table-cell">
-                            {(Math.random() * 100).toFixed(1)}
+                            {/* Use a stable value during SSR and generate random only on client */}
+                            {mounted ? (Math.random() * 100).toFixed(1) : "0.0"}
                           </td>
                         </tr>
                       );
