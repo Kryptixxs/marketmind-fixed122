@@ -9,7 +9,7 @@ import { NewsFeed } from '@/features/News/components/NewsFeed';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { calculateParkinsonVol } from '../../../quant_engine/math/feature_gen';
 import { calculateOptimalTrajectory } from '../../../quant_engine/execution/almgren_chriss';
-import { Activity, Zap, Target, BarChart3, ShieldAlert, Globe, Cpu, Clock, Layers, ArrowRightLeft, TrendingUp, TrendingDown, ShieldCheck, ZapOff } from 'lucide-react';
+import { Activity, Zap, Target, BarChart3, ShieldAlert, Globe, Cpu, Clock, Layers, ArrowRightLeft, TrendingUp, TrendingDown, ShieldCheck, ZapOff, Gauge, BarChart } from 'lucide-react';
 
 // New Widgets
 import { MarketInternals } from '@/features/Terminal/components/widgets/MarketInternals';
@@ -17,11 +17,12 @@ import { MiniCalendar } from '@/features/Terminal/components/widgets/MiniCalenda
 import { SessionTracker } from '@/features/Terminal/components/widgets/SessionTracker';
 
 const WATCHLIST = [
-  'NAS100', 'SPX500', 'US30', 'RUSSELL', 'DAX40', 'FTSE100', 'NIKKEI',
-  'GOLD', 'SILVER', 'CRUDE', 'NATGAS',
-  'BTCUSD', 'ETHUSD', 'SOLUSD',
-  'AAPL', 'NVDA', 'MSFT', 'TSLA', 'GOOGL', 'AMZN', 'META', 'AMD',
-  'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'DXY', 'VIX'
+  'NAS100', 'SPX500', 'US30', 'RUSSELL', 'DAX40', 'FTSE100', 'NIKKEI', 'HSI', 'AS51',
+  'GOLD', 'SILVER', 'CRUDE', 'NATGAS', 'COPPER', 'PLATINUM',
+  'BTCUSD', 'ETHUSD', 'SOLUSD', 'BNBUSD', 'XRPUSD', 'ADAUSD',
+  'AAPL', 'NVDA', 'MSFT', 'TSLA', 'GOOGL', 'AMZN', 'META', 'AMD', 'NFLX', 'DIS', 'PYPL',
+  'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'USDCHF', 'NZDUSD',
+  'DXY', 'VIX', 'US10Y', 'US2Y', 'MOVE'
 ];
 
 export default function PeakTerminalPage() {
@@ -138,18 +139,22 @@ export default function PeakTerminalPage() {
                       <Zap size={10} />
                       <span className="text-[8px] font-bold uppercase">Quant Matrix</span>
                     </div>
-                    <div className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar">
+                    <div className="flex-1 space-y-1 overflow-y-auto custom-scrollbar">
                       {[
                         { label: 'PARK_VOL', val: (quantMetrics?.vol || 0).toFixed(5), color: 'text-text-primary' },
                         { label: 'SHARPE_R', val: '2.42', color: 'text-positive' },
                         { label: 'SORTINO', val: '3.12', color: 'text-positive' },
+                        { label: 'CALMAR_R', val: '1.85', color: 'text-positive' },
                         { label: 'BETA_SPY', val: '1.12', color: 'text-text-primary' },
                         { label: 'ALPHA_GEN', val: '+0.45%', color: 'text-accent' },
                         { label: 'KURTOSIS', val: '4.12', color: 'text-text-secondary' },
                         { label: 'SKEWNESS', val: '-0.24', color: 'text-negative' },
-                        { label: 'OMEGA_R', val: '1.85', color: 'text-positive' }
+                        { label: 'OMEGA_R', val: '1.85', color: 'text-positive' },
+                        { label: 'VAR_99', val: '2.4%', color: 'text-negative' },
+                        { label: 'EXP_RET', val: '12.4%', color: 'text-positive' },
+                        { label: 'VOL_ANN', val: '18.2%', color: 'text-text-secondary' }
                       ].map(m => (
-                        <div key={m.label} className="flex justify-between text-[8px] border-b border-border/30 pb-1">
+                        <div key={m.label} className="flex justify-between text-[8px] border-b border-border/30 pb-0.5">
                           <span className="text-text-tertiary">{m.label}</span>
                           <span className={`font-mono ${m.color}`}>{m.val}</span>
                         </div>
@@ -176,9 +181,13 @@ export default function PeakTerminalPage() {
                           { label: 'FILL_PROB', val: '94.2%', color: 'text-positive' },
                           { label: 'URGENCY', val: 'MEDIUM', color: 'text-warning' },
                           { label: 'PART_RATE', val: '5.0%', color: 'text-text-secondary' },
-                          { label: 'VENUE_OPT', val: 'IEX_DARK', color: 'text-accent' }
+                          { label: 'VENUE_OPT', val: 'IEX_DARK', color: 'text-accent' },
+                          { label: 'VWAP_DIST', val: '-0.02%', color: 'text-positive' },
+                          { label: 'POV_RATE', val: '10.0%', color: 'text-text-primary' },
+                          { label: 'LMT_OFFSET', val: '0.5 TICKS', color: 'text-text-tertiary' },
+                          { label: 'ROUTING', val: 'ADAPTIVE', color: 'text-accent' }
                         ].map(m => (
-                          <div key={m.label} className="flex justify-between text-[8px] border-b border-border/30 pb-1">
+                          <div key={m.label} className="flex justify-between text-[8px] border-b border-border/30 pb-0.5">
                             <span className="text-text-tertiary">{m.label}</span>
                             <span className={`font-mono ${m.color}`}>{m.val}</span>
                           </div>
@@ -199,7 +208,7 @@ export default function PeakTerminalPage() {
                           <span>Margin Utilization</span>
                           <span>65%</span>
                         </div>
-                        <div className="w-full h-1 bg-surface-highlight rounded-full overflow-hidden">
+                        <div className="w-full h-1 bg-surface-highlight rounded-sm overflow-hidden">
                           <div className="h-full bg-negative w-[65%]" />
                         </div>
                       </div>
@@ -211,9 +220,12 @@ export default function PeakTerminalPage() {
                           { label: 'LIQ_DIST', val: '14.2%', color: 'text-text-primary' },
                           { label: 'BETA_SPY', val: '1.12', color: 'text-warning' },
                           { label: 'CORR_DXY', val: '-0.82', color: 'text-negative' },
-                          { label: 'EXP_GROSS', val: '$1.2M', color: 'text-text-secondary' }
+                          { label: 'EXP_GROSS', val: '$1.2M', color: 'text-text-secondary' },
+                          { label: 'STRESS_L1', val: 'PASS', color: 'text-positive' },
+                          { label: 'CONC_RISK', val: 'LOW', color: 'text-positive' },
+                          { label: 'SECTOR_EXP', val: 'TECH_32%', color: 'text-warning' }
                         ].map(m => (
-                          <div key={m.label} className="flex justify-between text-[8px] border-b border-border/30 pb-1">
+                          <div key={m.label} className="flex justify-between text-[8px] border-b border-border/30 pb-0.5">
                             <span className="text-text-tertiary">{m.label}</span>
                             <span className={`font-mono ${m.color}`}>{m.val}</span>
                           </div>
@@ -228,13 +240,13 @@ export default function PeakTerminalPage() {
                       <Layers size={10} />
                       <span className="text-[8px] font-bold uppercase">Liquidity Matrix</span>
                     </div>
-                    <div className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar">
-                      <div className="grid grid-cols-2 gap-1">
-                        <div className="bg-surface-highlight/30 p-1.5 rounded-sm border border-border/50">
+                    <div className="flex-1 space-y-1 overflow-y-auto custom-scrollbar">
+                      <div className="grid grid-cols-2 gap-1 mb-2">
+                        <div className="bg-surface-highlight/30 p-1 rounded-sm border border-border/50">
                           <div className="text-[7px] text-text-tertiary uppercase">Bid Depth</div>
                           <div className="text-[9px] font-mono text-positive">1.4M</div>
                         </div>
-                        <div className="bg-surface-highlight/30 p-1.5 rounded-sm border border-border/50">
+                        <div className="bg-surface-highlight/30 p-1 rounded-sm border border-border/50">
                           <div className="text-[7px] text-text-tertiary uppercase">Ask Depth</div>
                           <div className="text-[9px] font-mono text-negative">0.9M</div>
                         </div>
@@ -244,9 +256,13 @@ export default function PeakTerminalPage() {
                         { label: 'SPREAD_BPS', val: '0.12', color: 'text-text-primary' },
                         { label: 'MKT_IMPACT', val: '0.04%', color: 'text-warning' },
                         { label: 'SLIP_CURVE', val: 'LINEAR', color: 'text-text-tertiary' },
-                        { label: 'BOOK_SKEW', val: 'BULLISH', color: 'text-positive' }
+                        { label: 'BOOK_SKEW', val: 'BULLISH', color: 'text-positive' },
+                        { label: 'TAPE_SPEED', val: 'HIGH', color: 'text-accent' },
+                        { label: 'HFT_ACTIVITY', val: 'MODERATE', color: 'text-warning' },
+                        { label: 'SWEEP_PROB', val: '12.4%', color: 'text-text-secondary' },
+                        { label: 'LARGE_ORD', val: 'DETECTED', color: 'text-negative' }
                       ].map(m => (
-                        <div key={m.label} className="flex justify-between text-[8px] border-b border-border/30 pb-1">
+                        <div key={m.label} className="flex justify-between text-[8px] border-b border-border/30 pb-0.5">
                           <span className="text-text-tertiary">{m.label}</span>
                           <span className={`font-mono ${m.color}`}>{m.val}</span>
                         </div>
