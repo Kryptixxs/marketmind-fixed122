@@ -22,11 +22,16 @@ const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'AAPL', 
 
 const TIMEFRAMES = [
   { label: '1M', yf: '1m' },
+  { label: '2M', yf: '2m' },
   { label: '5M', yf: '5m' },
   { label: '15M', yf: '15m' },
+  { label: '30M', yf: '30m' },
   { label: '1H', yf: '60m' },
-  { label: '4H', yf: '60m' }, 
+  { label: '2H', yf: '120m' }, 
+  { label: '4H', yf: '240m' }, 
   { label: '1D', yf: '1d' },
+  { label: '1W', yf: '1wk' },
+  { label: '1MO', yf: '1mo' },
 ];
 
 const LABEL_MAP: Record<string, string> = {
@@ -44,7 +49,7 @@ const LABEL_MAP: Record<string, string> = {
 
 export default function ChartsPage() {
   const [activeSymbol, setActiveSymbol] = useState('NAS100');
-  const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]);
+  const [timeframe, setTimeframe] = useState(TIMEFRAMES[3]); // Default 15M
 
   const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -79,6 +84,7 @@ export default function ChartsPage() {
     localStorage.setItem('vantage_charts_watchlist_v4', JSON.stringify(watchlist));
   }, [watchlist]);
 
+  // The hook now correctly reacts to timeframe changes
   const { data: marketData, error: streamError } = useMarketData(watchlist, timeframe.yf);
   const activeQuote = marketData[activeSymbol];
   const loading = Object.keys(marketData).length === 0 && !streamError;
@@ -200,7 +206,7 @@ export default function ChartsPage() {
           <div className="h-4 w-[1px] bg-border" />
 
           {/* TIMEFRAME SELECTOR */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar no-scrollbar">
             {TIMEFRAMES.map(tf => (
               <button
                 key={tf.label}

@@ -60,9 +60,13 @@ const YF_MAP: Record<string, string> = {
 function getRangeForInterval(interval: string) {
   switch (interval) {
     case '1m': return '7d';
+    case '2m': return '60d';
     case '5m': return '60d';
     case '15m': return '60d';
+    case '30m': return '60d';
     case '60m': return '730d';
+    case '120m': return '730d';
+    case '240m': return '730d';
     case '1d': return 'max';
     case '1wk': return 'max';
     case '1mo': return 'max';
