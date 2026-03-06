@@ -22,6 +22,7 @@ export function TradingChart({
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const lastDataRef = useRef<ChartData[]>([]);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -68,18 +69,31 @@ export function TradingChart({
     };
   }, []);
 
-  // Update Data
+  // Optimized Data Update Logic
   useEffect(() => {
-    if (seriesRef.current && data && data.length > 0) {
-      const sorted = [...data].sort((a, b) => a.time - b.time);
-      const unique = [];
-      for (const d of sorted) {
-        if (unique.length === 0 || d.time > unique[unique.length - 1].time) {
-          unique.push(d);
-        }
+    if (!seriesRef.current || !data || data.length === 0) return;
+
+    // Sort and unique check
+    const sorted = [...data].sort((a, b) => a.time - b.time);
+    const unique: ChartData[] = [];
+    for (const d of sorted) {
+      if (unique.length === 0 || d.time > unique[unique.length - 1].time) {
+        unique.push(d);
       }
+    }
+
+    const lastUnique = unique[unique.length - 1];
+    const prevUnique = lastDataRef.current[lastDataRef.current.length - 1];
+
+    // If only the last candle changed (or a new one was added), use .update() for performance
+    if (prevUnique && lastUnique.time >= prevUnique.time && unique.length === lastDataRef.current.length) {
+      seriesRef.current.update(lastUnique);
+    } else {
+      // Full reload for symbol changes or large gaps
       seriesRef.current.setData(unique);
     }
+
+    lastDataRef.current = unique;
   }, [data]);
 
   return <div ref={chartContainerRef} className="w-full h-full" />;
