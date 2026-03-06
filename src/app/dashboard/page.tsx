@@ -65,8 +65,9 @@ export default function DashboardPage() {
     setCandleHistory([]);
     loadCandles(selectedSymbol);
   }, [selectedSymbol, loadCandles]);
+
   const chartData = useMemo(() => {
-    const hist = candleHistory.length > 0 ? candleHistory : (selectedTick?.history ?? []);
+    const hist = candleHistory;
     if (hist.length > 0) {
       const mapped = hist.map((h) => ({
         time: Math.floor(h.timestamp / 1000),
@@ -85,22 +86,8 @@ export default function DashboardPage() {
       }
       return mapped;
     }
-
-    if (!selectedTick?.price || selectedTick.price <= 0) return [];
-
-    // Seed a short baseline so chart appears immediately.
-    const nowSec = Math.floor(Date.now() / 1000);
-    return Array.from({ length: 40 }, (_, i) => {
-      const t = nowSec - (39 - i) * 15;
-      return {
-        time: t,
-        open: selectedTick.price,
-        high: selectedTick.price,
-        low: selectedTick.price,
-        close: selectedTick.price,
-      };
-    });
-  }, [selectedTick]);
+    return [];
+  }, [candleHistory, selectedTick]);
 
   const topMovers = useMemo(() => {
     return ALL_SYMBOLS

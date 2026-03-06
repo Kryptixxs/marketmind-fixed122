@@ -10,7 +10,7 @@ function appendLiveBar(history: OHLCV[] | undefined, price: number, timestamp: n
   const safeTs = Number.isFinite(timestamp) && timestamp > 0 ? timestamp : Date.now();
   if (safePrice <= 0) return base;
 
-  const bucketMs = 15_000;
+  const bucketMs = 15 * 60 * 1000;
   const bucketTs = Math.floor(safeTs / bucketMs) * bucketMs;
   const last = base[base.length - 1];
 

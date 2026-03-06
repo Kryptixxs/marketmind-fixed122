@@ -1,6 +1,7 @@
 'use server';
 
 import { OHLCV } from '@/features/MarketData/services/marketdata/types';
+import { getAssetClass, getYahooSymbol } from '@/lib/symbol-map';
 
 export interface MarketData {
   symbol: string;
@@ -18,10 +19,10 @@ const FINNHUB_MAP: Record<string, string> = {
   NFLX: 'NFLX', DIS: 'DIS', PYPL: 'PYPL', INTC: 'INTC', UBER: 'UBER', CRM: 'CRM', ORCL: 'ORCL', ADBE: 'ADBE',
   CSCO: 'CSCO', QCOM: 'QCOM', AVGO: 'AVGO', TXN: 'TXN',
 
-  NAS100: 'QQQ', SPX500: 'SPY', US30: 'DIA', RUSSELL: 'IWM',
-  DAX40: 'EWG', FTSE100: 'EWU', NIKKEI: 'EWJ', HSI: 'EWH', AS51: 'EWA',
-  GOLD: 'GLD', SILVER: 'SLV', CRUDE: 'USO', NATGAS: 'UNG', COPPER: 'CPER', PLATINUM: 'PPLT',
-  DXY: 'UUP', VIX: 'VIXY', US10Y: 'IEF', US2Y: 'SHY', MOVE: 'TLT',
+  NAS100: '^NDX', SPX500: '^GSPC', US30: '^DJI', RUSSELL: '^RUT',
+  DAX40: '^GDAXI', FTSE100: '^FTSE', NIKKEI: '^N225', HSI: '^HSI', AS51: '^AXJO',
+  GOLD: 'GC=F', SILVER: 'SI=F', CRUDE: 'CL=F', NATGAS: 'NG=F', COPPER: 'HG=F', PLATINUM: 'PL=F',
+  DXY: 'DX-Y.NYB', VIX: '^VIX', US10Y: '^TNX', US2Y: '^IRX', MOVE: '^MOVE',
 
   EURUSD: 'OANDA:EUR_USD',
   GBPUSD: 'OANDA:GBP_USD',
@@ -91,10 +92,10 @@ function stockSymbol(sym: string): string | null {
 }
 
 const YAHOO_QUOTE_MAP: Record<string, string> = {
-  NAS100: 'QQQ', SPX500: 'SPY', US30: 'DIA', RUSSELL: 'IWM',
-  DAX40: 'EWG', FTSE100: 'EWU', NIKKEI: 'EWJ', HSI: 'EWH', AS51: 'EWA',
-  GOLD: 'GLD', SILVER: 'SLV', CRUDE: 'USO', NATGAS: 'UNG', COPPER: 'CPER', PLATINUM: 'PPLT',
-  DXY: 'UUP', VIX: 'VIXY', US10Y: 'IEF', US2Y: 'SHY', MOVE: 'TLT',
+  NAS100: '^NDX', SPX500: '^GSPC', US30: '^DJI', RUSSELL: '^RUT',
+  DAX40: '^GDAXI', FTSE100: '^FTSE', NIKKEI: '^N225', HSI: '^HSI', AS51: '^AXJO',
+  GOLD: 'GC=F', SILVER: 'SI=F', CRUDE: 'CL=F', NATGAS: 'NG=F', COPPER: 'HG=F', PLATINUM: 'PL=F',
+  DXY: 'DX-Y.NYB', VIX: '^VIX', US10Y: '^TNX', US2Y: '^IRX', MOVE: '^MOVE',
   BTCUSD: 'BTC-USD', ETHUSD: 'ETH-USD', SOLUSD: 'SOL-USD',
   BNBUSD: 'BNB-USD', XRPUSD: 'XRP-USD', ADAUSD: 'ADA-USD',
   EURUSD: 'EURUSD=X', GBPUSD: 'GBPUSD=X', USDJPY: 'JPY=X',
@@ -332,12 +333,21 @@ async function fetchQuote(sym: string): Promise<QuoteCache | null> {
   const ttl = isForex(sym) ? 30_000 : QUOTE_TTL;
   if (cached && now - cached.ts < ttl) return cached;
 
+  const assetClass = getAssetClass(sym);
+
   // Finnhub OANDA quotes are often forbidden on free keys; skip straight to FX sources.
   if (isForex(sym)) {
     const alphaFx = await fetchAlphaVantageForexQuote(sym, now, cached);
     if (alphaFx) return alphaFx;
     const yahooFx = await fetchYahooQuote(sym, now, cached);
     if (yahooFx) return yahooFx;
+    return cached || null;
+  }
+
+  // Keep index/commodity/macro aligned to spot/index symbols (not ETF proxies).
+  if (assetClass === 'index' || assetClass === 'commodity' || assetClass === 'macro') {
+    const yahooQuote = await fetchYahooQuote(sym, now, cached);
+    if (yahooQuote) return yahooQuote;
     return cached || null;
   }
 
@@ -379,10 +389,10 @@ async function fetchQuote(sym: string): Promise<QuoteCache | null> {
 }
 
 const YAHOO_CHART_MAP: Record<string, string> = {
-  NAS100: 'QQQ', SPX500: 'SPY', US30: 'DIA', RUSSELL: 'IWM',
-  DAX40: 'EWG', FTSE100: 'EWU', NIKKEI: 'EWJ', HSI: 'EWH', AS51: 'EWA',
-  GOLD: 'GLD', SILVER: 'SLV', CRUDE: 'USO', NATGAS: 'UNG', COPPER: 'CPER', PLATINUM: 'PPLT',
-  DXY: 'UUP', VIX: 'VIXY', US10Y: 'IEF', US2Y: 'SHY', MOVE: 'TLT',
+  NAS100: '^NDX', SPX500: '^GSPC', US30: '^DJI', RUSSELL: '^RUT',
+  DAX40: '^GDAXI', FTSE100: '^FTSE', NIKKEI: '^N225', HSI: '^HSI', AS51: '^AXJO',
+  GOLD: 'GC=F', SILVER: 'SI=F', CRUDE: 'CL=F', NATGAS: 'NG=F', COPPER: 'HG=F', PLATINUM: 'PL=F',
+  DXY: 'DX-Y.NYB', VIX: '^VIX', US10Y: '^TNX', US2Y: '^IRX', MOVE: '^MOVE',
   BTCUSD: 'BTC-USD', ETHUSD: 'ETH-USD', SOLUSD: 'SOL-USD',
   BNBUSD: 'BNB-USD', XRPUSD: 'XRP-USD', ADAUSD: 'ADA-USD',
   EURUSD: 'EURUSD=X', GBPUSD: 'GBPUSD=X', USDJPY: 'JPY=X',
@@ -394,7 +404,7 @@ export async function fetchSymbolCandles(symbol: string): Promise<OHLCV[]> {
   const cached = CANDLE_CACHE.get(symbol);
   if (cached && now - cached.ts < CANDLE_TTL) return cached.history;
 
-  const ySym = YAHOO_CHART_MAP[symbol] || symbol;
+  const ySym = YAHOO_CHART_MAP[symbol] || getYahooSymbol(symbol);
 
   try {
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ySym)}?interval=15m&range=5d`;
@@ -459,7 +469,8 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
 
   for (const sym of symbols) {
     const cached = QUOTE_CACHE.get(sym);
-    if (cached && now - cached.ts < QUOTE_TTL) {
+    const ttl = isForex(sym) ? 30_000 : QUOTE_TTL;
+    if (cached && now - cached.ts < ttl) {
       quoteMap.set(sym, cached);
     } else {
       missing.push(sym);
