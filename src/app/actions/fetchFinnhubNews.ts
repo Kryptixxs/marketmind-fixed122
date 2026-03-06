@@ -26,6 +26,10 @@ export interface NewsArticle {
 
 const CACHE: { data: NewsArticle[]; ts: number; category: string } = { data: [], ts: 0, category: '' };
 const CACHE_TTL = 300_000;
+const FMP_KEY =
+  process.env.FMP_API_KEY ||
+  process.env.NEXT_PUBLIC_FMP_API_KEY ||
+  'dFov0xmsRSPiWM4wl5A1FcYe6ubsB8vH';
 
 function formatTimeAgo(ts: number): string {
   const diffMs = Date.now() - ts * 1000;
@@ -36,6 +40,38 @@ function formatTimeAgo(ts: number): string {
   return `${Math.floor(mins / 1440)}d ago`;
 }
 
+async function fetchFmpNews(category: string, symbol?: string): Promise<NewsArticle[]> {
+  if (!FMP_KEY) return [];
+  try {
+    const params = new URLSearchParams({
+      apikey: FMP_KEY,
+      limit: '25',
+    });
+    if (symbol) {
+      params.set('tickers', symbol);
+    }
+
+    const url = `https://financialmodelingprep.com/api/v3/stock_news?${params.toString()}`;
+    const res = await fetch(url, { next: { revalidate: 300 } });
+    if (!res.ok) return [];
+    const items: any[] = await res.json();
+
+    return items.slice(0, 25).map((item) => ({
+      title: item.title || '',
+      source: item.site || 'FMP',
+      link: item.url || '#',
+      time: item.publishedDate ? formatTimeAgo(Math.floor(new Date(item.publishedDate).getTime() / 1000)) : 'Just now',
+      category: category || 'general',
+      imageUrl: item.image || null,
+      contentSnippet: item.text?.slice(0, 200) || '',
+      pubDate: item.publishedDate ? new Date(item.publishedDate).getTime() : Date.now(),
+      tickers: item.symbol ? [item.symbol] : (symbol ? [symbol] : []),
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchFinnhubNews(category: string = 'general', symbol?: string): Promise<NewsArticle[]> {
   const cacheKey = `${category}:${symbol || ''}`;
   if (CACHE.category === cacheKey && Date.now() - CACHE.ts < CACHE_TTL) {
@@ -43,7 +79,15 @@ export async function fetchFinnhubNews(category: string = 'general', symbol?: st
   }
 
   const apiKey = process.env.FINNHUB_API_KEY || process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
-  if (!apiKey) return [];
+  if (!apiKey) {
+    const fallback = await fetchFmpNews(category, symbol);
+    if (fallback.length > 0) {
+      CACHE.data = fallback;
+      CACHE.ts = Date.now();
+      CACHE.category = cacheKey;
+    }
+    return fallback;
+  }
 
   try {
     let url: string;
@@ -79,6 +123,13 @@ export async function fetchFinnhubNews(category: string = 'general', symbol?: st
     return articles;
   } catch (e) {
     console.warn('[FinnhubNews] Error:', (e as Error).message);
+    const fallback = await fetchFmpNews(category, symbol);
+    if (fallback.length > 0) {
+      CACHE.data = fallback;
+      CACHE.ts = Date.now();
+      CACHE.category = cacheKey;
+      return fallback;
+    }
     return CACHE.data;
   }
 }

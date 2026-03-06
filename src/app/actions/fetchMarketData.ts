@@ -40,6 +40,14 @@ const FINNHUB_MAP: Record<string, string> = {
 };
 
 const FINNHUB_KEY = process.env.FINNHUB_API_KEY || process.env.NEXT_PUBLIC_FINNHUB_API_KEY || '';
+const ALPHA_VANTAGE_KEY =
+  process.env.ALPHA_VANTAGE_API_KEY ||
+  process.env.NEXT_PUBLIC_ALPHA_VANTAGE_API_KEY ||
+  'OJE4VGF4TELGHJF9';
+const FMP_KEY =
+  process.env.FMP_API_KEY ||
+  process.env.NEXT_PUBLIC_FMP_API_KEY ||
+  'dFov0xmsRSPiWM4wl5A1FcYe6ubsB8vH';
 
 // --- Quote-only cache (lightweight, no history) ---
 interface QuoteCache { price: number; change: number; changePercent: number; ts: number; }
@@ -113,12 +121,79 @@ async function fetchYahooQuote(sym: string, now: number, cached?: QuoteCache): P
   }
 }
 
+async function fetchAlphaVantageQuote(sym: string, now: number, cached?: QuoteCache): Promise<QuoteCache | null> {
+  if (!ALPHA_VANTAGE_KEY) return cached || null;
+
+  // AV GLOBAL_QUOTE works best for stock/ETF style symbols.
+  const mapped = FINNHUB_MAP[sym] || sym;
+  if (!/^[A-Z.]{1,12}$/.test(mapped)) return cached || null;
+
+  try {
+    const url =
+      `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${encodeURIComponent(mapped)}&apikey=${ALPHA_VANTAGE_KEY}`;
+    const res = await withConcurrency(() => fetch(url).then(r => r.ok ? r.json() : null));
+    const q = res?.['Global Quote'];
+
+    const price = Number(q?.['05. price'] ?? 0);
+    if (!Number.isFinite(price) || price <= 0) return cached || null;
+
+    const change = Number(q?.['09. change'] ?? 0);
+    const changePercentRaw = String(q?.['10. change percent'] ?? '').replace('%', '');
+    const changePercent = Number(changePercentRaw || 0);
+
+    const entry: QuoteCache = {
+      price,
+      change: Number.isFinite(change) ? change : 0,
+      changePercent: Number.isFinite(changePercent) ? changePercent : 0,
+      ts: now,
+    };
+    QUOTE_CACHE.set(sym, entry);
+    return entry;
+  } catch {
+    return cached || null;
+  }
+}
+
+async function fetchFmpQuote(sym: string, now: number, cached?: QuoteCache): Promise<QuoteCache | null> {
+  if (!FMP_KEY) return cached || null;
+
+  const mapped = FINNHUB_MAP[sym] || sym;
+  if (mapped.includes(':') || !/^[A-Z.]{1,12}$/.test(mapped)) return cached || null;
+
+  try {
+    const url = `https://financialmodelingprep.com/api/v3/quote/${encodeURIComponent(mapped)}?apikey=${FMP_KEY}`;
+    const res = await withConcurrency(() => fetch(url).then(r => r.ok ? r.json() : null));
+    const q = Array.isArray(res) ? res[0] : null;
+
+    const price = Number(q?.price ?? 0);
+    if (!Number.isFinite(price) || price <= 0) return cached || null;
+
+    const change = Number(q?.change ?? 0);
+    const changePercent = Number(q?.changesPercentage ?? 0);
+
+    const entry: QuoteCache = {
+      price,
+      change: Number.isFinite(change) ? change : 0,
+      changePercent: Number.isFinite(changePercent) ? changePercent : 0,
+      ts: now,
+    };
+    QUOTE_CACHE.set(sym, entry);
+    return entry;
+  } catch {
+    return cached || null;
+  }
+}
+
 async function fetchQuote(sym: string): Promise<QuoteCache | null> {
   const now = Date.now();
   const cached = QUOTE_CACHE.get(sym);
   if (cached && now - cached.ts < QUOTE_TTL) return cached;
 
   if (!FINNHUB_KEY) {
+    const fmpQuote = await fetchFmpQuote(sym, now, cached);
+    if (fmpQuote) return fmpQuote;
+    const alphaQuote = await fetchAlphaVantageQuote(sym, now, cached);
+    if (alphaQuote) return alphaQuote;
     return fetchYahooQuote(sym, now, cached);
   }
 
@@ -126,7 +201,13 @@ async function fetchQuote(sym: string): Promise<QuoteCache | null> {
   try {
     const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(finnhubSym)}&token=${FINNHUB_KEY}`;
     const res = await withConcurrency(() => fetch(url).then(r => r.ok ? r.json() : null));
-    if (!res || res.c === 0) return cached || null;
+    if (!res || res.c === 0) {
+      const fmpQuote = await fetchFmpQuote(sym, now, cached);
+      if (fmpQuote) return fmpQuote;
+      const alphaQuote = await fetchAlphaVantageQuote(sym, now, cached);
+      if (alphaQuote) return alphaQuote;
+      return fetchYahooQuote(sym, now, cached);
+    }
 
     const entry: QuoteCache = {
       price: res.c ?? 0,
@@ -137,6 +218,10 @@ async function fetchQuote(sym: string): Promise<QuoteCache | null> {
     QUOTE_CACHE.set(sym, entry);
     return entry;
   } catch {
+    const fmpQuote = await fetchFmpQuote(sym, now, cached);
+    if (fmpQuote) return fmpQuote;
+    const alphaQuote = await fetchAlphaVantageQuote(sym, now, cached);
+    if (alphaQuote) return alphaQuote;
     return fetchYahooQuote(sym, now, cached);
   }
 }
