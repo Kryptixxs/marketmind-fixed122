@@ -11,7 +11,7 @@ function polylinePoints(values: number[], width: number, yScale: (v: number) => 
   return values.map((v, i) => `${(i / Math.max(1, values.length - 1)) * width},${yScale(v)}`).join(' ');
 }
 
-export function AnalyticsPanel() {
+export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' }) {
   const { state, dispatch, deckRows } = useTerminalStore();
 
   const active = useMemo(() => {
@@ -39,9 +39,11 @@ export function AnalyticsPanel() {
   const hiBar = recentBars.reduce((best, b, i) => (b.high > (best?.high ?? -Infinity) ? { i, high: b.high } : best), null as null | { i: number; high: number });
   const loBar = recentBars.reduce((best, b, i) => (b.low < (best?.low ?? Infinity) ? { i, low: b.low } : best), null as null | { i: number; low: number });
 
+  const effectiveTab = execMode === 'FACTORS' ? 'FACTORS' : execMode === 'EVENTS' ? 'EVENTS' : state.analyticsTab;
+
   const tabRows = useMemo(() => {
-    if (state.analyticsTab === 'OVERVIEW') return deckRows;
-    if (state.analyticsTab === 'FACTORS') {
+    if (effectiveTab === 'OVERVIEW') return deckRows;
+    if (effectiveTab === 'FACTORS') {
       return [
         ['RealizedVol', `${state.risk.realizedVol}%`],
         ['ImpliedVol', `${state.risk.impliedVolProxy}%`],
@@ -61,21 +63,47 @@ export function AnalyticsPanel() {
       ['Regime', state.risk.regime],
       ['Sweep', state.microstructure.sweep.text],
     ];
-  }, [active?.betaToSPX, active?.corrToNDX, active?.corrToSPX, active?.liquidityScore, active?.momentum, deckRows, state.analyticsTab, state.microstructure.orderFlowImbalance, state.microstructure.sweep.text, state.risk.concentration, state.risk.grossExposure, state.risk.impliedVolProxy, state.risk.intradayVar, state.risk.netExposure, state.risk.realizedVol, state.risk.regime]);
+  }, [active?.betaToSPX, active?.corrToNDX, active?.corrToSPX, active?.liquidityScore, active?.momentum, deckRows, effectiveTab, state.microstructure.orderFlowImbalance, state.microstructure.sweep.text, state.risk.concentration, state.risk.grossExposure, state.risk.impliedVolProxy, state.risk.intradayVar, state.risk.netExposure, state.risk.realizedVol, state.risk.regime]);
+
+  const splitClass =
+    execMode === 'MICROSTRUCTURE'
+      ? 'grid-cols-[46%_54%]'
+      : execMode === 'FACTORS'
+        ? 'grid-cols-[42%_58%]'
+        : execMode === 'EVENTS'
+          ? 'grid-cols-[38%_62%]'
+          : 'grid-cols-[60%_40%]';
+  const leftRowsClass = execMode === 'MICROSTRUCTURE' ? 'grid-rows-[60%_40%]' : execMode === 'FACTORS' ? 'grid-rows-[48%_52%]' : 'grid-rows-[72%_28%]';
+  const modeHeaderClass =
+    execMode === 'MICROSTRUCTURE'
+      ? 'border-[#274b66] text-[#63c8ff]'
+      : execMode === 'FACTORS'
+        ? 'border-[#174432] text-[#7dffcc]'
+        : execMode === 'EVENTS'
+          ? 'border-[#5a1f35] text-[#e3b4ff]'
+          : 'border-[#2b3f5f] text-[#9bc3e8]';
+  const modePanelBand =
+    execMode === 'MICROSTRUCTURE'
+      ? 'bg-[#091a2b]'
+      : execMode === 'FACTORS'
+        ? 'bg-[#0a1f15]'
+        : execMode === 'EVENTS'
+          ? 'bg-[#1a0c16]'
+          : 'bg-[#08111d]';
 
   const flashClass = state.delta.priceFlash[active?.symbol ?? ''] === 'up' ? 'text-[#7dffcc]' : state.delta.priceFlash[active?.symbol ?? ''] === 'down' ? 'text-[#ff9bbb]' : 'text-[#edf4fc]';
 
   return (
     <section className="bg-[#070e18] min-h-0 overflow-hidden flex flex-col">
-      <div className="h-5 px-1 border-b border-[#1a2433] bg-[#0b1320] flex items-center justify-between text-[10px]">
-        <span className="text-[#9bc3e8] font-bold">{state.security.ticker} {state.security.market} &lt;{state.activeFunction}&gt; {moduleDef.title.toUpperCase()}</span>
+      <div className={`h-5 px-1 border-b bg-[#0b1320] flex items-center justify-between text-[10px] ${modeHeaderClass}`}>
+        <span className="font-bold">{state.security.ticker} {state.security.market} &lt;{state.activeFunction}&gt; {moduleDef.title.toUpperCase()} [{execMode}]</span>
         <div className="flex items-center gap-1">
           <span className={`text-[9px] ${moduleDef.isDeferred ? 'text-[#ffb2c8]' : 'text-[#7f99ba]'}`}>{moduleDef.track === 'A' ? 'TRACK-A' : 'TRACK-B'}</span>
           {(['OVERVIEW', 'FACTORS', 'EVENTS'] as const).map((tab) => (
             <button
               key={tab}
               onClick={() => dispatch({ type: 'SET_ANALYTICS_TAB', payload: tab })}
-              className={`px-1 border text-[9px] ${state.analyticsTab === tab ? 'border-[#2a7b60] text-[#99f1d6] bg-[#113328]' : 'border-[#263247] text-[#9fb4cd] bg-[#09111c]'}`}
+              className={`px-1 border text-[9px] ${effectiveTab === tab ? 'border-[#2a7b60] text-[#99f1d6] bg-[#113328]' : 'border-[#263247] text-[#9fb4cd] bg-[#09111c]'}`}
             >
               {tab}
             </button>
@@ -102,8 +130,9 @@ export function AnalyticsPanel() {
         </div>
       </div>
 
-      <div className="grid grid-cols-[52%_48%] gap-px bg-[#1a2433] flex-1 min-h-0">
-        <div className="bg-[#08111d] min-h-0 flex flex-col">
+      <div className={`grid ${splitClass} gap-px bg-[#1a2433] flex-1 min-h-0`}>
+        <div className={`${modePanelBand} min-h-0 grid ${leftRowsClass}`}>
+          <div className="min-h-0 flex flex-col">
           <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">INTRADAY (CANDLE + VWAP + MA + VOL)</div>
           <div className="relative flex-1">
             <svg viewBox="0 0 620 176" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
@@ -155,14 +184,38 @@ export function AnalyticsPanel() {
             </svg>
           </div>
         </div>
-        <div className="bg-[#08111d] min-h-0 overflow-y-auto custom-scrollbar">
-          <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">ANALYTICS STACK</div>
-          {tabRows.map(([k, v]) => (
-            <div key={k} className="text-[10px] px-1 py-0.5 border-b border-[#142034] flex items-center justify-between">
-              <span className="text-[#93a9c6]">{k}</span>
-              <span className="text-[#e0eaf7] font-bold">{v}</span>
+          <div className="bg-[#08111d] min-h-0 overflow-y-auto custom-scrollbar">
+            <div className="h-4 px-1 border-b border-[#142034] text-[9px] text-[#9bc3e8] flex items-center">RISK SNAPSHOT</div>
+            <div className="grid grid-cols-3 gap-px bg-[#142034] text-[9px]">
+              <div className="bg-[#09111c] px-1 py-[2px]"><div className="text-[#7d91ac]">RV</div><div className="text-[#e7f1ff] font-bold">{state.risk.realizedVol}%</div></div>
+              <div className="bg-[#09111c] px-1 py-[2px]"><div className="text-[#7d91ac]">IVx</div><div className="text-[#e7f1ff] font-bold">{state.risk.impliedVolProxy}%</div></div>
+              <div className="bg-[#09111c] px-1 py-[2px]"><div className="text-[#7d91ac]">BETA</div><div className="text-[#e7f1ff] font-bold">{state.risk.beta}</div></div>
+              <div className="bg-[#09111c] px-1 py-[2px]"><div className="text-[#7d91ac]">CORR</div><div className="text-[#e7f1ff] font-bold">{state.risk.corrToBenchmark}</div></div>
+              <div className="bg-[#09111c] px-1 py-[2px]"><div className="text-[#7d91ac]">OFI</div><div className="text-[#e7f1ff] font-bold">{(state.microstructure.orderFlowImbalance * 100).toFixed(1)}%</div></div>
+              <div className="bg-[#09111c] px-1 py-[2px]"><div className="text-[#7d91ac]">LIQ</div><div className="text-[#e7f1ff] font-bold">{active?.liquidityScore ?? 0}</div></div>
             </div>
-          ))}
+          </div>
+        </div>
+        <div className={`${modePanelBand} min-h-0 grid grid-rows-[58%_42%]`}>
+          <div className="min-h-0 overflow-y-auto custom-scrollbar">
+            <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">ANALYTICS STACK</div>
+            {tabRows.map(([k, v]) => (
+              <div key={k} className="text-[10px] px-1 py-0.5 border-b border-[#142034] flex items-center justify-between">
+                <span className="text-[#93a9c6]">{k}</span>
+                <span className="text-[#e0eaf7] font-bold">{v}</span>
+              </div>
+            ))}
+          </div>
+          <div className="min-h-0 overflow-y-auto custom-scrollbar">
+            <div className="h-4 px-1 border-b border-[#142034] text-[9px] text-[#9bc3e8] flex items-center">EXEC FLOW</div>
+            {state.executionEvents.slice(0, 10).map((e) => (
+              <div key={e.id} className="text-[9px] px-1 py-[1px] border-b border-[#142034] grid grid-cols-[1fr_.9fr_auto]">
+                <span className="text-[#c8d8ee] truncate">{e.symbol}</span>
+                <span className="text-[#9bb2cc]">{e.status}</span>
+                <span className="text-right text-[#ffd98f]">{e.fillQty}@{fmt(e.fillPrice, 2)}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>

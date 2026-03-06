@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { TerminalFunction } from '../types';
 import { BondAnalyticsModule } from './modules/BondAnalyticsModule';
 import { DescriptionModule } from './modules/DescriptionModule';
@@ -11,13 +12,17 @@ import { OptionsAnalyticsModule } from './modules/OptionsAnalyticsModule';
 import { PortfolioModule } from './modules/PortfolioModule';
 
 export function FunctionRouter({ activeFunction }: { activeFunction: TerminalFunction }) {
-  if (activeFunction === 'EXEC') return <ExecutionCockpitModule />;
-  if (activeFunction === 'DES') return <DescriptionModule />;
-  if (activeFunction === 'FA') return <FinancialAnalysisModule />;
-  if (activeFunction === 'HP') return <HistoricalPricingModule />;
-  if (activeFunction === 'WEI') return <EarningsModule />;
-  if (activeFunction === 'YAS') return <BondAnalyticsModule />;
-  if (activeFunction === 'OVME') return <OptionsAnalyticsModule />;
-  if (activeFunction === 'PORT') return <PortfolioModule />;
-  return <ExecutionCockpitModule />;
+  const componentByFunction: Record<TerminalFunction, React.ComponentType> = {
+    EXEC: ExecutionCockpitModule,
+    DES: DescriptionModule,
+    FA: FinancialAnalysisModule,
+    HP: HistoricalPricingModule,
+    WEI: EarningsModule,
+    YAS: BondAnalyticsModule,
+    OVME: OptionsAnalyticsModule,
+    PORT: PortfolioModule,
+  };
+  const Active = componentByFunction[activeFunction] ?? ExecutionCockpitModule;
+  // Keyed mount ensures hard structural transition between workspaces.
+  return <Active key={`module-${activeFunction}`} />;
 }

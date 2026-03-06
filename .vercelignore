@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+.dyad
+coverage
+*.log
+.env*
+!.env.example

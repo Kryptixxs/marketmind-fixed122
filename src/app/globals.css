@@ -1,40 +1,41 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #060a13;
-  --color-surface: #0c1221;
-  --color-surface-highlight: #131c2e;
-  --color-surface-elevated: #1a2437;
-  --color-border: #1e293b;
-  --color-border-highlight: #334155;
+  --color-background: #000205;
+  --color-surface: #070d17;
+  --color-surface-highlight: #0d1727;
+  --color-surface-elevated: #0a1220;
+  --color-border: #2b3f5f;
+  --color-border-highlight: #44638f;
 
-  --color-text-primary: #e2e8f0;
-  --color-text-secondary: #94a3b8;
-  --color-text-tertiary: #475569;
-  --color-text-muted: #334155;
+  --color-text-primary: #f2f5ff;
+  --color-text-secondary: #b2c0d7;
+  --color-text-tertiary: #7a90ac;
+  --color-text-muted: #566b86;
 
-  --color-accent: #3b82f6;
-  --color-accent-bright: #60a5fa;
-  --color-accent-muted: #1d4ed8;
-  --color-accent-text: #ffffff;
-  --color-cyan: #06b6d4;
-  --color-cyan-muted: #0e7490;
+  --color-accent: #f4cf76;
+  --color-accent-bright: #ffdf8f;
+  --color-accent-muted: #7a5a21;
+  --color-accent-text: #fff4d6;
+  --color-cyan: #63c8ff;
+  --color-cyan-muted: #274b66;
 
-  --color-positive: #10b981;
-  --color-positive-bright: #34d399;
-  --color-positive-muted: #065f46;
-  --color-negative: #ef4444;
-  --color-negative-bright: #f87171;
-  --color-negative-muted: #7f1d1d;
-  --color-warning: #f59e0b;
-  --color-warning-muted: #78350f;
+  --color-positive: #4ce0a5;
+  --color-positive-bright: #7dffcc;
+  --color-positive-muted: #174432;
+  --color-negative: #ff7ca3;
+  --color-negative-bright: #ffb2c8;
+  --color-negative-muted: #5a1f35;
+  --color-warning: #f4cf76;
+  --color-warning-muted: #4f3a18;
+  --color-alert: #e3b4ff;
 
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", monospace;
 
-  --radius-sm: 3px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
 }
 
 /* ── Theme Profiles ── */
@@ -69,13 +70,14 @@
 }
 
 .bbg-frame {
-  box-shadow: inset 0 0 0 1px rgba(255, 159, 28, 0.35);
+  box-shadow: none;
+  border: 1px solid rgba(68, 99, 143, 0.55);
 }
 
 .bbg-frame .panel-header,
 .bbg-frame .terminal-header {
   letter-spacing: 0.08em;
-  text-shadow: 0 0 8px rgba(255, 159, 28, 0.15);
+  text-shadow: none;
 }
 
 .bbg-frame .data-table th {
@@ -93,7 +95,7 @@ html, body {
   color: var(--color-text-primary);
   font-family: var(--font-mono);
   font-size: 11px;
-  line-height: 1.5;
+  line-height: 1.25;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
@@ -101,19 +103,19 @@ html, body {
 }
 
 ::selection {
-  background-color: rgba(59, 130, 246, 0.3);
-  color: #fff;
+  background-color: rgba(244, 207, 118, 0.35);
+  color: #fff4d6;
 }
 
 *:focus-visible {
-  outline: 1px solid var(--color-accent);
+  outline: 1px solid #f4cf76;
   outline-offset: -1px;
 }
 
 /* ── Terminal Headers ── */
 .terminal-header {
   height: 30px;
-  background: linear-gradient(180deg, var(--color-surface-highlight), var(--color-surface));
+  background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
@@ -233,7 +235,7 @@ html, body {
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: var(--color-border-highlight);
-  border-radius: 3px;
+  border-radius: 0;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
@@ -265,13 +267,35 @@ html, body {
   background: var(--color-accent);
 }
 
-/* ── Glow Effects ── */
+/* ── Hard visual language ── */
+.bbg-hard-frame {
+  border: 1px solid var(--color-border);
+  background: var(--color-background);
+}
+
+.bbg-hard-divider {
+  border-color: var(--color-border);
+}
+
+.bbg-command-focus {
+  border-color: var(--color-accent) !important;
+  box-shadow: inset 0 0 0 1px rgba(244, 207, 118, 0.35);
+}
+
+.bbg-row-active {
+  background-color: rgba(35, 58, 92, 0.5);
+}
+
+.bbg-alert-band {
+  background-color: rgba(90, 31, 53, 0.55);
+}
+
 .glow-blue {
-  box-shadow: 0 0 20px rgba(59, 130, 246, 0.12), 0 0 60px rgba(59, 130, 246, 0.04);
+  box-shadow: none;
 }
 
 .glow-cyan {
-  box-shadow: 0 0 20px rgba(6, 182, 212, 0.12), 0 0 60px rgba(6, 182, 212, 0.04);
+  box-shadow: none;
 }
 
 /* ── Animations ── */
@@ -313,9 +337,8 @@ html, body {
 }
 
 .shimmer {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent);
-  background-size: 200% 100%;
-  animation: shimmer 2s infinite;
+  background: transparent;
+  animation: none;
 }
 
 /* ── Grid Background ── */
@@ -335,7 +358,7 @@ html, body {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  border-radius: 2px;
+  border-radius: 0;
 }
 
 .badge-positive {

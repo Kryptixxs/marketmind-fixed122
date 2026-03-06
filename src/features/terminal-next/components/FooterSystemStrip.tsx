@@ -6,7 +6,7 @@ export function FooterSystemStrip() {
   const { state, dispatch } = useTerminalStore();
 
   return (
-    <div className="h-5 border-t border-[#1a2433] bg-[#07101c] px-1 flex items-center overflow-hidden text-[9px] whitespace-nowrap">
+    <div className="h-5 border-t bbg-hard-divider bg-[#07111d] px-1 flex items-center overflow-hidden text-[9px] whitespace-nowrap">
       {[...state.headlines, ...state.headlines].map((n, i) => (
         <button
           key={`${n}-${i}`}

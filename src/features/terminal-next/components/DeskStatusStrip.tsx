@@ -8,7 +8,7 @@ export function DeskStatusStrip() {
   const { deskStats, clocks, dispatch, state } = useTerminalStore();
 
   return (
-    <div className="h-5 border-b border-[#1a2433] bg-[#080f1b] px-1 flex items-center justify-between text-[9px] tabular-nums">
+    <div className="h-5 border-b bbg-hard-divider bg-[#07111d] px-1 flex items-center justify-between text-[9px] tabular-nums">
       <div className="flex items-center gap-2 text-[#a4b8d2]">
         <button onClick={() => dispatch({ type: 'SET_ANALYTICS_TAB', payload: 'OVERVIEW' })}>Adv/Dec {deskStats.adv}/{deskStats.dec}</button>
         <button onClick={() => dispatch({ type: 'SET_ANALYTICS_TAB', payload: 'FACTORS' })}>Breadth {fmt(deskStats.breadth, 0)}%</button>

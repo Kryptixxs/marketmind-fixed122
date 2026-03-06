@@ -26,7 +26,7 @@ export function CommandKeyBar() {
   };
 
   return (
-    <div className="h-7 border-b border-[#1a2433] bg-[#090f1a] px-1 flex items-center gap-1 overflow-x-auto custom-scrollbar">
+    <div className="h-7 border-b bbg-hard-divider bg-[#060c17] px-1 flex items-center gap-1 overflow-x-auto custom-scrollbar">
       {KEYBAR.map((k) => (
         <button
           key={k.label}
@@ -37,12 +37,12 @@ export function CommandKeyBar() {
               applyAsset(k.label);
             }
           }}
-          className={`h-5 px-1.5 border text-[9px] font-bold tracking-wide shrink-0 ${
+          className={`h-5 px-1.5 border text-[9px] font-bold tracking-wide shrink-0 active:translate-y-px ${
             k.role === 'go'
-              ? 'bg-[#123547] border-[#2a779b] text-[#a7dfff]'
+              ? 'bg-[#0d5e2a] border-[#2fd370] text-[#dbffe7]'
               : k.role === 'danger'
-                ? 'bg-[#411b2a] border-[#8d3c59] text-[#ffc0d5]'
-                : 'bg-[#221a3b] border-[#4d3f81] text-[#d1c8ff]'
+                ? 'bg-[#6b1f2f] border-[#ff7ca3] text-[#ffd9e5]'
+                : 'bg-[#4f3a18] border-[#d4a74a] text-[#ffeab7]'
           }`}
         >
           {k.label}
@@ -61,7 +61,11 @@ export function CommandKeyBar() {
               dispatch({ type: 'EXECUTE_COMMAND' });
             }
           }}
-          className={`h-5 px-1 border text-[9px] font-bold shrink-0 ${state.activeFunction === f ? 'bg-[#113328] border-[#2a7b60] text-[#99f1d6]' : 'bg-[#0e1522] border-[#28344a] text-[#9eb3cf]'}`}
+          className={`h-5 px-1 border text-[9px] font-bold shrink-0 active:translate-y-px ${
+            state.activeFunction === f
+              ? 'bg-[#113046] border-[#63c8ff] text-[#d4efff]'
+              : 'bg-[#151a24] border-[#274b66] text-[#9fc3df]'
+          }`}
         >
           {f}
         </button>

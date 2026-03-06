@@ -25,6 +25,14 @@ const UNIVERSE: Array<{ symbol: string; name: string; base: number; sector: stri
   { symbol: 'EURUSD Curncy', name: 'Euro / Dollar', base: 1.0841, sector: 'FX', benchmark: 'NONE' },
   { symbol: 'USDJPY Curncy', name: 'Dollar / Yen', base: 150.52, sector: 'FX', benchmark: 'NONE' },
   { symbol: 'XAUUSD Cmdty', name: 'Gold Spot', base: 2325.7, sector: 'Cmdty', benchmark: 'NONE' },
+  { symbol: 'CL1 Cmdty', name: 'WTI Crude Front', base: 79.42, sector: 'Cmdty', benchmark: 'NONE' },
+  { symbol: 'NG1 Cmdty', name: 'Nat Gas Front', base: 2.74, sector: 'Cmdty', benchmark: 'NONE' },
+  { symbol: 'BTCUSD Curncy', name: 'Bitcoin / Dollar', base: 67210.0, sector: 'FX', benchmark: 'NONE' },
+  { symbol: 'ETHUSD Curncy', name: 'Ether / Dollar', base: 3525.4, sector: 'FX', benchmark: 'NONE' },
+  { symbol: 'DAX Index', name: 'DAX 40 Index', base: 18502.2, sector: 'Index', benchmark: 'NONE' },
+  { symbol: 'FTSE Index', name: 'FTSE 100 Index', base: 8114.9, sector: 'Index', benchmark: 'NONE' },
+  { symbol: 'CAC Index', name: 'CAC 40 Index', base: 7972.8, sector: 'Index', benchmark: 'NONE' },
+  { symbol: 'US30 Index', name: 'Dow Jones 30', base: 39384.4, sector: 'Index', benchmark: 'SPX' },
 ];
 
 const HEADLINES = [
@@ -35,6 +43,12 @@ const HEADLINES = [
   'ENERGY HOLDS BID AS DOLLAR SOFTENS DURING EUROPEAN SESSION',
   'CREDIT SPREADS TIGHTEN AS PRIMARY ISSUANCE PRICES STRONGLY',
   'INDEX OPTION GAMMA POSITIONING TILTS TOWARD UPSIDE HEDGING',
+  'CTA POSITIONING TURNS NET-LONG AS TREND SIGNALS REACCELERATE',
+  'REAL-MONEY ACCOUNTS EXTEND DURATION HEDGES INTO DATA VOL WINDOW',
+  'PRIMARY DEAL CALENDAR STAYS HEAVY AS SPREADS ABSORB SUPPLY',
+  'SYSTEMATIC VOL TARGETING MODELS RE-RISK AFTER DRAWDOWN STABILIZATION',
+  'EUROPE OPEN MIXED WHILE US FUTURES HOLD NARROW OVERNIGHT RANGE',
+  'FX OPTIONS DESKS REPORT STRONG DEMAND FOR UPSIDE DOLLAR STRUCTURES',
 ];
 
 const ALERTS = [
@@ -42,6 +56,9 @@ const ALERTS = [
   'CROSS-ASSET CORRELATION SHIFT > 0.80',
   'RATES VOL RISING INTO DATA WINDOW',
   'LIQUIDITY THINNING AROUND MACRO EVENT WINDOW',
+  'SWEEP ACTIVITY DETECTED AT INSIDE OFFER',
+  'ORDER FLOW IMBALANCE EXCEEDS THRESHOLD',
+  'SECTOR CONCENTRATION DRIFT BREACH',
 ];
 
 const PROFILE_BASE: Record<string, Omit<ReferenceSecurityProfile, 'symbol' | 'dailyBars'>> = {
@@ -295,7 +312,7 @@ export function buildOrderBook(price: number, tick: number, seed: number): Order
   const step = price > 1000 ? 0.5 : price > 100 ? 0.05 : 0.01;
   let runningBid = 0;
   let runningAsk = 0;
-  return Array.from({ length: 16 }, (_, i) => {
+  return Array.from({ length: 22 }, (_, i) => {
     const bias = Math.sin(tick * 0.18) > 0 ? 1.08 : 0.92;
     const n = mulberry32(seed + tick * 199 + i * 17)();
     const bidSize = Math.round((95 + Math.abs(Math.sin((tick + i) * 0.27)) * 1500) * bias * (0.9 + n * 0.25));
@@ -321,7 +338,7 @@ export function buildOrderBook(price: number, tick: number, seed: number): Order
 export function buildTape(book: OrderBookLevel[], hhmmss: string, tick: number, seed: number): TapePrint[] {
   const prints: TapePrint[] = [];
   const rand = mulberry32(seed + tick * 4099);
-  const printCount = 8 + Math.floor(rand() * 5);
+  const printCount = 14 + Math.floor(rand() * 8);
   for (let i = 0; i < printCount; i += 1) {
     const level = book[i % Math.min(8, book.length)];
     const buyBias = Math.sin(tick * 0.16) > 0;
@@ -401,7 +418,7 @@ export function buildBarsForSymbol(existing: IntradayBar[] | undefined, quote: Q
 
 export function buildBlotter(quotes: Quote[], previous: BlotterRow[] | undefined, tape: TapePrint[], tick: number): BlotterRow[] {
   const prevMap = new Map((previous ?? []).map((r) => [r.symbol, r]));
-  return quotes.slice(0, 12).map((q, i) => {
+  return quotes.slice(0, 18).map((q, i) => {
     const side: 'BUY' | 'SELL' = i % 2 === 0 ? 'BUY' : 'SELL';
     const qty = 50 + i * 25;
     const prior = prevMap.get(q.symbol);
@@ -442,12 +459,12 @@ export function buildExecutionEvents(blotter: BlotterRow[], previous: BlotterRow
       });
     }
   }
-  return events.slice(0, 8);
+  return events.slice(0, 12);
 }
 
 export function rotateHeadlines(tick: number): string[] {
   const start = tick % HEADLINES.length;
-  return Array.from({ length: 6 }, (_, i) => HEADLINES[(start + i) % HEADLINES.length]);
+  return Array.from({ length: 14 }, (_, i) => HEADLINES[(start + i) % HEADLINES.length]);
 }
 
 export function activeAlerts(tick: number, sweepActive: boolean): string[] {

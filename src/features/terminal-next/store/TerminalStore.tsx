@@ -207,6 +207,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
     const command = `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''} ${action.payload} GO`;
     return {
       ...state,
+      functionCode: action.payload,
       activeFunction: action.payload,
       activeSubTab: undefined,
       commandInput: command,
