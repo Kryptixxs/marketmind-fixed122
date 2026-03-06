@@ -20,8 +20,10 @@ import {
 import { useRouter, usePathname } from "next/navigation"
 import { useTunnel } from "@/features/Terminal/context/TunnelContext"
 import {
+  dispatchFunctionCode,
   dispatchSymbol,
   dispatchWorkspace,
+  BLOOMBERG_FUNCTIONS,
   NAV_ITEMS,
   TOP_SYMBOLS,
   WORKSPACE_FUNCTIONS,
@@ -87,6 +89,14 @@ export function CommandPalette() {
     }, 50);
   }
 
+  const handleBloombergCode = (code: string, path: string) => {
+    setOpen(false);
+    setTimeout(() => {
+      dispatchFunctionCode(code);
+      router.push(path);
+    }, 50);
+  }
+
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
       <CommandInput placeholder="Search symbols, pages, or commands..." />
@@ -137,6 +147,25 @@ export function CommandPalette() {
               <CommandShortcut>GO</CommandShortcut>
             </CommandItem>
           )})}
+        </CommandGroup>
+
+        <CommandSeparator />
+
+        <CommandGroup heading="Classic Bloomberg Codes">
+          {BLOOMBERG_FUNCTIONS.map((fn) => (
+            <CommandItem
+              key={fn.code}
+              onSelect={() => handleBloombergCode(fn.code, fn.path)}
+              value={`${fn.code} ${fn.label} ${fn.desc}`}
+            >
+              <Zap className="mr-2 h-3.5 w-3.5 text-warning" />
+              <div className="flex flex-col">
+                <span className="font-bold text-[11px]">{fn.code} &lt;GO&gt;</span>
+                <span className="text-[9px] text-text-tertiary">{fn.label}</span>
+              </div>
+              <CommandShortcut>Function</CommandShortcut>
+            </CommandItem>
+          ))}
         </CommandGroup>
 
         <CommandSeparator />

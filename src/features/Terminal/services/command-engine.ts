@@ -1,6 +1,10 @@
 import {
+  BLOOMBERG_FUNCTIONS,
+  commandHints,
+  dispatchFunctionCode,
   dispatchSymbol,
   dispatchWorkspace,
+  resolveBloombergFunction,
   resolveRouteAlias,
   resolveSymbolFunction,
   resolveWorkspaceAlias,
@@ -16,6 +20,7 @@ export interface CommandResult {
 
 export class TerminalCommandEngine {
   private history: string[] = [];
+  private hints = commandHints();
 
   private modules = {
     'stocks': ['load', 'quote', 'options', 'insider', 'financials'],
@@ -47,6 +52,11 @@ export class TerminalCommandEngine {
       if (workspace) {
         dispatchWorkspace(workspace);
         return { type: 'INFO', message: `Workspace ${workspace} loaded` };
+      }
+      const bloombergFn = resolveBloombergFunction(sub);
+      if (bloombergFn) {
+        dispatchFunctionCode(bloombergFn.code);
+        return { type: 'NAV', message: `${bloombergFn.code} — ${bloombergFn.label}`, path: bloombergFn.path };
       }
       const route = resolveRouteAlias(sub);
       if (route) return { type: 'NAV', message: `→ ${sub.toUpperCase()}`, path: route };
@@ -87,12 +97,18 @@ export class TerminalCommandEngine {
     if (cmd === 'help' || cmd === '?') {
       return {
         type: 'INFO',
-        message: `GO <route|symbol|workspace> | <symbol> GP/NEWS/OPT/FA | Workspaces: ${WORKSPACE_FUNCTIONS.map((w) => w.code).join('/')}`
+        message: `GO <route|symbol|workspace|fn> | <symbol> GP/NEWS/OPT/FA | Workspaces: ${WORKSPACE_FUNCTIONS.map((w) => w.code).join('/')} | Fn: ${BLOOMBERG_FUNCTIONS.map((f) => f.code).join('/')}`
       };
     }
 
     const route = resolveRouteAlias(cmd);
     if (route) return { type: 'NAV', message: `→ ${cmd}`, path: route };
+
+    const bloombergFn = resolveBloombergFunction(cmd);
+    if (bloombergFn) {
+      dispatchFunctionCode(bloombergFn.code);
+      return { type: 'NAV', message: `${bloombergFn.code} — ${bloombergFn.label}`, path: bloombergFn.path };
+    }
 
     if (cmd.length <= 6 && !sub) {
       dispatchSymbol(cmd);
@@ -100,5 +116,16 @@ export class TerminalCommandEngine {
     }
 
     return { type: 'ERROR', message: `Unknown: '${cmd}'. Type 'help' for commands.` };
+  }
+
+  public getHistory(): string[] {
+    return [...this.history];
+  }
+
+  public suggest(input: string): string | null {
+    const q = input.trim().toLowerCase();
+    if (!q) return null;
+    const hit = this.hints.find((h) => h.toLowerCase().startsWith(q));
+    return hit ?? null;
   }
 }

@@ -37,6 +37,55 @@
   --radius-lg: 8px;
 }
 
+/* ── Theme Profiles ── */
+:root[data-theme="bloomberg"] {
+  --color-background: #000205;
+  --color-surface: #050a14;
+  --color-surface-highlight: #0f1b2e;
+  --color-border: #2b3f5f;
+  --color-border-highlight: #44638f;
+  --color-text-primary: #f2f5ff;
+  --color-text-secondary: #a6b6d1;
+  --color-text-tertiary: #607896;
+  --color-accent: #ff9f1c;
+  --color-accent-bright: #fbbf24;
+  --color-accent-muted: #a34e08;
+  --color-positive: #3fff72;
+  --color-negative: #ff4d6d;
+}
+
+:root[data-theme="terminal-green"] {
+  --color-background: #030b05;
+  --color-surface: #06140a;
+  --color-surface-highlight: #0a1c0f;
+  --color-border: #1f3f2a;
+  --color-border-highlight: #2d5a3b;
+  --color-text-primary: #b8ffd1;
+  --color-text-secondary: #8fd8ad;
+  --color-text-tertiary: #4f8a66;
+  --color-accent: #10b981;
+  --color-accent-bright: #34d399;
+  --color-accent-muted: #065f46;
+}
+
+.bbg-frame {
+  box-shadow: inset 0 0 0 1px rgba(255, 159, 28, 0.35);
+}
+
+.bbg-frame .panel-header,
+.bbg-frame .terminal-header {
+  letter-spacing: 0.08em;
+  text-shadow: 0 0 8px rgba(255, 159, 28, 0.15);
+}
+
+.bbg-frame .data-table th {
+  border-bottom-color: rgba(255, 159, 28, 0.35);
+}
+
+.bbg-frame .data-table td {
+  border-bottom-color: rgba(64, 92, 140, 0.35);
+}
+
 html, body {
   height: 100dvh;
   width: 100%;
