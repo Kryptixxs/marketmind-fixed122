@@ -1,13 +1,13 @@
 import { MarketDataProvider } from './types';
-import { PolygonProvider } from './providers/polygon';
+import { YahooPollingProvider } from './providers/yahoo-polling';
 
 let globalProvider: MarketDataProvider | null = null;
 
 export function getProvider(): MarketDataProvider {
   if (!globalProvider) {
-    // Using the real-time Polygon provider which connects to live WebSockets
-    // and falls back to Yahoo Finance for indices/commodities.
-    globalProvider = new PolygonProvider(); 
+    // Using high-frequency polling (2s) of the official Yahoo Finance API
+    // This ensures the data is 'correct' and matches real exchange prices.
+    globalProvider = new YahooPollingProvider(2000); 
   }
   return globalProvider;
 }
