@@ -9,7 +9,7 @@ import { NewsFeed } from '@/features/News/components/NewsFeed';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { calculateParkinsonVol } from '../../../quant_engine/math/feature_gen';
 import { calculateOptimalTrajectory } from '../../../quant_engine/execution/almgren_chriss';
-import { Activity, Zap, Target, BarChart3, ShieldAlert, Globe, Cpu, Clock, Layers, ArrowRightLeft, TrendingUp, TrendingDown, ShieldCheck, ZapOff, Gauge, BarChart } from 'lucide-react';
+import { Activity, Zap, Target, BarChart3, ShieldAlert, Globe, Cpu, Clock, Layers, ArrowRightLeft, TrendingUp, TrendingDown, ShieldCheck, ZapOff, Gauge, BarChart, Wifi } from 'lucide-react';
 
 // New Widgets
 import { MarketInternals } from '@/features/Terminal/components/widgets/MarketInternals';
@@ -25,11 +25,20 @@ const WATCHLIST = [
   'DXY', 'VIX', 'US10Y', 'US2Y', 'MOVE'
 ];
 
+const TIMEFRAMES = [
+  { label: '1M', val: '1m' },
+  { label: '5M', val: '5m' },
+  { label: '15M', val: '15m' },
+  { label: '1H', val: '60m' },
+  { label: '1D', val: '1d' },
+];
+
 export default function PeakTerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("NAS100");
+  const [interval, setInterval] = useState("15m");
   const [mounted, setMounted] = useState(false);
   
-  const { data: marketData } = useMarketData(WATCHLIST);
+  const { data: marketData } = useMarketData(WATCHLIST, interval);
   const activeQuote = marketData[activeSymbol];
 
   useEffect(() => {
@@ -102,7 +111,9 @@ export default function PeakTerminalPage() {
               <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
               <Panel defaultSize={25}>
                 <TerminalPanel title="Upcoming Macro">
-                  <MiniCalendar />
+                  <div className="h-full overflow-hidden">
+                    <MiniCalendar />
+                  </div>
                 </TerminalPanel>
               </Panel>
             </PanelGroup>
@@ -114,7 +125,22 @@ export default function PeakTerminalPage() {
           <Panel defaultSize={58}>
             <PanelGroup orientation="vertical">
               <Panel defaultSize={60}>
-                <TerminalPanel title={`Price Analytics // ${activeSymbol} // Real-time`}>
+                <TerminalPanel 
+                  title={`Price Analytics // ${activeSymbol} // Real-time`}
+                  actions={
+                    <div className="flex items-center gap-1 bg-background border border-border rounded-sm p-0.5">
+                      {TIMEFRAMES.map(tf => (
+                        <button
+                          key={tf.val}
+                          onClick={() => setInterval(tf.val)}
+                          className={`px-1.5 py-0.5 text-[8px] font-bold rounded-sm transition-colors ${interval === tf.val ? 'bg-accent text-accent-text' : 'text-text-tertiary hover:text-text-primary'}`}
+                        >
+                          {tf.label}
+                        </button>
+                      ))}
+                    </div>
+                  }
+                >
                   <div className="w-full h-full bg-black relative">
                     <TradingChart data={activeQuote?.history?.map(h => ({
                       time: Math.floor(h.timestamp / 1000),
@@ -122,7 +148,10 @@ export default function PeakTerminalPage() {
                     })) || []} />
                     
                     <div className="absolute top-1 left-1 flex gap-1 z-10">
-                      <div className="px-1.5 py-0.5 bg-surface/80 backdrop-blur border border-border text-[8px] font-bold text-accent uppercase">L1_FEED</div>
+                      <div className="px-1.5 py-0.5 bg-surface/80 backdrop-blur border border-border text-[8px] font-bold text-accent uppercase flex items-center gap-1">
+                        <Wifi size={8} className="text-positive animate-pulse" />
+                        L1_FEED
+                      </div>
                       <div className="px-1.5 py-0.5 bg-surface/80 backdrop-blur border border-border text-[8px] font-bold text-text-secondary uppercase">SMC_ACTIVE</div>
                     </div>
                   </div>
