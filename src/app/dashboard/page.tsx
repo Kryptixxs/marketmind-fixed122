@@ -9,7 +9,12 @@ import { NewsFeed } from '@/features/News/components/NewsFeed';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { calculateParkinsonVol } from '../../../quant_engine/math/feature_gen';
 import { calculateOptimalTrajectory } from '../../../quant_engine/execution/almgren_chriss';
-import { Activity, Zap, Target, BarChart3, ShieldAlert, Globe, Cpu } from 'lucide-react';
+import { Activity, Zap, Target, BarChart3, ShieldAlert, Globe, Cpu, Clock } from 'lucide-react';
+
+// New Widgets
+import { MarketInternals } from '@/features/Terminal/components/widgets/MarketInternals';
+import { MiniCalendar } from '@/features/Terminal/components/widgets/MiniCalendar';
+import { SessionTracker } from '@/features/Terminal/components/widgets/SessionTracker';
 
 const WATCHLIST = ['NAS100', 'SPX500', 'US30', 'RUSSELL', 'DAX40', 'GOLD', 'CRUDE', 'BTCUSD', 'AAPL', 'NVDA', 'MSFT', 'TSLA', 'EURUSD', 'GBPUSD', 'USDJPY'];
 
@@ -20,7 +25,6 @@ export default function PeakTerminalPage() {
   const { data: marketData } = useMarketData(WATCHLIST);
   const activeQuote = marketData[activeSymbol];
 
-  // Fix hydration mismatch by tracking mount state
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -45,53 +49,64 @@ export default function PeakTerminalPage() {
       <div className="flex-1 w-full flex overflow-hidden">
         <PanelGroup orientation="horizontal">
           
-          {/* LEFT: MARKET WATCH (DENSE) */}
+          {/* LEFT: MARKET WATCH & INTERNALS */}
           <Panel defaultSize={22} minSize={15}>
-            <TerminalPanel title="Market Monitor // Global Matrix">
-              <div className="h-full overflow-y-auto custom-scrollbar">
-                <table className="data-table w-full">
-                  <thead>
-                    <tr>
-                      <th className="text-left">Ticker</th>
-                      <th className="text-right">Price</th>
-                      <th className="text-right">Chg%</th>
-                      <th className="text-right hidden xl:table-cell">Vol(M)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {WATCHLIST.map(sym => {
-                      const tick = marketData[sym];
-                      const isPos = tick?.changePercent >= 0;
-                      return (
-                        <tr 
-                          key={sym} 
-                          onClick={() => setActiveSymbol(sym)} 
-                          className={`cursor-pointer hover:bg-surface-highlight transition-colors ${activeSymbol === sym ? 'bg-accent/10' : ''}`}
-                        >
-                          <td className={`font-bold ${activeSymbol === sym ? 'text-accent' : 'text-text-primary'}`}>{sym}</td>
-                          <td className="text-right font-mono">{tick?.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                          <td className={`text-right font-mono ${isPos ? 'text-positive' : 'text-negative'}`}>
-                            {tick ? `${isPos ? '+' : ''}${tick.changePercent.toFixed(2)}%` : '---'}
-                          </td>
-                          <td className="text-right font-mono text-text-tertiary hidden xl:table-cell">
-                            {/* Use a stable value during SSR and generate random only on client */}
-                            {mounted ? (Math.random() * 100).toFixed(1) : "0.0"}
-                          </td>
+            <PanelGroup orientation="vertical">
+              <Panel defaultSize={60}>
+                <TerminalPanel title="Market Monitor // Global Matrix">
+                  <div className="h-full overflow-y-auto custom-scrollbar">
+                    <table className="data-table w-full">
+                      <thead>
+                        <tr>
+                          <th className="text-left">Ticker</th>
+                          <th className="text-right">Price</th>
+                          <th className="text-right">Chg%</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </TerminalPanel>
+                      </thead>
+                      <tbody>
+                        {WATCHLIST.map(sym => {
+                          const tick = marketData[sym];
+                          const isPos = tick?.changePercent >= 0;
+                          return (
+                            <tr 
+                              key={sym} 
+                              onClick={() => setActiveSymbol(sym)} 
+                              className={`cursor-pointer hover:bg-surface-highlight transition-colors ${activeSymbol === sym ? 'bg-accent/10' : ''}`}
+                            >
+                              <td className={`font-bold ${activeSymbol === sym ? 'text-accent' : 'text-text-primary'}`}>{sym}</td>
+                              <td className="text-right font-mono">{tick?.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                              <td className={`text-right font-mono ${isPos ? 'text-positive' : 'text-negative'}`}>
+                                {tick ? `${isPos ? '+' : ''}${tick.changePercent.toFixed(2)}%` : '---'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </TerminalPanel>
+              </Panel>
+              <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
+              <Panel defaultSize={20}>
+                <TerminalPanel title="Market Internals">
+                  <MarketInternals tick={activeQuote} />
+                </TerminalPanel>
+              </Panel>
+              <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
+              <Panel defaultSize={20}>
+                <TerminalPanel title="Upcoming Macro">
+                  <MiniCalendar />
+                </TerminalPanel>
+              </Panel>
+            </PanelGroup>
           </Panel>
 
           <PanelResizeHandle className="w-px bg-border hover:bg-accent/50 transition-colors" />
 
-          {/* CENTER: ANALYTICS */}
+          {/* CENTER: ANALYTICS & SESSIONS */}
           <Panel defaultSize={58}>
             <PanelGroup orientation="vertical">
-              <Panel defaultSize={75}>
+              <Panel defaultSize={70}>
                 <TerminalPanel title={`Price Analytics // ${activeSymbol} // Real-time`}>
                   <div className="w-full h-full bg-black relative">
                     <TradingChart data={activeQuote?.history?.map(h => ({
@@ -109,7 +124,7 @@ export default function PeakTerminalPage() {
               
               <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
 
-              <Panel defaultSize={25}>
+              <Panel defaultSize={30}>
                 <div className="grid grid-cols-4 h-full gap-px bg-border">
                   <div className="bg-background p-2">
                     <div className="flex items-center gap-1 text-accent mb-2">
@@ -162,21 +177,8 @@ export default function PeakTerminalPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="bg-background p-2">
-                    <div className="flex items-center gap-1 text-blue-400 mb-2">
-                      <Globe size={10} />
-                      <span className="text-[8px] font-bold uppercase">Macro</span>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[8px]">
-                        <span className="text-text-tertiary">DXY_CORR</span>
-                        <span className="font-mono text-negative">-0.82</span>
-                      </div>
-                      <div className="flex justify-between text-[8px]">
-                        <span className="text-text-tertiary">US10Y_SENS</span>
-                        <span className="font-mono text-text-primary">HIGH</span>
-                      </div>
-                    </div>
+                  <div className="bg-background">
+                    <SessionTracker tick={activeQuote} />
                   </div>
                 </div>
               </Panel>
