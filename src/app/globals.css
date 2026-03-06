@@ -1,7 +1,6 @@
 @import "tailwindcss";
 
 @theme {
-  /* Default Dark Theme Variables */
   --color-background: #050505;
   --color-surface: #0a0a0a;
   --color-surface-highlight: #121212;
@@ -18,153 +17,57 @@
   --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", monospace;
   --radius-sm: 0px;
   --radius-md: 0px;
-  --radius-lg: 0px;
 }
 
-/* --- THEME OVERRIDES --- */
-
-/* Bloomberg Professional */
-[data-theme='bloomberg'] {
-  --color-background: #000000;
-  --color-surface: #111111;
-  --color-accent: #ff9900;
-  --color-text-primary: #ffffff;
-  --color-text-secondary: #cccccc;
-  --color-border: #333333;
-}
-
-/* Light Mode (Institutional White) */
-[data-theme='light'] {
-  --color-background: #ffffff;
-  --color-surface: #f4f4f5;
-  --color-surface-highlight: #e4e4e7;
-  --color-border: #d4d4d8;
-  --color-text-primary: #18181b;
-  --color-text-secondary: #52525b;
-  --color-text-tertiary: #a1a1aa;
-  --color-accent: #2563eb;
-}
-
-/* OLED (Pure Black) */
-[data-theme='oled'] {
-  --color-background: #000000;
-  --color-surface: #000000;
-  --color-surface-highlight: #0a0a0a;
-  --color-border: #111111;
-}
-
-/* Terminal Green */
-[data-theme='terminal-green'] {
-  --color-background: #000800;
-  --color-surface: #001200;
-  --color-accent: #00ff41;
-  --color-text-primary: #00ff41;
-  --color-text-secondary: #008f11;
-  --color-border: #003b00;
-}
-
-/* --- DENSITY & SCALING --- */
-
-[data-density='compact'] {
-  --terminal-header-h: 24px;
-  --terminal-row-h: 18px;
-  --terminal-font-size: 10px;
-}
-
-[data-density='standard'] {
-  --terminal-header-h: 32px;
-  --terminal-row-h: 24px;
-  --terminal-font-size: 12px;
-}
-
-[data-density='spacious'] {
-  --terminal-header-h: 40px;
-  --terminal-row-h: 32px;
-  --terminal-font-size: 14px;
-}
-
-/* Font Size Overrides */
-[data-font-size='xs'] { font-size: 9px; }
-[data-font-size='sm'] { font-size: 11px; }
-[data-font-size='md'] { font-size: 13px; }
-[data-font-size='lg'] { font-size: 15px; }
-
-/* Border Styles */
-[data-border-style='none'] .terminal-grid, 
-[data-border-style='none'] .terminal-panel { border: none; gap: 0; }
-[data-border-style='bold'] { --color-border: #444444; }
-
-/* --- BASE STYLES --- */
-
+/* --- PEAK DENSITY OVERRIDES --- */
 html, body {
   height: 100dvh;
   width: 100%;
   background-color: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-mono);
-  font-size: var(--terminal-font-size);
+  font-size: 10px; /* Reduced base font */
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
-  transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.terminal-grid {
-  display: grid;
-  gap: 1px;
-  background-color: var(--color-border);
-  height: 100%;
-  width: 100%;
-}
-
-.terminal-panel {
-  background-color: var(--color-background);
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
 }
 
 .terminal-header {
-  height: var(--terminal-header-h);
+  height: 20px; /* Slimmer headers */
   background-color: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
-  padding: 0 8px;
-  font-size: calc(var(--terminal-font-size) - 1px);
-  font-weight: 700;
+  padding: 0 4px;
+  font-size: 9px;
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.02em;
   color: var(--color-text-secondary);
-  user-select: none;
 }
 
 .data-table th {
   text-align: left;
-  padding: 4px 8px;
+  padding: 2px 4px;
   color: var(--color-text-tertiary);
   text-transform: uppercase;
-  font-weight: 700;
+  font-weight: 800;
   border-bottom: 1px solid var(--color-border);
   background-color: var(--color-surface);
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  font-size: calc(var(--terminal-font-size) - 1px);
+  font-size: 8px;
 }
 
 .data-table td {
-  padding: 4px 8px;
+  padding: 1px 4px;
   border-bottom: 1px solid rgba(255,255,255,0.02);
   white-space: nowrap;
+  font-size: 9px;
 }
 
-/* Animations Toggle */
-[data-animations='false'] * {
-  transition: none !important;
-  animation: none !important;
+.custom-scrollbar::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
 }
 
-/* Grid Lines Toggle */
-.terminal-grid {
-  background-color: rgba(255, 255, 255, calc(0.1 * var(--grid-line-opacity, 1)));
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border-highlight);
 }
