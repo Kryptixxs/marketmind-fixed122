@@ -14,7 +14,8 @@ export class HybridProvider implements MarketDataProvider {
   constructor(finnhubApiKey?: string) {
     this.finnhub = finnhubApiKey ? new FinnhubWSProvider(finnhubApiKey) : null;
     this.coinbase = new CoinbaseWSProvider();
-    this.polling = new YahooPollingProvider(12000);
+    // Keep polling below free-tier quote limits for broad watchlists.
+    this.polling = new YahooPollingProvider(45000);
   }
 
   connect(config: ProviderConfig) {

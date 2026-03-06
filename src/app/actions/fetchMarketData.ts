@@ -39,7 +39,10 @@ const FINNHUB_MAP: Record<string, string> = {
   ADAUSD: 'BINANCE:ADAUSDT',
 };
 
-const FINNHUB_KEY = process.env.FINNHUB_API_KEY || process.env.NEXT_PUBLIC_FINNHUB_API_KEY || '';
+const FINNHUB_KEY =
+  process.env.FINNHUB_API_KEY ||
+  process.env.NEXT_PUBLIC_FINNHUB_API_KEY ||
+  'd205tfpr01qmbi8r8j1gd205tfpr01qmbi8r8j20';
 const ALPHA_VANTAGE_KEY =
   process.env.ALPHA_VANTAGE_API_KEY ||
   process.env.NEXT_PUBLIC_ALPHA_VANTAGE_API_KEY ||
@@ -163,7 +166,8 @@ async function fetchFmpQuote(sym: string, now: number, cached?: QuoteCache): Pro
   try {
     const url = `https://financialmodelingprep.com/api/v3/quote/${encodeURIComponent(mapped)}?apikey=${FMP_KEY}`;
     const res = await withConcurrency(() => fetch(url).then(r => r.ok ? r.json() : null));
-    const q = Array.isArray(res) ? res[0] : null;
+    if (!Array.isArray(res)) return cached || null;
+    const q = res[0];
 
     const price = Number(q?.price ?? 0);
     if (!Number.isFinite(price) || price <= 0) return cached || null;
@@ -417,25 +421,25 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
   }
 
   if (missing.length > 0) {
-    // 1) Prefer a single/few FMP batch calls for stock-like symbols.
-    const fmpBatch = await fetchFmpBatchQuotes(missing);
-    for (const [sym, q] of fmpBatch) quoteMap.set(sym, q);
+    // 1) Primary per-symbol chain (Finnhub -> FMP -> Alpha -> Yahoo)
+    // Keep this path first so a valid Finnhub key wins and loads fast.
+    const singles = await Promise.all(missing.map((sym) => fetchQuote(sym)));
+    missing.forEach((sym, idx) => {
+      const q = singles[idx];
+      if (q) quoteMap.set(sym, q);
+    });
 
+    // 2) If still missing, try one-shot batch fallbacks to fill any gaps.
     const stillMissing = missing.filter((sym) => !quoteMap.has(sym));
     if (stillMissing.length > 0) {
-      // 2) Yahoo batch quote fallback for anything unresolved.
-      const yahooBatch = await fetchYahooBatchQuotes(stillMissing);
-      for (const [sym, q] of yahooBatch) quoteMap.set(sym, q);
+      const fmpBatch = await fetchFmpBatchQuotes(stillMissing);
+      for (const [sym, q] of fmpBatch) quoteMap.set(sym, q);
     }
 
     const finalMissing = missing.filter((sym) => !quoteMap.has(sym));
     if (finalMissing.length > 0) {
-      // 3) Last-resort per-symbol fallback chain.
-      const singles = await Promise.all(finalMissing.map((sym) => fetchQuote(sym)));
-      finalMissing.forEach((sym, idx) => {
-        const q = singles[idx];
-        if (q) quoteMap.set(sym, q);
-      });
+      const yahooBatch = await fetchYahooBatchQuotes(finalMissing);
+      for (const [sym, q] of yahooBatch) quoteMap.set(sym, q);
     }
   }
 

@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { TerminalCommandBar } from '@/features/Terminal/components/TerminalCommandBar';
 import { TradingChart } from '@/features/MarketData/components/TradingChart';
 import { NewsFeed } from '@/features/News/components/NewsFeed';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
+import { fetchSymbolCandles } from '@/app/actions/fetchMarketData';
+import { OHLCV } from '@/features/MarketData/services/marketdata/types';
 import { Loader2 } from 'lucide-react';
 
 const MARKET_CATEGORIES: Record<string, string[]> = {
@@ -44,20 +46,43 @@ function PanelHeader({ color, title, right }: { color: string; title: string; ri
 export default function DashboardPage() {
   const [selectedSymbol, setSelectedSymbol] = useState('AAPL');
   const [activeCategory, setActiveCategory] = useState('Equities');
+  const [candleHistory, setCandleHistory] = useState<OHLCV[]>([]);
   const { data: marketData } = useMarketData(ALL_SYMBOLS);
 
   const selectedTick = marketData[selectedSymbol];
   const categorySymbols = MARKET_CATEGORIES[activeCategory] || [];
+  const loadCandles = useCallback(async (sym: string) => {
+    try {
+      const candles = await fetchSymbolCandles(sym);
+      setCandleHistory(candles);
+    } catch {
+      setCandleHistory([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    setCandleHistory([]);
+    loadCandles(selectedSymbol);
+  }, [selectedSymbol, loadCandles]);
   const chartData = useMemo(() => {
-    const hist = selectedTick?.history ?? [];
+    const hist = candleHistory.length > 0 ? candleHistory : (selectedTick?.history ?? []);
     if (hist.length > 0) {
-      return hist.map((h) => ({
+      const mapped = hist.map((h) => ({
         time: Math.floor(h.timestamp / 1000),
         open: h.open,
         high: h.high,
         low: h.low,
         close: h.close,
       }));
+      // Blend latest live tick onto last bar for near-real-time chart sync.
+      if (selectedTick?.price && mapped.length > 0) {
+        const last = mapped[mapped.length - 1];
+        const p = selectedTick.price;
+        last.high = Math.max(last.high, p);
+        last.low = Math.min(last.low, p);
+        last.close = p;
+      }
+      return mapped;
     }
 
     if (!selectedTick?.price || selectedTick.price <= 0) return [];
