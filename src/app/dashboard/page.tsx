@@ -48,6 +48,33 @@ export default function DashboardPage() {
 
   const selectedTick = marketData[selectedSymbol];
   const categorySymbols = MARKET_CATEGORIES[activeCategory] || [];
+  const chartData = useMemo(() => {
+    const hist = selectedTick?.history ?? [];
+    if (hist.length > 0) {
+      return hist.map((h) => ({
+        time: Math.floor(h.timestamp / 1000),
+        open: h.open,
+        high: h.high,
+        low: h.low,
+        close: h.close,
+      }));
+    }
+
+    if (!selectedTick?.price || selectedTick.price <= 0) return [];
+
+    // Seed a short baseline so chart appears immediately.
+    const nowSec = Math.floor(Date.now() / 1000);
+    return Array.from({ length: 40 }, (_, i) => {
+      const t = nowSec - (39 - i) * 15;
+      return {
+        time: t,
+        open: selectedTick.price,
+        high: selectedTick.price,
+        low: selectedTick.price,
+        close: selectedTick.price,
+      };
+    });
+  }, [selectedTick]);
 
   const topMovers = useMemo(() => {
     return ALL_SYMBOLS
@@ -149,7 +176,13 @@ export default function DashboardPage() {
                 ) : undefined}
               />
               <div className="flex-1 min-h-0 bg-background">
-                <TradingChart key={selectedSymbol} symbol={selectedSymbol} />
+                {chartData.length > 0 ? (
+                  <TradingChart key={selectedSymbol} data={chartData} symbol={selectedSymbol} />
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <Loader2 size={18} className="animate-spin text-accent" />
+                  </div>
+                )}
               </div>
             </div>
           </div>

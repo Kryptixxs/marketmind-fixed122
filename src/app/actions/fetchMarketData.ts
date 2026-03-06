@@ -184,6 +184,108 @@ async function fetchFmpQuote(sym: string, now: number, cached?: QuoteCache): Pro
   }
 }
 
+async function fetchFmpBatchQuotes(symbols: string[]): Promise<Map<string, QuoteCache>> {
+  const out = new Map<string, QuoteCache>();
+  if (!FMP_KEY || symbols.length === 0) return out;
+
+  const tickerToInternal = new Map<string, string[]>();
+  for (const sym of symbols) {
+    const mapped = FINNHUB_MAP[sym] || sym;
+    if (mapped.includes(':') || !/^[A-Z.]{1,12}$/.test(mapped)) continue;
+    if (!tickerToInternal.has(mapped)) tickerToInternal.set(mapped, []);
+    tickerToInternal.get(mapped)!.push(sym);
+  }
+
+  const tickers = Array.from(tickerToInternal.keys());
+  if (tickers.length === 0) return out;
+
+  const chunkSize = 40;
+  for (let i = 0; i < tickers.length; i += chunkSize) {
+    const chunk = tickers.slice(i, i + chunkSize);
+    const url = `https://financialmodelingprep.com/api/v3/quote/${encodeURIComponent(chunk.join(','))}?apikey=${FMP_KEY}`;
+    try {
+      const rows = await withConcurrency(() => fetch(url).then(r => r.ok ? r.json() : null));
+      if (!Array.isArray(rows)) continue;
+
+      const now = Date.now();
+      for (const row of rows) {
+        const ticker = String(row?.symbol || '');
+        const internals = tickerToInternal.get(ticker);
+        if (!internals?.length) continue;
+
+        const price = Number(row?.price ?? 0);
+        if (!Number.isFinite(price) || price <= 0) continue;
+
+        const quote: QuoteCache = {
+          price,
+          change: Number.isFinite(Number(row?.change)) ? Number(row.change) : 0,
+          changePercent: Number.isFinite(Number(row?.changesPercentage)) ? Number(row.changesPercentage) : 0,
+          ts: now,
+        };
+
+        for (const internal of internals) {
+          QUOTE_CACHE.set(internal, quote);
+          out.set(internal, quote);
+        }
+      }
+    } catch {
+      // best-effort fallback
+    }
+  }
+
+  return out;
+}
+
+async function fetchYahooBatchQuotes(symbols: string[]): Promise<Map<string, QuoteCache>> {
+  const out = new Map<string, QuoteCache>();
+  if (symbols.length === 0) return out;
+
+  const yToInternal = new Map<string, string[]>();
+  for (const sym of symbols) {
+    const ySym = YAHOO_QUOTE_MAP[sym] || sym;
+    if (!yToInternal.has(ySym)) yToInternal.set(ySym, []);
+    yToInternal.get(ySym)!.push(sym);
+  }
+
+  const ySymbols = Array.from(yToInternal.keys());
+  const chunkSize = 40;
+  for (let i = 0; i < ySymbols.length; i += chunkSize) {
+    const chunk = ySymbols.slice(i, i + chunkSize);
+    const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(chunk.join(','))}`;
+    try {
+      const res = await withConcurrency(() => fetch(url).then(r => r.ok ? r.json() : null));
+      const rows = res?.quoteResponse?.result;
+      if (!Array.isArray(rows)) continue;
+
+      const now = Date.now();
+      for (const row of rows) {
+        const ySym = String(row?.symbol || '');
+        const internals = yToInternal.get(ySym);
+        if (!internals?.length) continue;
+
+        const price = Number(row?.regularMarketPrice ?? 0);
+        if (!Number.isFinite(price) || price <= 0) continue;
+
+        const quote: QuoteCache = {
+          price,
+          change: Number.isFinite(Number(row?.regularMarketChange)) ? Number(row.regularMarketChange) : 0,
+          changePercent: Number.isFinite(Number(row?.regularMarketChangePercent)) ? Number(row.regularMarketChangePercent) : 0,
+          ts: now,
+        };
+
+        for (const internal of internals) {
+          QUOTE_CACHE.set(internal, quote);
+          out.set(internal, quote);
+        }
+      }
+    } catch {
+      // best-effort fallback
+    }
+  }
+
+  return out;
+}
+
 async function fetchQuote(sym: string): Promise<QuoteCache | null> {
   const now = Date.now();
   const cached = QUOTE_CACHE.get(sym);
@@ -300,7 +402,57 @@ async function fetchSingle(sym: string): Promise<MarketData | null> {
 
 export async function fetchMarketDataBatch(symbols: string[], interval: string = '15m'): Promise<(MarketData | null)[]> {
   if (!symbols || symbols.length === 0) return [];
-  return Promise.all(symbols.map(sym => fetchSingle(sym)));
+
+  const now = Date.now();
+  const quoteMap = new Map<string, QuoteCache>();
+  const missing: string[] = [];
+
+  for (const sym of symbols) {
+    const cached = QUOTE_CACHE.get(sym);
+    if (cached && now - cached.ts < QUOTE_TTL) {
+      quoteMap.set(sym, cached);
+    } else {
+      missing.push(sym);
+    }
+  }
+
+  if (missing.length > 0) {
+    // 1) Prefer a single/few FMP batch calls for stock-like symbols.
+    const fmpBatch = await fetchFmpBatchQuotes(missing);
+    for (const [sym, q] of fmpBatch) quoteMap.set(sym, q);
+
+    const stillMissing = missing.filter((sym) => !quoteMap.has(sym));
+    if (stillMissing.length > 0) {
+      // 2) Yahoo batch quote fallback for anything unresolved.
+      const yahooBatch = await fetchYahooBatchQuotes(stillMissing);
+      for (const [sym, q] of yahooBatch) quoteMap.set(sym, q);
+    }
+
+    const finalMissing = missing.filter((sym) => !quoteMap.has(sym));
+    if (finalMissing.length > 0) {
+      // 3) Last-resort per-symbol fallback chain.
+      const singles = await Promise.all(finalMissing.map((sym) => fetchQuote(sym)));
+      finalMissing.forEach((sym, idx) => {
+        const q = singles[idx];
+        if (q) quoteMap.set(sym, q);
+      });
+    }
+  }
+
+  return symbols.map((sym) => {
+    const quote = quoteMap.get(sym);
+    if (!quote) return null;
+    return {
+      symbol: sym,
+      name: sym,
+      price: quote.price,
+      change: quote.change,
+      changePercent: quote.changePercent,
+      currency: isForex(sym) ? sym.slice(3) : 'USD',
+      marketState: 'REGULAR',
+      history: [],
+    };
+  });
 }
 
 export async function fetchMarketData(symbol: string, interval: string = '15m'): Promise<MarketData | null> {
