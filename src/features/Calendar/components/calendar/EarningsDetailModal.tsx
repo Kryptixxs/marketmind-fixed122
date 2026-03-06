@@ -49,13 +49,8 @@ export function EarningsDetailModal({ event, onClose }: EarningsDetailModalProps
         {/* Header */}
         <div className="panel-header shrink-0 flex justify-between items-center px-6 py-4 h-auto border-b border-border bg-surface-highlight">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded bg-white flex items-center justify-center overflow-hidden p-1 shrink-0 shadow-inner">
-              <img 
-                src={`https://financialmodelingprep.com/image-stock/${event.ticker}.png`}
-                alt={event.ticker}
-                className="w-full h-full object-contain"
-                onError={(el) => el.currentTarget.style.display = 'none'}
-              />
+            <div className="w-12 h-12 rounded bg-accent/15 border border-accent/30 flex items-center justify-center shrink-0 shadow-inner">
+              <span className="text-[11px] font-black text-accent font-mono">{event.ticker.slice(0, 4)}</span>
             </div>
             <div className="flex flex-col">
               <h2 className="text-2xl md:text-3xl font-black text-text-primary leading-tight flex items-center gap-3 tracking-tight">

@@ -27,146 +27,72 @@ export interface OptionsChain {
   fetchedAt: number;
 }
 
-const CACHE = new Map<string, { data: OptionsChain; ts: number }>();
-const CACHE_TTL = 900_000;
+function basePrice(symbol: string): number {
+  const map: Record<string, number> = { AAPL: 205, NVDA: 920, TSLA: 210, SPX500: 5230, NAS100: 18350 };
+  return map[symbol] || 100;
+}
+
+function noise(seed: number): number {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
 
 export async function fetchOptionsExpirations(symbol: string): Promise<string[]> {
-  const apiKey = process.env.TRADIER_API_KEY;
-  if (!apiKey) return generateMockExpirations();
-
-  try {
-    const res = await fetch(
-      `https://sandbox.tradier.com/v1/markets/options/expirations?symbol=${symbol}`,
-      {
-        headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
-        next: { revalidate: 3600 },
-      }
-    );
-    if (!res.ok) return generateMockExpirations();
-    const json = await res.json();
-    return json.expirations?.date || generateMockExpirations();
-  } catch {
-    return generateMockExpirations();
-  }
-}
-
-export async function fetchOptionsChain(symbol: string, expiration?: string): Promise<OptionsChain | null> {
-  const cacheKey = `${symbol}:${expiration || 'nearest'}`;
-  const cached = CACHE.get(cacheKey);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
-
-  const apiKey = process.env.TRADIER_API_KEY;
-  if (!apiKey) return generateMockChain(symbol);
-
-  try {
-    let exp = expiration;
-    if (!exp) {
-      const expirations = await fetchOptionsExpirations(symbol);
-      exp = expirations[0];
-    }
-    if (!exp) return null;
-
-    const [chainRes, quoteRes] = await Promise.all([
-      fetch(
-        `https://sandbox.tradier.com/v1/markets/options/chains?symbol=${symbol}&expiration=${exp}&greeks=true`,
-        {
-          headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
-          next: { revalidate: 900 },
-        }
-      ),
-      fetch(
-        `https://sandbox.tradier.com/v1/markets/quotes?symbols=${symbol}`,
-        {
-          headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
-          next: { revalidate: 60 },
-        }
-      ),
-    ]);
-
-    if (!chainRes.ok) return generateMockChain(symbol);
-
-    const chainJson = await chainRes.json();
-    const quoteJson = await quoteRes.json();
-    const underlyingPrice = quoteJson.quotes?.quote?.last || 0;
-
-    const options = chainJson.options?.option || [];
-    const chain: OptionContract[] = options.map((opt: any) => ({
-      symbol: opt.symbol,
-      strike: opt.strike,
-      expiration: opt.expiration_date,
-      type: opt.option_type === 'call' ? 'call' : 'put',
-      bid: opt.bid || 0,
-      ask: opt.ask || 0,
-      last: opt.last || 0,
-      volume: opt.volume || 0,
-      openInterest: opt.open_interest || 0,
-      impliedVol: opt.greeks?.mid_iv || null,
-      delta: opt.greeks?.delta || null,
-      gamma: opt.greeks?.gamma || null,
-      theta: opt.greeks?.theta || null,
-      vega: opt.greeks?.vega || null,
-      change: opt.change || 0,
-      changePercent: opt.change_percentage || 0,
-    }));
-
-    const expirations = await fetchOptionsExpirations(symbol);
-    const data: OptionsChain = { underlying: symbol, underlyingPrice, expirations, chain, fetchedAt: Date.now() };
-
-    CACHE.set(cacheKey, { data, ts: Date.now() });
-    return data;
-  } catch (e) {
-    console.warn('[Options] Error:', (e as Error).message);
-    return generateMockChain(symbol);
-  }
-}
-
-function generateMockExpirations(): string[] {
-  const dates: string[] = [];
+  const out: string[] = [];
   const now = new Date();
   for (let i = 0; i < 8; i++) {
     const d = new Date(now);
     d.setDate(d.getDate() + (7 * (i + 1)) - d.getDay() + 5);
-    dates.push(d.toISOString().split('T')[0]);
+    out.push(d.toISOString().slice(0, 10));
   }
-  return dates;
+  return out;
 }
 
-function generateMockChain(symbol: string): OptionsChain {
-  const basePrice = symbol === 'AAPL' ? 195 : symbol === 'NVDA' ? 140 : symbol === 'TSLA' ? 250 : 100;
+export async function fetchOptionsChain(symbol: string, expiration?: string): Promise<OptionsChain | null> {
+  const underlying = symbol.toUpperCase();
+  const spot = basePrice(underlying);
+  const expirations = await fetchOptionsExpirations(underlying);
+  const exp = expiration || expirations[0];
+  if (!exp) return null;
+
+  const strikes = Array.from({ length: 13 }, (_, i) => Number((spot * (0.88 + i * 0.02)).toFixed(2)));
   const chain: OptionContract[] = [];
-  const strikes = Array.from({ length: 11 }, (_, i) => Math.round(basePrice * (0.9 + i * 0.02)));
-  const exp = generateMockExpirations()[0];
 
   for (const strike of strikes) {
     for (const type of ['call', 'put'] as const) {
-      const itm = type === 'call' ? basePrice > strike : basePrice < strike;
-      const intrinsic = type === 'call' ? Math.max(basePrice - strike, 0) : Math.max(strike - basePrice, 0);
-      const timeValue = basePrice * 0.02 * Math.random();
-      const premium = intrinsic + timeValue;
+      const seed = strike + (type === 'call' ? 1 : 2);
+      const intrinsic = type === 'call' ? Math.max(spot - strike, 0) : Math.max(strike - spot, 0);
+      const tv = Math.max(spot * 0.015 * (0.6 + noise(seed) * 0.8), 0.05);
+      const premium = intrinsic + tv;
+      const spread = Math.max(premium * 0.02, 0.05);
+      const deltaBase = Math.max(0.05, Math.min(0.95, 0.5 + (spot - strike) / (spot * 0.3)));
+      const delta = type === 'call' ? deltaBase : -deltaBase;
 
       chain.push({
-        symbol: `${symbol}${exp.replace(/-/g, '')}${type === 'call' ? 'C' : 'P'}${strike}`,
-        strike, expiration: exp, type,
-        bid: Math.max(premium - 0.05, 0.01),
-        ask: premium + 0.05,
-        last: premium,
-        volume: Math.floor(Math.random() * 5000),
-        openInterest: Math.floor(Math.random() * 20000),
-        impliedVol: 0.2 + Math.random() * 0.3,
-        delta: type === 'call' ? (itm ? 0.5 + Math.random() * 0.4 : Math.random() * 0.5) : -(itm ? 0.5 + Math.random() * 0.4 : Math.random() * 0.5),
-        gamma: 0.01 + Math.random() * 0.05,
-        theta: -(0.01 + Math.random() * 0.05),
-        vega: 0.05 + Math.random() * 0.15,
-        change: (Math.random() - 0.5) * 2,
-        changePercent: (Math.random() - 0.5) * 10,
+        symbol: `${underlying}${exp.replace(/-/g, '')}${type === 'call' ? 'C' : 'P'}${Math.round(strike * 1000)}`,
+        strike,
+        expiration: exp,
+        type,
+        bid: Number(Math.max(premium - spread / 2, 0.01).toFixed(2)),
+        ask: Number((premium + spread / 2).toFixed(2)),
+        last: Number(premium.toFixed(2)),
+        volume: Math.floor(100 + noise(seed * 3) * 4800),
+        openInterest: Math.floor(300 + noise(seed * 7) * 18000),
+        impliedVol: Number((0.18 + noise(seed * 11) * 0.34).toFixed(3)),
+        delta: Number(delta.toFixed(3)),
+        gamma: Number((0.01 + noise(seed * 13) * 0.04).toFixed(3)),
+        theta: Number((-0.01 - noise(seed * 17) * 0.04).toFixed(3)),
+        vega: Number((0.04 + noise(seed * 19) * 0.14).toFixed(3)),
+        change: Number(((noise(seed * 23) - 0.5) * 1.5).toFixed(2)),
+        changePercent: Number(((noise(seed * 29) - 0.5) * 8).toFixed(2)),
       });
     }
   }
 
   return {
-    underlying: symbol,
-    underlyingPrice: basePrice,
-    expirations: generateMockExpirations(),
+    underlying,
+    underlyingPrice: spot,
+    expirations,
     chain,
     fetchedAt: Date.now(),
   };

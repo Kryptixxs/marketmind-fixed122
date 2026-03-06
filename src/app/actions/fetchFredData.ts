@@ -9,70 +9,38 @@ export interface FredSeries {
   frequency: string;
 }
 
-const FRED_SERIES: Record<string, { title: string; units: string }> = {
-  'GDP': { title: 'Real GDP', units: '%' },
-  'CPIAUCSL': { title: 'CPI (All Urban)', units: 'Index' },
-  'UNRATE': { title: 'Unemployment Rate', units: '%' },
-  'FEDFUNDS': { title: 'Fed Funds Rate', units: '%' },
-  'DGS10': { title: '10-Year Treasury', units: '%' },
-  'DGS2': { title: '2-Year Treasury', units: '%' },
-  'T10Y2Y': { title: '10Y-2Y Spread', units: '%' },
-  'DEXUSEU': { title: 'USD/EUR', units: 'Rate' },
-  'BAMLH0A0HYM2': { title: 'HY OAS Spread', units: 'bps' },
-  'UMCSENT': { title: 'Consumer Sentiment', units: 'Index' },
-  'PAYEMS': { title: 'Nonfarm Payrolls', units: 'Thousands' },
-  'PCEPI': { title: 'PCE Price Index', units: 'Index' },
-  'M2SL': { title: 'M2 Money Supply', units: 'Billions' },
-  'WALCL': { title: 'Fed Balance Sheet', units: 'Millions' },
+const SERIES: Record<string, { title: string; units: string; base: number }> = {
+  FEDFUNDS: { title: 'Fed Funds Rate', units: '%', base: 5.25 },
+  DGS10: { title: '10-Year Treasury', units: '%', base: 4.23 },
+  DGS2: { title: '2-Year Treasury', units: '%', base: 4.61 },
+  T10Y2Y: { title: '10Y-2Y Spread', units: '%', base: -0.38 },
+  UNRATE: { title: 'Unemployment Rate', units: '%', base: 3.9 },
+  CPIAUCSL: { title: 'CPI (All Urban)', units: 'Index', base: 313.2 },
+  UMCSENT: { title: 'Consumer Sentiment', units: 'Index', base: 78.4 },
+  BAMLH0A0HYM2: { title: 'HY OAS Spread', units: 'bps', base: 364 },
 };
 
-const CACHE = new Map<string, { data: FredSeries; ts: number }>();
-const CACHE_TTL = 3600_000;
+function mockValue(id: string): number {
+  const base = SERIES[id]?.base ?? 100;
+  const t = Date.now() / 1000;
+  const seed = id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
+  return Number((base * (1 + Math.sin(t / 12000 + seed) * 0.01)).toFixed(2));
+}
 
 export async function fetchFredSeries(seriesId: string): Promise<FredSeries | null> {
-  const cached = CACHE.get(seriesId);
-  if (cached && Date.now() - cached.ts < CACHE_TTL) return cached.data;
-
-  const apiKey = process.env.FRED_API_KEY;
-  if (!apiKey) {
-    return {
-      id: seriesId,
-      title: FRED_SERIES[seriesId]?.title || seriesId,
-      value: null,
-      date: '',
-      units: FRED_SERIES[seriesId]?.units || '',
-      frequency: '',
-    };
-  }
-
-  try {
-    const url = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${apiKey}&file_type=json&sort_order=desc&limit=1`;
-    const res = await fetch(url, { next: { revalidate: 3600 } });
-    if (!res.ok) return null;
-
-    const json = await res.json();
-    const obs = json.observations?.[0];
-    if (!obs) return null;
-
-    const data: FredSeries = {
-      id: seriesId,
-      title: FRED_SERIES[seriesId]?.title || seriesId,
-      value: obs.value !== '.' ? parseFloat(obs.value) : null,
-      date: obs.date,
-      units: FRED_SERIES[seriesId]?.units || '',
-      frequency: json.frequency || '',
-    };
-
-    CACHE.set(seriesId, { data, ts: Date.now() });
-    return data;
-  } catch (e) {
-    console.warn(`[FRED] Error fetching ${seriesId}:`, (e as Error).message);
-    return null;
-  }
+  const id = seriesId.toUpperCase();
+  return {
+    id,
+    title: SERIES[id]?.title || id,
+    value: mockValue(id),
+    date: new Date().toISOString().slice(0, 10),
+    units: SERIES[id]?.units || '',
+    frequency: 'Daily',
+  };
 }
 
 export async function fetchFredDashboard(): Promise<FredSeries[]> {
-  const seriesIds = ['FEDFUNDS', 'DGS10', 'DGS2', 'T10Y2Y', 'UNRATE', 'CPIAUCSL', 'UMCSENT', 'BAMLH0A0HYM2'];
-  const results = await Promise.all(seriesIds.map(id => fetchFredSeries(id)));
-  return results.filter(Boolean) as FredSeries[];
+  const ids = Object.keys(SERIES);
+  const rows = await Promise.all(ids.map((id) => fetchFredSeries(id)));
+  return rows.filter(Boolean) as FredSeries[];
 }

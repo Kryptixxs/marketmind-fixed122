@@ -1,52 +1,30 @@
-import { GoogleGenAI, Type } from '@google/genai';
-import { unstable_cache } from 'next/cache';
+'use server';
 
-async function executeDashboardFetch() {
-  const fallback = { stocks: [], crypto: [], economicEvents: [], earnings: [] };
-  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || process.env.GEMINI_API_KEY;
-  if (!apiKey) return fallback;
-
-  try {
-    const ai = new GoogleGenAI({ apiKey });
-    
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
-      contents: `You are a financial data API. Fetch the latest real-time data for the following:
-1. Current stock prices, daily change amount, and daily change percentage for AAPL, MSFT, SPY, QQQ.
-2. Current crypto prices, daily change amount, and daily change percentage for BTC, ETH, SOL.
-3. The top 5 most important economic events happening this week (include date, time, event name, impact level, and forecast).
-4. The top 5 major company earnings reports happening this week (include date, company name, symbol, and estimated EPS).
-
-Return the data strictly as a JSON object matching this schema.`,
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            stocks: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { symbol: { type: Type.STRING }, price: { type: Type.NUMBER }, change: { type: Type.NUMBER }, changePercent: { type: Type.NUMBER } }, required: ["symbol", "price", "change", "changePercent"] } },
-            crypto: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { symbol: { type: Type.STRING }, price: { type: Type.NUMBER }, change: { type: Type.NUMBER }, changePercent: { type: Type.NUMBER } }, required: ["symbol", "price", "change", "changePercent"] } },
-            economicEvents: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { date: { type: Type.STRING }, time: { type: Type.STRING }, title: { type: Type.STRING }, impact: { type: Type.STRING }, forecast: { type: Type.STRING } }, required: ["date", "time", "title", "impact", "forecast"] } },
-            earnings: { type: Type.ARRAY, items: { type: Type.OBJECT, properties: { date: { type: Type.STRING }, company: { type: Type.STRING }, symbol: { type: Type.STRING }, epsEstimate: { type: Type.STRING } }, required: ["date", "company", "symbol", "epsEstimate"] } }
-          },
-          required: ["stocks", "crypto", "economicEvents", "earnings"]
-        }
-      }
-    });
-
-    return JSON.parse(response.text || '{}');
-  } catch (error) {
-    console.error("Error fetching data from Gemini:", error);
-    return fallback;
-  }
-}
+import { makePrototypeEconomicEvents, makePrototypeEarnings, makeSimQuote } from '@/lib/prototype-data';
 
 export async function fetchDashboardData() {
-  // Cache for 1 hour
-  const getCached = unstable_cache(
-    async () => executeDashboardFetch(),
-    ['dashboard-global-data-v1'],
-    { revalidate: 3600 }
-  );
-  return getCached();
+  const today = new Date().toISOString().slice(0, 10);
+  return {
+    stocks: ['AAPL', 'MSFT', 'SPX500', 'NAS100'].map((s) => {
+      const q = makeSimQuote(s);
+      return { symbol: s, price: q.price, change: q.change, changePercent: q.changePercent };
+    }),
+    crypto: ['BTCUSD', 'ETHUSD', 'SOLUSD'].map((s) => {
+      const q = makeSimQuote(s);
+      return { symbol: s, price: q.price, change: q.change, changePercent: q.changePercent };
+    }),
+    economicEvents: makePrototypeEconomicEvents(today).slice(0, 5).map((e) => ({
+      date: e.date,
+      time: e.time,
+      title: e.title,
+      impact: e.impact,
+      forecast: e.forecast || 'N/A',
+    })),
+    earnings: makePrototypeEarnings(today).slice(0, 5).map((e) => ({
+      date: e.date,
+      company: e.name,
+      symbol: e.ticker,
+      epsEstimate: e.epsEst?.toFixed(2) || 'N/A',
+    })),
+  };
 }

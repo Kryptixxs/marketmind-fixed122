@@ -1,35 +1,15 @@
 'use server';
 
-import { generateAIJSON } from "@/lib/ai-utils";
-import { fetchNews } from "./fetchNews";
-
 export async function analyzeMacroRegime(activeSymbol: string, price: number) {
-  // Fetch real news for context
-  const news = await fetchNews('General');
-  const newsContext = news.slice(0, 10).map(n => n.title).join('\n');
+  const score = Math.max(25, Math.min(82, Math.round((Math.sin(price / 17) + 1) * 28 + 24)));
+  const bias = score > 58 ? 'Bullish' : score < 42 ? 'Bearish' : 'Neutral';
 
-  const prompt = `You are a senior macro strategist. Analyze the current market regime for ${activeSymbol} trading at $${price}.
-    
-    Contextual Headlines:
-    ${newsContext}
-    
-    Provide a JSON response with:
-    - narrative: Current dominant narrative (e.g., "Disinflationary", "Hawkish Pressure").
-    - stance: Central Bank stance relative to this asset.
-    - regime: Current volatility regime (e.g., "Mean Reverting", "Trending").
-    - bias: Directional bias (Bullish/Bearish/Neutral).
-    - score: Sentiment score from 0-100.
-    - insight: A 1-sentence high-conviction insight for ${activeSymbol}.`;
-
-  const fallback = {
-    narrative: "Consolidation",
-    stance: "Neutral",
-    regime: "Mean Reverting",
-    bias: "Neutral",
-    score: 50,
-    insight: "Awaiting further macroeconomic clarity."
+  return {
+    narrative: score > 60 ? 'Risk-On Rotation' : score < 40 ? 'Defensive Rotation' : 'Range Consolidation',
+    stance: score > 60 ? 'Mildly Dovish' : score < 40 ? 'Mildly Hawkish' : 'Neutral',
+    regime: score > 60 ? 'Trending' : score < 40 ? 'Distribution' : 'Mean Reverting',
+    bias,
+    score,
+    insight: `${activeSymbol} is running in prototype mode; maintain tactical sizing and react to level breaks.`,
   };
-
-  // Cache globally for 1 hour based on the symbol
-  return await generateAIJSON(prompt, fallback, `macro-regime-v1-${activeSymbol}`, 3600);
 }

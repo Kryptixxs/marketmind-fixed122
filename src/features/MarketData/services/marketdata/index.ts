@@ -1,20 +1,12 @@
 import { MarketDataProvider } from './types';
-import { HybridProvider } from './providers/hybrid';
 import { YahooPollingProvider } from './providers/yahoo-polling';
 
 let globalProvider: MarketDataProvider | null = null;
 
 export function getProvider(): MarketDataProvider {
   if (!globalProvider) {
-    const finnhubKey = typeof window !== 'undefined'
-      ? (process.env.NEXT_PUBLIC_FINNHUB_API_KEY || '')
-      : '';
-
-    if (finnhubKey) {
-      globalProvider = new HybridProvider(finnhubKey);
-    } else {
-      globalProvider = new HybridProvider();
-    }
+    // Prototype mode uses a local deterministic polling source only.
+    globalProvider = new YahooPollingProvider(1500);
   }
   return globalProvider;
 }
