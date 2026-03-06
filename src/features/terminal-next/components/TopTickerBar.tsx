@@ -77,3 +77,5 @@ export default function TopTickerBar() {
     </>
   );
 }
+
+export { TopTickerBar };

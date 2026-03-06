@@ -101,3 +101,4 @@ export default function FeedPanel() {
     </div>
   );
 }
+export { FeedPanel };

@@ -121,3 +121,4 @@ export default function RightRailPanel() {
     </div>
   );
 }
+export { RightRailPanel };

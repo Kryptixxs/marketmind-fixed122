@@ -125,3 +125,4 @@ export default function MonitorPanel() {
     </div>
   );
 }
+export { MonitorPanel };

@@ -161,3 +161,4 @@ export default function AnalyticsPanel() {
     </div>
   );
 }
+export { AnalyticsPanel };

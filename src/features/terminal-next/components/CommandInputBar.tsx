@@ -71,3 +71,4 @@ export default function CommandInputBar() {
     </div>
   );
 }
+export { CommandInputBar };

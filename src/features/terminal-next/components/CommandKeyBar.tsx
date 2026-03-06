@@ -72,3 +72,4 @@ export default function CommandKeyBar() {
     </div>
   );
 }
+export { CommandKeyBar };
