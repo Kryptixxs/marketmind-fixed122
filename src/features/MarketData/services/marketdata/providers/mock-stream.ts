@@ -29,7 +29,6 @@ export class MockStreamingProvider extends BaseProvider {
   }
 
   protected onSubscribe(symbols: string[]) {
-    // Fetch REAL market data immediately on subscription
     this.syncRealData(symbols);
   }
 
@@ -44,7 +43,6 @@ export class MockStreamingProvider extends BaseProvider {
       
       results.forEach(res => {
         if (res && res.price) {
-          // Lock onto the real Yahoo Finance data
           this.basePrices[res.symbol] = res.price;
           this.trueData[res.symbol] = { 
             change: res.change, 
@@ -54,10 +52,13 @@ export class MockStreamingProvider extends BaseProvider {
           };
           
           if (res.history && res.history.length > 0) {
-             this.histories[res.symbol] = [...res.history];
+             // Ensure we have some volume even if the API returns 0
+             this.histories[res.symbol] = res.history.map(h => ({
+               ...h,
+               volume: h.volume || Math.floor(Math.random() * 5000) + 1000
+             }));
           }
 
-          // Emit the real data point immediately
           this.emitTick({
             symbol: res.symbol,
             price: res.price,
@@ -77,7 +78,6 @@ export class MockStreamingProvider extends BaseProvider {
 
   private startStream() {
     if (this.intervalId) clearInterval(this.intervalId);
-    // High frequency ticks for terminal aesthetic
     this.intervalId = setInterval(() => this.tick(), 400); 
   }
 
@@ -91,27 +91,36 @@ export class MockStreamingProvider extends BaseProvider {
   private tick() {
     if (!this.isConnected || this.symbols.size === 0) return;
 
-    // Pick random symbols to "vibrate"
     const syms = Array.from(this.symbols);
     const toUpdate = syms.sort(() => 0.5 - Math.random()).slice(0, Math.max(1, Math.floor(Math.random() * 5)));
 
     toUpdate.forEach(sym => {
-      // Use base price if available, otherwise use a deterministic starting point
       if (this.basePrices[sym] === undefined) {
         this.basePrices[sym] = sym.length * 50;
         this.trueData[sym] = { change: 0, changePercent: 0, marketState: 'REGULAR' };
       }
 
+      // Increased volatility for a more "active" look
       const base = this.basePrices[sym];
-      const volatility = base * 0.0001; 
+      const volatility = base * 0.0003; 
       const move = (Math.random() - 0.5) * volatility;
       const newPrice = base + move;
       
-      // Update local state so the next tick starts from here
       this.basePrices[sym] = newPrice;
 
       const trueInfo = this.trueData[sym];
       const hist = this.histories[sym];
+
+      // Update the last candle in history with the new live price
+      if (hist && hist.length > 0) {
+        const lastIdx = hist.length - 1;
+        const lastCandle = { ...hist[lastIdx] };
+        lastCandle.close = newPrice;
+        lastCandle.high = Math.max(lastCandle.high, newPrice);
+        lastCandle.low = Math.min(lastCandle.low, newPrice);
+        lastCandle.volume += Math.floor(Math.random() * 100);
+        hist[lastIdx] = lastCandle;
+      }
 
       this.emitTick({
         symbol: sym,

@@ -299,7 +299,11 @@ export default function ChartsPage() {
 
         <div className="flex-1 bg-black relative min-h-[400px] md:min-h-0 flex flex-col border-b md:border-b-0 md:border-r border-border">
           {chartData.length > 0 ? (
-             <TradingChart data={chartData} symbol={activeSymbol} />
+             <TradingChart 
+               key={`${activeSymbol}-${timeframe.yf}`} 
+               data={chartData} 
+               symbol={activeSymbol} 
+             />
           ) : (
              <div className="flex-1 flex flex-col items-center justify-center gap-4 opacity-50">
                 <Loader2 size={32} className="animate-spin text-accent" />
