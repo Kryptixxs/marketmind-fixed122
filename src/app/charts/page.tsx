@@ -57,7 +57,6 @@ export default function ChartsPage() {
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   
-  // Heartbeat state for live updates
   const [lastTickTime, setLastTickTime] = useState<number>(0);
 
   useEffect(() => {
@@ -90,7 +89,6 @@ export default function ChartsPage() {
   const activeQuote = marketData[activeSymbol];
   const loading = Object.keys(marketData).length === 0 && !streamError;
 
-  // Update heartbeat when active quote changes
   useEffect(() => {
     if (activeQuote) {
       setLastTickTime(Date.now());
@@ -163,13 +161,11 @@ export default function ChartsPage() {
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden min-h-0">
-      {/* --- ENHANCED TOOLBAR --- */}
       <div className="h-12 border-b border-border bg-surface flex items-center px-4 justify-between shrink-0 z-20">
         <div className="flex items-center gap-4 flex-1 min-w-0">
-          {/* Symbol Selector */}
           <div className="relative shrink-0">
             <div
-              className="flex items-center gap-3 bg-background border border-border hover:border-accent/50 px-3 py-1.5 rounded-sm transition-all group"
+              className="flex items-center gap-3 bg-background border border-border hover:border-accent/50 px-3 py-1.5 rounded-sm transition-all group cursor-pointer"
               onClick={() => setIsSearchOpen(true)}
             >
               <div className="flex flex-col">
@@ -222,7 +218,6 @@ export default function ChartsPage() {
 
           <div className="h-6 w-[1px] bg-border shrink-0 mx-2" />
 
-          {/* TIMEFRAME SELECTOR - High Visibility */}
           <div className="flex items-center p-1 bg-background border border-border rounded-sm gap-0.5">
             {TIMEFRAMES.map(tf => (
               <button
@@ -251,7 +246,6 @@ export default function ChartsPage() {
       </div>
 
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
-        {/* Watchlist Sidebar */}
         <div className="w-full md:w-60 border-b md:border-b-0 md:border-r border-border bg-surface flex flex-col shrink-0 h-[200px] md:h-full">
           <div className="p-3 border-b border-border flex items-center justify-between shrink-0 bg-surface-highlight">
             <div className="flex items-center gap-2">
@@ -275,7 +269,7 @@ export default function ChartsPage() {
                     ${activeSymbol === sym ? 'bg-accent/5 border-l-2 border-l-accent' : 'hover:bg-white/5 border-l-2 border-l-transparent'}`}
                 >
                   <div className="flex flex-col">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       <span className="text-xs font-black text-text-primary tracking-tight">{sym}</span>
                       <button onClick={(e) => handleRemoveSymbol(e, sym)} className="opacity-0 group-hover:opacity-100 p-0.5 text-text-tertiary hover:text-negative transition-opacity">
                         <X size={12} />
@@ -303,7 +297,6 @@ export default function ChartsPage() {
           </div>
         </div>
 
-        {/* Main Chart Area */}
         <div className="flex-1 bg-black relative min-h-[400px] md:min-h-0 flex flex-col border-b md:border-b-0 md:border-r border-border">
           {chartData.length > 0 ? (
              <TradingChart data={chartData} symbol={activeSymbol} />
@@ -335,11 +328,9 @@ export default function ChartsPage() {
           </div>
         </div>
 
-        {/* Analysis Panel */}
         <div className="w-full md:w-80 bg-surface flex flex-col shrink-0 h-auto min-h-[400px] md:h-full">
           <TradeSetupPanel tick={activeQuote} timeframeLabel={timeframe.label} />
         </div>
-
       </div>
     </div>
   );

@@ -31,34 +31,45 @@ export function TradingChart({
       autoSize: true,
       layout: {
         background: { type: ColorType.Solid, color: '#050505' },
-        textColor: '#a1a1aa',
+        textColor: '#888888',
+        fontFamily: 'JetBrains Mono, monospace',
       },
       grid: {
-        vertLines: { color: 'rgba(39, 39, 42, 0.1)' },
-        horzLines: { color: 'rgba(39, 39, 42, 0.1)' },
+        vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
+        horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { width: 1, color: '#52525b', style: 3, labelBackgroundColor: '#18181b' },
-        horzLine: { width: 1, color: '#52525b', style: 3, labelBackgroundColor: '#18181b' },
+        vertLine: { width: 1, color: '#444444', style: 3, labelBackgroundColor: '#121212' },
+        horzLine: { width: 1, color: '#444444', style: 3, labelBackgroundColor: '#121212' },
       },
       rightPriceScale: { 
-        borderColor: 'rgba(39, 39, 42, 0.8)',
+        borderColor: '#1a1a1a',
         autoScale: true,
+        alignLabels: true,
       },
       timeScale: { 
-        borderColor: 'rgba(39, 39, 42, 0.8)', 
+        borderColor: '#1a1a1a', 
         timeVisible: true, 
-        secondsVisible: false 
+        secondsVisible: false,
+        barSpacing: 10,
       },
     });
 
+    // --- HOLO CANDLE STYLING ---
     const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#ffffff',
+      // Bullish (Up) - Hollow
+      upColor: 'transparent', 
+      borderUpColor: '#00ff9d',
+      wickUpColor: '#00ff9d',
+      
+      // Bearish (Down) - Solid
       downColor: '#ff3333',
-      borderVisible: false,
-      wickUpColor: '#ffffff',
+      borderDownColor: '#ff3333',
       wickDownColor: '#ff3333',
+      
+      borderVisible: true,
+      wickVisible: true,
     });
 
     chartRef.current = chart;
@@ -69,11 +80,9 @@ export function TradingChart({
     };
   }, []);
 
-  // Optimized Data Update Logic
   useEffect(() => {
     if (!seriesRef.current || !data || data.length === 0) return;
 
-    // Sort and unique check
     const sorted = [...data].sort((a, b) => a.time - b.time);
     const unique: ChartData[] = [];
     for (const d of sorted) {
@@ -82,14 +91,14 @@ export function TradingChart({
       }
     }
 
+    if (unique.length === 0) return;
+
     const lastUnique = unique[unique.length - 1];
     const prevUnique = lastDataRef.current[lastDataRef.current.length - 1];
 
-    // If only the last candle changed (or a new one was added), use .update() for performance
     if (prevUnique && lastUnique.time >= prevUnique.time && unique.length === lastDataRef.current.length) {
       seriesRef.current.update(lastUnique);
     } else {
-      // Full reload for symbol changes or large gaps
       seriesRef.current.setData(unique);
     }
 
