@@ -1,16 +1,21 @@
 'use client';
 
-import React, { createContext, useContext, useRef, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useRef, useEffect } from 'react';
 import { create } from 'zustand';
 import { SimulationEngine } from '../services/simulator';
 import { parseCommand } from '../services/commandParser';
 import type {
-  TerminalState, TickBatch, Quote, Bar, TapePrint, Order, Position,
-  Alert, FeedItem, RiskMetrics, DepthSnapshot, RegimeState,
+  TerminalState, TickBatch, Quote, Bar, Order, Position,
+  FeedItem, RiskMetrics, RegimeState,
 } from '../types';
 import { INSTRUMENTS } from '../types';
 
-// ── Risk Selectors (pure functions) ──────────────────────────────────
+// ── Return History (bounded ring buffer for risk calcs) ──────────────
+const RETURN_HISTORY_MAX = 200;
+let returnHistory: number[] = [];
+let prevPortfolioValue = 0;
+
+// ── Risk Selectors (pure functions, no side effects) ─────────────────
 function computeRisk(
   positions: Record<string, Position>,
   quotes: Record<string, Quote>,
@@ -22,9 +27,10 @@ function computeRisk(
 
   for (const p of posArr) {
     const q = quotes[p.symbol];
-    const mv = Math.abs(p.qty * (q?.last || p.avgCost));
+    const px = q?.last || p.avgCost;
+    const mv = Math.abs(p.qty) * px;
     gross += mv;
-    net += p.qty * (q?.last || p.avgCost);
+    net += p.qty * px;
     totalMv += mv;
   }
 
@@ -40,9 +46,18 @@ function computeRisk(
   const variance = n > 1 ? returns.reduce((a, r) => a + (r - mean) ** 2, 0) / (n - 1) : 0;
   const realizedVol = Math.sqrt(variance) * Math.sqrt(252);
   const sharpe = realizedVol > 0 ? (mean * 252) / realizedVol : 0;
-  const var95 = gross * realizedVol * 1.645 / Math.sqrt(252);
+  const var95 = gross > 0 ? gross * realizedVol * 1.645 / Math.sqrt(252) : 0;
 
   const momentum = n >= 5 ? returns.slice(-5).reduce((a, b) => a + b, 0) : 0;
+
+  // Liquidity score derived from regime vol (higher vol = lower liquidity)
+  const liqRaw = 1.0 - Math.min(regime.volBps / 25, 1.0);
+  const liquidityScore = Math.max(0.1, liqRaw);
+
+  // Benchmark correlation proxy from momentum direction consistency
+  const benchCorr = n >= 10
+    ? returns.slice(-10).filter(r => r > 0).length / 10
+    : 0.5;
 
   return {
     grossExposure: gross,
@@ -53,9 +68,9 @@ function computeRisk(
     sharpeProxy: sharpe,
     concentration,
     momentumScore: momentum * 10000,
-    liquidityScore: 0.7 + Math.random() * 0.3,
+    liquidityScore,
     regimeLabel: regime.current,
-    benchmarkCorrelation: 0.6 + Math.random() * 0.3,
+    benchmarkCorrelation: Math.abs(benchCorr * 2 - 1),
   };
 }
 
@@ -64,14 +79,12 @@ interface TerminalActions {
   applyTick: (batch: TickBatch) => void;
   setActiveSymbol: (symbol: string) => void;
   addFeedItem: (item: FeedItem) => void;
-  executeCommand: (input: string) => void;
-  addOrder: (order: Order) => void;
-  updatePosition: (fill: Order) => void;
+  executeCommand: (input: string, engine: SimulationEngine) => void;
   setRunning: (running: boolean) => void;
   toggleRunning: () => void;
 }
 
-type TerminalStore = TerminalState & TerminalActions;
+type TerminalStoreType = TerminalState & TerminalActions;
 
 const initialQuotes: Record<string, Quote> = {};
 for (const inst of INSTRUMENTS) {
@@ -87,7 +100,7 @@ const TAPE_MAX = 100;
 const FEED_MAX = 200;
 const ALERT_MAX = 50;
 
-const useTerminalStore = create<TerminalStore>((set, get) => ({
+const useTerminalStore = create<TerminalStoreType>((set, get) => ({
   clock: { tickId: 0, epochMs: Date.now(), cadenceMs: 800 },
   running: false,
   activeSymbol: 'AAPL',
@@ -104,7 +117,7 @@ const useTerminalStore = create<TerminalStore>((set, get) => ({
   risk: {
     grossExposure: 0, netExposure: 0, realizedVol: 0, impliedVolProxy: 0,
     intradayVaR: 0, sharpeProxy: 0, concentration: 0, momentumScore: 0,
-    liquidityScore: 0.8, regimeLabel: 'mean-revert', benchmarkCorrelation: 0.7,
+    liquidityScore: 0.8, regimeLabel: 'mean-revert', benchmarkCorrelation: 0.5,
   },
   commandLog: [],
   functionContext: 'COCKPIT',
@@ -115,9 +128,10 @@ const useTerminalStore = create<TerminalStore>((set, get) => ({
       newQuotes[q.symbol] = q;
     }
 
+    // Bars: route each bar to its own symbol bucket
     const newBars = { ...state.bars };
     for (const bar of batch.bars) {
-      const sym = state.activeSymbol;
+      const sym = bar.symbol;
       if (!newBars[sym]) newBars[sym] = [];
       newBars[sym] = [...newBars[sym].slice(-500), bar];
     }
@@ -140,7 +154,6 @@ const useTerminalStore = create<TerminalStore>((set, get) => ({
         newOrders.push(fill);
       }
 
-      // Update position
       const pos = newPositions[fill.symbol] || {
         symbol: fill.symbol, qty: 0, avgCost: 0,
         marketValue: 0, unrealizedPnl: 0, realizedPnl: 0, side: 'FLAT' as const,
@@ -149,10 +162,9 @@ const useTerminalStore = create<TerminalStore>((set, get) => ({
       const sign = fill.side === 'BUY' ? 1 : -1;
       const fillQty = fill.filledQty * sign;
       const newQty = pos.qty + fillQty;
-      const cost = fill.avgFillPx * Math.abs(fillQty);
 
       if (Math.sign(pos.qty) === Math.sign(fillQty) || pos.qty === 0) {
-        const totalCost = pos.avgCost * Math.abs(pos.qty) + cost;
+        const totalCost = pos.avgCost * Math.abs(pos.qty) + fill.avgFillPx * Math.abs(fillQty);
         pos.avgCost = Math.abs(newQty) > 0 ? totalCost / Math.abs(newQty) : 0;
       } else {
         const closedQty = Math.min(Math.abs(pos.qty), Math.abs(fillQty));
@@ -161,23 +173,46 @@ const useTerminalStore = create<TerminalStore>((set, get) => ({
 
       pos.qty = newQty;
       pos.side = newQty > 0 ? 'LONG' : newQty < 0 ? 'SHORT' : 'FLAT';
-      const mktPx = newQuotes[fill.symbol]?.last || fill.avgFillPx;
-      pos.marketValue = Math.abs(pos.qty) * mktPx;
-      pos.unrealizedPnl = pos.qty * (mktPx - pos.avgCost);
+
+      // Execution feed entry
+      newFeed.push({
+        id: `FILL-${fill.id}`,
+        type: 'execution',
+        message: `${fill.status} ${fill.side} ${fill.filledQty}/${fill.qty} ${fill.symbol} @ ${fill.avgFillPx.toFixed(2)}`,
+        symbol: fill.symbol,
+        epochMs: batch.clock.epochMs,
+        tickId: batch.clock.tickId,
+      });
+
       newPositions[fill.symbol] = pos;
     }
 
     newOrders = newOrders.slice(-100);
 
-    // Update unrealized PnL for all positions
+    // Mark-to-market all positions
+    let portfolioValue = 0;
     for (const sym of Object.keys(newPositions)) {
       const p = newPositions[sym];
       const q = newQuotes[sym];
       if (q && p.qty !== 0) {
         p.marketValue = Math.abs(p.qty) * q.last;
         p.unrealizedPnl = p.qty * (q.last - p.avgCost);
+        portfolioValue += p.marketValue;
       }
     }
+
+    // Track portfolio returns for risk calculation
+    if (prevPortfolioValue > 0 && portfolioValue > 0) {
+      const ret = (portfolioValue - prevPortfolioValue) / prevPortfolioValue;
+      returnHistory.push(ret);
+      if (returnHistory.length > RETURN_HISTORY_MAX) {
+        returnHistory = returnHistory.slice(-RETURN_HISTORY_MAX);
+      }
+    }
+    prevPortfolioValue = portfolioValue;
+
+    // Compute risk metrics from real positions
+    const risk = computeRisk(newPositions, newQuotes, batch.regime, returnHistory);
 
     return {
       clock: batch.clock,
@@ -186,10 +221,11 @@ const useTerminalStore = create<TerminalStore>((set, get) => ({
       depth: newDepth,
       tape: newTape,
       alerts: newAlerts,
-      feed: newFeed,
+      feed: newFeed.slice(-FEED_MAX),
       orders: newOrders,
       positions: newPositions,
       regime: batch.regime,
+      risk,
     };
   }),
 
@@ -199,7 +235,7 @@ const useTerminalStore = create<TerminalStore>((set, get) => ({
     feed: [...state.feed, item].slice(-FEED_MAX),
   })),
 
-  executeCommand: (input: string) => {
+  executeCommand: (input: string, engine: SimulationEngine) => {
     const result = parseCommand(input);
     const state = get();
     const now = Date.now();
@@ -220,13 +256,35 @@ const useTerminalStore = create<TerminalStore>((set, get) => ({
     if (result.type === 'NAV' && result.payload?.symbol) {
       set({ activeSymbol: result.payload.symbol as string });
     }
+
+    // Wire EXEC commands to the simulation engine
+    if (result.type === 'EXEC' && result.payload?.action === 'order') {
+      const p = result.payload;
+      const order = engine.submitOrder({
+        symbol: p.symbol as string,
+        side: p.side as 'BUY' | 'SELL',
+        type: p.orderType as 'MKT' | 'LMT',
+        qty: p.qty as number,
+        price: p.price as number,
+      });
+
+      set(s => ({
+        orders: [...s.orders, order],
+        feed: [...s.feed, {
+          id: `SUBMIT-${order.id}`,
+          type: 'execution' as const,
+          message: `SUBMITTED ${order.side} ${order.qty} ${order.symbol} ${order.type}${order.type === 'LMT' ? ` @ ${order.price}` : ''}`,
+          symbol: order.symbol,
+          epochMs: now,
+          tickId: state.clock.tickId,
+        }].slice(-FEED_MAX),
+      }));
+    }
+
+    if (result.type === 'EXEC' && result.payload?.action === 'cancel') {
+      // Cancel handled by engine on next tick
+    }
   },
-
-  addOrder: (order: Order) => set(state => ({
-    orders: [...state.orders, order],
-  })),
-
-  updatePosition: () => {},
 
   setRunning: (running) => set({ running }),
   toggleRunning: () => set(state => ({ running: !state.running })),
@@ -245,7 +303,8 @@ export function TerminalProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (running) {
       timerRef.current = setInterval(() => {
-        const batch = engineRef.current.tick();
+        const activeSymbol = useTerminalStore.getState().activeSymbol;
+        const batch = engineRef.current.tick(activeSymbol);
         applyTick(batch);
       }, 800);
     } else if (timerRef.current) {

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useTerminalStore } from '../store/TerminalStore';
+import { useTerminalStore, useEngine } from '../store/TerminalStore';
 import type { RegimeType } from '../types';
 
 const FKEYS: { key: string; label: string }[] = [
@@ -44,11 +44,19 @@ const btnStyle: React.CSSProperties = {
 
 export default function CommandKeyBar() {
   const regime = useTerminalStore((s) => s.regime);
+  const activeSymbol = useTerminalStore((s) => s.activeSymbol);
+  const executeCommand = useTerminalStore((s) => s.executeCommand);
+  const engine = useEngine();
+
+  const handleFKey = (label: string) => {
+    if (label === 'HELP') executeCommand('HELP', engine);
+    else executeCommand(`${activeSymbol} ${label}`, engine);
+  };
 
   return (
     <div style={barStyle}>
       {FKEYS.map((fk) => (
-        <button key={fk.key} style={btnStyle}>
+        <button key={fk.key} style={btnStyle} onClick={() => handleFKey(fk.label)}>
           <span style={{ color: '#475569' }}>{fk.key}</span>
           <span style={{ color: '#e2e8f0', marginLeft: 2 }}>{fk.label}</span>
         </button>

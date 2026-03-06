@@ -1,7 +1,6 @@
 import { CommandResult, INSTRUMENTS } from '../types';
 
 const VALID_FUNCTIONS = ['DES', 'FA', 'HP', 'CHART', 'DEPTH', 'NEWS', 'HELP'] as const;
-const ASSET_CLASSES = ['EQUITY', 'INDEX', 'CRYPTO', 'FOREX', 'COMMODITY', 'BOND'] as const;
 
 export function parseCommand(input: string): CommandResult {
   const raw = input.trim().toUpperCase();

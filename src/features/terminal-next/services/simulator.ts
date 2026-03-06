@@ -110,7 +110,9 @@ export class SimulationEngine {
     return o;
   }
 
-  tick(): TickBatch {
+  tick(activeSymbol?: string): TickBatch {
+    const focusSymbol = activeSymbol || this.instruments[0].symbol;
+
     this.clock = {
       tickId: this.clock.tickId + 1,
       epochMs: this.clock.epochMs + this.clock.cadenceMs,
@@ -124,8 +126,6 @@ export class SimulationEngine {
     const fills: Order[] = [];
     const alerts: Alert[] = [];
     const headlines: FeedItem[] = [];
-
-    const activeSymbol = this.instruments[0].symbol;
 
     for (const inst of this.instruments) {
       const [g1] = gaussianPair(this.rng);
@@ -246,10 +246,8 @@ export class SimulationEngine {
       });
     }
 
-    // Build depth for active symbol
-    const depth = this.buildDepth(activeSymbol);
+    const depth = this.buildDepth(focusSymbol);
 
-    // Build bars
     const bars = this.accumulateBars();
 
     return {
@@ -257,7 +255,7 @@ export class SimulationEngine {
       quotes,
       bars,
       depth,
-      prints: allPrints.filter(p => p.symbol === activeSymbol).slice(-20),
+      prints: allPrints.filter(p => p.symbol === focusSymbol).slice(-20),
       fills,
       alerts,
       headlines,
@@ -323,6 +321,7 @@ export class SimulationEngine {
       if (!existing || barTime > existing.time) {
         if (existing) newBars.push({ ...existing });
         this.barAccum[inst.symbol] = {
+          symbol: inst.symbol,
           time: barTime / 1000,
           open: px,
           high: px,

@@ -32,6 +32,7 @@ export interface Quote {
 }
 
 export interface Bar {
+  symbol: string;
   time: number;
   open: number;
   high: number;

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback, useRef } from 'react';
-import { useTerminalStore } from '../store/TerminalStore';
+import { useTerminalStore, useEngine } from '../store/TerminalStore';
 
 const barStyle: React.CSSProperties = {
   display: 'flex',
@@ -32,6 +32,7 @@ export default function CommandInputBar() {
   const [lastResult, setLastResult] = useState('');
   const executeCommand = useTerminalStore((s) => s.executeCommand);
   const commandLog = useTerminalStore((s) => s.commandLog);
+  const engine = useEngine();
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleSubmit = useCallback(
@@ -39,11 +40,11 @@ export default function CommandInputBar() {
       e.preventDefault();
       const trimmed = value.trim();
       if (!trimmed) return;
-      executeCommand(trimmed);
+      executeCommand(trimmed, engine);
       setLastResult(trimmed);
       setValue('');
     },
-    [value, executeCommand],
+    [value, executeCommand, engine],
   );
 
   return (
