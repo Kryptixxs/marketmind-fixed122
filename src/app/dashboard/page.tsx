@@ -9,7 +9,7 @@ import { NewsFeed } from '@/features/News/components/NewsFeed';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { calculateParkinsonVol } from '../../../quant_engine/math/feature_gen';
 import { calculateOptimalTrajectory } from '../../../quant_engine/execution/almgren_chriss';
-import { Activity, Zap, Target, BarChart3, ShieldAlert, Globe, Cpu, Clock } from 'lucide-react';
+import { Activity, Zap, Target, BarChart3, ShieldAlert, Globe, Cpu, Clock, Layers, ArrowRightLeft } from 'lucide-react';
 
 // New Widgets
 import { MarketInternals } from '@/features/Terminal/components/widgets/MarketInternals';
@@ -52,7 +52,7 @@ export default function PeakTerminalPage() {
           {/* LEFT: MARKET WATCH & INTERNALS */}
           <Panel defaultSize={22} minSize={15}>
             <PanelGroup orientation="vertical">
-              <Panel defaultSize={60}>
+              <Panel defaultSize={55}>
                 <TerminalPanel title="Market Monitor // Global Matrix">
                   <div className="h-full overflow-y-auto custom-scrollbar">
                     <table className="data-table w-full">
@@ -87,13 +87,13 @@ export default function PeakTerminalPage() {
                 </TerminalPanel>
               </Panel>
               <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
-              <Panel defaultSize={20}>
+              <Panel defaultSize={22}>
                 <TerminalPanel title="Market Internals">
                   <MarketInternals tick={activeQuote} />
                 </TerminalPanel>
               </Panel>
               <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
-              <Panel defaultSize={20}>
+              <Panel defaultSize={23}>
                 <TerminalPanel title="Upcoming Macro">
                   <MiniCalendar />
                 </TerminalPanel>
@@ -106,7 +106,7 @@ export default function PeakTerminalPage() {
           {/* CENTER: ANALYTICS & SESSIONS */}
           <Panel defaultSize={58}>
             <PanelGroup orientation="vertical">
-              <Panel defaultSize={70}>
+              <Panel defaultSize={65}>
                 <TerminalPanel title={`Price Analytics // ${activeSymbol} // Real-time`}>
                   <div className="w-full h-full bg-black relative">
                     <TradingChart data={activeQuote?.history?.map(h => ({
@@ -124,61 +124,133 @@ export default function PeakTerminalPage() {
               
               <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
 
-              <Panel defaultSize={30}>
+              <Panel defaultSize={35}>
                 <div className="grid grid-cols-4 h-full gap-px bg-border">
-                  <div className="bg-background p-2">
-                    <div className="flex items-center gap-1 text-accent mb-2">
+                  {/* QUAD 1: QUANT MATRIX */}
+                  <div className="bg-background p-2 flex flex-col">
+                    <div className="flex items-center gap-1 text-accent mb-2 shrink-0">
                       <Zap size={10} />
-                      <span className="text-[8px] font-bold uppercase">Quant</span>
+                      <span className="text-[8px] font-bold uppercase">Quant Matrix</span>
                     </div>
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-[8px]">
+                    <div className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar">
+                      <div className="flex justify-between text-[8px] border-b border-border/30 pb-1">
                         <span className="text-text-tertiary">PARK_VOL</span>
                         <span className="font-mono text-text-primary">{(quantMetrics?.vol || 0).toFixed(5)}</span>
                       </div>
-                      <div className="flex justify-between text-[8px]">
-                        <span className="text-text-tertiary">Z_SCORE</span>
-                        <span className="font-mono text-positive">+1.42</span>
+                      <div className="flex justify-between text-[8px] border-b border-border/30 pb-1">
+                        <span className="text-text-tertiary">SHARPE_R</span>
+                        <span className="font-mono text-positive">2.42</span>
                       </div>
-                      <div className="flex justify-between text-[8px]">
+                      <div className="flex justify-between text-[8px] border-b border-border/30 pb-1">
+                        <span className="text-text-tertiary">SORTINO</span>
+                        <span className="font-mono text-positive">3.12</span>
+                      </div>
+                      <div className="flex justify-between text-[8px] border-b border-border/30 pb-1">
                         <span className="text-text-tertiary">BETA_SPY</span>
                         <span className="font-mono text-text-primary">1.12</span>
                       </div>
+                      <div className="flex justify-between text-[8px]">
+                        <span className="text-text-tertiary">ALPHA_GEN</span>
+                        <span className="font-mono text-accent">+0.45%</span>
+                      </div>
                     </div>
                   </div>
-                  <div className="bg-background p-2">
-                    <div className="flex items-center gap-1 text-warning mb-2">
+
+                  {/* QUAD 2: EXECUTION ENGINE */}
+                  <div className="bg-background p-2 flex flex-col">
+                    <div className="flex items-center gap-1 text-warning mb-2 shrink-0">
                       <Target size={10} />
-                      <span className="text-[8px] font-bold uppercase">Execution</span>
+                      <span className="text-[8px] font-bold uppercase">Execution Engine</span>
                     </div>
-                    <div className="h-8 flex items-end gap-0.5">
-                      {quantMetrics?.trajectory.slice(0, 20).map((val, i) => (
-                        <div key={i} className="flex-1 bg-warning/20 border-t border-warning/40" style={{ height: `${(val / 1000) * 100}%` }} />
-                      ))}
+                    <div className="flex-1 flex flex-col gap-2">
+                      <div className="h-12 flex items-end gap-0.5 bg-surface-highlight/20 p-1 rounded-sm">
+                        {quantMetrics?.trajectory.slice(0, 24).map((val, i) => (
+                          <div key={i} className="flex-1 bg-warning/20 border-t border-warning/40" style={{ height: `${(val / 1000) * 100}%` }} />
+                        ))}
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[8px]">
+                          <span className="text-text-tertiary">ALGO_TYPE</span>
+                          <span className="font-mono text-text-primary">VWAP_SMART</span>
+                        </div>
+                        <div className="flex justify-between text-[8px]">
+                          <span className="text-text-tertiary">EST_SLIP</span>
+                          <span className="font-mono text-warning">0.42 BPS</span>
+                        </div>
+                        <div className="flex justify-between text-[8px]">
+                          <span className="text-text-tertiary">FILL_PROB</span>
+                          <span className="font-mono text-positive">94.2%</span>
+                        </div>
+                      </div>
                     </div>
-                    <span className="text-[7px] text-text-tertiary uppercase mt-1 block">ALMGREN_CHRIS_60M</span>
                   </div>
-                  <div className="bg-background p-2">
-                    <div className="flex items-center gap-1 text-negative mb-2">
+
+                  {/* QUAD 3: RISK PARAMETERS */}
+                  <div className="bg-background p-2 flex flex-col">
+                    <div className="flex items-center gap-1 text-negative mb-2 shrink-0">
                       <ShieldAlert size={10} />
-                      <span className="text-[8px] font-bold uppercase">Risk</span>
+                      <span className="text-[8px] font-bold uppercase">Risk Parameters</span>
                     </div>
-                    <div className="space-y-1">
-                      <div className="w-full h-0.5 bg-surface-highlight rounded-full overflow-hidden">
-                        <div className="h-full bg-negative w-[65%]" />
+                    <div className="flex-1 space-y-2">
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-[7px] uppercase text-text-tertiary">
+                          <span>Margin Utilization</span>
+                          <span>65%</span>
+                        </div>
+                        <div className="w-full h-1 bg-surface-highlight rounded-full overflow-hidden">
+                          <div className="h-full bg-negative w-[65%]" />
+                        </div>
                       </div>
-                      <div className="flex justify-between text-[8px]">
-                        <span className="text-text-tertiary">VAR_95</span>
-                        <span className="font-mono text-text-primary">$12.4K</span>
-                      </div>
-                      <div className="flex justify-between text-[8px]">
-                        <span className="text-text-tertiary">MAX_DD</span>
-                        <span className="font-mono text-negative">-4.2%</span>
+                      <div className="grid grid-cols-1 gap-1">
+                        <div className="flex justify-between text-[8px]">
+                          <span className="text-text-tertiary">VAR_95</span>
+                          <span className="font-mono text-text-primary">$12.4K</span>
+                        </div>
+                        <div className="flex justify-between text-[8px]">
+                          <span className="text-text-tertiary">CVAR_99</span>
+                          <span className="font-mono text-negative">$18.9K</span>
+                        </div>
+                        <div className="flex justify-between text-[8px]">
+                          <span className="text-text-tertiary">MAX_DD</span>
+                          <span className="font-mono text-negative">-4.2%</span>
+                        </div>
+                        <div className="flex justify-between text-[8px]">
+                          <span className="text-text-tertiary">LIQ_DIST</span>
+                          <span className="font-mono text-text-primary">14.2%</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="bg-background">
-                    <SessionTracker tick={activeQuote} />
+
+                  {/* QUAD 4: LIQUIDITY MATRIX */}
+                  <div className="bg-background p-2 flex flex-col">
+                    <div className="flex items-center gap-1 text-blue-400 mb-2 shrink-0">
+                      <Layers size={10} />
+                      <span className="text-[8px] font-bold uppercase">Liquidity Matrix</span>
+                    </div>
+                    <div className="flex-1 space-y-1.5">
+                      <div className="grid grid-cols-2 gap-1">
+                        <div className="bg-surface-highlight/30 p-1.5 rounded-sm border border-border/50">
+                          <div className="text-[7px] text-text-tertiary uppercase">Bid Depth</div>
+                          <div className="text-[9px] font-mono text-positive">1.4M</div>
+                        </div>
+                        <div className="bg-surface-highlight/30 p-1.5 rounded-sm border border-border/50">
+                          <div className="text-[7px] text-text-tertiary uppercase">Ask Depth</div>
+                          <div className="text-[9px] font-mono text-negative">0.9M</div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-[8px] border-t border-border/30 pt-1">
+                        <span className="text-text-tertiary">IMBALANCE</span>
+                        <span className="font-mono text-positive">+24.2%</span>
+                      </div>
+                      <div className="flex justify-between text-[8px]">
+                        <span className="text-text-tertiary">SPREAD_BPS</span>
+                        <span className="font-mono text-text-primary">0.12</span>
+                      </div>
+                      <div className="mt-auto">
+                        <SessionTracker tick={activeQuote} />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </Panel>
