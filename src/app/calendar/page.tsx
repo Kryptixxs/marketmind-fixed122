@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Calendar, DollarSign, Loader2 } from 'lucide-react';
+import { Calendar, DollarSign, Loader2, Globe } from 'lucide-react';
 import { EconomicCalendarView } from '@/features/Calendar/components/calendar/EconomicCalendarView';
 import { EarningsCalendarView } from '@/features/Calendar/components/calendar/EarningsCalendarView';
 import { MacroTicker } from '@/features/Calendar/components/calendar/MacroTicker';
@@ -10,7 +10,6 @@ import { MacroTicker } from '@/features/Calendar/components/calendar/MacroTicker
 function CalendarContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  
   const view = searchParams.get('view') || 'economic';
 
   const setView = (v: string) => {
@@ -21,47 +20,39 @@ function CalendarContent() {
 
   return (
     <div className="flex flex-col h-full bg-background min-h-0">
-      {/* Module Header / Navigation */}
-      <div className="flex items-center gap-4 p-4 border-b border-border bg-surface shrink-0 flex-wrap">
-        <h1 className="text-lg font-bold text-text-primary flex items-center gap-2 whitespace-nowrap">
-          <Calendar size={18} className="text-accent" />
-          Market Calendar
-        </h1>
-        <div className="hidden sm:block h-6 w-[1px] bg-border" />
-        
-        <div className="flex p-1 bg-background border border-border rounded-lg w-full sm:w-auto shrink-0">
+      <div className="flex items-center gap-4 p-3 border-b border-border bg-surface shrink-0 flex-wrap">
+        <div className="flex items-center gap-2">
+          <Globe size={14} className="text-cyan" />
+          <span className="text-xs font-bold uppercase tracking-widest text-text-primary">Market Calendar</span>
+        </div>
+
+        <div className="hidden sm:block h-5 w-px bg-border" />
+
+        <div className="flex bg-background border border-border rounded overflow-hidden shrink-0">
           <button
             onClick={() => setView('economic')}
-            className={`
-              flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide transition-all
-              ${view === 'economic' 
-                ? 'bg-surface-highlight text-accent shadow-sm' 
-                : 'text-text-tertiary hover:text-text-primary'}
-            `}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${
+              view === 'economic' ? 'bg-accent/10 text-accent' : 'text-text-tertiary hover:text-text-secondary'
+            }`}
           >
-            <Calendar size={14} /> Economic
+            <Calendar size={12} /> Economic
           </button>
           <button
             onClick={() => setView('earnings')}
-            className={`
-              flex-1 sm:flex-none flex justify-center items-center gap-2 px-4 py-1.5 rounded-md text-xs font-bold uppercase tracking-wide transition-all
-              ${view === 'earnings' 
-                ? 'bg-surface-highlight text-accent shadow-sm' 
-                : 'text-text-tertiary hover:text-text-primary'}
-            `}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-all ${
+              view === 'earnings' ? 'bg-accent/10 text-accent' : 'text-text-tertiary hover:text-text-secondary'
+            }`}
           >
-            <DollarSign size={14} /> Earnings
+            <DollarSign size={12} /> Earnings
           </button>
         </div>
 
-        {/* --- US MACRO TICKER --- */}
-        <div className="hidden lg:block flex-1 min-w-0 h-10 ml-2">
+        <div className="hidden lg:block flex-1 min-w-0 h-8 ml-2">
           <MacroTicker />
         </div>
       </div>
 
-      {/* View Content */}
-      <div className="flex-1 overflow-hidden p-2 min-h-0">
+      <div className="flex-1 overflow-hidden min-h-0">
         {view === 'economic' ? <EconomicCalendarView /> : <EarningsCalendarView />}
       </div>
     </div>
@@ -72,7 +63,7 @@ export default function CalendarPage() {
   return (
     <Suspense fallback={
       <div className="flex-1 flex items-center justify-center bg-background min-h-0">
-        <Loader2 className="animate-spin text-accent" size={32} />
+        <Loader2 className="animate-spin text-accent" size={24} />
       </div>
     }>
       <CalendarContent />

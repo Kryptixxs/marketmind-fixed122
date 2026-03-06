@@ -4,18 +4,35 @@ import { fetchMarketDataBatch } from '@/app/actions/fetchMarketData';
 
 const API_KEY = 'Educ3tK6ue_eC33G_3ERTMb0qc7wd3K6';
 
-// Mappings for Polygon WebSocket Subscription Channels
+// Expanded Mappings for Polygon WebSocket Subscription Channels
 const POLY_MAP: Record<string, { endpoint: string, sub: string, match: string }> = {
+  // Stocks (Delayed 15m on Free Tier)
   'AAPL': { endpoint: 'stocks', sub: 'A.AAPL', match: 'AAPL' },
   'TSLA': { endpoint: 'stocks', sub: 'A.TSLA', match: 'TSLA' },
   'NVDA': { endpoint: 'stocks', sub: 'A.NVDA', match: 'NVDA' },
   'MSFT': { endpoint: 'stocks', sub: 'A.MSFT', match: 'MSFT' },
+  'GOOGL': { endpoint: 'stocks', sub: 'A.GOOGL', match: 'GOOGL' },
+  'AMZN': { endpoint: 'stocks', sub: 'A.AMZN', match: 'AMZN' },
+  'META': { endpoint: 'stocks', sub: 'A.META', match: 'META' },
+  'AMD': { endpoint: 'stocks', sub: 'A.AMD', match: 'AMD' },
+  'NFLX': { endpoint: 'stocks', sub: 'A.NFLX', match: 'NFLX' },
+  'PYPL': { endpoint: 'stocks', sub: 'A.PYPL', match: 'PYPL' },
+  
+  // Crypto (Real-time)
   'BTCUSD': { endpoint: 'crypto', sub: 'XA.BTC-USD', match: 'BTC-USD' },
   'ETHUSD': { endpoint: 'crypto', sub: 'XA.ETH-USD', match: 'ETH-USD' },
+  'SOLUSD': { endpoint: 'crypto', sub: 'XA.SOL-USD', match: 'SOL-USD' },
+  'BNBUSD': { endpoint: 'crypto', sub: 'XA.BNB-USD', match: 'BNB-USD' },
+  'XRPUSD': { endpoint: 'crypto', sub: 'XA.XRP-USD', match: 'XRP-USD' },
+  
+  // Forex (Real-time)
   'EURUSD': { endpoint: 'forex', sub: 'CA.EUR/USD', match: 'EUR/USD' },
+  'GBPUSD': { endpoint: 'forex', sub: 'CA.GBP/USD', match: 'GBP/USD' },
+  'USDJPY': { endpoint: 'forex', sub: 'CA.USD/JPY', match: 'USD/JPY' },
+  'AUDUSD': { endpoint: 'forex', sub: 'CA.AUD/USD', match: 'AUD/USD' },
+  'USDCAD': { endpoint: 'forex', sub: 'CA.USD/CAD', match: 'USD/CAD' },
 };
 
-// Free tier requires the delayed endpoint for stocks
 const POLY_URLS: Record<string, string> = {
   'stocks': 'wss://delayed.polygon.io/stocks', 
   'crypto': 'wss://socket.polygon.io/crypto',
@@ -32,12 +49,10 @@ export class PolygonProvider extends BaseProvider {
     this.isConnected = true;
     this.initSockets();
     
-    // HYBRID ENGINE: Poll Yahoo every 10 seconds.
-    // This acts as both the primary feed for Indices (NAS100) AND 
-    // a seamless fallback for any Polygon WebSockets that fail to connect.
+    // Background sync for Indices and Commodities (not on Polygon Free Tier)
     this.syncInterval = setInterval(() => {
       this.loadHistory(Array.from(this.symbols));
-    }, 10000);
+    }, 8000); // Slightly faster sync
   }
 
   protected onDisconnect() {
@@ -67,7 +82,7 @@ export class PolygonProvider extends BaseProvider {
         }
       });
     } catch (e) {
-      console.error('[MarketData] Failed to load background sync history', e);
+      console.error('[MarketData] Sync failed', e);
     }
   }
 
@@ -86,8 +101,6 @@ export class PolygonProvider extends BaseProvider {
           data.forEach((msg: any) => {
             if (msg.ev === 'status' && msg.status === 'auth_success') {
               this.subscribeToSockets(Array.from(this.symbols), [ep]);
-            } else if (msg.ev === 'status' && msg.status === 'auth_failed') {
-              console.warn(`[Polygon] ${ep} Auth Failed. Relying on background sync.`);
             }
             
             if (msg.ev === 'A' || msg.ev === 'XA' || msg.ev === 'CA') {
@@ -96,14 +109,7 @@ export class PolygonProvider extends BaseProvider {
           });
         };
 
-        // Gracefully catch connection rejections (403s on Free Tier)
-        ws.onerror = () => {
-          console.warn(`[Polygon] ${ep} stream unavailable. Relying on standard background sync.`);
-        };
-        
-        ws.onclose = () => {
-          // Handled silently. The 10s syncInterval guarantees data continuity.
-        };
+        ws.onerror = () => console.warn(`[Polygon] ${ep} stream unavailable.`);
       } catch (e) {
         console.warn(`[Polygon] Failed to initialize ${ep} socket.`);
       }
@@ -146,11 +152,13 @@ export class PolygonProvider extends BaseProvider {
       change = price - openPrice;
       changePercent = (change / openPrice) * 100;
       
-      const lastCandle = prevTick.history[prevTick.history.length - 1];
+      const lastCandle = { ...prevTick.history[prevTick.history.length - 1] };
       lastCandle.close = price;
       lastCandle.high = Math.max(lastCandle.high, price);
       lastCandle.low = Math.min(lastCandle.low, price);
       lastCandle.volume = (lastCandle.volume || 0) + (msg.v || 0);
+      
+      prevTick.history[prevTick.history.length - 1] = lastCandle;
     }
 
     const newTick: Tick = {

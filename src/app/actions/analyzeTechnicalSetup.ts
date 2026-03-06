@@ -1,7 +1,7 @@
 'use server';
 
 import { generateAIJSON } from "@/lib/ai-utils";
-import yahooFinance from 'yahoo-finance2';
+import { yahooFinance } from '@/lib/yahoo-client';
 import { analyzeNewsSentiment } from "./analyzeNewsSentiment";
 import { fetchNews } from "./fetchNews";
 

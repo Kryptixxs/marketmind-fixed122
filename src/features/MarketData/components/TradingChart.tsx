@@ -12,16 +12,18 @@ export interface ChartData {
   close: number;
 }
 
-export function TradingChart({ 
-  data, 
+export function TradingChart({
+  data,
   symbol = ''
-}: { 
-  data: ChartData[]; 
+}: {
+  data: ChartData[];
   symbol?: string;
 }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const lineSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
+  const lastDataRef = useRef<ChartData[]>([]);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -29,57 +31,89 @@ export function TradingChart({
     const chart = LightweightCharts.createChart(chartContainerRef.current, {
       autoSize: true,
       layout: {
-        background: { type: ColorType.Solid, color: '#050505' },
-        textColor: '#a1a1aa',
+        background: { type: ColorType.Solid, color: '#060a13' },
+        textColor: '#475569',
+        fontFamily: 'JetBrains Mono, monospace',
+        fontSize: 10,
+      },
+      localization: {
+        locale: navigator.language,
       },
       grid: {
-        vertLines: { color: 'rgba(39, 39, 42, 0.1)' },
-        horzLines: { color: 'rgba(39, 39, 42, 0.1)' },
+        vertLines: { color: 'rgba(30, 41, 59, 0.4)' },
+        horzLines: { color: 'rgba(30, 41, 59, 0.4)' },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { width: 1, color: '#52525b', style: 3, labelBackgroundColor: '#18181b' },
-        horzLine: { width: 1, color: '#52525b', style: 3, labelBackgroundColor: '#18181b' },
+        vertLine: { width: 1, color: '#334155', style: 3, labelBackgroundColor: '#131c2e' },
+        horzLine: { width: 1, color: '#334155', style: 3, labelBackgroundColor: '#131c2e' },
       },
-      rightPriceScale: { 
-        borderColor: 'rgba(39, 39, 42, 0.8)',
+      rightPriceScale: {
+        borderColor: '#1e293b',
         autoScale: true,
+        alignLabels: true,
       },
-      timeScale: { 
-        borderColor: 'rgba(39, 39, 42, 0.8)', 
-        timeVisible: true, 
-        secondsVisible: false 
+      timeScale: {
+        borderColor: '#1e293b',
+        timeVisible: true,
+        secondsVisible: false,
+        barSpacing: 10,
       },
     });
 
     const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#ffffff',
-      downColor: '#ff3333',
-      borderVisible: false,
-      wickUpColor: '#ffffff',
-      wickDownColor: '#ff3333',
+      upColor: '#10b981',
+      borderUpColor: '#10b981',
+      wickUpColor: '#10b981',
+      downColor: '#ef4444',
+      borderDownColor: '#ef4444',
+      wickDownColor: '#ef4444',
+      borderVisible: true,
+      wickVisible: true,
+    });
+
+    const lineSeries = chart.addLineSeries({
+      color: '#22d3ee',
+      lineWidth: 2,
+      crosshairMarkerVisible: false,
+      priceLineVisible: false,
+      lastValueVisible: false,
     });
 
     chartRef.current = chart;
     seriesRef.current = candlestickSeries;
+    lineSeriesRef.current = lineSeries;
 
     return () => {
       chart.remove();
     };
   }, []);
 
-  // Update Data
   useEffect(() => {
-    if (seriesRef.current && data && data.length > 0) {
-      const sorted = [...data].sort((a, b) => a.time - b.time);
-      const unique = [];
-      for (const d of sorted) {
-        if (unique.length === 0 || d.time > unique[unique.length - 1].time) {
-          unique.push(d);
-        }
+    if (!seriesRef.current || !lineSeriesRef.current || !data || data.length === 0) return;
+
+    const sorted = [...data].sort((a, b) => a.time - b.time);
+    const unique: ChartData[] = [];
+    for (const d of sorted) {
+      if (unique.length === 0 || d.time > unique[unique.length - 1].time) {
+        unique.push(d);
       }
-      seriesRef.current.setData(unique);
     }
+
+    if (unique.length === 0) return;
+
+    const lastUnique = unique[unique.length - 1];
+    const prevUnique = lastDataRef.current[lastDataRef.current.length - 1];
+
+    if (prevUnique && lastUnique.time >= prevUnique.time && unique.length === lastDataRef.current.length) {
+      seriesRef.current.update(lastUnique);
+      lineSeriesRef.current.update({ time: lastUnique.time as any, value: lastUnique.close });
+    } else {
+      seriesRef.current.setData(unique);
+      lineSeriesRef.current.setData(unique.map((d) => ({ time: d.time as any, value: d.close })));
+    }
+
+    lastDataRef.current = unique;
   }, [data]);
 
   return <div ref={chartContainerRef} className="w-full h-full" />;

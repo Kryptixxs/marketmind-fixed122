@@ -1,69 +1,79 @@
 import { MarketDataProvider, ProviderConfig, Tick } from '../types';
-import { FinnhubProvider } from './finnhub';
-import { BinanceProvider } from './binance';
+import { FinnhubWSProvider } from './finnhub-ws';
+import { CoinbaseWSProvider } from './coinbase-ws';
 import { YahooPollingProvider } from './yahoo-polling';
+import { classifySymbols } from '@/lib/symbol-map';
 
 export class HybridProvider implements MarketDataProvider {
-  private finnhub: FinnhubProvider;
-  private binance: BinanceProvider;
-  private yahoo: YahooPollingProvider;
-  private listeners: Set<ProviderConfig> = new Set();
+  private finnhub: FinnhubWSProvider | null;
+  private coinbase: CoinbaseWSProvider;
+  private polling: YahooPollingProvider;
+  private listeners = new Set<ProviderConfig>();
+  private lastTick = new Map<string, Tick>();
 
-  constructor() {
-    this.finnhub = new FinnhubProvider();
-    this.binance = new BinanceProvider();
-    this.yahoo = new YahooPollingProvider(10000);
+  constructor(finnhubApiKey?: string) {
+    this.finnhub = finnhubApiKey ? new FinnhubWSProvider(finnhubApiKey) : null;
+    this.coinbase = new CoinbaseWSProvider();
+    // Keep polling below free-tier quote limits for broad watchlists.
+    this.polling = new YahooPollingProvider(45000);
   }
 
   connect(config: ProviderConfig) {
-    const wrappedConfig: ProviderConfig = {
-      id: config.id,
-      onTick: (tick: Tick) => config.onTick?.(tick),
-      onError: (err: Error) => config.onError?.(err),
-    };
-
     this.listeners.add(config);
-    this.finnhub.connect({ ...wrappedConfig, id: `${config.id}-finnhub` });
-    this.binance.connect({ ...wrappedConfig, id: `${config.id}-binance` });
-    this.yahoo.connect({ ...wrappedConfig, id: `${config.id}-yahoo` });
+
+    const wrappedConfig = (provider: string): ProviderConfig => ({
+      id: `${config.id}-${provider}`,
+      onTick: (tick: Tick) => {
+        const prev = this.lastTick.get(tick.symbol);
+
+        if (tick.change === 0 && tick.changePercent === 0 && prev) {
+          tick = { ...tick, change: prev.change, changePercent: prev.changePercent };
+        }
+        if (!tick.history?.length && prev?.history?.length) {
+          tick = { ...tick, history: prev.history };
+        }
+
+        this.lastTick.set(tick.symbol, tick);
+        config.onTick?.(tick);
+      },
+      onError: config.onError,
+    });
+
+    if (this.finnhub) this.finnhub.connect(wrappedConfig('finnhub'));
+    this.coinbase.connect(wrappedConfig('coinbase'));
+    this.polling.connect(wrappedConfig('polling'));
   }
 
   disconnect(config: ProviderConfig) {
     this.listeners.delete(config);
-    this.finnhub.disconnect({ ...config, id: `${config.id}-finnhub` });
-    this.binance.disconnect({ ...config, id: `${config.id}-binance` });
-    this.yahoo.disconnect({ ...config, id: `${config.id}-yahoo` });
+    if (this.listeners.size === 0) {
+      if (this.finnhub) this.finnhub.disconnect({ id: `${config.id}-finnhub` } as ProviderConfig);
+      this.coinbase.disconnect({ id: `${config.id}-coinbase` } as ProviderConfig);
+      this.polling.disconnect({ id: `${config.id}-polling` } as ProviderConfig);
+    }
   }
 
   subscribe(symbols: string[]) {
-    const finnhubSyms: string[] = [];
-    const binanceSyms: string[] = [];
-    const yahooSyms: string[] = [];
+    const { finnhub, binance, yahooFallback } = classifySymbols(symbols);
 
-    for (const sym of symbols) {
-      if (FinnhubProvider.canHandle(sym)) {
-        finnhubSyms.push(sym);
-      } else if (BinanceProvider.canHandle(sym)) {
-        binanceSyms.push(sym);
-      } else {
-        yahooSyms.push(sym);
-      }
+    if (this.finnhub && finnhub.length > 0) {
+      this.finnhub.subscribe(finnhub);
     }
 
-    if (finnhubSyms.length > 0) this.finnhub.subscribe(finnhubSyms);
-    if (binanceSyms.length > 0) this.binance.subscribe(binanceSyms);
-    if (yahooSyms.length > 0) this.yahoo.subscribe(yahooSyms);
+    if (binance.length > 0) {
+      this.coinbase.subscribe(binance);
+    }
+
+    const yahooSyms = [...yahooFallback];
+    if (!this.finnhub) {
+      yahooSyms.push(...finnhub);
+    }
+    this.polling.subscribe([...new Set([...yahooSyms, ...symbols])]);
   }
 
-  unsubscribe(symbols: string[]) {
-    this.finnhub.unsubscribe(symbols);
-    this.binance.unsubscribe(symbols);
-    this.yahoo.unsubscribe(symbols);
-  }
+  unsubscribe(symbols: string[]) {}
 
   setInterval(interval: string) {
-    this.finnhub.setInterval?.(interval);
-    this.binance.setInterval?.(interval);
-    this.yahoo.setInterval?.(interval);
+    this.polling.setInterval(interval);
   }
 }

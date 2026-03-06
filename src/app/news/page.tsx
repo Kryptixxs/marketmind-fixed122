@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { fetchNews } from '@/app/actions/fetchNews';
-import { Loader2, ExternalLink, Tag } from 'lucide-react';
+import { Loader2, ExternalLink, Radio, Clock, Newspaper } from 'lucide-react';
+
+const CATEGORIES = ['General', 'Stock', 'Crypto', 'Forex'];
 
 export default function NewsPage() {
   const [category, setCategory] = useState('General');
@@ -17,55 +19,105 @@ export default function NewsPage() {
     });
   }, [category]);
 
+  const featured = articles[0];
+  const rest = articles.slice(1);
+
   return (
-    <div className="h-full flex flex-col bg-background">
-      <div className="flex items-center gap-4 border-b border-border bg-surface p-2">
-        {['General', 'Stock', 'Crypto', 'Forex'].map(c => (
-          <button
-            key={c}
-            onClick={() => setCategory(c)}
-            className={`px-4 py-1.5 rounded-sm text-xs font-bold uppercase tracking-wider transition-colors ${
-              category === c 
-                ? 'bg-accent text-accent-text' 
-                : 'text-text-tertiary hover:text-text-primary hover:bg-surface-highlight'
-            }`}
-          >
-            {c}
-          </button>
-        ))}
+    <div className="h-full flex flex-col bg-background overflow-hidden">
+      {/* Header */}
+      <div className="h-10 border-b border-border bg-surface flex items-center px-4 gap-4 shrink-0">
+        <div className="flex items-center gap-2">
+          <Newspaper size={14} className="text-cyan" />
+          <span className="text-xs font-bold uppercase tracking-widest text-text-primary">Intelligence Wire</span>
+        </div>
+
+        <div className="h-5 w-px bg-border" />
+
+        <div className="flex items-center gap-1 bg-background border border-border rounded overflow-hidden">
+          {CATEGORIES.map(c => (
+            <button
+              key={c}
+              onClick={() => setCategory(c)}
+              className={`px-3 py-1 text-[9px] font-bold uppercase tracking-wider transition-colors ${
+                category === c
+                  ? 'bg-accent text-white'
+                  : 'text-text-tertiary hover:text-text-secondary hover:bg-surface-highlight'
+              }`}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1" />
+        <div className="flex items-center gap-1.5 text-[9px] text-text-tertiary">
+          <Radio size={10} className="text-positive" />
+          <span className="font-bold uppercase tracking-wider">Live Feed</span>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 max-w-4xl mx-auto w-full space-y-4">
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
         {loading ? (
-          <div className="flex justify-center pt-20"><Loader2 className="animate-spin text-accent"/></div>
+          <div className="flex flex-col items-center justify-center h-full gap-3">
+            <Loader2 className="animate-spin text-accent" size={24} />
+            <span className="text-[10px] text-text-tertiary uppercase tracking-widest font-bold">Loading Intelligence...</span>
+          </div>
         ) : (
-          articles.map((article, i) => (
-            <div key={i} className="bg-surface border border-border rounded p-4 hover:border-accent/40 transition-colors group">
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-accent">{article.source}</span>
-                  <span className="text-xs text-text-tertiary">• {article.time}</span>
+          <div className="p-4 max-w-6xl mx-auto">
+            {/* Featured Article */}
+            {featured && (
+              <a
+                href={featured.link}
+                target="_blank"
+                className="block bg-surface border border-border rounded-lg p-6 mb-4 hover:border-accent/30 transition-all group"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="badge badge-accent">{featured.source}</span>
+                  <span className="text-[10px] text-text-tertiary flex items-center gap-1">
+                    <Clock size={9} /> {featured.time}
+                  </span>
                 </div>
-                <a href={article.link} target="_blank" className="text-text-tertiary hover:text-text-primary">
-                  <ExternalLink size={14} />
-                </a>
-              </div>
-              
-              <h2 className="text-lg font-bold text-text-primary mb-2 leading-snug group-hover:text-white">
-                {article.title}
-              </h2>
-              
-              <p className="text-sm text-text-secondary leading-relaxed line-clamp-2">
-                {article.contentSnippet}
-              </p>
+                <h2 className="text-lg font-bold text-text-primary leading-tight mb-2 group-hover:text-accent transition-colors">
+                  {featured.title}
+                </h2>
+                {featured.contentSnippet && (
+                  <p className="text-xs text-text-secondary leading-relaxed line-clamp-2 font-sans">
+                    {featured.contentSnippet}
+                  </p>
+                )}
+              </a>
+            )}
 
-              <div className="flex gap-2 mt-4">
-                <span className="px-2 py-0.5 rounded-full bg-background border border-border text-[10px] text-text-tertiary font-mono flex items-center gap-1">
-                  <Tag size={10} /> {category}
-                </span>
-              </div>
+            {/* Article Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {rest.map((article: any, i: number) => (
+                <a
+                  key={i}
+                  href={article.link}
+                  target="_blank"
+                  className="bg-surface border border-border rounded-lg p-4 hover:border-accent/30 transition-all group flex flex-col"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[9px] font-bold text-accent uppercase">{article.source}</span>
+                    <span className="text-[9px] text-text-tertiary">{article.time}</span>
+                  </div>
+                  <h3 className="text-xs font-bold text-text-primary leading-snug mb-2 group-hover:text-accent transition-colors line-clamp-3 flex-1">
+                    {article.title}
+                  </h3>
+                  {article.contentSnippet && (
+                    <p className="text-[10px] text-text-tertiary line-clamp-2 font-sans leading-relaxed">
+                      {article.contentSnippet}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-1 mt-3 pt-2 border-t border-border/50 text-text-tertiary group-hover:text-accent transition-colors">
+                    <ExternalLink size={9} />
+                    <span className="text-[9px] font-bold uppercase tracking-wider">Read More</span>
+                  </div>
+                </a>
+              ))}
             </div>
-          ))
+          </div>
         )}
       </div>
     </div>
