@@ -9,14 +9,20 @@ import { NewsFeed } from '@/features/News/components/NewsFeed';
 import { useMarketData } from '@/features/MarketData/services/marketdata/useMarketData';
 import { calculateParkinsonVol } from '../../../quant_engine/math/feature_gen';
 import { calculateOptimalTrajectory } from '../../../quant_engine/execution/almgren_chriss';
-import { Activity, Zap, Target, BarChart3, ShieldAlert, Globe, Cpu, Clock, Layers, ArrowRightLeft } from 'lucide-react';
+import { Activity, Zap, Target, BarChart3, ShieldAlert, Globe, Cpu, Clock, Layers, ArrowRightLeft, TrendingUp, TrendingDown, ShieldCheck, ZapOff } from 'lucide-react';
 
 // New Widgets
 import { MarketInternals } from '@/features/Terminal/components/widgets/MarketInternals';
 import { MiniCalendar } from '@/features/Terminal/components/widgets/MiniCalendar';
 import { SessionTracker } from '@/features/Terminal/components/widgets/SessionTracker';
 
-const WATCHLIST = ['NAS100', 'SPX500', 'US30', 'RUSSELL', 'DAX40', 'GOLD', 'CRUDE', 'BTCUSD', 'AAPL', 'NVDA', 'MSFT', 'TSLA', 'EURUSD', 'GBPUSD', 'USDJPY'];
+const WATCHLIST = [
+  'NAS100', 'SPX500', 'US30', 'RUSSELL', 'DAX40', 'FTSE100', 'NIKKEI',
+  'GOLD', 'SILVER', 'CRUDE', 'NATGAS',
+  'BTCUSD', 'ETHUSD', 'SOLUSD',
+  'AAPL', 'NVDA', 'MSFT', 'TSLA', 'GOOGL', 'AMZN', 'META', 'AMD',
+  'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'DXY', 'VIX'
+];
 
 export default function PeakTerminalPage() {
   const [activeSymbol, setActiveSymbol] = useState("NAS100");
@@ -52,7 +58,7 @@ export default function PeakTerminalPage() {
           {/* LEFT: MARKET WATCH & INTERNALS */}
           <Panel defaultSize={22} minSize={15}>
             <PanelGroup orientation="vertical">
-              <Panel defaultSize={55}>
+              <Panel defaultSize={50}>
                 <TerminalPanel title="Market Monitor // Global Matrix">
                   <div className="h-full overflow-y-auto custom-scrollbar">
                     <table className="data-table w-full">
@@ -87,13 +93,13 @@ export default function PeakTerminalPage() {
                 </TerminalPanel>
               </Panel>
               <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
-              <Panel defaultSize={22}>
+              <Panel defaultSize={25}>
                 <TerminalPanel title="Market Internals">
                   <MarketInternals tick={activeQuote} />
                 </TerminalPanel>
               </Panel>
               <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
-              <Panel defaultSize={23}>
+              <Panel defaultSize={25}>
                 <TerminalPanel title="Upcoming Macro">
                   <MiniCalendar />
                 </TerminalPanel>
@@ -106,7 +112,7 @@ export default function PeakTerminalPage() {
           {/* CENTER: ANALYTICS & SESSIONS */}
           <Panel defaultSize={58}>
             <PanelGroup orientation="vertical">
-              <Panel defaultSize={65}>
+              <Panel defaultSize={60}>
                 <TerminalPanel title={`Price Analytics // ${activeSymbol} // Real-time`}>
                   <div className="w-full h-full bg-black relative">
                     <TradingChart data={activeQuote?.history?.map(h => ({
@@ -124,7 +130,7 @@ export default function PeakTerminalPage() {
               
               <PanelResizeHandle className="h-px bg-border hover:bg-accent/50 transition-colors" />
 
-              <Panel defaultSize={35}>
+              <Panel defaultSize={40}>
                 <div className="grid grid-cols-4 h-full gap-px bg-border">
                   {/* QUAD 1: QUANT MATRIX */}
                   <div className="bg-background p-2 flex flex-col">
@@ -133,26 +139,21 @@ export default function PeakTerminalPage() {
                       <span className="text-[8px] font-bold uppercase">Quant Matrix</span>
                     </div>
                     <div className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar">
-                      <div className="flex justify-between text-[8px] border-b border-border/30 pb-1">
-                        <span className="text-text-tertiary">PARK_VOL</span>
-                        <span className="font-mono text-text-primary">{(quantMetrics?.vol || 0).toFixed(5)}</span>
-                      </div>
-                      <div className="flex justify-between text-[8px] border-b border-border/30 pb-1">
-                        <span className="text-text-tertiary">SHARPE_R</span>
-                        <span className="font-mono text-positive">2.42</span>
-                      </div>
-                      <div className="flex justify-between text-[8px] border-b border-border/30 pb-1">
-                        <span className="text-text-tertiary">SORTINO</span>
-                        <span className="font-mono text-positive">3.12</span>
-                      </div>
-                      <div className="flex justify-between text-[8px] border-b border-border/30 pb-1">
-                        <span className="text-text-tertiary">BETA_SPY</span>
-                        <span className="font-mono text-text-primary">1.12</span>
-                      </div>
-                      <div className="flex justify-between text-[8px]">
-                        <span className="text-text-tertiary">ALPHA_GEN</span>
-                        <span className="font-mono text-accent">+0.45%</span>
-                      </div>
+                      {[
+                        { label: 'PARK_VOL', val: (quantMetrics?.vol || 0).toFixed(5), color: 'text-text-primary' },
+                        { label: 'SHARPE_R', val: '2.42', color: 'text-positive' },
+                        { label: 'SORTINO', val: '3.12', color: 'text-positive' },
+                        { label: 'BETA_SPY', val: '1.12', color: 'text-text-primary' },
+                        { label: 'ALPHA_GEN', val: '+0.45%', color: 'text-accent' },
+                        { label: 'KURTOSIS', val: '4.12', color: 'text-text-secondary' },
+                        { label: 'SKEWNESS', val: '-0.24', color: 'text-negative' },
+                        { label: 'OMEGA_R', val: '1.85', color: 'text-positive' }
+                      ].map(m => (
+                        <div key={m.label} className="flex justify-between text-[8px] border-b border-border/30 pb-1">
+                          <span className="text-text-tertiary">{m.label}</span>
+                          <span className={`font-mono ${m.color}`}>{m.val}</span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
@@ -162,25 +163,26 @@ export default function PeakTerminalPage() {
                       <Target size={10} />
                       <span className="text-[8px] font-bold uppercase">Execution Engine</span>
                     </div>
-                    <div className="flex-1 flex flex-col gap-2">
-                      <div className="h-12 flex items-end gap-0.5 bg-surface-highlight/20 p-1 rounded-sm">
+                    <div className="flex-1 flex flex-col gap-2 overflow-y-auto custom-scrollbar">
+                      <div className="h-10 flex items-end gap-0.5 bg-surface-highlight/20 p-1 rounded-sm shrink-0">
                         {quantMetrics?.trajectory.slice(0, 24).map((val, i) => (
                           <div key={i} className="flex-1 bg-warning/20 border-t border-warning/40" style={{ height: `${(val / 1000) * 100}%` }} />
                         ))}
                       </div>
                       <div className="space-y-1">
-                        <div className="flex justify-between text-[8px]">
-                          <span className="text-text-tertiary">ALGO_TYPE</span>
-                          <span className="font-mono text-text-primary">VWAP_SMART</span>
-                        </div>
-                        <div className="flex justify-between text-[8px]">
-                          <span className="text-text-tertiary">EST_SLIP</span>
-                          <span className="font-mono text-warning">0.42 BPS</span>
-                        </div>
-                        <div className="flex justify-between text-[8px]">
-                          <span className="text-text-tertiary">FILL_PROB</span>
-                          <span className="font-mono text-positive">94.2%</span>
-                        </div>
+                        {[
+                          { label: 'ALGO_TYPE', val: 'VWAP_SMART', color: 'text-text-primary' },
+                          { label: 'EST_SLIP', val: '0.42 BPS', color: 'text-warning' },
+                          { label: 'FILL_PROB', val: '94.2%', color: 'text-positive' },
+                          { label: 'URGENCY', val: 'MEDIUM', color: 'text-warning' },
+                          { label: 'PART_RATE', val: '5.0%', color: 'text-text-secondary' },
+                          { label: 'VENUE_OPT', val: 'IEX_DARK', color: 'text-accent' }
+                        ].map(m => (
+                          <div key={m.label} className="flex justify-between text-[8px] border-b border-border/30 pb-1">
+                            <span className="text-text-tertiary">{m.label}</span>
+                            <span className={`font-mono ${m.color}`}>{m.val}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -191,7 +193,7 @@ export default function PeakTerminalPage() {
                       <ShieldAlert size={10} />
                       <span className="text-[8px] font-bold uppercase">Risk Parameters</span>
                     </div>
-                    <div className="flex-1 space-y-2">
+                    <div className="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
                       <div className="space-y-1">
                         <div className="flex justify-between text-[7px] uppercase text-text-tertiary">
                           <span>Margin Utilization</span>
@@ -202,22 +204,20 @@ export default function PeakTerminalPage() {
                         </div>
                       </div>
                       <div className="grid grid-cols-1 gap-1">
-                        <div className="flex justify-between text-[8px]">
-                          <span className="text-text-tertiary">VAR_95</span>
-                          <span className="font-mono text-text-primary">$12.4K</span>
-                        </div>
-                        <div className="flex justify-between text-[8px]">
-                          <span className="text-text-tertiary">CVAR_99</span>
-                          <span className="font-mono text-negative">$18.9K</span>
-                        </div>
-                        <div className="flex justify-between text-[8px]">
-                          <span className="text-text-tertiary">MAX_DD</span>
-                          <span className="font-mono text-negative">-4.2%</span>
-                        </div>
-                        <div className="flex justify-between text-[8px]">
-                          <span className="text-text-tertiary">LIQ_DIST</span>
-                          <span className="font-mono text-text-primary">14.2%</span>
-                        </div>
+                        {[
+                          { label: 'VAR_95', val: '$12.4K', color: 'text-text-primary' },
+                          { label: 'CVAR_99', val: '$18.9K', color: 'text-negative' },
+                          { label: 'MAX_DD', val: '-4.2%', color: 'text-negative' },
+                          { label: 'LIQ_DIST', val: '14.2%', color: 'text-text-primary' },
+                          { label: 'BETA_SPY', val: '1.12', color: 'text-warning' },
+                          { label: 'CORR_DXY', val: '-0.82', color: 'text-negative' },
+                          { label: 'EXP_GROSS', val: '$1.2M', color: 'text-text-secondary' }
+                        ].map(m => (
+                          <div key={m.label} className="flex justify-between text-[8px] border-b border-border/30 pb-1">
+                            <span className="text-text-tertiary">{m.label}</span>
+                            <span className={`font-mono ${m.color}`}>{m.val}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -228,7 +228,7 @@ export default function PeakTerminalPage() {
                       <Layers size={10} />
                       <span className="text-[8px] font-bold uppercase">Liquidity Matrix</span>
                     </div>
-                    <div className="flex-1 space-y-1.5">
+                    <div className="flex-1 space-y-1.5 overflow-y-auto custom-scrollbar">
                       <div className="grid grid-cols-2 gap-1">
                         <div className="bg-surface-highlight/30 p-1.5 rounded-sm border border-border/50">
                           <div className="text-[7px] text-text-tertiary uppercase">Bid Depth</div>
@@ -239,15 +239,19 @@ export default function PeakTerminalPage() {
                           <div className="text-[9px] font-mono text-negative">0.9M</div>
                         </div>
                       </div>
-                      <div className="flex justify-between text-[8px] border-t border-border/30 pt-1">
-                        <span className="text-text-tertiary">IMBALANCE</span>
-                        <span className="font-mono text-positive">+24.2%</span>
-                      </div>
-                      <div className="flex justify-between text-[8px]">
-                        <span className="text-text-tertiary">SPREAD_BPS</span>
-                        <span className="font-mono text-text-primary">0.12</span>
-                      </div>
-                      <div className="mt-auto">
+                      {[
+                        { label: 'IMBALANCE', val: '+24.2%', color: 'text-positive' },
+                        { label: 'SPREAD_BPS', val: '0.12', color: 'text-text-primary' },
+                        { label: 'MKT_IMPACT', val: '0.04%', color: 'text-warning' },
+                        { label: 'SLIP_CURVE', val: 'LINEAR', color: 'text-text-tertiary' },
+                        { label: 'BOOK_SKEW', val: 'BULLISH', color: 'text-positive' }
+                      ].map(m => (
+                        <div key={m.label} className="flex justify-between text-[8px] border-b border-border/30 pb-1">
+                          <span className="text-text-tertiary">{m.label}</span>
+                          <span className={`font-mono ${m.color}`}>{m.val}</span>
+                        </div>
+                      ))}
+                      <div className="mt-2">
                         <SessionTracker tick={activeQuote} />
                       </div>
                     </div>
