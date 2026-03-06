@@ -48,8 +48,9 @@ export default function DashboardPage() {
   const [activeCategory, setActiveCategory] = useState('Equities');
   const [candleHistory, setCandleHistory] = useState<OHLCV[]>([]);
   const { data: marketData } = useMarketData(ALL_SYMBOLS);
+  const { data: selectedOnlyData } = useMarketData([selectedSymbol]);
 
-  const selectedTick = marketData[selectedSymbol];
+  const selectedTick = selectedOnlyData[selectedSymbol] || marketData[selectedSymbol];
   const categorySymbols = MARKET_CATEGORIES[activeCategory] || [];
   const loadCandles = useCallback(async (sym: string) => {
     try {

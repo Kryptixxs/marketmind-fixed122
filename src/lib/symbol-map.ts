@@ -117,7 +117,10 @@ export function classifySymbols(symbols: string[]): {
     const mapping = SYMBOL_DB[sym];
     if (!mapping) { yahooFallback.push(sym); continue; }
 
-    if (mapping.binance) {
+    // Route forex away from Finnhub stream/quote because many keys lack OANDA entitlement.
+    if (mapping.assetClass === 'forex') {
+      yahooFallback.push(sym);
+    } else if (mapping.binance) {
       binance.push(sym);
     } else if (mapping.finnhub) {
       finnhub.push(sym);

@@ -14,8 +14,8 @@ export class HybridProvider implements MarketDataProvider {
   constructor(finnhubApiKey?: string) {
     this.finnhub = finnhubApiKey ? new FinnhubWSProvider(finnhubApiKey) : null;
     this.coinbase = new CoinbaseWSProvider();
-    // Keep polling below free-tier quote limits for broad watchlists.
-    this.polling = new YahooPollingProvider(45000);
+    // Faster non-streaming refresh while still avoiding aggressive API pressure.
+    this.polling = new YahooPollingProvider(15000);
   }
 
   connect(config: ProviderConfig) {
@@ -68,7 +68,7 @@ export class HybridProvider implements MarketDataProvider {
     if (!this.finnhub) {
       yahooSyms.push(...finnhub);
     }
-    this.polling.subscribe([...new Set([...yahooSyms, ...symbols])]);
+    this.polling.subscribe([...new Set(yahooSyms)]);
   }
 
   unsubscribe(symbols: string[]) {}

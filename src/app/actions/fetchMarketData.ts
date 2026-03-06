@@ -105,7 +105,12 @@ async function fetchYahooQuote(sym: string, now: number, cached?: QuoteCache): P
   const ySym = YAHOO_QUOTE_MAP[sym] || sym;
   try {
     const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(ySym)}`;
-    const res = await withConcurrency(() => fetch(url).then(r => r.ok ? r.json() : null));
+    const res = await withConcurrency(() => fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        Accept: 'application/json',
+      },
+    }).then(r => r.ok ? r.json() : null));
     const q = res?.quoteResponse?.result?.[0];
     if (!q || !Number.isFinite(q.regularMarketPrice) || q.regularMarketPrice <= 0) {
       return cached || null;
@@ -150,6 +155,32 @@ async function fetchAlphaVantageQuote(sym: string, now: number, cached?: QuoteCa
       changePercent: Number.isFinite(changePercent) ? changePercent : 0,
       ts: now,
     };
+    QUOTE_CACHE.set(sym, entry);
+    return entry;
+  } catch {
+    return cached || null;
+  }
+}
+
+async function fetchAlphaVantageForexQuote(sym: string, now: number, cached?: QuoteCache): Promise<QuoteCache | null> {
+  if (!ALPHA_VANTAGE_KEY) return cached || null;
+  if (!isForex(sym) || sym.length !== 6) return cached || null;
+
+  const from = sym.slice(0, 3);
+  const to = sym.slice(3, 6);
+
+  try {
+    const url =
+      `https://www.alphavantage.co/query?function=CURRENCY_EXCHANGE_RATE&from_currency=${from}&to_currency=${to}&apikey=${ALPHA_VANTAGE_KEY}`;
+    const res = await withConcurrency(() => fetch(url).then(r => r.ok ? r.json() : null));
+    const fx = res?.['Realtime Currency Exchange Rate'];
+    const price = Number(fx?.['5. Exchange Rate'] ?? 0);
+    if (!Number.isFinite(price) || price <= 0) return cached || null;
+
+    const prev = cached?.price ?? price;
+    const change = price - prev;
+    const changePercent = prev > 0 ? (change / prev) * 100 : 0;
+    const entry: QuoteCache = { price, change, changePercent, ts: now };
     QUOTE_CACHE.set(sym, entry);
     return entry;
   } catch {
@@ -257,7 +288,12 @@ async function fetchYahooBatchQuotes(symbols: string[]): Promise<Map<string, Quo
     const chunk = ySymbols.slice(i, i + chunkSize);
     const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(chunk.join(','))}`;
     try {
-      const res = await withConcurrency(() => fetch(url).then(r => r.ok ? r.json() : null));
+      const res = await withConcurrency(() => fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+          Accept: 'application/json',
+        },
+      }).then(r => r.ok ? r.json() : null));
       const rows = res?.quoteResponse?.result;
       if (!Array.isArray(rows)) continue;
 
@@ -293,7 +329,17 @@ async function fetchYahooBatchQuotes(symbols: string[]): Promise<Map<string, Quo
 async function fetchQuote(sym: string): Promise<QuoteCache | null> {
   const now = Date.now();
   const cached = QUOTE_CACHE.get(sym);
-  if (cached && now - cached.ts < QUOTE_TTL) return cached;
+  const ttl = isForex(sym) ? 30_000 : QUOTE_TTL;
+  if (cached && now - cached.ts < ttl) return cached;
+
+  // Finnhub OANDA quotes are often forbidden on free keys; skip straight to FX sources.
+  if (isForex(sym)) {
+    const alphaFx = await fetchAlphaVantageForexQuote(sym, now, cached);
+    if (alphaFx) return alphaFx;
+    const yahooFx = await fetchYahooQuote(sym, now, cached);
+    if (yahooFx) return yahooFx;
+    return cached || null;
+  }
 
   if (!FINNHUB_KEY) {
     const fmpQuote = await fetchFmpQuote(sym, now, cached);
@@ -421,25 +467,32 @@ export async function fetchMarketDataBatch(symbols: string[], interval: string =
   }
 
   if (missing.length > 0) {
-    // 1) Primary per-symbol chain (Finnhub -> FMP -> Alpha -> Yahoo)
-    // Keep this path first so a valid Finnhub key wins and loads fast.
-    const singles = await Promise.all(missing.map((sym) => fetchQuote(sym)));
-    missing.forEach((sym, idx) => {
-      const q = singles[idx];
-      if (q) quoteMap.set(sym, q);
-    });
+    // 1) Try one-shot Yahoo batch first to avoid per-symbol rate-limit bursts.
+    const yahooBatch = await fetchYahooBatchQuotes(missing);
+    for (const [sym, q] of yahooBatch) quoteMap.set(sym, q);
 
-    // 2) If still missing, try one-shot batch fallbacks to fill any gaps.
+    // 2) For remaining symbols, try full per-symbol provider chain.
     const stillMissing = missing.filter((sym) => !quoteMap.has(sym));
     if (stillMissing.length > 0) {
-      const fmpBatch = await fetchFmpBatchQuotes(stillMissing);
+      const singles = await Promise.all(stillMissing.map((sym) => fetchQuote(sym)));
+      stillMissing.forEach((sym, idx) => {
+        const q = singles[idx];
+        if (q) quoteMap.set(sym, q);
+      });
+    }
+
+    // 3) If still unresolved, fill gaps with FMP batch as final best-effort.
+    const finalMissing = missing.filter((sym) => !quoteMap.has(sym));
+    if (finalMissing.length > 0) {
+      const fmpBatch = await fetchFmpBatchQuotes(finalMissing);
       for (const [sym, q] of fmpBatch) quoteMap.set(sym, q);
     }
 
-    const finalMissing = missing.filter((sym) => !quoteMap.has(sym));
-    if (finalMissing.length > 0) {
-      const yahooBatch = await fetchYahooBatchQuotes(finalMissing);
-      for (const [sym, q] of yahooBatch) quoteMap.set(sym, q);
+    // 4) Last chance Yahoo pass for any provider-edge misses.
+    const tailMissing = missing.filter((sym) => !quoteMap.has(sym));
+    if (tailMissing.length > 0) {
+      const tailYahoo = await fetchYahooBatchQuotes(tailMissing);
+      for (const [sym, q] of tailYahoo) quoteMap.set(sym, q);
     }
   }
 
