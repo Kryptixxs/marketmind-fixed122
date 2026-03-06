@@ -22,16 +22,13 @@ const DEFAULT_WATCHLIST = ['NAS100', 'SPX500', 'US30', 'CRUDE', 'GOLD', 'AAPL', 
 
 const TIMEFRAMES = [
   { label: '1M', yf: '1m' },
-  { label: '2M', yf: '2m' },
   { label: '5M', yf: '5m' },
   { label: '15M', yf: '15m' },
   { label: '30M', yf: '30m' },
   { label: '1H', yf: '60m' },
-  { label: '2H', yf: '120m' }, 
   { label: '4H', yf: '240m' }, 
   { label: '1D', yf: '1d' },
   { label: '1W', yf: '1wk' },
-  { label: '1MO', yf: '1mo' },
 ];
 
 const LABEL_MAP: Record<string, string> = {
@@ -49,7 +46,7 @@ const LABEL_MAP: Record<string, string> = {
 
 export default function ChartsPage() {
   const [activeSymbol, setActiveSymbol] = useState('NAS100');
-  const [timeframe, setTimeframe] = useState(TIMEFRAMES[3]); // Default 15M
+  const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]); // Default 15M
 
   const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -84,7 +81,6 @@ export default function ChartsPage() {
     localStorage.setItem('vantage_charts_watchlist_v4', JSON.stringify(watchlist));
   }, [watchlist]);
 
-  // The hook now correctly reacts to timeframe changes
   const { data: marketData, error: streamError } = useMarketData(watchlist, timeframe.yf);
   const activeQuote = marketData[activeSymbol];
   const loading = Object.keys(marketData).length === 0 && !streamError;
@@ -155,64 +151,69 @@ export default function ChartsPage() {
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden min-h-0">
+      {/* --- TOOLBAR --- */}
       <div className="h-10 border-b border-border bg-surface flex items-center px-4 justify-between shrink-0 z-20">
-        <div className="flex items-center gap-6 relative">
+        <div className="flex items-center gap-4 min-w-0 flex-1">
+          {/* Symbol Selector */}
+          <div className="relative shrink-0">
+            <div
+              className="flex items-center gap-2 cursor-pointer hover:bg-white/5 px-2 py-1 rounded transition-colors"
+              onClick={() => setIsSearchOpen(true)}
+            >
+              <span className="text-sm font-bold text-text-primary">{activeSymbol}</span>
+              <ChevronDown size={14} className="text-text-tertiary" />
+            </div>
 
-          <div
-            className="flex items-center gap-2 cursor-pointer hover:bg-white/5 px-2 py-1 rounded transition-colors"
-            onClick={() => setIsSearchOpen(true)}
-          >
-            <span className="text-sm font-bold text-text-primary">{activeSymbol}</span>
-            <ChevronDown size={14} className="text-text-tertiary" />
+            {isSearchOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsSearchOpen(false)} />
+                <div className="absolute top-full left-0 mt-1 w-72 bg-surface-highlight border border-border rounded shadow-2xl z-50 p-1 flex flex-col">
+                  <form onSubmit={handleAddSymbol} className="flex items-center gap-2 bg-background border border-border px-2 rounded">
+                    <Search size={14} className="text-text-tertiary" />
+                    <input
+                      ref={searchInputRef}
+                      value={searchQuery}
+                      onChange={e => setSearchQuery(e.target.value)}
+                      placeholder="Search ticker..."
+                      className="flex-1 bg-transparent border-none outline-none text-xs py-2 text-text-primary uppercase"
+                    />
+                    {isSearching && <Loader2 size={12} className="animate-spin text-accent" />}
+                  </form>
+                  
+                  {searchResults.length > 0 && (
+                    <div className="flex flex-col mt-1 bg-background rounded overflow-hidden">
+                      {searchResults.map(res => (
+                        <button
+                          key={res.symbol}
+                          onClick={() => addResolvedSymbol(res.symbol)}
+                          className="flex items-center justify-between p-2 hover:bg-surface-highlight text-left border-b border-border/50 last:border-0"
+                        >
+                          <div className="flex flex-col overflow-hidden pr-2">
+                            <span className="text-xs font-bold text-text-primary">{res.symbol}</span>
+                            <span className="text-[10px] text-text-tertiary truncate">{res.name}</span>
+                          </div>
+                          <span className="text-[9px] text-text-secondary bg-surface px-1.5 py-0.5 rounded font-mono shrink-0">{res.type}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
-          {isSearchOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setIsSearchOpen(false)} />
-              <div className="absolute top-full left-0 mt-1 w-72 bg-surface-highlight border border-border rounded shadow-2xl z-50 p-1 flex flex-col">
-                <form onSubmit={handleAddSymbol} className="flex items-center gap-2 bg-background border border-border px-2 rounded">
-                  <Search size={14} className="text-text-tertiary" />
-                  <input
-                    ref={searchInputRef}
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    placeholder="Search company name or ticker..."
-                    className="flex-1 bg-transparent border-none outline-none text-xs py-2 text-text-primary uppercase"
-                  />
-                  {isSearching && <Loader2 size={12} className="animate-spin text-accent" />}
-                </form>
-                
-                {searchResults.length > 0 && (
-                  <div className="flex flex-col mt-1 bg-background rounded overflow-hidden">
-                    {searchResults.map(res => (
-                      <button
-                        key={res.symbol}
-                        onClick={() => addResolvedSymbol(res.symbol)}
-                        className="flex items-center justify-between p-2 hover:bg-surface-highlight text-left border-b border-border/50 last:border-0"
-                      >
-                        <div className="flex flex-col overflow-hidden pr-2">
-                          <span className="text-xs font-bold text-text-primary">{res.symbol}</span>
-                          <span className="text-[10px] text-text-tertiary truncate">{res.name}</span>
-                        </div>
-                        <span className="text-[9px] text-text-secondary bg-surface px-1.5 py-0.5 rounded font-mono shrink-0">{res.type}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+          <div className="h-4 w-[1px] bg-border shrink-0" />
 
-          <div className="h-4 w-[1px] bg-border" />
-
-          {/* TIMEFRAME SELECTOR */}
-          <div className="flex items-center gap-1 overflow-x-auto custom-scrollbar no-scrollbar">
+          {/* Timeframe Selector - Ensuring visibility */}
+          <div className="flex items-center gap-1 overflow-x-auto no-scrollbar min-w-0">
             {TIMEFRAMES.map(tf => (
               <button
                 key={tf.label}
                 onClick={() => setTimeframe(tf)}
-                className={`px-2 py-1 text-[10px] font-bold rounded transition-colors whitespace-nowrap
-                  ${timeframe.label === tf.label ? 'bg-accent/10 text-accent border border-accent/30' : 'text-text-tertiary hover:text-text-primary'}`}
+                className={`px-2.5 py-1 text-[10px] font-bold rounded transition-all whitespace-nowrap border
+                  ${timeframe.label === tf.label 
+                    ? 'bg-accent/10 text-accent border-accent/40 shadow-[0_0_10px_rgba(255,153,0,0.1)]' 
+                    : 'text-text-secondary border-transparent hover:text-text-primary hover:bg-white/5'}`}
               >
                 {tf.label}
               </button>
@@ -220,17 +221,17 @@ export default function ChartsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3 shrink-0 ml-4">
           {loading && <Loader2 size={14} className="animate-spin text-text-tertiary" />}
           {streamError && <span title={streamError}><AlertCircle size={14} className="text-negative" /></span>}
-          <button className="p-1.5 text-text-tertiary hover:text-text-primary" title="Layout Settings (Coming Soon)"><Layout size={16} /></button>
+          <button className="p-1.5 text-text-tertiary hover:text-text-primary" title="Layout Settings"><Layout size={16} /></button>
           <button className="p-1.5 text-text-tertiary hover:text-text-primary" title="Fullscreen" onClick={() => document.documentElement.requestFullscreen()}><Maximize2 size={16} /></button>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
-
-        <div className="w-full md:w-56 border-b md:border-b-0 md:border-r border-border bg-surface flex flex-col shrink-0 h-[200px] md:h-full">
+        {/* Watchlist Sidebar */}
+        <div className="w-full md:w-56 border-b md:border-b-0 md:border-r border-border bg-surface flex flex-col shrink-0 h-[180px] md:h-full">
           <div className="p-3 border-b border-border flex items-center justify-between shrink-0 bg-surface-highlight">
             <span className="text-[10px] font-bold uppercase tracking-widest text-text-tertiary">Watchlist</span>
             <button onClick={() => setIsSearchOpen(true)} className="p-1 hover:bg-white/5 rounded text-text-tertiary hover:text-text-primary">
@@ -278,11 +279,12 @@ export default function ChartsPage() {
           </div>
         </div>
 
-        <div className="flex-1 bg-black relative min-h-[400px] md:min-h-0 flex flex-col border-b md:border-b-0 md:border-r border-border">
+        {/* Main Chart Area */}
+        <div className="flex-1 bg-black relative min-h-[300px] md:min-h-0 flex flex-col border-b md:border-b-0 md:border-r border-border">
           {chartData.length > 0 ? (
              <TradingChart data={chartData} symbol={activeSymbol} />
           ) : (
-             <div className="flex items-center justify-center h-full text-[10px] uppercase font-bold tracking-widest text-text-tertiary">Rendering Engine...</div>
+             <div className="flex items-center justify-center h-full text-[10px] uppercase font-bold tracking-widest text-text-tertiary">Initializing Chart Engine...</div>
           )}
           
           <div className="absolute top-4 left-4 p-3 bg-surface/80 backdrop-blur border border-border rounded-sm pointer-events-none flex flex-col gap-1">
@@ -301,6 +303,7 @@ export default function ChartsPage() {
           </div>
         </div>
 
+        {/* Analysis Panel */}
         <div className="w-full md:w-80 bg-surface flex flex-col shrink-0 h-auto min-h-[400px] md:h-full">
           <TradeSetupPanel tick={activeQuote} timeframeLabel={timeframe.label} />
         </div>
