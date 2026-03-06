@@ -34,6 +34,10 @@ export function TradingChart({
         textColor: '#888888',
         fontFamily: 'JetBrains Mono, monospace',
       },
+      localization: {
+        // Automatically sync to user's browser locale and timezone
+        locale: navigator.language,
+      },
       grid: {
         vertLines: { color: 'rgba(255, 255, 255, 0.03)' },
         horzLines: { color: 'rgba(255, 255, 255, 0.03)' },
@@ -96,9 +100,11 @@ export function TradingChart({
     const lastUnique = unique[unique.length - 1];
     const prevUnique = lastDataRef.current[lastDataRef.current.length - 1];
 
+    // If we are just updating the current candle (live tick), use update()
     if (prevUnique && lastUnique.time >= prevUnique.time && unique.length === lastDataRef.current.length) {
       seriesRef.current.update(lastUnique);
     } else {
+      // If the whole dataset changed (timeframe/symbol swap), use setData()
       seriesRef.current.setData(unique);
     }
 

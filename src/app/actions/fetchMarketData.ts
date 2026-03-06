@@ -55,20 +55,21 @@ const YF_MAP: Record<string, string> = {
 };
 
 /**
- * Returns the maximum valid range for a given interval to maximize candle count.
+ * Optimized ranges to minimize data transfer and maximize speed.
+ * We only need enough data to fill the screen (~300-500 candles).
  */
 function getRangeForInterval(interval: string) {
   switch (interval) {
-    case '1m': return '7d';
-    case '2m': return '60d';
-    case '5m': return '60d';
-    case '15m': return '60d';
-    case '30m': return '60d';
-    case '60m': return '730d';
-    case '120m': return '730d';
-    case '240m': return '730d';
-    case '1d': return 'max';
-    case '1wk': return 'max';
+    case '1m': return '1d';   // ~390 candles for US session
+    case '2m': return '2d';
+    case '5m': return '5d';
+    case '15m': return '10d';
+    case '30m': return '20d';
+    case '60m': return '30d';
+    case '120m': return '60d';
+    case '240m': return '90d';
+    case '1d': return '1y';
+    case '1wk': return '5y';
     case '1mo': return 'max';
     default: return '1mo';
   }
