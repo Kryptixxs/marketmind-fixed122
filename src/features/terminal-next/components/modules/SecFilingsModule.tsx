@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useTerminalStore } from '../../store/TerminalStore';
+import { fetchInstitutionalDepth, type InstitutionalDepth } from '@/app/actions/fetchInstitutionalDepth';
 
 const TABS = ['10-K', '10-Q', '8-K', 'Proxy', 'Insider', 'S-1'];
 
@@ -29,9 +31,14 @@ export function SecFilingsModule() {
   const { state, dispatch } = useTerminalStore();
   const selected = state.activeSubTab && TABS.includes(state.activeSubTab) ? state.activeSubTab : '10-K';
   const sym = state.activeSymbol?.replace(/\s+.*$/, '') || 'AAPL';
+  const [depth, setDepth] = useState<InstitutionalDepth | null>(null);
+
+  useEffect(() => {
+    fetchInstitutionalDepth(sym).then(setDepth).catch(() => {});
+  }, [sym]);
 
   return (
-    <div className="flex-1 min-h-0 grid grid-cols-[18%_40%_42%] grid-rows-[48%_52%] gap-px bg-black">
+    <div className="flex-1 min-h-0 grid grid-cols-[18%_40%_42%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
       <section className="bg-black border-r border-[#1a1a1a] min-h-0 overflow-hidden flex flex-col row-span-2">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[9px] font-bold text-white">SEC / FILINGS</div>
         <div className="flex-1 overflow-y-auto text-[8px]">
@@ -54,9 +61,9 @@ export function SecFilingsModule() {
               <tr><th className="text-left px-1 py-0.5">Form</th><th className="text-left px-1 py-0.5">Date</th><th className="text-left px-1 py-0.5">Description</th><th className="text-right px-1 py-0.5">Status</th></tr>
             </thead>
             <tbody>
-              {FILINGS.map(([form, date, desc, status], i) => (
+              {(depth?.sec.filings ?? FILINGS.map(([form, filed, description]) => ({ form, filed, description, url: '#' }))).map((f, i) => (
                 <tr key={`fil-${i}`} className="border-t border-[#262626] hover:bg-[#0f0f0f] cursor-pointer">
-                  <td className="px-1 py-0.5 text-gray-200 font-medium">{form}</td><td className="px-1 py-0.5 text-gray-400">{date}</td><td className="px-1 py-0.5 text-gray-300">{desc}</td><td className="px-1 py-0.5 text-right"><span className={status === 'Filed' ? 'text-green-500' : 'text-amber-500'}>{status}</span></td>
+                  <td className="px-1 py-0.5 text-gray-200 font-medium">{f.form}</td><td className="px-1 py-0.5 text-gray-400">{f.filed}</td><td className="px-1 py-0.5 text-gray-300">{f.description}</td><td className="px-1 py-0.5 text-right"><span className="text-green-500">{f.url ? 'Filed' : 'Pending'}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -71,9 +78,9 @@ export function SecFilingsModule() {
               <tr><th className="text-left px-1 py-0.5">Insider</th><th className="text-left px-1 py-0.5">Type</th><th className="text-right px-1 py-0.5">Qty</th><th className="text-right px-1 py-0.5">Price</th><th className="text-right px-1 py-0.5">Date</th></tr>
             </thead>
             <tbody>
-              {INSIDER_ACTIVITY.map(([name, type, qty, px, d], i) => (
+              {(depth?.sec.insider ?? INSIDER_ACTIVITY.map(([insider, side, shares, price, date]) => ({ insider, side: side as 'Buy' | 'Sell', shares: Number(shares.replace(/,/g, '')), price: Number(price), date }))).map((r, i) => (
                 <tr key={`ins-${i}`} className="border-t border-[#262626] hover:bg-[#0f0f0f]">
-                  <td className="px-1 py-0.5 text-gray-200">{name}</td><td className="px-1 py-0.5"><span className={type === 'Buy' ? 'text-green-500 font-bold' : 'text-red-500'}>{type}</span></td><td className="px-1 py-0.5 text-right text-gray-300">{qty}</td><td className="px-1 py-0.5 text-right text-gray-400">${px}</td><td className="px-1 py-0.5 text-right text-gray-400">{d}</td>
+                  <td className="px-1 py-0.5 text-gray-200">{r.insider}</td><td className="px-1 py-0.5"><span className={r.side === 'Buy' ? 'text-green-500 font-bold' : 'text-red-500'}>{r.side}</span></td><td className="px-1 py-0.5 text-right text-gray-300">{r.shares.toLocaleString()}</td><td className="px-1 py-0.5 text-right text-gray-400">${r.price.toFixed(2)}</td><td className="px-1 py-0.5 text-right text-gray-400">{r.date}</td>
                 </tr>
               ))}
             </tbody>
@@ -88,9 +95,9 @@ export function SecFilingsModule() {
               <tr><th className="text-left px-1 py-0.5">Holder</th><th className="text-right px-1 py-0.5">Shares</th><th className="text-right px-1 py-0.5">% Out</th><th className="text-right px-1 py-0.5">Value</th><th className="text-left px-1 py-0.5">Change</th></tr>
             </thead>
             <tbody>
-              {[['Vanguard', '1.24B', '7.2%', '$243B', '+0.2%'], ['BlackRock', '1.02B', '5.9%', '$200B', '+0.1%'], ['State Street', '420M', '2.4%', '$82B', '-0.1%'], ['Fidelity', '380M', '2.2%', '$75B', '+0.3%'], ['Berkshire', '905M', '5.2%', '$178B', 'flat']].map(([h, sh, pct, val, ch], i) => (
+              {(depth?.sec.holders ?? []).map((h, i) => (
                 <tr key={`13f-${i}`} className="border-t border-[#262626] hover:bg-[#0f0f0f]">
-                  <td className="px-1 py-0.5 text-gray-200">{h}</td><td className="px-1 py-0.5 text-right text-gray-300">{sh}</td><td className="px-1 py-0.5 text-right text-gray-400">{pct}</td><td className="px-1 py-0.5 text-right text-gray-300">{val}</td><td className="px-1 py-0.5"><span className={ch.startsWith('+') ? 'text-green-500' : ch.startsWith('-') ? 'text-red-500' : 'text-gray-500'}>{ch}</span></td>
+                  <td className="px-1 py-0.5 text-gray-200">{h.holder}</td><td className="px-1 py-0.5 text-right text-gray-300">{h.shares.toLocaleString()}</td><td className="px-1 py-0.5 text-right text-gray-400">{h.pctOut.toFixed(1)}%</td><td className="px-1 py-0.5 text-right text-gray-300">${(h.shares / 1_000_000_000).toFixed(2)}B</td><td className="px-1 py-0.5"><span className={h.changePct > 0 ? 'text-green-500' : h.changePct < 0 ? 'text-red-500' : 'text-gray-500'}>{`${h.changePct >= 0 ? '+' : ''}${h.changePct.toFixed(1)}%`}</span></td>
                 </tr>
               ))}
             </tbody>

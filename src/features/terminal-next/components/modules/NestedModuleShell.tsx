@@ -59,7 +59,7 @@ export function NestedModuleShell({ moduleCode, title, subtabs, buildRows }: Nes
             ))}
           </div>
         </div>
-        <div className="grid grid-rows-[64%_36%] gap-px bg-black flex-1 min-h-0">
+        <div className="grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black flex-1 min-h-0">
           <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
             {rows.map(([k, v]) => (
               <div key={`${k}-${v}`} className="text-[10px] px-1 py-[2px] border-b border-[#142034] flex items-center justify-between">

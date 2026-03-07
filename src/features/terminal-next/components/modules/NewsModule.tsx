@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTerminalStore } from '../../store/TerminalStore';
 import { fetchEntityIntel } from '@/app/actions/fetchEntityIntel';
-import { searchDocuments } from '@/app/actions/searchDocuments';
+import { fetchInstitutionalDepth, type InstitutionalDepth } from '@/app/actions/fetchInstitutionalDepth';
 
 const TABS = ['Wire', 'Symbol', 'Sector', 'Macro', 'Earnings', 'M&A', 'Analyst', 'Regulatory'];
 
@@ -11,21 +11,18 @@ export function NewsModule() {
   const { state, dispatch } = useTerminalStore();
   const selected = state.activeSubTab && TABS.includes(state.activeSubTab) ? state.activeSubTab : 'Wire';
   const [backendNews, setBackendNews] = useState<string[]>([]);
-  const [wireDocs, setWireDocs] = useState<{ title: string; published_at: string; source: string }[]>([]);
+  const [depth, setDepth] = useState<InstitutionalDepth | null>(null);
 
   useEffect(() => {
     const sym = state.activeSymbol?.replace(/\s+.*$/, '') || '';
-    if (!sym) {
-      setBackendNews([]);
-      return;
-    }
+    if (!sym) return;
     fetchEntityIntel(sym).then((res) => setBackendNews(res.news ?? []));
   }, [state.activeSymbol]);
 
   useEffect(() => {
-    if (selected !== 'Wire') return;
-    searchDocuments('').then((docs) => setWireDocs(docs.map((d) => ({ title: d.title, published_at: d.published_at, source: d.source }))));
-  }, [selected]);
+    const sym = state.activeSymbol?.replace(/\s+.*$/, '') || 'AAPL';
+    fetchInstitutionalDepth(sym).then(setDepth).catch(() => {});
+  }, [state.activeSymbol]);
 
   const applySymbol = (s: string) => {
     dispatch({ type: 'SET_SYMBOL', payload: s });
@@ -36,14 +33,14 @@ export function NewsModule() {
   const symbolNews = backendNews.length > 0 ? backendNews : state.headlines;
   const wireItems = selected === 'Symbol'
     ? symbolNews
-    : wireDocs.length > 0
-      ? wireDocs.map((d) => `${d.title} (${d.published_at})`)
+    : (depth?.news.archive?.length ?? 0) > 0
+      ? (depth?.news.archive ?? []).map((d) => `${d.title} (${d.published_at})`)
       : [...state.headlines, ...state.systemFeed, ...state.headlines];
-  const sectorNews = [['Tech', 'AI capex +12%'], ['Energy', 'Crude bid'], ['Healthcare', 'FDA watch'], ['Fin', 'Rates vol'], ['Consumer', 'Retail soft'], ['Industrials', 'PMI beat']];
-  const macroItems = ['CPI Tue 08:30', 'FOMC Wed 14:00', 'NFP Fri 08:30', 'ECB Thu 13:15', 'Retail Sales', 'PMI', 'Jobless Claims', 'Housing Starts'];
+  const sectorNews = (depth?.market.sectors ?? []).map((s) => [s.sector, `${s.movePct >= 0 ? '+' : ''}${s.movePct.toFixed(2)}%`] as const);
+  const macroItems = (depth?.calendar.macro ?? []).map((m) => `${m.date} ${m.title} ${m.impact}`);
 
   return (
-    <div className={`flex-1 min-h-0 grid grid-cols-[18%_28%_54%] grid-rows-[50%_50%] gap-px bg-black`}>
+    <div className={`flex-1 min-h-0 grid grid-cols-[18%_28%_54%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black`}>
       <section className="bg-black min-h-0 overflow-hidden flex flex-col row-span-2 border-r border-[#1a1a1a]">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] flex items-center justify-between text-[9px] font-bold text-white">
           <span>NEWS / FEEDS</span><span className="text-gray-400">{selected}</span>
@@ -91,6 +88,16 @@ export function NewsModule() {
           ))}
           {['10-K', '10-Q', '8-K', 'Proxy', 'S-1', '424B'].map((f, i) => (
             <div key={`f-${i}`} className="px-1 py-0.5 border-b border-[#262626] text-gray-400">{state.activeSymbol} {f}</div>
+          ))}
+          {(depth?.news.topics ?? []).map((t) => (
+            <div key={t.topic} className="px-1 py-0.5 border-b border-[#262626] text-gray-400">
+              {`${t.topic} ${t.count} sentiment ${t.sentiment >= 0 ? '+' : ''}${t.sentiment.toFixed(2)}`}
+            </div>
+          ))}
+          {(depth?.news.impacts ?? []).map((imp, i) => (
+            <div key={`${imp.date}-${i}`} className="px-1 py-0.5 border-b border-[#262626] text-gray-400">
+              {`${imp.date} ${imp.priceImpactPct >= 0 ? '+' : ''}${imp.priceImpactPct.toFixed(2)}% vol ${imp.volShiftPct >= 0 ? '+' : ''}${imp.volShiftPct.toFixed(2)}%`}
+            </div>
           ))}
         </div>
       </section>

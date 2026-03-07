@@ -259,7 +259,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       ...state,
       functionCode: action.payload,
       activeFunction,
-      activeSubTab: undefined,
+      activeSubTab: action.payload === 'ESC' ? 'ESC' : undefined,
       commandInput: normalized,
       systemFeed: [`FUNCTION CONTEXT -> ${activeFunction}`, ...state.systemFeed],
     };
@@ -365,7 +365,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       activeSymbol: `${result.security.ticker}${result.security.market ? ` ${result.security.market}` : ''}`,
       functionCode: result.functionCode,
       activeFunction: result.activeFunction,
-      activeSubTab: undefined,
+      activeSubTab: result.functionCode === 'ESC' ? 'ESC' : undefined,
       intelFilters: result.activeFunction === 'INTEL' ? state.intelFilters : undefined,
       systemFeed: [transitionLine, `LOADED ${result.normalized}`, ...state.systemFeed].filter(Boolean),
     };

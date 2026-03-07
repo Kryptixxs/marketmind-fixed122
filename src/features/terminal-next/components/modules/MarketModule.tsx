@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useTerminalStore } from '../../store/TerminalStore';
+import { fetchInstitutionalDepth, type InstitutionalDepth } from '@/app/actions/fetchInstitutionalDepth';
 
 const TABS = ['Indices', 'Sectors', 'Breadth', 'Flows', 'Macro', 'Correlations'];
 
@@ -27,9 +29,20 @@ const INDICES = [
 export function MarketModule() {
   const { state, dispatch } = useTerminalStore();
   const selected = state.activeSubTab && TABS.includes(state.activeSubTab) ? state.activeSubTab : 'Indices';
+  const [depth, setDepth] = useState<InstitutionalDepth | null>(null);
+
+  useEffect(() => {
+    const sym = state.activeSymbol?.replace(/\s+.*$/, '') || 'AAPL';
+    fetchInstitutionalDepth(sym).then(setDepth).catch(() => {});
+  }, [state.activeSymbol]);
+
+  const sectors = depth?.market.sectors ?? SECTORS.map(([sector, move, beta, view]) => ({ sector, movePct: Number(String(move).replace('%', '')), beta: Number(beta), concentrationPct: view === 'Outperform' ? 15 : 8 }));
+  const indices = depth?.market.indices ?? INDICES.map(([symbol, level, move]) => ({ symbol, level, movePct: Number(String(move).replace('%', '')), volumeM: 0 }));
+  const flows = depth?.market.flows ?? [];
+  const corrs = depth?.market.correlations ?? [];
 
   return (
-    <div className="flex-1 min-h-0 grid grid-cols-[18%_40%_42%] grid-rows-[50%_50%] gap-px bg-black">
+    <div className="flex-1 min-h-0 grid grid-cols-[18%_40%_42%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
       <section className="bg-black border-r border-[#1a1a1a] min-h-0 overflow-hidden flex flex-col row-span-2">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[9px] font-bold text-white">MKT / NAV</div>
         <div className="flex-1 overflow-y-auto text-[8px]">
@@ -58,9 +71,9 @@ export function MarketModule() {
               <tr><th className="text-left px-1 py-0.5">Sector</th><th className="text-right px-1 py-0.5">1D</th><th className="text-right px-1 py-0.5">Beta</th><th className="text-right px-1 py-0.5">View</th></tr>
             </thead>
             <tbody>
-              {SECTORS.map(([sec, d, beta, view], i) => (
+              {sectors.map((row, i) => (
                 <tr key={`sec-${i}`} className="border-t border-[#262626] hover:bg-[#0f0f0f]">
-                  <td className="px-1 py-0.5 text-gray-200">{sec}</td><td className={`px-1 py-0.5 text-right font-bold ${d.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>{d}</td><td className="px-1 py-0.5 text-right text-gray-400">{beta}</td><td className="px-1 py-0.5 text-right"><span className={view === 'Outperform' ? 'text-green-500' : view === 'Underperform' ? 'text-red-500' : 'text-gray-500'}>{view}</span></td>
+                  <td className="px-1 py-0.5 text-gray-200">{row.sector}</td><td className={`px-1 py-0.5 text-right font-bold ${row.movePct >= 0 ? 'text-green-500' : 'text-red-500'}`}>{`${row.movePct >= 0 ? '+' : ''}${row.movePct.toFixed(2)}%`}</td><td className="px-1 py-0.5 text-right text-gray-400">{row.beta.toFixed(2)}</td><td className="px-1 py-0.5 text-right"><span className={row.movePct > 0.4 ? 'text-green-500' : row.movePct < 0 ? 'text-red-500' : 'text-gray-500'}>{row.movePct > 0.4 ? 'Outperform' : row.movePct < 0 ? 'Underperform' : 'Neutral'}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -75,9 +88,9 @@ export function MarketModule() {
               <tr><th className="text-left px-1 py-0.5">Index</th><th className="text-right px-1 py-0.5">Level</th><th className="text-right px-1 py-0.5">1D</th><th className="text-right px-1 py-0.5">Vol</th></tr>
             </thead>
             <tbody>
-              {INDICES.map(([idx, lvl, d, vol], i) => (
+              {indices.map((idx, i) => (
                 <tr key={`idx-${i}`} className="border-t border-[#262626] hover:bg-[#0f0f0f]">
-                  <td className="px-1 py-0.5 text-gray-200 font-medium">{idx}</td><td className="px-1 py-0.5 text-right text-gray-300">{lvl.toLocaleString()}</td><td className={`px-1 py-0.5 text-right font-bold ${d.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>{d}</td><td className="px-1 py-0.5 text-right text-gray-400">{vol}</td>
+                  <td className="px-1 py-0.5 text-gray-200 font-medium">{idx.symbol}</td><td className="px-1 py-0.5 text-right text-gray-300">{idx.level.toLocaleString()}</td><td className={`px-1 py-0.5 text-right font-bold ${idx.movePct >= 0 ? 'text-green-500' : 'text-red-500'}`}>{`${idx.movePct >= 0 ? '+' : ''}${idx.movePct.toFixed(2)}%`}</td><td className="px-1 py-0.5 text-right text-gray-400">{idx.volumeM.toFixed(2)}M</td>
                 </tr>
               ))}
             </tbody>
@@ -89,8 +102,8 @@ export function MarketModule() {
         <div className="flex-1 overflow-y-auto text-[8px] grid grid-cols-3 gap-px">
           <div className="overflow-y-auto border-r border-[#262626]">
             <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">ETF FLOWS</div>
-            {[['SPY', '+$1.2B', 'Inflow'], ['QQQ', '+$890M', 'Inflow'], ['IWM', '-$120M', 'Outflow'], ['XLF', '+$340M', 'Inflow'], ['XLE', '+$210M', 'Inflow']].map(([etf, amt, dir], i) => (
-              <div key={`fl-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{etf}</span><span className={dir === 'Inflow' ? 'text-green-500' : 'text-red-500'}>{amt}</span></div>
+            {flows.map((f, i) => (
+              <div key={`fl-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{f.vehicle}</span><span className={f.direction === 'Inflow' ? 'text-green-500' : 'text-red-500'}>{`${f.flowUsdM >= 0 ? '+' : ''}$${f.flowUsdM.toFixed(0)}M`}</span></div>
             ))}
           </div>
           <div className="overflow-y-auto border-r border-[#262626]">
@@ -101,8 +114,8 @@ export function MarketModule() {
           </div>
           <div className="overflow-y-auto">
             <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">CORR MATRIX</div>
-            {[['SPX/NDX', '0.98'], ['SPX/VIX', '-0.82'], ['SPX/US10Y', '-0.45'], ['NDX/VIX', '-0.79'], ['Gold/DXY', '-0.72']].map(([pair, corr], i) => (
-              <div key={`corr-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{pair}</span><span>{corr}</span></div>
+            {corrs.map((c, i) => (
+              <div key={`corr-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{c.pair}</span><span>{c.corr.toFixed(2)}</span></div>
             ))}
           </div>
         </div>

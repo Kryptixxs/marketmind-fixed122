@@ -6,7 +6,7 @@ import { useVisibleRows } from '../hooks/useVisibleRows';
 
 const fmt = (v: number, d = 2) => v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 
-export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' }) {
+export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' | 'ESC' }) {
   const { state, dispatch } = useTerminalStore();
   const depthRef = useRef<HTMLDivElement>(null);
   const tapeRef = useRef<HTMLDivElement>(null);
@@ -23,6 +23,8 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         ? 'grid-rows-[30%_20%_50%]'
         : execMode === 'EVENTS'
           ? 'grid-rows-[26%_36%_38%]'
+          : execMode === 'ESC'
+            ? 'grid-rows-[34%_30%_36%]'
           : 'grid-rows-[53%_22%_25%]';
   const ladderRows = state.orderBook.slice(0, visibleDepthRows);
   const tapeRows = state.tape.slice(0, visibleTapeRows);
@@ -34,6 +36,8 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         ? 'border-[#174432] text-[#7dffcc]'
         : execMode === 'EVENTS'
           ? 'border-[#5a1f35] text-[#e3b4ff]'
+          : execMode === 'ESC'
+            ? 'border-[#1a5f4b] text-[#99f1d6]'
           : 'border-[#2b3f5f] text-[#9bc3e8]';
   const pulseClass = execMode === 'MICROSTRUCTURE' ? 'animate-pulse' : '';
   const nextRailTab = activeRailTab === 'DEPTH' ? 'TAPE' : activeRailTab === 'TAPE' ? 'ALERTS' : 'DEPTH';

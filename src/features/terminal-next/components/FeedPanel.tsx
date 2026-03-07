@@ -4,7 +4,7 @@ import { useRef } from 'react';
 import { useTerminalStore } from '../store/TerminalStore';
 import { useVisibleRows } from '../hooks/useVisibleRows';
 
-export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' }) {
+export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' | 'ESC' }) {
   const { state, dispatch } = useTerminalStore();
   const newsRef = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
@@ -19,6 +19,8 @@ export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MI
         ? 'grid-cols-[30%_40%_30%]'
         : execMode === 'FACTORS'
           ? 'grid-cols-[34%_46%_20%]'
+          : execMode === 'ESC'
+            ? 'grid-cols-[28%_47%_25%]'
           : 'grid-cols-[40%_35%_25%]';
   const title = execMode === 'EVENTS' ? 'EVENT FEED / SYSTEM / ALERT LOG' : 'NEWS / SYSTEM / ALERT LOG';
   const modeHeaderClass =
@@ -28,6 +30,8 @@ export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MI
         ? 'border-[#174432] text-[#7dffcc]'
         : execMode === 'EVENTS'
           ? 'border-[#5a1f35] text-[#e3b4ff]'
+          : execMode === 'ESC'
+            ? 'border-[#1a5f4b] text-[#99f1d6]'
           : 'border-[#2b3f5f] text-[#f4cf76]';
 
   return (

@@ -11,7 +11,7 @@ function polylinePoints(values: number[], width: number, yScale: (v: number) => 
   return values.map((v, i) => `${(i / Math.max(1, values.length - 1)) * width},${yScale(v)}`).join(' ');
 }
 
-export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' }) {
+export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' | 'ESC' }) {
   const { state, dispatch, deckRows } = useTerminalStore();
 
   const active = useMemo(() => {
@@ -29,7 +29,7 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
 
   const priceY = (p: number) => 132 - ((p - low) / range) * 128;
   const volumeY = (v: number) => 174 - (v / maxVol) * 38;
-  const chartW = 620;
+  const chartW = execMode === 'ESC' ? 540 : 620;
   const bodyW = Math.max(4, (chartW / Math.max(1, recentBars.length)) * 0.58);
 
   const vwapValues = recentBars.map((b) => b.vwap);
@@ -72,8 +72,17 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         ? 'grid-cols-[42%_58%]'
         : execMode === 'EVENTS'
           ? 'grid-cols-[38%_62%]'
-          : 'grid-cols-[60%_40%]';
-  const leftRowsClass = execMode === 'MICROSTRUCTURE' ? 'grid-rows-[60%_40%]' : execMode === 'FACTORS' ? 'grid-rows-[48%_52%]' : 'grid-rows-[72%_28%]';
+          : execMode === 'ESC'
+            ? 'grid-cols-[34%_66%]'
+            : 'grid-cols-[54%_46%]';
+  const leftRowsClass =
+    execMode === 'MICROSTRUCTURE'
+      ? 'grid-rows-[minmax(0,0.54fr)_minmax(0,0.46fr)]'
+      : execMode === 'FACTORS'
+        ? 'grid-rows-[minmax(0,0.42fr)_minmax(0,0.58fr)]'
+        : execMode === 'ESC'
+          ? 'grid-rows-[minmax(0,0.38fr)_minmax(0,0.62fr)]'
+          : 'grid-rows-[minmax(0,0.56fr)_minmax(0,0.44fr)]';
   const modeHeaderClass =
     execMode === 'MICROSTRUCTURE'
       ? 'border-[#274b66] text-[#63c8ff]'
@@ -81,6 +90,8 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         ? 'border-[#174432] text-[#7dffcc]'
         : execMode === 'EVENTS'
           ? 'border-[#5a1f35] text-[#e3b4ff]'
+          : execMode === 'ESC'
+            ? 'border-[#1a5f4b] text-[#99f1d6]'
           : 'border-[#2b3f5f] text-[#9bc3e8]';
   const modePanelBand =
     execMode === 'MICROSTRUCTURE'
@@ -89,6 +100,8 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         ? 'bg-[#0a1f15]'
         : execMode === 'EVENTS'
           ? 'bg-[#1a0c16]'
+          : execMode === 'ESC'
+            ? 'bg-[#0a1a14]'
           : 'bg-[#08111d]';
 
   const flashClass = state.delta.priceFlash[active?.symbol ?? ''] === 'up' ? 'text-[#7dffcc]' : state.delta.priceFlash[active?.symbol ?? ''] === 'down' ? 'text-[#ff9bbb]' : 'text-[#edf4fc]';
@@ -133,10 +146,10 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
       <div className={`grid ${splitClass} gap-px bg-[#1a1a1a] flex-1 min-h-0`}>
         <div className={`${modePanelBand} min-h-0 grid ${leftRowsClass}`}>
           <div className="min-h-0 flex flex-col">
-          <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">INTRADAY (CANDLE + VWAP + MA + VOL)</div>
+          <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">{execMode === 'ESC' ? 'ESC PRICE CONTEXT (COMPACT CANDLE + VWAP + MA)' : 'INTRADAY (CANDLE + VWAP + MA + VOL)'}</div>
           <div className="relative flex-1">
-            <svg viewBox="0 0 620 176" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-              <line x1="0" y1="132" x2="620" y2="132" stroke="#1f3149" strokeWidth="1" />
+            <svg viewBox={`0 0 ${chartW} ${execMode === 'ESC' ? 154 : 176}`} preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
+              <line x1="0" y1={execMode === 'ESC' ? 112 : 132} x2={chartW} y2={execMode === 'ESC' ? 112 : 132} stroke="#1f3149" strokeWidth="1" />
               {recentBars.map((b, i) => {
                 const x = (i / Math.max(1, recentBars.length - 1)) * chartW;
                 const openY = priceY(b.open);
@@ -158,9 +171,9 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
                     />
                     <rect
                       x={x - bodyW / 2}
-                      y={volumeY(b.volume)}
+                      y={execMode === 'ESC' ? Math.max(116, volumeY(b.volume)) : volumeY(b.volume)}
                       width={bodyW}
-                      height={174 - volumeY(b.volume)}
+                      height={(execMode === 'ESC' ? 152 : 174) - (execMode === 'ESC' ? Math.max(116, volumeY(b.volume)) : volumeY(b.volume))}
                       fill={up ? '#1f5a41aa' : '#59243aaa'}
                     />
                   </g>
@@ -171,13 +184,13 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
               <polyline fill="none" stroke="#d18cff" strokeWidth="1" points={polylinePoints(ma21Values, chartW, priceY)} />
               {hiBar && (
                 <>
-                  <line x1="0" y1={priceY(hiBar.high)} x2="620" y2={priceY(hiBar.high)} stroke="#2f4d78" strokeDasharray="3 2" />
+                  <line x1="0" y1={priceY(hiBar.high)} x2={chartW} y2={priceY(hiBar.high)} stroke="#2f4d78" strokeDasharray="3 2" />
                   <text x="4" y={priceY(hiBar.high) - 2} fill="#9fb4cd" fontSize="8">HI {fmt(hiBar.high, 2)}</text>
                 </>
               )}
               {loBar && (
                 <>
-                  <line x1="0" y1={priceY(loBar.low)} x2="620" y2={priceY(loBar.low)} stroke="#2f4d78" strokeDasharray="3 2" />
+                  <line x1="0" y1={priceY(loBar.low)} x2={chartW} y2={priceY(loBar.low)} stroke="#2f4d78" strokeDasharray="3 2" />
                   <text x="4" y={priceY(loBar.low) - 2} fill="#9fb4cd" fontSize="8">LO {fmt(loBar.low, 2)}</text>
                 </>
               )}
@@ -202,7 +215,7 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
             </div>
           </div>
         </div>
-        <div className={`${modePanelBand} min-h-0 grid grid-rows-[58%_42%]`}>
+        <div className={`${modePanelBand} min-h-0 grid grid-rows-[minmax(0,0.58fr)_minmax(0,0.42fr)]`}>
           <div className="min-h-0 overflow-y-auto custom-scrollbar">
             <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">ANALYTICS STACK</div>
             {tabRows.map(([k, v]) => (

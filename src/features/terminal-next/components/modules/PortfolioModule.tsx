@@ -1,12 +1,20 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useTerminalStore } from '../../store/TerminalStore';
+import { fetchInstitutionalDepth, type InstitutionalDepth } from '@/app/actions/fetchInstitutionalDepth';
 
 const TABS = ['Exposure', 'Risk', 'Concentration'];
 
 export function PortfolioModule() {
   const { state, dispatch } = useTerminalStore();
   const selected = state.activeSubTab && TABS.includes(state.activeSubTab) ? state.activeSubTab : 'Exposure';
+  const [depth, setDepth] = useState<InstitutionalDepth | null>(null);
+  useEffect(() => {
+    const sym = state.activeSymbol?.replace(/\s+.*$/, '') || 'AAPL';
+    fetchInstitutionalDepth(sym).then(setDepth).catch(() => {});
+  }, [state.activeSymbol]);
+
   const topPositions = [...state.blotter].sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl));
   const layoutClass =
     selected === 'Exposure' ? 'grid-cols-[36%_34%_30%]' : selected === 'Risk' ? 'grid-cols-[32%_36%_32%]' : 'grid-cols-[40%_30%_30%]';
@@ -36,6 +44,14 @@ export function PortfolioModule() {
             </div>
           ))}
           <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">POSITION DRIVER</div>
+          {(depth?.portfolio.exposures ?? []).map((e) => (
+            <div key={e.bucket} className="px-1 py-[2px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto_auto] gap-2 text-[8px]">
+              <span className="text-[#9fb4cd]">{e.bucket}</span>
+              <span className="text-[#e7f1ff]">G {e.gross.toFixed(1)}%</span>
+              <span className="text-[#e7f1ff]">N {e.net.toFixed(1)}%</span>
+              <span className="text-[#b7c8dd]">B {e.betaAdj.toFixed(1)}%</span>
+            </div>
+          ))}
           {state.quotes.map((q) => (
             <button key={q.symbol} onClick={() => applySymbol(q.symbol)} className="w-full text-left px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto] text-[8px]">
               <span className="text-[#cdd9ea] truncate">{q.symbol}</span>
@@ -67,18 +83,31 @@ export function PortfolioModule() {
               <span className={`text-right font-bold ${p.pnl >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}`}>{p.pnl.toFixed(0)}</span>
             </div>
           ))}
+          {(depth?.portfolio.factors ?? []).map((f) => (
+            <div key={f.factor} className="px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto] text-[8px]">
+              <span className="text-[#9fb4cd]">{f.factor}</span>
+              <span className="text-[#e7f1ff]">{f.exposure.toFixed(2)}</span>
+              <span className={`${f.contribution >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'} font-bold`}>{f.contribution.toFixed(2)}</span>
+            </div>
+          ))}
         </div>
       </section>
       <section className="bg-black min-h-0 overflow-hidden flex flex-col">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-[#f4cf76] font-bold flex items-center">PORTFLOW EVENTS</div>
-        <div className="grid grid-rows-[55%_45%] gap-px bg-[#1a2433] flex-1 min-h-0">
+        <div className="grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-[#1a2433] flex-1 min-h-0">
           <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
             {state.executionEvents.map((e) => <div key={e.id} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#d7e3f3]">{e.symbol} {e.status} {e.fillQty}@{e.fillPrice.toFixed(2)}</div>)}
             {topPositions.map((p) => <div key={`evt-${p.id}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">RISKCHK {p.symbol} {p.side} PNL {p.pnl.toFixed(0)}</div>)}
+            {(depth?.portfolio.scenarios ?? []).map((s) => (
+              <div key={s.scenario} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">{`${s.scenario} PNL ${s.pnlPct.toFixed(2)}% VAR ${s.varShiftPct.toFixed(2)}%`}</div>
+            ))}
           </div>
           <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
             {state.systemFeed.map((s, i) => <div key={`${s}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#9fb4cd]">{s}</div>)}
             {state.alerts.map((a, i) => <div key={`al-${a}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#e3b4ff]">{a}</div>)}
+            {(depth?.portfolio.varHistory ?? []).map((v) => (
+              <div key={v.date} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#9fb4cd]">{`${v.date} VaR95 ${v.var95.toFixed(2)} VaR99 ${v.var99.toFixed(2)}`}</div>
+            ))}
           </div>
         </div>
       </section>

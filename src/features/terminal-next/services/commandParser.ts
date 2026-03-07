@@ -1,6 +1,6 @@
 import { AssetClass, CommandResult, FunctionCode, SecurityContext, TerminalFunction } from '../types';
 
-const FUNCTION_CODES: FunctionCode[] = ['EXEC', 'DES', 'FA', 'WEI', 'HP', 'YAS', 'TOP', 'ECO', 'NI', 'OVME', 'PORT', 'NEWS', 'CAL', 'SEC', 'MKT', 'INTEL'];
+const FUNCTION_CODES: FunctionCode[] = ['EXEC', 'ESC', 'DES', 'FA', 'WEI', 'HP', 'YAS', 'TOP', 'ECO', 'NI', 'OVME', 'PORT', 'NEWS', 'CAL', 'SEC', 'MKT', 'INTEL'];
 const ASSET_CLASSES: AssetClass[] = ['EQUITY', 'CORP', 'GOVT', 'CMDTY', 'CURNCY'];
 
 const normalize = (value: string) =>
@@ -20,6 +20,7 @@ function inferAssetClass(market: string): AssetClass {
 
 function mapActiveFunction(functionCode: FunctionCode): TerminalFunction {
   if (functionCode === 'EXEC') return 'EXEC';
+  if (functionCode === 'ESC') return 'EXEC';
   if (functionCode === 'DES') return 'DES';
   if (functionCode === 'FA') return 'FA';
   if (functionCode === 'HP') return 'HP';

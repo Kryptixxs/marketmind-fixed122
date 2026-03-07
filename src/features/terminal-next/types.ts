@@ -1,4 +1,4 @@
-export type FunctionCode = 'EXEC' | 'DES' | 'FA' | 'WEI' | 'HP' | 'YAS' | 'TOP' | 'ECO' | 'NI' | 'OVME' | 'PORT' | 'NEWS' | 'CAL' | 'SEC' | 'MKT' | 'INTEL';
+export type FunctionCode = 'EXEC' | 'ESC' | 'DES' | 'FA' | 'WEI' | 'HP' | 'YAS' | 'TOP' | 'ECO' | 'NI' | 'OVME' | 'PORT' | 'NEWS' | 'CAL' | 'SEC' | 'MKT' | 'INTEL';
 export type TerminalFunction = 'EXEC' | 'DES' | 'FA' | 'HP' | 'WEI' | 'YAS' | 'OVME' | 'PORT' | 'NEWS' | 'CAL' | 'SEC' | 'MKT' | 'INTEL';
 
 export type AssetClass = 'EQUITY' | 'CORP' | 'GOVT' | 'CMDTY' | 'CURNCY';

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useTerminalStore } from '../../store/TerminalStore';
 import { selectActiveReferenceProfile } from '../../selectors/referenceSelectors';
 import { fetchEntityIntel } from '@/app/actions/fetchEntityIntel';
+import { fetchInstitutionalDepth, type InstitutionalDepth } from '@/app/actions/fetchInstitutionalDepth';
 import type { SupplyChainData } from '@/lib/supply-chain-data';
 import type { IntelligenceEnvelope } from '@/lib/intelligence-contract';
 import { emptyIntelligenceEnvelope } from '@/lib/intelligence-contract';
@@ -25,6 +26,7 @@ export function IntelModule() {
   const [supplyChain, setSupplyChain] = useState<SupplyChainData | null>(null);
   const [backendNews, setBackendNews] = useState<string[]>([]);
   const [envelope, setEnvelope] = useState<IntelligenceEnvelope>(emptyIntelligenceEnvelope());
+  const [depth, setDepth] = useState<InstitutionalDepth | null>(null);
   const sym = state.activeSymbol?.replace(/\s+.*$/, '') || '';
   const filters = state.intelFilters;
 
@@ -36,6 +38,11 @@ export function IntelModule() {
       setEnvelope(res.envelope ?? emptyIntelligenceEnvelope());
     });
   }, [sym, filters?.country, filters?.date]);
+
+  useEffect(() => {
+    if (!sym) return;
+    fetchInstitutionalDepth(sym).then(setDepth).catch(() => {});
+  }, [sym]);
 
   const filterCountry = (e: { name?: string; segment?: string; note?: string }) => filterByCountry(e, filters?.country);
   const filteredCustomers = supplyChain?.customers.filter(filterCountry) ?? [];
@@ -160,6 +167,11 @@ export function IntelModule() {
           {[...(ref?.earningsDates ?? []), ...state.systemFeed].map((line, i) => (
             <div key={`evt-${i}`} className="px-1 py-[1px] border-b border-[#1a1a1a] text-[#9fb4cd]">{line}</div>
           ))}
+          {(depth?.news.impacts ?? []).map((ev, i) => (
+            <div key={`${ev.date}-${i}`} className="px-1 py-[1px] border-b border-[#1a1a1a] text-[#9fb4cd]">
+              {`${ev.date} ${ev.event} ${ev.priceImpactPct >= 0 ? '+' : ''}${ev.priceImpactPct.toFixed(2)}%`}
+            </div>
+          ))}
         </div>
       </section>
 
@@ -183,12 +195,7 @@ export function IntelModule() {
       <section className="bg-black min-h-0 overflow-hidden flex flex-col">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-[#f4cf76] font-bold flex items-center">COUNTRY EXPOSURE</div>
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar text-[9px]">
-          {[
-            ['US', ref?.country === 'US' ? 'Primary' : 'Secondary'],
-            ['UK', supplyChain?.customers.some((c) => c.name.includes('NHS')) ? 'Yes' : '—'],
-            ['EU', '—'],
-            ['APAC', '—'],
-          ].map(([country, exposure]) => (
+          {((depth?.financial.geoBreakdown ?? []).map((g) => [g.geography, `${g.revenuePct.toFixed(1)}% rev / ${g.assetsPct.toFixed(1)}% assets`]) as Array<[string, string]>).map(([country, exposure]) => (
             <div key={country} className="px-1 py-[2px] border-b border-[#1a1a1a] flex justify-between">
               <span className="text-[#9fb4cd]">{country}</span>
               <span className="text-[#e7f1ff] font-bold">{exposure}</span>

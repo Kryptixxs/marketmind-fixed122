@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useTerminalStore } from '../../store/TerminalStore';
 import { selectActiveReferenceProfile } from '../../selectors/referenceSelectors';
+import { fetchInstitutionalDepth, type InstitutionalDepth } from '@/app/actions/fetchInstitutionalDepth';
 
 const TABS = ['Daily', 'Intraday', 'Adjusted'];
 
@@ -9,6 +11,13 @@ export function HistoricalPricingModule() {
   const { state, dispatch } = useTerminalStore();
   const ref = selectActiveReferenceProfile(state);
   const selected = state.activeSubTab && TABS.includes(state.activeSubTab) ? state.activeSubTab : 'Daily';
+  const [depth, setDepth] = useState<InstitutionalDepth | null>(null);
+
+  useEffect(() => {
+    const sym = state.activeSymbol?.replace(/\s+.*$/, '') || 'AAPL';
+    fetchInstitutionalDepth(sym).then(setDepth).catch(() => {});
+  }, [state.activeSymbol]);
+
   const bars = state.barsBySymbol[state.activeSymbol] ?? [];
   const recent = bars;
   const spark = recent.map((b, i, arr) => {
@@ -106,6 +115,23 @@ export function HistoricalPricingModule() {
               ))}
             </tbody>
           </table>
+          <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">20Y PRICE/REVENUE CORRELATION</div>
+          {(depth?.historical.priceRevenueCorr ?? []).map((r) => (
+            <div key={`corr-${r.year}`} className="px-1 py-[2px] border-b border-[#1a1a1a] grid grid-cols-[auto_1fr_auto] gap-2">
+              <span className="text-[#9fb4cd]">{r.year}</span>
+              <span className="text-[#d7e3f3]">Price vs Revenue</span>
+              <span className={`font-bold ${r.corr >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}`}>{r.corr.toFixed(2)}</span>
+            </div>
+          ))}
+          <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">CRISIS BEHAVIOR LAYER</div>
+          {(depth?.historical.crises ?? []).map((c) => (
+            <div key={c.period} className="px-1 py-[2px] border-b border-[#1a1a1a] grid grid-cols-[1.3fr_auto_auto_auto] gap-2 text-[8px]">
+              <span className="text-[#d7e3f3]">{c.period}</span>
+              <span className="text-[#ff7ca3] font-bold">{c.drawdownPct}%</span>
+              <span className="text-[#9fb4cd]">{c.recoveryMonths}m rec</span>
+              <span className="text-[#ffaf66]">{c.volShiftPct}% vol</span>
+            </div>
+          ))}
         </div>
       </section>
 
@@ -122,6 +148,11 @@ export function HistoricalPricingModule() {
           ))}
           {state.systemFeed.map((line, i) => (
             <div key={`${line}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">{line}</div>
+          ))}
+          {(depth?.historical.eventMarkers ?? []).map((event, i) => (
+            <div key={`${event.date}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#9fb4cd]">
+              {`${event.date} ${event.event} ${event.impactPct >= 0 ? '+' : ''}${event.impactPct.toFixed(2)}%`}
+            </div>
           ))}
         </div>
       </section>

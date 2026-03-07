@@ -14,7 +14,7 @@ const KEYBAR = [
 ] as const;
 
 const FUNCTION_CODES: TerminalFunction[] = ['EXEC', 'DES', 'FA', 'HP', 'WEI', 'YAS', 'OVME', 'PORT', 'INTEL', 'NEWS', 'CAL', 'SEC', 'MKT'];
-const OPERATOR_KEYS = ['DEPTH', 'TAPE', 'ALERTS', 'RISK', 'NEWS', 'SYSTEM'] as const;
+const OPERATOR_KEYS = ['ESC', 'DEPTH', 'TAPE', 'ALERTS', 'RISK', 'NEWS', 'SYSTEM'] as const;
 
 export function CommandKeyBar() {
   const { state, dispatch } = useTerminalStore();
@@ -79,6 +79,11 @@ export function CommandKeyBar() {
               dispatch({ type: 'SET_RIGHT_TAB', payload: 'DEPTH' });
               dispatch({ type: 'SET_ACTIVE_SUBTAB', payload: 'MICROSTRUCTURE' });
             }
+            if (k === 'ESC') {
+              const escCmd = `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''} ESC GO`;
+              dispatch({ type: 'SET_COMMAND', payload: escCmd });
+              dispatch({ type: 'EXECUTE_COMMAND', payload: escCmd });
+            }
             if (k === 'TAPE') {
               dispatch({ type: 'SET_RIGHT_TAB', payload: 'TAPE' });
               dispatch({ type: 'SET_ACTIVE_SUBTAB', payload: 'EVENTS' });
@@ -96,6 +101,7 @@ export function CommandKeyBar() {
           }}
           className={`h-5 px-1 border text-[9px] font-bold shrink-0 active:translate-y-px ${
             (k === 'DEPTH' && state.rightRailTab === 'DEPTH')
+            || (k === 'ESC' && state.activeFunction === 'EXEC' && state.activeSubTab === 'ESC')
             || (k === 'TAPE' && state.rightRailTab === 'TAPE')
             || (k === 'ALERTS' && state.rightRailTab === 'ALERTS')
             || (k === 'RISK' && state.analyticsTab === 'FACTORS')

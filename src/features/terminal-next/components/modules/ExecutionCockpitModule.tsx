@@ -9,7 +9,7 @@ import { MonitorPanel } from '../MonitorPanel';
 import { RightRailPanel } from '../RightRailPanel';
 import { SystemPulsePanel } from '../SystemPulsePanel';
 
-const EXEC_TABS = ['PRIMARY', 'MICROSTRUCTURE', 'FACTORS', 'EVENTS'] as const;
+const EXEC_TABS = ['PRIMARY', 'MICROSTRUCTURE', 'FACTORS', 'EVENTS', 'ESC'] as const;
 type ExecTab = (typeof EXEC_TABS)[number];
 
 export function ExecutionCockpitModule() {
@@ -22,6 +22,8 @@ export function ExecutionCockpitModule() {
         ? 'border-green-600/50 bg-[#0a0a0a]'
         : selected === 'EVENTS'
           ? 'border-red-600/50 bg-[#0a0a0a]'
+          : selected === 'ESC'
+            ? 'border-[#1a5f4b] bg-[#0a0a0a]'
           : 'border-[#1a1a1a] bg-[#0a0a0a]';
 
   const activate = (tab: ExecTab) => {
@@ -31,6 +33,11 @@ export function ExecutionCockpitModule() {
       dispatch({ type: 'SET_ANALYTICS_TAB', payload: 'EVENTS' });
       dispatch({ type: 'SET_FEED_TAB', payload: 'SYSTEM' });
       dispatch({ type: 'SET_RIGHT_TAB', payload: 'TAPE' });
+    }
+    if (tab === 'ESC') {
+      dispatch({ type: 'SET_ANALYTICS_TAB', payload: 'FACTORS' });
+      dispatch({ type: 'SET_FEED_TAB', payload: 'SYSTEM' });
+      dispatch({ type: 'SET_RIGHT_TAB', payload: 'ALERTS' });
     }
     if (tab === 'PRIMARY') {
       dispatch({ type: 'SET_ANALYTICS_TAB', payload: 'OVERVIEW' });
@@ -57,7 +64,7 @@ export function ExecutionCockpitModule() {
         ))}
       </div>
       {selected === 'PRIMARY' && (
-        <div key="exec-primary" className="flex-1 min-h-0 grid grid-cols-[22%_44%_34%] grid-rows-[54%_30%_16%] gap-px bg-black">
+        <div key="exec-primary" className="flex-1 min-h-0 grid grid-cols-[22%_44%_34%] grid-rows-[minmax(0,0.48fr)_minmax(0,0.32fr)_minmax(0,0.2fr)] gap-px bg-black">
           <MonitorPanel />
           <AnalyticsPanel execMode="PRIMARY" />
           <RightRailPanel execMode="PRIMARY" />
@@ -70,7 +77,7 @@ export function ExecutionCockpitModule() {
         </div>
       )}
       {selected === 'MICROSTRUCTURE' && (
-        <div key="exec-microstructure" className="flex-1 min-h-0 grid grid-cols-[18%_32%_50%] grid-rows-[58%_27%_15%] gap-px bg-black">
+        <div key="exec-microstructure" className="flex-1 min-h-0 grid grid-cols-[18%_32%_50%] grid-rows-[minmax(0,0.5fr)_minmax(0,0.3fr)_minmax(0,0.2fr)] gap-px bg-black">
           <MonitorPanel />
           <AnalyticsPanel execMode="MICROSTRUCTURE" />
           <div className="row-span-2 min-h-0">
@@ -85,7 +92,7 @@ export function ExecutionCockpitModule() {
         </div>
       )}
       {selected === 'FACTORS' && (
-        <div key="exec-factors" className="flex-1 min-h-0 grid grid-cols-[20%_55%_25%] grid-rows-[52%_30%_18%] gap-px bg-black">
+        <div key="exec-factors" className="flex-1 min-h-0 grid grid-cols-[20%_55%_25%] grid-rows-[minmax(0,0.45fr)_minmax(0,0.34fr)_minmax(0,0.21fr)] gap-px bg-black">
           <MonitorPanel />
           <div className="row-span-2 min-h-0">
             <AnalyticsPanel execMode="FACTORS" />
@@ -100,7 +107,7 @@ export function ExecutionCockpitModule() {
         </div>
       )}
       {selected === 'EVENTS' && (
-        <div key="exec-events" className="flex-1 min-h-0 grid grid-cols-[20%_30%_50%] grid-rows-[45%_37%_18%] gap-px bg-black">
+        <div key="exec-events" className="flex-1 min-h-0 grid grid-cols-[20%_30%_50%] grid-rows-[minmax(0,0.42fr)_minmax(0,0.36fr)_minmax(0,0.22fr)] gap-px bg-black">
           <MonitorPanel />
           <AnalyticsPanel execMode="EVENTS" />
           <div className="row-span-2 min-h-0">
@@ -112,6 +119,19 @@ export function ExecutionCockpitModule() {
             <BlotterPanel />
           </div>
           <SystemPulsePanel />
+        </div>
+      )}
+      {selected === 'ESC' && (
+        <div key="exec-esc" className="flex-1 min-h-0 grid grid-cols-[18%_34%_48%] grid-rows-[minmax(0,0.38fr)_minmax(0,0.38fr)_minmax(0,0.24fr)] gap-px bg-black">
+          <MonitorPanel />
+          <AnalyticsPanel execMode="ESC" />
+          <RightRailPanel execMode="ESC" />
+          <CrossAssetMatrixPanel />
+          <FeedPanel execMode="ESC" />
+          <BlotterPanel />
+          <div className="col-span-3 min-h-0">
+            <SystemPulsePanel />
+          </div>
         </div>
       )}
     </div>

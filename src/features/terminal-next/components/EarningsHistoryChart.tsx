@@ -6,12 +6,12 @@ export function EarningsHistoryChart({ data }: { data: HistoricalEarningsRow[] }
   if (!data?.length) return null;
   const epsValues = data.map((r) => r.epsAct ?? r.epsEst ?? 0).filter((v) => v > 0);
   const maxEps = Math.max(...epsValues, 0.01);
-  const labels = data.slice(0, 12).map((r) => (`${r.year} ${r.quarter}`.trim() || r.date?.slice(0, 7)) ?? '');
+  const labels = data.map((r) => (`${r.year} ${r.quarter}`.trim() || r.date?.slice(0, 7)) ?? '');
 
   return (
-    <div className="w-full h-full min-h-[80px] flex flex-col">
+    <div className="w-full h-full min-h-0 flex flex-col">
       <div className="flex-1 flex items-end gap-[2px] px-1 py-1">
-        {data.slice(0, 12).map((r, i) => {
+        {data.map((r, i) => {
           const val = r.epsAct ?? r.epsEst ?? 0;
           const h = maxEps > 0 ? Math.max(4, (val / maxEps) * 100) : 0;
           const beat = r.surprise != null && r.surprise > 0;

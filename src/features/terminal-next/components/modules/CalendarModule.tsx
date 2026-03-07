@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useTerminalStore } from '../../store/TerminalStore';
+import { fetchInstitutionalDepth, type InstitutionalDepth } from '@/app/actions/fetchInstitutionalDepth';
 
 const TABS = ['Earnings', 'Economic', 'Dividends', 'Splits', 'IPOs', 'Conferences'];
 
@@ -31,9 +33,19 @@ const EARNINGS_THIS_WEEK = [
 export function CalendarModule() {
   const { state, dispatch } = useTerminalStore();
   const selected = state.activeSubTab && TABS.includes(state.activeSubTab) ? state.activeSubTab : 'Earnings';
+  const [depth, setDepth] = useState<InstitutionalDepth | null>(null);
+
+  useEffect(() => {
+    const sym = state.activeSymbol?.replace(/\s+.*$/, '') || 'AAPL';
+    fetchInstitutionalDepth(sym).then(setDepth).catch(() => {});
+  }, [state.activeSymbol]);
+
+  const macroEvents = depth?.calendar.macro ?? ECO_EVENTS.map(([title, time, act, fcst, impact]) => ({ date: new Date().toISOString().slice(0, 10), title, impact, forecast: fcst }));
+  const earningsRows = depth?.calendar.earnings ?? EARNINGS_THIS_WEEK.map(([ticker, date, _call, eps, _rev]) => ({ ticker, date, epsEst: Number(eps), revEst: null }));
+  const catalysts = depth?.calendar.catalysts ?? [];
 
   return (
-    <div className="flex-1 min-h-0 grid grid-cols-[20%_38%_42%] grid-rows-[52%_48%] gap-px bg-black">
+    <div className="flex-1 min-h-0 grid grid-cols-[20%_38%_42%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
       <section className="bg-black border-r border-[#1a1a1a] min-h-0 overflow-hidden flex flex-col row-span-2">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[9px] font-bold text-white flex items-center">CAL / NAV</div>
         <div className="flex-1 overflow-y-auto text-[8px]">
@@ -45,7 +57,7 @@ export function CalendarModule() {
             <div key={d} className="px-1 py-0.5 border-b border-[#262626] text-gray-300">{d} — {(i + 3) * 4} events</div>
           ))}
           <div className="h-4 px-1 border-y border-[#1a1a1a] text-[7px] text-gray-400 font-bold mt-1">SYMBOL QUICK</div>
-          {state.quotes.slice(0, 24).map((q) => (
+          {state.quotes.map((q) => (
             <button key={q.symbol} onClick={() => dispatch({ type: 'SET_SYMBOL', payload: q.symbol })} className="w-full text-left px-1 py-0.5 border-b border-[#262626] grid grid-cols-[1fr_auto] text-gray-300 hover:bg-[#0f0f0f]">
               <span>{q.symbol}</span><span className={q.pct >= 0 ? 'text-green-500' : 'text-red-500'}>{q.pct >= 0 ? '+' : ''}{q.pct.toFixed(2)}%</span>
             </button>
@@ -60,9 +72,9 @@ export function CalendarModule() {
               <tr><th className="text-left px-1 py-0.5">Event</th><th className="text-left px-1 py-0.5">Time</th><th className="text-right px-1 py-0.5">Act</th><th className="text-right px-1 py-0.5">Fcst</th><th className="text-right px-1 py-0.5">Impact</th></tr>
             </thead>
             <tbody>
-              {ECO_EVENTS.map(([ev, t, act, fcst, imp], i) => (
+              {macroEvents.map((ev, i) => (
                 <tr key={`eco-${i}`} className="border-t border-[#262626] hover:bg-[#0f0f0f]">
-                  <td className="px-1 py-0.5 text-gray-200">{ev}</td><td className="px-1 py-0.5 text-gray-400">{t}</td><td className="px-1 py-0.5 text-right text-gray-200">{act}</td><td className="px-1 py-0.5 text-right text-gray-400">{fcst}</td><td className="px-1 py-0.5 text-right"><span className={imp === 'High' ? 'text-red-500 font-bold' : 'text-gray-400'}>{imp}</span></td>
+                  <td className="px-1 py-0.5 text-gray-200">{ev.title}</td><td className="px-1 py-0.5 text-gray-400">{ev.date}</td><td className="px-1 py-0.5 text-right text-gray-200">—</td><td className="px-1 py-0.5 text-right text-gray-400">{ev.forecast}</td><td className="px-1 py-0.5 text-right"><span className={ev.impact === 'High' ? 'text-red-500 font-bold' : 'text-gray-400'}>{ev.impact}</span></td>
                 </tr>
               ))}
             </tbody>
@@ -77,9 +89,9 @@ export function CalendarModule() {
               <tr><th className="text-left px-1 py-0.5">Symbol</th><th className="text-left px-1 py-0.5">Date</th><th className="text-left px-1 py-0.5">Call</th><th className="text-right px-1 py-0.5">EPS Est</th><th className="text-right px-1 py-0.5">Rev Est</th></tr>
             </thead>
             <tbody>
-              {EARNINGS_THIS_WEEK.map(([sym, d, call, eps, rev], i) => (
-                <tr key={`earn-${i}`} className="border-t border-[#262626] hover:bg-[#0f0f0f] cursor-pointer" onClick={() => dispatch({ type: 'SET_SYMBOL', payload: sym })}>
-                  <td className="px-1 py-0.5 text-gray-200 font-medium">{sym}</td><td className="px-1 py-0.5 text-gray-400">{d}</td><td className="px-1 py-0.5 text-gray-400">{call}</td><td className="px-1 py-0.5 text-right text-gray-200">{eps}</td><td className="px-1 py-0.5 text-right text-gray-400">{rev}</td>
+              {earningsRows.map((row, i) => (
+                <tr key={`earn-${i}`} className="border-t border-[#262626] hover:bg-[#0f0f0f] cursor-pointer" onClick={() => dispatch({ type: 'SET_SYMBOL', payload: row.ticker })}>
+                  <td className="px-1 py-0.5 text-gray-200 font-medium">{row.ticker}</td><td className="px-1 py-0.5 text-gray-400">{row.date}</td><td className="px-1 py-0.5 text-gray-400">AMC</td><td className="px-1 py-0.5 text-right text-gray-200">{row.epsEst != null ? row.epsEst.toFixed(2) : '—'}</td><td className="px-1 py-0.5 text-right text-gray-400">{row.revEst != null ? `${row.revEst.toFixed(2)}B` : '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -105,6 +117,9 @@ export function CalendarModule() {
             <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">IPOs / CONF</div>
             {[['Reddit', 'IPO', '03/21'], ['Astera', 'IPO', '03/20'], ['Berkshire AGM', '05/03', 'Omaha'], ['Apple WWDC', '06/10', 'Cupertino']].map(([n, t, d], i) => (
               <div key={`ipo-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{n}</span><span>{t} {d}</span></div>
+            ))}
+            {catalysts.map((c, i) => (
+              <div key={`cat-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{c.type}</span><span>{c.date} {c.title}</span></div>
             ))}
           </div>
         </div>

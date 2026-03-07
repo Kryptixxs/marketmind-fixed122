@@ -5,6 +5,7 @@ import { useTerminalStore } from '../../store/TerminalStore';
 import { selectActiveReferenceProfile } from '../../selectors/referenceSelectors';
 import { fetchHistoricalEarnings, type HistoricalEarningsRow } from '@/app/actions/fetchHistoricalEarnings';
 import { EarningsHistoryChart } from '../EarningsHistoryChart';
+import { fetchInstitutionalDepth, type InstitutionalDepth } from '@/app/actions/fetchInstitutionalDepth';
 
 const TABS = ['Earnings Calendar', 'Historical Earnings', 'Surprise', 'Guidance'];
 
@@ -13,12 +14,18 @@ export function EarningsModule() {
   const ref = selectActiveReferenceProfile(state);
   const selected = state.activeSubTab && TABS.includes(state.activeSubTab) ? state.activeSubTab : 'Earnings Calendar';
   const [histEarnings, setHistEarnings] = useState<HistoricalEarningsRow[]>([]);
+  const [depth, setDepth] = useState<InstitutionalDepth | null>(null);
 
   useEffect(() => {
     if (selected !== 'Historical Earnings') return;
     const sym = state.activeSymbol?.replace(/\s+.*$/, '') || 'AAPL';
     fetchHistoricalEarnings(sym).then((rows) => setHistEarnings(rows)).catch(() => {});
   }, [selected, state.activeSymbol]);
+
+  useEffect(() => {
+    const sym = state.activeSymbol?.replace(/\s+.*$/, '') || 'AAPL';
+    fetchInstitutionalDepth(sym).then(setDepth).catch(() => {});
+  }, [state.activeSymbol]);
 
   const layoutClass =
     selected === 'Earnings Calendar' ? 'grid-cols-[38%_62%]' : selected === 'Historical Earnings' ? 'grid-cols-[35%_65%]' : selected === 'Surprise' ? 'grid-cols-[46%_54%]' : 'grid-cols-[34%_66%]';
@@ -43,6 +50,9 @@ export function EarningsModule() {
     const tag = i % 3 === 0 ? 'NEAR' : i % 3 === 1 ? 'ACTIVE' : 'REV';
     return { symbol: q.symbol, nextDate, surprise, tag, pct: q.pct, ivx: state.risk.impliedVolProxy + (i % 4) };
   });
+  const revTimeline = depth?.earnings.revisionsTimeline ?? [];
+  const surpriseStreak = depth?.earnings.surpriseStreak ?? [];
+  const estimateBuckets = depth?.earnings.estimateDistribution ?? [];
 
   return (
     <div key={`wei-${selected}`} className={`flex-1 min-h-0 grid ${layoutClass} gap-px bg-black`}>
@@ -114,6 +124,11 @@ export function EarningsModule() {
                 ))}
               </tbody>
             </table>
+            {surpriseStreak.map((s, i) => (
+              <div key={`${s.quarter}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">
+                {`${s.quarter} surprise ${s.surprisePct >= 0 ? '+' : ''}${s.surprisePct.toFixed(2)}%`}
+              </div>
+            ))}
           </div>
         ) : (
         <div className="grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-[#1a1a1a] flex-1 min-h-0">
@@ -124,12 +139,22 @@ export function EarningsModule() {
               ))}
             </div>
             {state.headlines.map((h, i) => <div key={`${h}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#d7e3f3]">{h}</div>)}
+            {estimateBuckets.map((b) => (
+              <div key={b.bucket} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#9fb4cd]">
+                {`${b.bucket}: ${b.count}`}
+              </div>
+            ))}
           </div>
           <div className="bg-[#08111d] min-h-0 overflow-y-auto custom-scrollbar">
             {state.systemFeed.map((h, i) => <div key={`${h}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#9fb4cd]">{h}</div>)}
             {earningsGrid.map((r, i) => (
               <div key={`rv-${r.symbol}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">
                 REV {r.symbol} {r.tag} SURP {r.surprise} IVX {r.ivx.toFixed(1)}
+              </div>
+            ))}
+            {revTimeline.map((r) => (
+              <div key={r.date} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">
+                {`${r.date} EPS ${r.epsDeltaPct >= 0 ? '+' : ''}${r.epsDeltaPct.toFixed(2)}% REV ${r.revDeltaPct >= 0 ? '+' : ''}${r.revDeltaPct.toFixed(2)}%`}
               </div>
             ))}
           </div>
