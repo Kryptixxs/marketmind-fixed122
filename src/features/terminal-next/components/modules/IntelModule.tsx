@@ -5,6 +5,8 @@ import { useTerminalStore } from '../../store/TerminalStore';
 import { selectActiveReferenceProfile } from '../../selectors/referenceSelectors';
 import { fetchEntityIntel } from '@/app/actions/fetchEntityIntel';
 import type { SupplyChainData } from '@/lib/supply-chain-data';
+import type { IntelligenceEnvelope } from '@/lib/intelligence-contract';
+import { emptyIntelligenceEnvelope } from '@/lib/intelligence-contract';
 
 function filterByCountry(entry: { name?: string; segment?: string; note?: string }, country?: string): boolean {
   if (!country) return true;
@@ -22,6 +24,7 @@ export function IntelModule() {
   const ref = selectActiveReferenceProfile(state);
   const [supplyChain, setSupplyChain] = useState<SupplyChainData | null>(null);
   const [backendNews, setBackendNews] = useState<string[]>([]);
+  const [envelope, setEnvelope] = useState<IntelligenceEnvelope>(emptyIntelligenceEnvelope());
   const sym = state.activeSymbol?.replace(/\s+.*$/, '') || '';
   const filters = state.intelFilters;
 
@@ -30,6 +33,7 @@ export function IntelModule() {
     fetchEntityIntel(sym, filters).then((res) => {
       setSupplyChain(res.supplyChain);
       setBackendNews(res.news);
+      setEnvelope(res.envelope ?? emptyIntelligenceEnvelope());
     });
   }, [sym, filters?.country, filters?.date]);
 
@@ -44,7 +48,22 @@ export function IntelModule() {
   const fallbackHeadlines = filters?.date
     ? state.headlines.filter((h) => h.includes(filters.date!) || h.includes(filters.date!.replace(/-/g, '/')))
     : state.headlines;
-  const displayNews = backendNews.length > 0 ? backendNews : fallbackHeadlines;
+  const displayNews =
+    envelope.documents.length > 0
+      ? envelope.documents.map((d) => `${d.title} (${d.published_at})`)
+      : backendNews.length > 0
+        ? backendNews
+        : fallbackHeadlines;
+
+  const entityById = new Map(envelope.entities.map((e) => [e.id, e]));
+  const relationshipLines =
+    envelope.relationships.length > 0
+      ? envelope.relationships.map((r) => {
+          const from = entityById.get(r.from_id)?.display_name ?? r.from_id;
+          const to = entityById.get(r.to_id)?.display_name ?? r.to_id;
+          return `${from} — ${r.relationship_type} — ${to}`;
+        })
+      : [];
 
   const applySymbol = (symbol: string) => {
     const cmd = `${symbol} INTEL GO`;
@@ -90,7 +109,13 @@ export function IntelModule() {
       <section className="bg-black min-h-0 overflow-hidden flex flex-col">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-[#f4cf76] font-bold flex items-center">RELATIONSHIP GRAPH</div>
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar text-[9px]">
-          {supplyChain ? (
+          {relationshipLines.length > 0 ? (
+            relationshipLines.map((line, i) => (
+              <div key={`rel-${i}`} className="px-1 py-[2px] border-b border-[#1a1a1a] flex justify-between">
+                <span className="text-[#d7e3f3]">{line}</span>
+              </div>
+            ))
+          ) : supplyChain ? (
             <>
               <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#4ce0a5] flex items-center">CUSTOMERS</div>
               {filteredCustomers.map((e, i) => (
@@ -141,7 +166,11 @@ export function IntelModule() {
       <section className="bg-black min-h-0 overflow-hidden flex flex-col">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-[#f4cf76] font-bold flex items-center">COUNTERPARTY NETWORK</div>
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar text-[9px]">
-          {supplyChain ? (
+          {relationshipLines.length > 0 ? (
+            relationshipLines.map((line, i) => (
+              <div key={`cp-rel-${i}`} className="px-1 py-[1px] border-b border-[#1a1a1a] text-[#d7e3f3]">{line}</div>
+            ))
+          ) : supplyChain ? (
             filteredCounterparties.map((e, i) => (
               <div key={`cp-${i}`} className="px-1 py-[1px] border-b border-[#1a1a1a] text-[#d7e3f3]">{e.name} — {e.segment ?? e.note ?? 'linked'}</div>
             ))

@@ -8,9 +8,9 @@ import { createClient } from '@supabase/supabase-js';
 import {
   getSupplyChain,
   SUPPLY_CHAIN_SYMBOLS,
-  type SupplyChainData,
   type SupplyChainEntry,
 } from '../src/lib/supply-chain-data';
+import { normalizeAlias, normalizeSymbol } from '../src/lib/entity-resolver';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? 'https://oeosfycqhpsripaihaqy.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? '';
@@ -56,17 +56,48 @@ function deriveCountry(entry: SupplyChainEntry): string | null {
 }
 
 async function ensureEntity(symbol: string | null, name: string, sector: string | null, country: string | null): Promise<string> {
+  const normalizedSymbol = symbol ? normalizeSymbol(symbol) : null;
+  const displayName = name.trim();
+  const aliasNorm = normalizeAlias(displayName);
+
+  // 1) Resolve by canonical symbol first.
+  if (normalizedSymbol) {
+    const { data: bySymbol } = await supabase.from('entities').select('id').eq('symbol', normalizedSymbol).limit(1).single();
+    if (bySymbol) return bySymbol.id;
+  }
+
+  // 2) Resolve by alias canonicalization.
+  const { data: aliasHit } = await supabase
+    .from('entity_aliases')
+    .select('entity_id')
+    .eq('alias_norm', aliasNorm)
+    .limit(1)
+    .maybeSingle();
+  if (aliasHit?.entity_id) return aliasHit.entity_id;
+
+  // 3) Resolve by exact name + null symbol legacy rows.
   if (symbol) {
-    const { data: bySymbol } = await supabase.from('entities').select('id').eq('symbol', symbol).limit(1).single();
+    const { data: bySymbol } = await supabase.from('entities').select('id').eq('symbol', normalizedSymbol).limit(1).single();
     if (bySymbol) return bySymbol.id;
   } else {
     const { data: byName } = await supabase.from('entities').select('id').eq('name', name).is('symbol', null).limit(1).single();
     if (byName) return byName.id;
   }
 
+  // 4) Upsert deterministic canonical entity.
   const { data: inserted, error } = await supabase
     .from('entities')
-    .insert({ symbol: symbol ?? null, name, sector, country })
+    .upsert(
+      {
+        symbol: normalizedSymbol ?? null,
+        name: displayName,
+        display_name: displayName,
+        entity_type: 'company',
+        sector,
+        country,
+      },
+      { onConflict: normalizedSymbol ? 'symbol' : 'name' }
+    )
     .select('id')
     .single();
 
@@ -79,7 +110,18 @@ async function ensureEntity(symbol: string | null, name: string, sector: string 
     if (byName) return byName.id;
     throw error;
   }
-  return inserted!.id;
+  const entityId = inserted!.id;
+
+  // 5) Ensure canonical aliases for deterministic resolution.
+  await supabase.from('entity_aliases').upsert(
+    [
+      { entity_id: entityId, alias: displayName },
+      ...(normalizedSymbol ? [{ entity_id: entityId, alias: normalizedSymbol }] : []),
+    ],
+    { onConflict: 'entity_id,alias_norm', ignoreDuplicates: true }
+  );
+
+  return entityId;
 }
 
 async function seed() {
@@ -99,14 +141,18 @@ async function seed() {
       entityIds.set(entry.name, targetId);
 
       const country = deriveCountry(entry);
-      await supabase.from('relationships').insert({
-        source_entity_id: sourceId,
-        target_entity_id: targetId,
-        relationship_type: entry.type,
-        segment: entry.segment ?? null,
-        note: entry.note ?? null,
-        country,
-      });
+      await supabase.from('relationships').upsert(
+        {
+          source_entity_id: sourceId,
+          target_entity_id: targetId,
+          relationship_type: entry.type,
+          segment: entry.segment ?? null,
+          note: entry.note ?? null,
+          country,
+          weight: 1,
+        },
+        { onConflict: 'source_entity_id,target_entity_id,relationship_type,segment,note', ignoreDuplicates: true }
+      );
     }
   }
 
@@ -128,13 +174,21 @@ async function seed() {
   for (const n of sampleNews) {
     const eid = symbolToId.get(n.symbol);
     if (!eid) continue;
-    await supabase.from('documents').insert({
-      title: n.title,
-      body: n.body,
-      published_at: n.date,
-      source: 'MarketMind Research',
-      entity_ids: [eid],
-    });
+    const docId = `${n.symbol}-${n.date}-${n.title}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 120);
+    await supabase.from('documents').upsert(
+      {
+        id: docId,
+        title: n.title,
+        body: n.body,
+        published_at: n.date,
+        source: 'MarketMind Research',
+        source_type: 'news',
+        language: 'en',
+        country_tags: [],
+        entity_ids: [eid],
+      },
+      { onConflict: 'id' }
+    );
   }
 
   console.log('Seeded entities:', entityIds.size, 'relationships and', sampleNews.length, 'documents');

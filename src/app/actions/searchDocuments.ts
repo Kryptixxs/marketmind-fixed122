@@ -1,14 +1,10 @@
 'use server';
 
 import { supabase } from '@/integrations/supabase/client';
+import type { IntelligenceDocument } from '@/lib/intelligence-contract';
+import { canUseOpenSearch, searchDocumentsOpenSearch } from '@/lib/opensearch';
 
-export type DocumentResult = {
-  id: string;
-  title: string;
-  body: string;
-  published_at: string;
-  source: string;
-};
+export type DocumentResult = IntelligenceDocument;
 
 export async function searchDocuments(
   query: string,
@@ -16,9 +12,21 @@ export async function searchDocuments(
   dateFrom?: string,
   dateTo?: string
 ): Promise<DocumentResult[]> {
+  // Prefer OpenSearch when configured; fallback to Postgres tsvector.
+  if (canUseOpenSearch()) {
+    const docs = await searchDocumentsOpenSearch({
+      query,
+      entityId,
+      dateFrom,
+      dateTo,
+      size: 50,
+    });
+    if (docs.length > 0) return docs;
+  }
+
   let q = supabase
     .from('documents')
-    .select('id, title, body, published_at, source')
+    .select('id, title, body, entity_ids, country_tags, published_at, source, url')
     .order('published_at', { ascending: false })
     .limit(50);
 
@@ -37,5 +45,14 @@ export async function searchDocuments(
 
   const { data, error } = await q;
   if (error) return [];
-  return (data ?? []) as DocumentResult[];
+  return (data ?? []).map((d: any) => ({
+    id: d.id,
+    title: d.title ?? '',
+    body: d.body ?? '',
+    entity_ids: d.entity_ids ?? [],
+    country_tags: d.country_tags ?? [],
+    published_at: d.published_at ?? '',
+    source: d.source ?? '',
+    url: d.url ?? '',
+  }));
 }

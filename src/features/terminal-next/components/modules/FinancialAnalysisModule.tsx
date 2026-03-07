@@ -32,12 +32,12 @@ export function FinancialAnalysisModule() {
   const selected = state.activeSubTab && TABS.includes(state.activeSubTab) ? state.activeSubTab : 'Income Statement';
   const layoutClass =
     selected === 'Income Statement'
-      ? 'grid-cols-[70%_30%] grid-rows-[60%_40%]'
+      ? 'grid-cols-[70%_30%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)]'
       : selected === 'Balance Sheet'
-        ? 'grid-cols-[64%_36%] grid-rows-[50%_50%]'
+        ? 'grid-cols-[64%_36%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)]'
         : selected === 'Cash Flow'
-          ? 'grid-cols-[76%_24%] grid-rows-[58%_42%]'
-          : 'grid-cols-[68%_32%] grid-rows-[54%_46%]';
+          ? 'grid-cols-[76%_24%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)]'
+          : 'grid-cols-[68%_32%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)]';
   const applySymbol = (symbol: string) => {
     const cmd = `${symbol} FA GO`;
     dispatch({ type: 'SET_SYMBOL', payload: symbol });
@@ -79,7 +79,7 @@ export function FinancialAnalysisModule() {
             </tbody>
           </table>
           <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">SYMBOL RECOMPOSE</div>
-          {state.quotes.slice(0, 34).map((q) => (
+          {state.quotes.map((q) => (
             <button key={q.symbol} onClick={() => applySymbol(q.symbol)} className="w-full text-left px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto] text-[8px]">
               <span className="text-[#cdd9ea] truncate">{q.symbol}</span>
               <span className="text-right text-[#d7e3f3]">{q.last.toFixed(q.last < 10 ? 4 : 2)}</span>

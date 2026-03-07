@@ -17,11 +17,14 @@ export function RouteSync() {
   useEffect(() => {
     const entity = searchParams.get('entity');
     const fn = searchParams.get('fn');
+    const country = searchParams.get('country') ?? undefined;
+    const date = searchParams.get('date') ?? undefined;
     if (!entity || appliedRef.current) return;
 
     appliedRef.current = true;
     dispatch({ type: 'SET_SYMBOL', payload: entity });
     dispatch({ type: 'SET_ACTIVE_FUNCTION', payload: (fn?.toUpperCase() as 'INTEL') || 'INTEL' });
+    dispatch({ type: 'SET_INTEL_FILTERS', payload: country || date ? { country, date } : undefined });
     dispatch({ type: 'SET_COMMAND', payload: `${entity} INTEL GO` });
     dispatch({ type: 'EXECUTE_COMMAND', payload: `${entity} INTEL GO` });
 

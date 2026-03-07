@@ -13,16 +13,11 @@ export function EarningsModule() {
   const ref = selectActiveReferenceProfile(state);
   const selected = state.activeSubTab && TABS.includes(state.activeSubTab) ? state.activeSubTab : 'Earnings Calendar';
   const [histEarnings, setHistEarnings] = useState<HistoricalEarningsRow[]>([]);
-  const [histLoading, setHistLoading] = useState(false);
 
   useEffect(() => {
     if (selected !== 'Historical Earnings') return;
     const sym = state.activeSymbol?.replace(/\s+.*$/, '') || 'AAPL';
-    setHistLoading(true);
-    fetchHistoricalEarnings(sym).then((rows) => {
-      setHistEarnings(rows);
-      setHistLoading(false);
-    }).catch(() => setHistLoading(false));
+    fetchHistoricalEarnings(sym).then((rows) => setHistEarnings(rows)).catch(() => {});
   }, [selected, state.activeSymbol]);
 
   const layoutClass =
@@ -90,12 +85,8 @@ export function EarningsModule() {
       {selected === 'Historical Earnings' && (
         <section className="bg-[#070e18] min-h-0 overflow-hidden flex flex-col">
           <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-[#f4cf76] font-bold flex items-center">HISTORICAL EARNINGS CHART</div>
-          <div className="flex-1 min-h-[100px]">
-            {histLoading ? (
-              <div className="flex items-center justify-center h-full text-[9px] text-[#9fb4cd]">Loading...</div>
-            ) : (
-              <EarningsHistoryChart data={histEarnings} />
-            )}
+          <div className="flex-1 min-h-0">
+            <EarningsHistoryChart data={histEarnings} />
           </div>
         </section>
       )}
@@ -125,7 +116,7 @@ export function EarningsModule() {
             </table>
           </div>
         ) : (
-        <div className="grid grid-rows-[60%_40%] gap-px bg-[#1a1a1a] flex-1 min-h-0">
+        <div className="grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-[#1a1a1a] flex-1 min-h-0">
           <div className="bg-[#08111d] min-h-0 overflow-y-auto custom-scrollbar">
             <div className="grid grid-cols-4 gap-px bg-[#142034]">
               {['Beat', 'Miss', 'Raise', 'Cut'].map((k, i) => (

@@ -15,7 +15,6 @@ import {
 import { resolveFunctionDeck } from '../services/functionRouter';
 import { DeltaState, FunctionCode, TerminalFunction, TerminalState } from '../types';
 import { deriveRiskSnapshot } from '../selectors/riskSelectors';
-import { TAPE_MAX_ROWS, SYSTEM_FEED_MAX_ROWS } from '@/lib/panel-limits';
 
 type TerminalAction =
   | { type: 'TICK_QUOTES' }
@@ -105,7 +104,7 @@ function buildDelta(prev: TerminalState, next: Pick<TerminalState, 'quotes' | 'b
   return {
     changedSymbols,
     priceFlash,
-    tapePulseIds: next.tape.slice(0, 6).map((t) => t.id),
+    tapePulseIds: next.tape.map((t) => t.id),
     pnlFlash,
     alertPulse: prevAlertTop !== nextAlertTop,
   };
@@ -215,7 +214,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
     const streamTick = state.streamClock.depth + 1;
     const quote = activeQuoteFrom(state);
     const batch = buildDepthTapeStream(state.seed, streamTick, state.tickMs, quote?.last ?? 100);
-    const accumulatedTape = [...batch.tape, ...state.tape].slice(0, TAPE_MAX_ROWS);
+    const accumulatedTape = [...batch.tape, ...state.tape];
     return deriveNext(state, {
       orderBook: batch.orderBook,
       tape: accumulatedTape,
@@ -233,7 +232,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       blotter: batch.blotter,
       executionEvents: batch.executionEvents,
       barsBySymbol: batch.barsBySymbol,
-      systemFeed: [...executionLines, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
+      systemFeed: [...executionLines, ...state.systemFeed],
       streamClock: { ...state.streamClock, execution: streamTick },
       staged: nextStaged(state, 'executionReadyAt', state.tickMs),
     });
@@ -245,7 +244,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
     return deriveNext(state, {
       headlines: batch.headlines,
       alerts: batch.alerts,
-      systemFeed: [`FEED ROTATE -> H${streamTick}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
+      systemFeed: [`FEED ROTATE -> H${streamTick}`, ...state.systemFeed],
       streamClock: { ...state.streamClock, feed: streamTick },
       staged: nextStaged(state, 'feedReadyAt', state.tickMs),
     });
@@ -262,7 +261,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       activeFunction,
       activeSubTab: undefined,
       commandInput: normalized,
-      systemFeed: [`FUNCTION CONTEXT -> ${activeFunction}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
+      systemFeed: [`FUNCTION CONTEXT -> ${activeFunction}`, ...state.systemFeed],
     };
   }
 
@@ -274,7 +273,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       activeFunction: action.payload,
       activeSubTab: undefined,
       commandInput: command,
-      systemFeed: [`FUNCTION CONTEXT -> ${action.payload}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
+      systemFeed: [`FUNCTION CONTEXT -> ${action.payload}`, ...state.systemFeed],
     };
   }
 
@@ -291,7 +290,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       security: { ticker, market, assetClass },
       activeSymbol: `${ticker}${market ? ` ${market}` : ''}`,
       commandInput: `${ticker}${market ? ` ${market}` : ''} ${state.activeFunction} GO`,
-      systemFeed: [`SYMBOL CONTEXT -> ${ticker}${market ? ` ${market}` : ''}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
+      systemFeed: [`SYMBOL CONTEXT -> ${ticker}${market ? ` ${market}` : ''}`, ...state.systemFeed],
     };
   }
 
@@ -317,7 +316,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
         activeFunction: 'INTEL',
         activeSubTab: undefined,
         intelFilters: filters,
-        systemFeed: [`LOADED ${normalized}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
+        systemFeed: [`LOADED ${normalized}`, ...state.systemFeed],
       };
     }
 
@@ -348,13 +347,13 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
           activeFunction: 'INTEL',
           activeSubTab: undefined,
           intelFilters: undefined,
-          systemFeed: [`FALLBACK INTEL: ${entity}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
+          systemFeed: [`FALLBACK INTEL: ${entity}`, ...state.systemFeed],
         };
       }
       return {
         ...state,
         commandInput: result.normalized,
-        systemFeed: [`REJECTED: ${result.error}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
+        systemFeed: [`REJECTED: ${result.error}`, ...state.systemFeed],
       };
     }
 
@@ -368,7 +367,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       activeFunction: result.activeFunction,
       activeSubTab: undefined,
       intelFilters: result.activeFunction === 'INTEL' ? state.intelFilters : undefined,
-      systemFeed: [transitionLine, `LOADED ${result.normalized}`, ...state.systemFeed].filter(Boolean).slice(0, SYSTEM_FEED_MAX_ROWS),
+      systemFeed: [transitionLine, `LOADED ${result.normalized}`, ...state.systemFeed].filter(Boolean),
     };
   }
 

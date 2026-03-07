@@ -10,8 +10,8 @@ export function HistoricalPricingModule() {
   const ref = selectActiveReferenceProfile(state);
   const selected = state.activeSubTab && TABS.includes(state.activeSubTab) ? state.activeSubTab : 'Daily';
   const bars = state.barsBySymbol[state.activeSymbol] ?? [];
-  const recent = bars.slice(-24);
-  const spark = recent.slice(-18).map((b, i, arr) => {
+  const recent = bars;
+  const spark = recent.map((b, i, arr) => {
     const min = Math.min(...arr.map((x) => x.close));
     const max = Math.max(...arr.map((x) => x.close));
     const span = Math.max(0.0001, max - min);
@@ -27,10 +27,10 @@ export function HistoricalPricingModule() {
   const avgVol = recent.length ? Math.round(recent.reduce((a, b) => a + b.volume, 0) / recent.length) : 0;
   const layoutClass =
     selected === 'Daily'
-      ? 'grid-cols-[58%_42%] grid-rows-[66%_34%]'
+      ? 'grid-cols-[58%_42%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)]'
       : selected === 'Intraday'
-        ? 'grid-cols-[64%_36%] grid-rows-[72%_28%]'
-        : 'grid-cols-[52%_48%] grid-rows-[60%_40%]';
+        ? 'grid-cols-[64%_36%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)]'
+        : 'grid-cols-[52%_48%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)]';
   const applySymbol = (symbol: string) => {
     const cmd = `${symbol} HP GO`;
     dispatch({ type: 'SET_SYMBOL', payload: symbol });
@@ -56,7 +56,7 @@ export function HistoricalPricingModule() {
             </thead>
             <tbody>
               {(selected === 'Daily'
-                ? (ref?.dailyBars ?? []).slice(-24).map((d) => ({ ts: d.date, open: d.close * 0.997, high: d.close * 1.006, low: d.close * 0.994, close: d.close, volume: d.volume }))
+                ? (ref?.dailyBars ?? []).map((d) => ({ ts: d.date, open: d.close * 0.997, high: d.close * 1.006, low: d.close * 0.994, close: d.close, volume: d.volume }))
                 : recent.map((b) => ({ ts: new Date(b.ts).toISOString().slice(11, 19), ...b }))
               ).map((b, i) => (
                 <tr key={`${b.ts}-${i}`} className="border-t border-[#1a1a1a]">
@@ -71,7 +71,7 @@ export function HistoricalPricingModule() {
             </tbody>
           </table>
           <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">SYMBOL SWITCH</div>
-          {state.quotes.slice(0, 8).map((q) => (
+          {state.quotes.map((q) => (
             <button key={q.symbol} onClick={() => applySymbol(q.symbol)} className="w-full text-left px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto] text-[8px]">
               <span className="text-[#cdd9ea] truncate">{q.symbol}</span>
               <span className="text-right text-[#d7e3f3]">{q.last.toFixed(q.last < 10 ? 4 : 2)}</span>
@@ -117,10 +117,10 @@ export function HistoricalPricingModule() {
             <div className="px-1 py-[2px] text-[8px] bg-[#0a0a0a] text-[#9fb4cd]">Sweep <span className={`font-bold ${state.microstructure.sweep.active ? 'text-[#ffaf66]' : 'text-[#e7f1ff]'}`}>{state.microstructure.sweep.text}</span></div>
             <div className="px-1 py-[2px] text-[8px] bg-[#0a0a0a] text-[#9fb4cd]">Cadence <span className="text-[#e7f1ff] font-bold">Q{state.streamClock.quotes}/E{state.streamClock.execution}</span></div>
           </div>
-          {state.executionEvents.slice(0, 24).map((e) => (
+          {state.executionEvents.map((e) => (
             <div key={e.id} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#b7c8dd]">{e.symbol} {e.status} {e.fillQty}@{e.fillPrice.toFixed(2)}</div>
           ))}
-          {state.systemFeed.slice(0, 14).map((line, i) => (
+          {state.systemFeed.map((line, i) => (
             <div key={`${line}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">{line}</div>
           ))}
         </div>
