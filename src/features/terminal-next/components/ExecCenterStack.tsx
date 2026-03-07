@@ -38,7 +38,13 @@ function densifyRows(rows: StackedIntelRow[], minimum: number, prefix: string): 
   return out;
 }
 
-export function ExecCenterStack({ execMode }: { execMode: 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' | 'ESC' }) {
+export function ExecCenterStack({
+  execMode,
+  titleOverride,
+}: {
+  execMode: 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' | 'ESC';
+  titleOverride?: string;
+}) {
   const { state } = useTerminalStore();
   const [depth, setDepth] = useState<InstitutionalDepth | null>(null);
   const symbol = state.activeSymbol?.replace(/\s+.*$/, '') || 'AAPL';
@@ -280,23 +286,64 @@ export function ExecCenterStack({ execMode }: { execMode: 'PRIMARY' | 'MICROSTRU
     },
   ];
 
+  const marketVisual = [
+    ...marketIndices.map((r) => r.movePct),
+    ...marketSectors.map((s) => s.movePct),
+    ...marketCorrelations.map((c) => c.corr * 10),
+  ];
+  const volatilityVisual = [
+    ...skewHistory.map((r) => r.rr25d),
+    ...skewHistory.map((r) => r.bf25d),
+    ...optionsSurface.map((r) => (r.w1 + r.m1 + r.m3 + r.m6) / 4),
+  ];
+  const flowVisual = [
+    ...marketFlows.map((r) => r.flowUsdM),
+    ...shortTrend.map((r) => r.shortPctFloat),
+    ...factors.map((f) => f.contribution),
+  ];
+  const peerVisual = peerEntities.map((_, idx) => Math.sin((synthetic.seed + idx) * 0.37) * 9 + idx * 0.35);
+  const riskVisual = [
+    state.risk.realizedVol,
+    state.risk.impliedVolProxy,
+    state.risk.intradayVar,
+    ...riskProfile.debtMaturityLadder.map((d) => d.pctOfDebt),
+    ...riskProfile.interestCoverageTrend.map((r) => r.ratio),
+    ...riskProfile.fxExposurePct.map((r) => r.pct),
+  ];
+  const eventVisual = impacts.flatMap((e) => [e.priceImpactPct, e.volShiftPct]);
+  const docsVisual = newsArchive.map((d) => d.relevanceWeight * 100);
+  const relVisual = relationshipEdges.flatMap((e) => [e.weight * 100, e.weightedStrength]);
+  const historicalVisual = [
+    ...historicalSeries.map((h) => h.yoy),
+    ...historicalCrises.map((c) => c.drawdownPct),
+    ...historicalEvents.map((e) => e.impactPct),
+  ];
+  const ownershipVisual = [
+    ...secHolders.map((h) => h.changePct),
+    ...secInsider.map((i) => (i.side === 'Buy' ? 1 : -1) * i.shares * 0.001),
+    ...exposures.map((e) => e.net),
+    flowPositioning.etfOwnershipPct,
+    flowPositioning.passiveIndexWeightPct,
+    flowPositioning.institutionalOwnershipPct,
+  ];
+
   const blocks: StackBlock[] = [
-    { id: 'market-overview', title: 'MARKET OVERVIEW', rows: densifyRows(marketOverviewRows, 36, 'MO'), provenance: p.financial },
-    { id: 'volatility-skew', title: 'VOLATILITY & SKEW', rows: densifyRows(volatilityRows, 36, 'VS'), provenance: p.flow },
-    { id: 'flow-positioning', title: 'FLOW & POSITIONING', rows: densifyRows(flowRows, 36, 'FP'), provenance: p.flow },
-    { id: 'peer-comparison', title: 'PEER COMPARISON', rows: densifyRows(peerRows, 30, 'PC'), provenance: p.peers },
-    { id: 'risk-diagnostics', title: 'RISK DIAGNOSTICS', rows: densifyRows(riskRows, 40, 'RD'), provenance: p.risk },
-    { id: 'event-timeline', title: 'EVENT TIMELINE', rows: densifyRows(eventRows, 32, 'EV'), provenance: p.events },
-    { id: 'linked-documents', title: 'LINKED DOCUMENTS', rows: densifyRows(linkedDocsRows, 42, 'LD'), provenance: p.news },
-    { id: 'relationship-summary', title: 'RELATIONSHIP SUMMARY', rows: densifyRows(relationshipRows, 34, 'RS'), provenance: p.relationships },
-    { id: 'historical-performance', title: 'HISTORICAL PERFORMANCE', rows: densifyRows(historicalRows, 40, 'HP'), provenance: p.financial },
-    { id: 'ownership-positioning', title: 'OWNERSHIP & POSITIONING BREAKDOWN', rows: densifyRows(ownershipRows, 36, 'OP'), provenance: p.flow },
+    { id: 'market-overview', title: 'MARKET OVERVIEW', rows: densifyRows(marketOverviewRows, 36, 'MO'), visual: marketVisual, provenance: p.financial },
+    { id: 'volatility-skew', title: 'VOLATILITY & SKEW', rows: densifyRows(volatilityRows, 36, 'VS'), visual: volatilityVisual, provenance: p.flow },
+    { id: 'flow-positioning', title: 'FLOW & POSITIONING', rows: densifyRows(flowRows, 36, 'FP'), visual: flowVisual, provenance: p.flow },
+    { id: 'peer-comparison', title: 'PEER COMPARISON', rows: densifyRows(peerRows, 30, 'PC'), visual: peerVisual, provenance: p.peers },
+    { id: 'risk-diagnostics', title: 'RISK DIAGNOSTICS', rows: densifyRows(riskRows, 40, 'RD'), visual: riskVisual, provenance: p.risk },
+    { id: 'event-timeline', title: 'EVENT TIMELINE', rows: densifyRows(eventRows, 32, 'EV'), visual: eventVisual, provenance: p.events },
+    { id: 'linked-documents', title: 'LINKED DOCUMENTS', rows: densifyRows(linkedDocsRows, 42, 'LD'), visual: docsVisual, provenance: p.news },
+    { id: 'relationship-summary', title: 'RELATIONSHIP SUMMARY', rows: densifyRows(relationshipRows, 34, 'RS'), visual: relVisual, provenance: p.relationships },
+    { id: 'historical-performance', title: 'HISTORICAL PERFORMANCE', rows: densifyRows(historicalRows, 40, 'HP'), visual: historicalVisual, provenance: p.financial },
+    { id: 'ownership-positioning', title: 'OWNERSHIP & POSITIONING BREAKDOWN', rows: densifyRows(ownershipRows, 36, 'OP'), visual: ownershipVisual, provenance: p.flow },
   ];
 
   return (
     <section className="bg-black min-h-0 overflow-hidden flex flex-col flex-1 w-full min-w-0">
       <div className="h-[14px] px-[2px] border-b border-[#111] bg-[#0a0a0a] text-[8px] text-[#9bc3e8] flex items-center justify-between font-mono tracking-tight uppercase">
-        <span className="font-bold">EXEC CENTER STACK [{execMode}]</span>
+        <span className="font-bold">{titleOverride ?? `EXEC CENTER STACK [${execMode}]`}</span>
         <span className="text-[#f4cf76] text-[7px]">{depth?.meta?.overall.label ?? 'SIMULATED'}</span>
       </div>
       <StackedIntelRenderer blocks={blocks} className="bg-[#08111d]" />
