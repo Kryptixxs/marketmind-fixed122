@@ -1,18 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-
-const THEME = {
-  background: '#000205',
-  grid: 'rgba(43, 63, 95, 0.35)',
-  axis: '#2b3f5f',
-  text: '#8aa2bf',
-  positive: '#4ce0a5',
-  negative: '#ff7ca3',
-  cyan: '#63c8ff',
-  ma9: '#f4cf6b',
-  ma21: '#d18cff',
-};
+import { useMemo } from 'react';
+import { TerminalChart } from '@/components/charts/TerminalChart';
 
 export interface ChartData {
   time: number;
@@ -20,6 +9,19 @@ export interface ChartData {
   high: number;
   low: number;
   close: number;
+}
+
+function clamp01(v: number): number {
+  if (Number.isNaN(v)) return 0;
+  return Math.min(1, Math.max(0, v));
+}
+
+function normalize(values: number[]): number[] {
+  if (!values.length) return [];
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  if (max === min) return values.map(() => 0.5);
+  return values.map((v) => clamp01((v - min) / (max - min)));
 }
 
 export function TradingChart({
@@ -33,107 +35,52 @@ export function TradingChart({
   height?: number;
   compact?: boolean;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(0);
-  const chartHeight = height ?? (compact ? 220 : 340);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const observer = new ResizeObserver((entries) => {
-      const nextWidth = entries[0]?.contentRect.width ?? 0;
-      setWidth(Math.max(0, Math.floor(nextWidth)));
-    });
-    observer.observe(el);
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
-
   const series = useMemo(() => {
     const sorted = [...(data ?? [])].sort((a, b) => a.time - b.time);
     const unique: ChartData[] = [];
     for (const d of sorted) {
-      if (unique.length === 0 || d.time > unique[unique.length - 1].time) unique.push(d);
+      if (!unique.length || d.time > unique[unique.length - 1]!.time) unique.push(d);
     }
     return unique;
   }, [data]);
 
-  const domain = useMemo(() => {
-    if (!series.length) return { min: 0, max: 1, range: 1, maxVol: 1 };
-    const min = Math.min(...series.map((d) => d.low));
-    const max = Math.max(...series.map((d) => d.high));
-    const range = Math.max(0.0001, max - min);
-    const maxVol = Math.max(1, ...series.map((d) => Math.abs(d.high - d.low)));
-    return { min, max, range, maxVol };
-  }, [series]);
-
-  const padding = { t: 16, r: 64, b: 20, l: 8 };
-  const innerW = Math.max(1, (width || 1) - padding.l - padding.r);
-  const innerH = Math.max(1, chartHeight - padding.t - padding.b);
-  const candleW = Math.max(1, Math.min(compact ? 7 : 10, innerW / Math.max(1, series.length) * 0.62));
-  const xAt = (i: number) => padding.l + (i / Math.max(1, series.length - 1)) * innerW;
-  const yAt = (price: number) => padding.t + ((domain.max - price) / domain.range) * innerH;
-
-  const ma = (period: number) => series.map((_, i) => {
-    const start = Math.max(0, i - period + 1);
-    const window = series.slice(start, i + 1);
-    const value = window.reduce((acc, b) => acc + b.close, 0) / window.length;
-    return { i, value };
+  const closes = series.map((d) => d.close);
+  const closesNorm = normalize(closes);
+  const lows = series.map((d) => d.low);
+  const highs = series.map((d) => d.high);
+  const lowMin = lows.length ? Math.min(...lows) : 0;
+  const highMax = highs.length ? Math.max(...highs) : 1;
+  const range = Math.max(0.0001, highMax - lowMin);
+  const normPrice = (v: number) => clamp01((v - lowMin) / range);
+  const ma9 = series.map((_, i) => {
+    const start = Math.max(0, i - 8);
+    const w = closes.slice(start, i + 1);
+    return w.reduce((acc, v) => acc + v, 0) / Math.max(1, w.length);
   });
-  const vwap = series.map((_, i) => {
-    const window = series.slice(0, i + 1);
-    const pv = window.reduce((acc, b) => acc + ((b.high + b.low + b.close) / 3), 0);
-    return { i, value: pv / window.length };
-  });
-  const linePoints = (rows: Array<{ i: number; value: number }>) => rows.map((r) => `${xAt(r.i)},${yAt(r.value)}`).join(' ');
-  const priceTicks = Array.from({ length: 6 }, (_, i) => domain.max - (domain.range / 5) * i);
+  const ma9Norm = normalize(ma9);
+  const candles = series.map((d, i) => ({
+    open: closesNorm[Math.max(i - 1, 0)] ?? 0.5,
+    high: normPrice(d.high),
+    low: normPrice(d.low),
+    close: closesNorm[i] ?? 0.5,
+  }));
 
-  const style = { height: `${chartHeight}px` };
+  const chartHeight = height ?? (compact ? 220 : 340);
+  const last = closes.at(-1) ?? 0;
+  const prev = closes.at(-2) ?? last;
+  const pct = prev !== 0 ? (((last - prev) / prev) * 100).toFixed(2) : '0.00';
+
   return (
-    <div ref={containerRef} className="w-full bg-black" style={style}>
-      <svg width={Math.max(1, width)} height={chartHeight} viewBox={`0 0 ${Math.max(1, width)} ${chartHeight}`} preserveAspectRatio="none">
-        <rect x="0" y="0" width={Math.max(1, width)} height={chartHeight} fill={THEME.background} />
-        {symbol ? <text x={8} y={12} fill={THEME.text} fontSize={compact ? 8 : 9}>{symbol}</text> : null}
-        {priceTicks.map((p, i) => {
-          const y = yAt(p);
-          return (
-            <g key={`tick-${i}`}>
-              <line x1={padding.l} y1={y} x2={padding.l + innerW} y2={y} stroke={THEME.grid} strokeWidth="1" />
-              <text x={padding.l + innerW + 4} y={y + 3} fill={THEME.text} fontSize={compact ? 8 : 9}>{p.toFixed(2)}</text>
-            </g>
-          );
-        })}
-
-        {series.map((c, i) => {
-          const x = xAt(i);
-          const openY = yAt(c.open);
-          const closeY = yAt(c.close);
-          const highY = yAt(c.high);
-          const lowY = yAt(c.low);
-          const up = c.close >= c.open;
-          return (
-            <g key={`${c.time}-${i}`}>
-              <line x1={x} y1={highY} x2={x} y2={lowY} stroke={up ? THEME.positive : THEME.negative} strokeWidth="1" />
-              <rect
-                x={x - candleW / 2}
-                y={Math.min(openY, closeY)}
-                width={candleW}
-                height={Math.max(1, Math.abs(closeY - openY))}
-                fill={up ? '#1f5a41' : '#59243a'}
-                stroke={up ? THEME.positive : THEME.negative}
-                strokeWidth="0.8"
-              />
-            </g>
-          );
-        })}
-
-        <polyline fill="none" stroke={THEME.cyan} strokeWidth={compact ? 1.2 : 1.5} points={linePoints(vwap)} />
-        <polyline fill="none" stroke={THEME.ma9} strokeWidth="1" points={linePoints(ma(9))} />
-        <polyline fill="none" stroke={THEME.ma21} strokeWidth="1" points={linePoints(ma(21))} />
-
-        <line x1={padding.l + innerW} y1={padding.t} x2={padding.l + innerW} y2={padding.t + innerH} stroke={THEME.axis} strokeWidth="1" />
-      </svg>
+    <div className="flex flex-col w-full min-w-0 min-h-0" style={{ height: `${chartHeight}px` }}>
+      <TerminalChart
+        type="candles"
+        series={closesNorm}
+        secondary={ma9Norm}
+        candles={candles}
+        labels={series.map((d) => `${new Date(d.time).toISOString().slice(11, 16)}`)}
+        metricLabel={symbol || 'CHART'}
+        metricValue={`${last.toFixed(2)} ${pct.startsWith('-') ? '' : '+'}${pct}%`}
+      />
     </div>
   );
 }

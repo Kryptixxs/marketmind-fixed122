@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { TerminalChart } from '@/components/charts/TerminalChart';
 
 type FnCode = 'DES' | 'FA' | 'WEI' | 'HP' | 'YAS' | 'TOP' | 'ECO' | 'NI';
 type Side = 'BUY' | 'SELL';
@@ -233,9 +234,12 @@ export default function DashboardPage() {
     setLogs((prev) => [`LOADED ${sec} <${fn}>`, ...prev].slice(0, 20));
   };
 
-  const chartMin = Math.min(...chart);
-  const chartMax = Math.max(...chart);
-  const chartSpan = Math.max(0.0001, chartMax - chartMin);
+  const chartRange = useMemo(() => {
+    const min = Math.min(...chart);
+    const max = Math.max(...chart);
+    const span = Math.max(0.0001, max - min);
+    return chart.map((v) => (v - min) / span);
+  }, [chart]);
 
   return (
     <div className="h-full min-h-0 flex flex-col overflow-hidden bg-[#05080d] text-[#d7deea] font-mono">
@@ -379,15 +383,15 @@ export default function DashboardPage() {
           <div className="grid grid-cols-[62%_38%] gap-px bg-[#1a2433] flex-1 min-h-0">
             <div className="bg-[#08111d] min-h-0 flex flex-col">
               <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">INTRADAY</div>
-              <div className="relative flex-1">
-                <svg viewBox="0 0 620 240" preserveAspectRatio="none" className="absolute inset-0 h-full w-full">
-                  <polyline
-                    fill="none"
-                    stroke="#79d6ff"
-                    strokeWidth="1.8"
-                    points={chart.map((v, i) => `${(i / (chart.length - 1)) * 620},${216 - ((v - chartMin) / chartSpan) * 180}`).join(' ')}
-                  />
-                </svg>
+              <div className="flex-1 min-h-0 relative">
+                <TerminalChart
+                  type="line"
+                  series={chartRange}
+                  secondary={chartRange.map((v, i) => chartRange[Math.max(0, i - 4)] ?? v)}
+                  labels={Array.from({ length: chartRange.length }, (_, i) => `${i}`)}
+                  metricLabel={`${security.ticker} INTRADAY`}
+                  metricValue={`${fmt(active?.last ?? 0, active && active.last < 10 ? 4 : 2)}`}
+                />
               </div>
             </div>
             <div className="bg-[#08111d] min-h-0 overflow-y-auto custom-scrollbar">
