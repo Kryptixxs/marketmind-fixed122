@@ -8,6 +8,18 @@ export function OptionsAnalyticsModule() {
   const { state, dispatch } = useTerminalStore();
   const selected = state.activeSubTab && TABS.includes(state.activeSubTab) ? state.activeSubTab : 'Skew';
   const layoutClass = selected === 'Skew' ? 'grid-cols-[50%_50%]' : selected === 'Surface' ? 'grid-cols-[56%_44%]' : 'grid-cols-[44%_56%]';
+  const volSurface = [0.1, 0.25, 0.5, 0.75, 0.9].map((delta, i) => ({
+    delta: `${Math.round(delta * 100)}D`,
+    w1: state.risk.impliedVolProxy + i * 0.9 - 1.2,
+    m1: state.risk.impliedVolProxy + i * 0.7 - 0.6,
+    m3: state.risk.impliedVolProxy + i * 0.5,
+  }));
+  const scenarios = [
+    ['S+1% V+1', 0.42 + state.microstructure.orderFlowImbalance * 0.12, 0.08, 0.21, -0.03],
+    ['S-1% V+1', 0.36 + state.microstructure.imbalance * 0.1, 0.1, 0.28, -0.04],
+    ['S+2% V-1', 0.51 + state.microstructure.orderFlowImbalance * 0.1, 0.06, 0.16, -0.02],
+    ['S-2% V+2', 0.29 + state.microstructure.imbalance * 0.12, 0.12, 0.35, -0.06],
+  ];
   const applySymbol = (symbol: string) => {
     const cmd = `${symbol} OVME GO`;
     dispatch({ type: 'SET_SYMBOL', payload: symbol });
@@ -24,11 +36,27 @@ export function OptionsAnalyticsModule() {
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar text-[9px]">
           {[['25D RR', '1.8'], ['25D BF', '0.7'], ['ATM IV', `${state.risk.impliedVolProxy}%`], ['Skew Slope', '0.12'], ['Term Curvature', '0.05'], ['Spot-Vol Corr', '-0.31']].map(([k, v]) => <div key={k} className="px-1 py-[2px] border-b border-[#142034] flex justify-between"><span className="text-[#9fb4cd]">{k}</span><span className="text-[#e7f1ff] font-bold">{v}</span></div>)}
+          <div className="h-4 px-1 border-y border-[#142034] text-[8px] text-[#f4cf76] flex items-center">VOL SURFACE (DELTA x TENOR)</div>
+          <table className="w-full text-[8px] tabular-nums">
+            <thead className="bg-[#09111c] text-[#9fb4cd]">
+              <tr><th className="text-left px-1 py-[1px]">Delta</th><th className="text-right px-1 py-[1px]">1W</th><th className="text-right px-1 py-[1px]">1M</th><th className="text-right px-1 py-[1px]">3M</th></tr>
+            </thead>
+            <tbody>
+              {volSurface.map((r) => (
+                <tr key={r.delta} className="border-t border-[#142034]">
+                  <td className="px-1 py-[1px] text-[#d7e3f3]">{r.delta}</td>
+                  <td className="px-1 py-[1px] text-right text-[#e7f1ff]">{r.w1.toFixed(1)}%</td>
+                  <td className="px-1 py-[1px] text-right text-[#e7f1ff]">{r.m1.toFixed(1)}%</td>
+                  <td className="px-1 py-[1px] text-right text-[#e7f1ff]">{r.m3.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           <div className="h-4 px-1 border-y border-[#142034] text-[8px] text-[#f4cf76] flex items-center">UNDERLYING</div>
-          {state.quotes.slice(0, 8).map((q) => (
+          {state.quotes.slice(0, 18).map((q) => (
             <button key={q.symbol} onClick={() => applySymbol(q.symbol)} className="w-full text-left px-1 py-[1px] border-b border-[#142034] grid grid-cols-[1fr_auto] text-[8px]">
               <span className="text-[#cdd9ea] truncate">{q.symbol}</span>
-              <span className="text-right text-[#d7e3f3]">{q.last.toFixed(q.last < 10 ? 4 : 2)}</span>
+              <span className="text-right text-[#d7e3f3]">{q.last.toFixed(q.last < 10 ? 4 : 2)} <span className={q.pct >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}>{q.pct >= 0 ? '+' : ''}{q.pct.toFixed(2)}%</span></span>
             </button>
           ))}
         </div>
@@ -37,10 +65,21 @@ export function OptionsAnalyticsModule() {
         <div className="h-5 px-1 border-b border-[#2a2416] bg-[#0b1320] text-[10px] text-[#f4cf76] font-bold flex items-center">GREEKS / RISK DELTA</div>
         <div className="grid grid-rows-[58%_42%] gap-px bg-[#1a2433] flex-1 min-h-0">
           <div className="bg-[#08111d] min-h-0 overflow-y-auto custom-scrollbar text-[9px]">
-            {[['Delta', '0.42'], ['Gamma', '0.08'], ['Vega', '0.21'], ['Theta', '-0.03'], ['Charm', '-0.02'], ['Vanna', '0.04']].map(([k, v]) => <div key={k} className="px-1 py-[2px] border-b border-[#142034] flex justify-between"><span className="text-[#9fb4cd]">{k}</span><span className="text-[#e7f1ff] font-bold">{v}</span></div>)}
+            {[['Delta', '0.42'], ['Gamma', '0.08'], ['Vega', '0.21'], ['Theta', '-0.03'], ['Charm', '-0.02'], ['Vanna', '0.04'], ['Vomma', '0.06'], ['Color', '-0.01']].map(([k, v]) => <div key={k} className="px-1 py-[2px] border-b border-[#142034] flex justify-between"><span className="text-[#9fb4cd]">{k}</span><span className="text-[#e7f1ff] font-bold">{v}</span></div>)}
+            <div className="h-4 px-1 border-y border-[#142034] text-[8px] text-[#f4cf76] flex items-center">SCENARIO GRID</div>
+            {scenarios.map((row) => (
+              <div key={row[0]} className="px-1 py-[1px] border-b border-[#142034] grid grid-cols-[1.3fr_repeat(4,1fr)] text-[8px]">
+                <span className="text-[#9fb4cd]">{row[0]}</span>
+                <span className="text-right text-[#e7f1ff]">{Number(row[1]).toFixed(2)}</span>
+                <span className="text-right text-[#e7f1ff]">{Number(row[2]).toFixed(2)}</span>
+                <span className="text-right text-[#e7f1ff]">{Number(row[3]).toFixed(2)}</span>
+                <span className="text-right text-[#e7f1ff]">{Number(row[4]).toFixed(2)}</span>
+              </div>
+            ))}
           </div>
           <div className="bg-[#08111d] min-h-0 overflow-y-auto custom-scrollbar text-[8px]">
-            {state.systemFeed.slice(0, 14).map((l, i) => <div key={`${l}-${i}`} className="px-1 py-[1px] border-b border-[#142034] text-[#b7c8dd]">{l}</div>)}
+            {state.systemFeed.slice(0, 20).map((l, i) => <div key={`${l}-${i}`} className="px-1 py-[1px] border-b border-[#142034] text-[#b7c8dd]">{l}</div>)}
+            {volSurface.map((r) => <div key={`diag-${r.delta}`} className="px-1 py-[1px] border-b border-[#142034] text-[#6e85a3]">SURF {r.delta} {r.w1.toFixed(1)}/{r.m1.toFixed(1)}/{r.m3.toFixed(1)}</div>)}
           </div>
         </div>
       </section>

@@ -154,6 +154,21 @@ export type AnalyticsTab = 'OVERVIEW' | 'FACTORS' | 'EVENTS';
 export type RightRailTab = 'DEPTH' | 'TAPE' | 'ALERTS';
 export type FeedTab = 'NEWS' | 'SYSTEM';
 
+export type StreamClock = {
+  quotes: number;
+  depth: number;
+  execution: number;
+  feed: number;
+};
+
+export type StagedStreamState = {
+  quotesReadyAt: number;
+  depthReadyAt: number;
+  executionReadyAt: number;
+  feedReadyAt: number;
+  commitSeq: number;
+};
+
 export type TerminalState = {
   seed: number;
   tick: number;
@@ -180,4 +195,6 @@ export type TerminalState = {
   risk: RiskSnapshot;
   referenceBySymbol: Record<string, ReferenceSecurityProfile>;
   delta: DeltaState;
+  streamClock: StreamClock;
+  staged: StagedStreamState;
 };

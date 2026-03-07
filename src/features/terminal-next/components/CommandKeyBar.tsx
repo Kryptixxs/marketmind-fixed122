@@ -14,6 +14,7 @@ const KEYBAR = [
 ] as const;
 
 const FUNCTION_CODES: TerminalFunction[] = ['EXEC', 'DES', 'FA', 'HP', 'WEI', 'YAS', 'OVME', 'PORT'];
+const OPERATOR_KEYS = ['DEPTH', 'TAPE', 'ALERTS', 'RISK', 'NEWS', 'SYSTEM'] as const;
 
 export function CommandKeyBar() {
   const { state, dispatch } = useTerminalStore();
@@ -68,6 +69,43 @@ export function CommandKeyBar() {
           }`}
         >
           {f}
+        </button>
+      ))}
+      {OPERATOR_KEYS.map((k) => (
+        <button
+          key={k}
+          onClick={() => {
+            if (k === 'DEPTH') {
+              dispatch({ type: 'SET_RIGHT_TAB', payload: 'DEPTH' });
+              dispatch({ type: 'SET_ACTIVE_SUBTAB', payload: 'MICROSTRUCTURE' });
+            }
+            if (k === 'TAPE') {
+              dispatch({ type: 'SET_RIGHT_TAB', payload: 'TAPE' });
+              dispatch({ type: 'SET_ACTIVE_SUBTAB', payload: 'EVENTS' });
+            }
+            if (k === 'ALERTS') {
+              dispatch({ type: 'SET_RIGHT_TAB', payload: 'ALERTS' });
+              dispatch({ type: 'SET_ACTIVE_SUBTAB', payload: 'EVENTS' });
+            }
+            if (k === 'RISK') {
+              dispatch({ type: 'SET_ANALYTICS_TAB', payload: 'FACTORS' });
+              if (state.activeFunction === 'EXEC') dispatch({ type: 'SET_ACTIVE_SUBTAB', payload: 'FACTORS' });
+            }
+            if (k === 'NEWS') dispatch({ type: 'SET_FEED_TAB', payload: 'NEWS' });
+            if (k === 'SYSTEM') dispatch({ type: 'SET_FEED_TAB', payload: 'SYSTEM' });
+          }}
+          className={`h-5 px-1 border text-[9px] font-bold shrink-0 active:translate-y-px ${
+            (k === 'DEPTH' && state.rightRailTab === 'DEPTH')
+            || (k === 'TAPE' && state.rightRailTab === 'TAPE')
+            || (k === 'ALERTS' && state.rightRailTab === 'ALERTS')
+            || (k === 'RISK' && state.analyticsTab === 'FACTORS')
+            || (k === 'NEWS' && state.feedTab === 'NEWS')
+            || (k === 'SYSTEM' && state.feedTab === 'SYSTEM')
+              ? 'bg-[#1f2b0e] border-[#95ca2d] text-[#efffc7]'
+              : 'bg-[#11160c] border-[#44531f] text-[#bfd39a]'
+          }`}
+        >
+          {k}
         </button>
       ))}
     </div>

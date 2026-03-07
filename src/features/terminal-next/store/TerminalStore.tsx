@@ -2,13 +2,24 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { parseCommand } from '../services/commandParser';
-import { buildTickBatch, getUniverseSymbols, seedQuotes, seedReferenceProfiles } from '../services/simulator';
+import {
+  buildDepthTapeStream,
+  buildExecutionStream,
+  buildFeedStream,
+  buildQuotesStream,
+  getUniverseSymbols,
+  seedQuotes,
+  seedReferenceProfiles,
+} from '../services/simulator';
 import { resolveFunctionDeck } from '../services/functionRouter';
 import { DeltaState, FunctionCode, TerminalFunction, TerminalState } from '../types';
 import { deriveRiskSnapshot } from '../selectors/riskSelectors';
 
 type TerminalAction =
-  | { type: 'TICK' }
+  | { type: 'TICK_QUOTES' }
+  | { type: 'TICK_DEPTH_TAPE' }
+  | { type: 'TICK_EXECUTION' }
+  | { type: 'TICK_FEED' }
   | { type: 'SET_COMMAND'; payload: string }
   | { type: 'EXECUTE_COMMAND'; payload?: string }
   | { type: 'SET_FUNCTION'; payload: FunctionCode }
@@ -34,10 +45,12 @@ type TerminalContextType = {
   clocks: { ny: string; ldn: string; hkg: string; tky: string };
 };
 
-const SIM_CADENCE_MS = 900;
-const MIN_CADENCE_MS = 600;
-const MAX_CADENCE_MS = 1000;
-const SAFE_CADENCE_MS = Math.max(MIN_CADENCE_MS, Math.min(MAX_CADENCE_MS, SIM_CADENCE_MS));
+const STREAM_CADENCE = {
+  quotes: 240,
+  depth: 420,
+  execution: 820,
+  feed: 1600,
+} as const;
 
 const TerminalContext = createContext<TerminalContextType | null>(null);
 
@@ -91,9 +104,44 @@ function buildDelta(prev: TerminalState, next: Pick<TerminalState, 'quotes' | 'b
   return {
     changedSymbols,
     priceFlash,
-    tapePulseIds: next.tape.slice(0, 4).map((t) => t.id),
+    tapePulseIds: next.tape.slice(0, 6).map((t) => t.id),
     pnlFlash,
     alertPulse: prevAlertTop !== nextAlertTop,
+  };
+}
+
+function activeSymbolPrefix(state: TerminalState) {
+  return `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''}`;
+}
+
+function activeQuoteFrom(state: TerminalState) {
+  const prefix = activeSymbolPrefix(state);
+  return state.quotes.find((q) => q.symbol.startsWith(prefix)) ?? state.quotes[0];
+}
+
+function deriveNext(state: TerminalState, patch: Partial<TerminalState>): TerminalState {
+  const merged = { ...state, ...patch };
+  const risk = deriveRiskSnapshot({
+    quotes: merged.quotes,
+    blotter: merged.blotter,
+    barsBySymbol: merged.barsBySymbol,
+    micro: merged.microstructure,
+    activeSymbol: merged.activeSymbol,
+  });
+  const delta = buildDelta(state, {
+    quotes: merged.quotes,
+    blotter: merged.blotter,
+    tape: merged.tape,
+    alerts: merged.alerts,
+  });
+  return { ...merged, risk, delta };
+}
+
+function nextStaged(state: TerminalState, key: 'quotesReadyAt' | 'depthReadyAt' | 'executionReadyAt' | 'feedReadyAt', tickMs: number) {
+  return {
+    ...state.staged,
+    [key]: tickMs,
+    commitSeq: state.staged.commitSeq + 1,
   };
 }
 
@@ -143,50 +191,62 @@ const initialState: TerminalState = {
   },
   referenceBySymbol: seedReferenceProfiles(31051990),
   delta: emptyDelta(),
+  streamClock: { quotes: 0, depth: 0, execution: 0, feed: 0 },
+  staged: { quotesReadyAt: 0, depthReadyAt: 0, executionReadyAt: 0, feedReadyAt: 0, commitSeq: 0 },
 };
 
-function applyTick(state: TerminalState, nextTick: number): TerminalState {
-  const batch = buildTickBatch(state, nextTick);
-  const nextActiveSymbol = `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''}`;
-  const risk = deriveRiskSnapshot({
-    quotes: batch.quotes,
-    blotter: batch.blotter,
-    barsBySymbol: batch.barsBySymbol,
-    micro: batch.micro,
-    activeSymbol: nextActiveSymbol,
-  });
-  const delta = buildDelta(state, {
-    quotes: batch.quotes,
-    blotter: batch.blotter,
-    tape: batch.tape,
-    alerts: batch.alerts,
-  });
-
-  const executionLines = batch.executionEvents.map((e) => `EXEC ${e.symbol} ${e.status} ${e.fillQty}@${e.fillPrice.toFixed(2)} ${e.source}`);
-
-  return {
-    ...state,
-    tick: batch.tick,
-    tickMs: batch.tickMs,
-    quotes: batch.quotes,
-    orderBook: batch.orderBook,
-    tape: batch.tape,
-    blotter: batch.blotter,
-    executionEvents: batch.executionEvents,
-    alerts: batch.alerts,
-    headlines: batch.headlines,
-    barsBySymbol: batch.barsBySymbol,
-    microstructure: batch.micro,
-    risk,
-    activeSubTab: state.activeSubTab,
-    activeSymbol: nextActiveSymbol,
-    delta,
-    systemFeed: [...executionLines, ...state.systemFeed].slice(0, 30),
-  };
-}
-
 function terminalReducer(state: TerminalState, action: TerminalAction): TerminalState {
-  if (action.type === 'TICK') return applyTick(state, state.tick + 1);
+  if (action.type === 'TICK_QUOTES') {
+    const streamTick = state.streamClock.quotes + 1;
+    const batch = buildQuotesStream(state.seed, streamTick, STREAM_CADENCE.quotes);
+    return deriveNext(state, {
+      tick: streamTick,
+      tickMs: batch.tickMs,
+      quotes: batch.quotes,
+      activeSymbol: activeSymbolPrefix(state),
+      streamClock: { ...state.streamClock, quotes: streamTick },
+      staged: nextStaged(state, 'quotesReadyAt', batch.tickMs),
+    });
+  }
+
+  if (action.type === 'TICK_DEPTH_TAPE') {
+    const streamTick = state.streamClock.depth + 1;
+    const quote = activeQuoteFrom(state);
+    const batch = buildDepthTapeStream(state.seed, streamTick, state.tickMs, quote?.last ?? 100);
+    return deriveNext(state, {
+      orderBook: batch.orderBook,
+      tape: batch.tape,
+      microstructure: batch.micro,
+      streamClock: { ...state.streamClock, depth: streamTick },
+      staged: nextStaged(state, 'depthReadyAt', state.tickMs),
+    });
+  }
+
+  if (action.type === 'TICK_EXECUTION') {
+    const streamTick = state.streamClock.execution + 1;
+    const batch = buildExecutionStream(streamTick, state.tickMs, state.quotes, state.blotter, state.tape, state.barsBySymbol);
+    const executionLines = batch.executionEvents.map((e) => `EXEC ${e.symbol} ${e.status} ${e.fillQty}@${e.fillPrice.toFixed(2)} ${e.source}`);
+    return deriveNext(state, {
+      blotter: batch.blotter,
+      executionEvents: batch.executionEvents,
+      barsBySymbol: batch.barsBySymbol,
+      systemFeed: [...executionLines, ...state.systemFeed].slice(0, 40),
+      streamClock: { ...state.streamClock, execution: streamTick },
+      staged: nextStaged(state, 'executionReadyAt', state.tickMs),
+    });
+  }
+
+  if (action.type === 'TICK_FEED') {
+    const streamTick = state.streamClock.feed + 1;
+    const batch = buildFeedStream(streamTick, state.microstructure.sweep.active);
+    return deriveNext(state, {
+      headlines: batch.headlines,
+      alerts: batch.alerts,
+      systemFeed: [`FEED ROTATE -> H${streamTick}`, ...state.systemFeed].slice(0, 40),
+      streamClock: { ...state.streamClock, feed: streamTick },
+      staged: nextStaged(state, 'feedReadyAt', state.tickMs),
+    });
+  }
 
   if (action.type === 'SET_COMMAND') return { ...state, commandInput: action.payload };
 
@@ -199,7 +259,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       activeFunction,
       activeSubTab: undefined,
       commandInput: normalized,
-      systemFeed: [`FUNCTION CONTEXT -> ${activeFunction}`, ...state.systemFeed].slice(0, 30),
+      systemFeed: [`FUNCTION CONTEXT -> ${activeFunction}`, ...state.systemFeed].slice(0, 40),
     };
   }
 
@@ -211,12 +271,11 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       activeFunction: action.payload,
       activeSubTab: undefined,
       commandInput: command,
-      systemFeed: [`FUNCTION CONTEXT -> ${action.payload}`, ...state.systemFeed].slice(0, 30),
+      systemFeed: [`FUNCTION CONTEXT -> ${action.payload}`, ...state.systemFeed].slice(0, 40),
     };
   }
 
   if (action.type === 'SET_ACTIVE_SUBTAB') return { ...state, activeSubTab: action.payload };
-
   if (action.type === 'SET_ANALYTICS_TAB') return { ...state, analyticsTab: action.payload };
   if (action.type === 'SET_RIGHT_TAB') return { ...state, rightRailTab: action.payload };
   if (action.type === 'SET_FEED_TAB') return { ...state, feedTab: action.payload };
@@ -229,18 +288,28 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       security: { ticker, market, assetClass },
       activeSymbol: `${ticker}${market ? ` ${market}` : ''}`,
       commandInput: `${ticker}${market ? ` ${market}` : ''} ${state.activeFunction} GO`,
-      systemFeed: [`SYMBOL CONTEXT -> ${ticker}${market ? ` ${market}` : ''}`, ...state.systemFeed].slice(0, 30),
+      systemFeed: [`SYMBOL CONTEXT -> ${ticker}${market ? ` ${market}` : ''}`, ...state.systemFeed].slice(0, 40),
     };
   }
 
   if (action.type === 'EXECUTE_COMMAND') {
-    const raw = action.payload ?? state.commandInput;
+    let raw = action.payload ?? state.commandInput;
+    const compact = raw.replace(/\s+/g, ' ').trim().toUpperCase();
+    if (compact && !compact.endsWith(' GO')) {
+      const guess = state.quotes.find(
+        (q) =>
+          q.symbol.toUpperCase().startsWith(compact)
+          || q.symbol.toUpperCase().includes(compact)
+          || q.name.toUpperCase().includes(compact),
+      );
+      if (guess) raw = `${guess.symbol} ${state.activeFunction} GO`;
+    }
     const result = parseCommand(raw);
     if (!result.ok) {
       return {
         ...state,
         commandInput: result.normalized,
-        systemFeed: [`REJECTED: ${result.error}`, ...state.systemFeed].slice(0, 30),
+        systemFeed: [`REJECTED: ${result.error}`, ...state.systemFeed].slice(0, 40),
       };
     }
 
@@ -253,7 +322,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       functionCode: result.functionCode,
       activeFunction: result.activeFunction,
       activeSubTab: undefined,
-      systemFeed: [transitionLine, `LOADED ${result.normalized}`, ...state.systemFeed].filter(Boolean).slice(0, 30),
+      systemFeed: [transitionLine, `LOADED ${result.normalized}`, ...state.systemFeed].filter(Boolean).slice(0, 40),
     };
   }
 
@@ -261,11 +330,24 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
 }
 
 export function TerminalProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(terminalReducer, initialState, (seedState) => applyTick(seedState, 1));
+  const [state, dispatch] = useReducer(terminalReducer, initialState);
 
   useEffect(() => {
-    const id = window.setInterval(() => dispatch({ type: 'TICK' }), SAFE_CADENCE_MS);
-    return () => window.clearInterval(id);
+    dispatch({ type: 'TICK_QUOTES' });
+    dispatch({ type: 'TICK_DEPTH_TAPE' });
+    dispatch({ type: 'TICK_EXECUTION' });
+    dispatch({ type: 'TICK_FEED' });
+
+    const quotesId = window.setInterval(() => dispatch({ type: 'TICK_QUOTES' }), STREAM_CADENCE.quotes);
+    const depthId = window.setInterval(() => dispatch({ type: 'TICK_DEPTH_TAPE' }), STREAM_CADENCE.depth);
+    const executionId = window.setInterval(() => dispatch({ type: 'TICK_EXECUTION' }), STREAM_CADENCE.execution);
+    const feedId = window.setInterval(() => dispatch({ type: 'TICK_FEED' }), STREAM_CADENCE.feed);
+    return () => {
+      window.clearInterval(quotesId);
+      window.clearInterval(depthId);
+      window.clearInterval(executionId);
+      window.clearInterval(feedId);
+    };
   }, []);
 
   useEffect(() => {
@@ -287,7 +369,7 @@ export function TerminalProvider({ children }: { children: React.ReactNode }) {
     const breadth = state.quotes.length ? (adv / state.quotes.length) * 100 : 0;
     const avgMove = state.quotes.reduce((acc, q) => acc + Math.abs(q.pct), 0) / Math.max(1, state.quotes.length);
     const spread = state.microstructure.insideSpreadBps;
-    const latency = 8 + Math.round(Math.abs(Math.sin(state.tick * 0.08)) * 18);
+    const latency = 8 + ((state.staged.commitSeq * 3) % 19);
     return {
       state,
       dispatch,

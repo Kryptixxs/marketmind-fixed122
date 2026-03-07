@@ -12,7 +12,9 @@ import {
   VolatilityRegime,
 } from '../types';
 
-const UNIVERSE: Array<{ symbol: string; name: string; base: number; sector: string; benchmark: 'SPX' | 'NDX' | 'NONE' }> = [
+const hash = (x: string) => Array.from(x).reduce((a, c) => a + c.charCodeAt(0), 0);
+
+const CORE_UNIVERSE: Array<{ symbol: string; name: string; base: number; sector: string; benchmark: 'SPX' | 'NDX' | 'NONE' }> = [
   { symbol: 'AAPL US', name: 'Apple Inc', base: 196.5, sector: 'Tech', benchmark: 'NDX' },
   { symbol: 'MSFT US', name: 'Microsoft Corp', base: 430.4, sector: 'Tech', benchmark: 'NDX' },
   { symbol: 'NVDA US', name: 'NVIDIA Corp', base: 914.1, sector: 'Tech', benchmark: 'NDX' },
@@ -33,6 +35,43 @@ const UNIVERSE: Array<{ symbol: string; name: string; base: number; sector: stri
   { symbol: 'FTSE Index', name: 'FTSE 100 Index', base: 8114.9, sector: 'Index', benchmark: 'NONE' },
   { symbol: 'CAC Index', name: 'CAC 40 Index', base: 7972.8, sector: 'Index', benchmark: 'NONE' },
   { symbol: 'US30 Index', name: 'Dow Jones 30', base: 39384.4, sector: 'Index', benchmark: 'SPX' },
+];
+
+const EQUITY_TICKERS = [
+  'GOOGL', 'GOOG', 'BRK.B', 'JPM', 'V', 'JNJ', 'WMT', 'XOM', 'PG', 'UNH', 'MA', 'HD', 'LLY', 'BAC', 'ABBV', 'AVGO',
+  'KO', 'PEP', 'COST', 'MRK', 'ORCL', 'CSCO', 'ADBE', 'CRM', 'NFLX', 'AMD', 'INTC', 'QCOM', 'TXN', 'AMAT', 'MU', 'SHOP',
+  'UBER', 'SNOW', 'PANW', 'CRWD', 'NOW', 'PLTR', 'SQ', 'PYPL', 'DIS', 'NKE', 'SBUX', 'MCD', 'T', 'VZ', 'CMCSA', 'TMUS',
+  'CVX', 'COP', 'SLB', 'CAT', 'DE', 'GE', 'HON', 'MMM', 'BA', 'LMT', 'RTX', 'NOC', 'GD', 'F', 'GM', 'RIVN', 'LCID',
+  'PFE', 'BMY', 'TMO', 'DHR', 'ABT', 'GILD', 'BIIB', 'ISRG', 'REGN', 'VRTX', 'AMGN', 'MDT', 'SYK', 'ELV', 'CI', 'HUM',
+  'GS', 'MS', 'BLK', 'SPGI', 'ICE', 'CME', 'SCHW', 'CB', 'AIG', 'PGR', 'TRV', 'AON', 'BK', 'USB', 'WFC', 'C',
+  'PLD', 'AMT', 'EQIX', 'SPG', 'O', 'PSA', 'DLR', 'CCI', 'EQR', 'VICI', 'WY', 'EXR', 'NEM', 'FCX', 'LIN', 'APD',
+  'UPS', 'FDX', 'UNP', 'CSX', 'NSC', 'DAL', 'UAL', 'AAL', 'LUV', 'MAR', 'HLT', 'BKNG', 'ABNB', 'RCL', 'CCL', 'NCLH',
+  'IBM', 'SAP', 'ASML', 'TSM', 'SONY', 'BABA', 'PDD', 'JD', 'TCEHY', 'BIDU', 'SE', 'MELI', 'NU', 'RIO', 'BHP', 'SHEL',
+];
+
+const ETF_TICKERS = [
+  'SPY', 'QQQ', 'IWM', 'DIA', 'XLF', 'XLK', 'XLE', 'XLI', 'XLV', 'XLP', 'XLY', 'XLU', 'XLB', 'XLRE', 'TLT', 'IEF',
+  'HYG', 'LQD', 'GLD', 'SLV', 'USO', 'UNG', 'EEM', 'EWJ', 'EFA', 'FXI', 'ARKK', 'SOXX', 'SMH', 'XBI',
+];
+
+const GENERATED_UNIVERSE = [...EQUITY_TICKERS, ...ETF_TICKERS].map((ticker, idx) => {
+  const seed = hash(ticker) + idx * 17;
+  const base = Number((12 + (seed % 780) + ((seed % 37) / 100)).toFixed(2));
+  const sectorCycle = ['Tech', 'Fin', 'Health', 'Energy', 'Industrial', 'Consumer', 'Comm', 'Materials', 'Utilities'];
+  const sector = sectorCycle[seed % sectorCycle.length];
+  const benchmark: 'SPX' | 'NDX' | 'NONE' = sector === 'Tech' || sector === 'Comm' ? 'NDX' : 'SPX';
+  return {
+    symbol: `${ticker} US`,
+    name: `${ticker} Holdings`,
+    base,
+    sector,
+    benchmark,
+  };
+});
+
+const UNIVERSE: Array<{ symbol: string; name: string; base: number; sector: string; benchmark: 'SPX' | 'NDX' | 'NONE' }> = [
+  ...CORE_UNIVERSE,
+  ...GENERATED_UNIVERSE.filter((g) => !CORE_UNIVERSE.some((c) => c.symbol === g.symbol)),
 ];
 
 const HEADLINES = [
@@ -184,7 +223,6 @@ const PROFILE_BASE: Record<string, Omit<ReferenceSecurityProfile, 'symbol' | 'da
   },
 };
 
-const hash = (x: string) => Array.from(x).reduce((a, c) => a + c.charCodeAt(0), 0);
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
 function mulberry32(seed: number) {
@@ -464,7 +502,7 @@ export function buildExecutionEvents(blotter: BlotterRow[], previous: BlotterRow
 
 export function rotateHeadlines(tick: number): string[] {
   const start = tick % HEADLINES.length;
-  return Array.from({ length: 14 }, (_, i) => HEADLINES[(start + i) % HEADLINES.length]);
+  return Array.from({ length: 28 }, (_, i) => HEADLINES[(start + i) % HEADLINES.length]);
 }
 
 export function activeAlerts(tick: number, sweepActive: boolean): string[] {
@@ -530,6 +568,85 @@ export type TickBatch = {
   barsBySymbol: Record<string, IntradayBar[]>;
   micro: MicrostructureStats;
 };
+
+export type QuotesStreamBatch = {
+  streamTick: number;
+  tickMs: number;
+  regime: VolatilityRegime;
+  quotes: Quote[];
+};
+
+export type DepthTapeStreamBatch = {
+  streamTick: number;
+  tickMs: number;
+  orderBook: OrderBookLevel[];
+  tape: TapePrint[];
+  micro: MicrostructureStats;
+};
+
+export type ExecutionStreamBatch = {
+  streamTick: number;
+  blotter: BlotterRow[];
+  executionEvents: ExecutionEvent[];
+  barsBySymbol: Record<string, IntradayBar[]>;
+};
+
+export type FeedStreamBatch = {
+  streamTick: number;
+  headlines: string[];
+  alerts: string[];
+};
+
+export function streamTickMs(streamTick: number, intervalMs: number) {
+  return 1_711_800_000_000 + streamTick * intervalMs;
+}
+
+export function buildQuotesStream(seed: number, streamTick: number, intervalMs: number): QuotesStreamBatch {
+  return {
+    streamTick,
+    tickMs: streamTickMs(streamTick, intervalMs),
+    regime: regimeFromTick(streamTick),
+    quotes: nextQuotes(seed, streamTick),
+  };
+}
+
+export function buildDepthTapeStream(seed: number, streamTick: number, tickMs: number, activePrice: number): DepthTapeStreamBatch {
+  const orderBook = buildOrderBook(activePrice, streamTick, seed);
+  const hhmmss = new Date(tickMs).toISOString().slice(11, 19);
+  const tape = buildTape(orderBook, hhmmss, streamTick, seed);
+  return {
+    streamTick,
+    tickMs,
+    orderBook,
+    tape,
+    micro: buildMicrostructure(orderBook, tape, streamTick),
+  };
+}
+
+export function buildExecutionStream(
+  streamTick: number,
+  tickMs: number,
+  quotes: Quote[],
+  previousBlotter: BlotterRow[],
+  tape: TapePrint[],
+  previousBarsBySymbol: Record<string, IntradayBar[]>,
+): ExecutionStreamBatch {
+  const blotter = buildBlotter(quotes, previousBlotter, tape, streamTick);
+  const executionEvents = buildExecutionEvents(blotter, previousBlotter, tape, tickMs);
+  const barsBySymbol: Record<string, IntradayBar[]> = {};
+  for (const q of quotes) {
+    barsBySymbol[q.symbol] = buildBarsForSymbol(previousBarsBySymbol[q.symbol], q, streamTick, tickMs);
+  }
+  return { streamTick, blotter, executionEvents, barsBySymbol };
+}
+
+export function buildFeedStream(streamTick: number, sweepActive: boolean): FeedStreamBatch {
+  return {
+    streamTick,
+    headlines: rotateHeadlines(streamTick),
+    alerts: activeAlerts(streamTick, sweepActive),
+  };
+}
 
 export function buildTickBatch(prev: TerminalState, nextTick: number): TickBatch {
   const tickMs = 1_711_800_000_000 + nextTick * 900;
