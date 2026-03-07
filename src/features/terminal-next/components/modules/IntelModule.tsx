@@ -26,6 +26,7 @@ export function IntelModule() {
   const [supplyChain, setSupplyChain] = useState<SupplyChainData | null>(null);
   const [backendNews, setBackendNews] = useState<string[]>([]);
   const [envelope, setEnvelope] = useState<IntelligenceEnvelope>(emptyIntelligenceEnvelope());
+  const [explanation, setExplanation] = useState<string | null>(null);
   const [depth, setDepth] = useState<InstitutionalDepth | null>(null);
   const sym = state.activeSymbol?.replace(/\s+.*$/, '') || '';
   const filters = state.intelFilters;
@@ -36,6 +37,7 @@ export function IntelModule() {
       setSupplyChain(res.supplyChain);
       setBackendNews(res.news);
       setEnvelope(res.envelope ?? emptyIntelligenceEnvelope());
+      setExplanation(res.explanation ?? null);
     });
   }, [sym, filters?.country, filters?.date]);
 
@@ -116,6 +118,9 @@ export function IntelModule() {
       <section className="bg-black min-h-0 overflow-hidden flex flex-col">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-[#f4cf76] font-bold flex items-center">RELATIONSHIP GRAPH</div>
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar text-[9px]">
+          {explanation ? (
+            <div className="px-1 py-[2px] border-b border-[#1a1a1a] text-[#f4cf76]">{explanation}</div>
+          ) : null}
           {relationshipLines.length > 0 ? (
             relationshipLines.map((line, i) => (
               <div key={`rel-${i}`} className="px-1 py-[2px] border-b border-[#1a1a1a] flex justify-between">
@@ -155,6 +160,9 @@ export function IntelModule() {
       <section className="bg-black min-h-0 overflow-hidden flex flex-col">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-[#f4cf76] font-bold flex items-center">NEWS ARCHIVE</div>
         <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar text-[9px]">
+          {explanation ? (
+            <div className="px-1 py-[1px] border-b border-[#1a1a1a] text-[#f4cf76]">{explanation}</div>
+          ) : null}
           {displayNews.map((h, i) => (
             <div key={`h-${i}`} className="px-1 py-[1px] border-b border-[#1a1a1a] text-[#d7e3f3]">{h}</div>
           ))}

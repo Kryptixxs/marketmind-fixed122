@@ -13,7 +13,22 @@ export type EntityIntelResult = {
   supplyChain: SupplyChainData | null;
   news: string[];
   envelope: IntelligenceEnvelope;
+  explanation?: string;
 };
+
+function pushUniqueEntity(envelope: IntelligenceEnvelope, entity: IntelligenceEnvelope['entities'][number]) {
+  if (envelope.entities.some((existing) => existing.id === entity.id)) return;
+  envelope.entities.push(entity);
+}
+
+function pushUniqueRelationship(envelope: IntelligenceEnvelope, edge: IntelligenceEnvelope['relationships'][number]) {
+  const key = `${edge.from_id}|${edge.to_id}|${edge.relationship_type}|${edge.created_at ?? ''}`;
+  const exists = envelope.relationships.some(
+    (existing) =>
+      `${existing.from_id}|${existing.to_id}|${existing.relationship_type}|${existing.created_at ?? ''}` === key
+  );
+  if (!exists) envelope.relationships.push(edge);
+}
 
 export async function fetchEntityIntel(
   entity: string,
@@ -34,6 +49,7 @@ export async function fetchEntityIntel(
       supplyChain: fallback,
       news: [],
       envelope,
+      explanation: 'No canonical entity resolved. Showing provisional supply-chain fallback only.',
     };
   }
 
@@ -75,7 +91,10 @@ export async function fetchEntityIntel(
   const partners: SupplyChainEntry[] = [];
 
   for (const r of rels ?? []) {
-    const target = r.target as { id: string; name: string; symbol?: string; country?: string; sector?: string; entity_type?: string } | null;
+    const targetRaw = Array.isArray((r as any).target) ? (r as any).target[0] : (r as any).target;
+    const target = targetRaw as
+      | { id: string; name: string; symbol?: string; country?: string; sector?: string; entity_type?: string }
+      | null;
     const entry: SupplyChainEntry = {
       name: target?.name ?? 'Unknown',
       type: r.relationship_type as 'customer' | 'supplier' | 'partner',
@@ -87,7 +106,7 @@ export async function fetchEntityIntel(
     else partners.push(entry);
 
     if (target?.id) {
-      envelope.entities.push({
+      pushUniqueEntity(envelope, {
         id: target.id,
         type: (target.entity_type as any) ?? 'company',
         display_name: target.name,
@@ -96,7 +115,7 @@ export async function fetchEntityIntel(
         sector: target.sector ?? undefined,
         aliases: [target.name, target.symbol ?? ''].filter(Boolean),
       });
-      envelope.relationships.push({
+      pushUniqueRelationship(envelope, {
         from_id: r.source_entity_id,
         to_id: r.target_entity_id,
         relationship_type: r.relationship_type,
@@ -114,30 +133,6 @@ export async function fetchEntityIntel(
     partners,
   };
 
-  let docQuery = supabase
-    .from('documents')
-    .select('id, title, body, source, url, published_at, country_tags, entity_ids')
-    .contains('entity_ids', [entityRow.id])
-    .order('published_at', { ascending: false })
-    .limit(80);
-
-  if (filters?.date) {
-    docQuery = docQuery.eq('published_at', filters.date);
-  }
-
-  const { data: docs } = await docQuery;
-  const news = (docs ?? []).map((d: any) => `${d.title} (${d.published_at})`);
-  envelope.documents = (docs ?? []).map((d: any) => ({
-    id: d.id,
-    title: d.title ?? '',
-    body: d.body ?? '',
-    entity_ids: d.entity_ids ?? [],
-    country_tags: d.country_tags ?? [],
-    published_at: d.published_at ?? '',
-    source: d.source ?? '',
-    url: d.url ?? '',
-  }));
-
   // If Neo4j is configured, merge traversal edges (source-agnostic envelope).
   const graph = await fetchEntityGraph({
     entity: entityRow.symbol ?? entityRow.name,
@@ -148,6 +143,216 @@ export async function fetchEntityIntel(
   });
   if (graph.relationships.length > 0) {
     envelope.relationships = graph.relationships;
+    for (const entity of graph.entities) {
+      pushUniqueEntity(envelope, entity);
+    }
+  }
+
+  // Deterministic no-empty fallback chain:
+  // graph traversal -> doc-linked expansion -> peer expansion -> sector expansion -> country expansion -> explicit explanation.
+  let explanation: string | undefined;
+  if (envelope.relationships.length === 0) {
+    const { data: linkedDocs } = await supabase
+      .from('documents')
+      .select('id, entity_ids')
+      .contains('entity_ids', [entityRow.id])
+      .limit(200);
+    const docLinkedEntityIds = Array.from(
+      new Set(
+        (linkedDocs ?? [])
+          .flatMap((doc: any) => (doc.entity_ids ?? []) as string[])
+          .filter((id: string) => id && id !== entityRow.id)
+      )
+    );
+    if (docLinkedEntityIds.length > 0) {
+      const { data: entities } = await supabase
+        .from('entities')
+        .select('id, name, symbol, country, sector, entity_type')
+        .in('id', docLinkedEntityIds.slice(0, 80));
+      for (const e of entities ?? []) {
+        pushUniqueEntity(envelope, {
+          id: e.id,
+          type: (e.entity_type as any) ?? 'company',
+          display_name: e.name,
+          ticker: e.symbol ?? undefined,
+          country: e.country ?? undefined,
+          sector: e.sector ?? undefined,
+          aliases: [e.name, e.symbol ?? ''].filter(Boolean),
+        });
+        pushUniqueRelationship(envelope, {
+          from_id: entityRow.id,
+          to_id: e.id,
+          relationship_type: 'DOCUMENT_LINKED',
+          weight: 0.4,
+        });
+      }
+    }
+  }
+
+  if (envelope.relationships.length === 0) {
+    const { data: peers } = await supabase
+      .from('entities')
+      .select('id, name, symbol, country, sector, entity_type')
+      .eq('sector', canonical?.sector ?? '')
+      .eq('country', canonical?.country ?? '')
+      .neq('id', entityRow.id)
+      .limit(60);
+    for (const p of peers ?? []) {
+      pushUniqueEntity(envelope, {
+        id: p.id,
+        type: (p.entity_type as any) ?? 'company',
+        display_name: p.name,
+        ticker: p.symbol ?? undefined,
+        country: p.country ?? undefined,
+        sector: p.sector ?? undefined,
+        aliases: [p.name, p.symbol ?? ''].filter(Boolean),
+      });
+      pushUniqueRelationship(envelope, {
+        from_id: entityRow.id,
+        to_id: p.id,
+        relationship_type: 'PEER',
+        weight: 0.3,
+      });
+    }
+  }
+
+  if (envelope.relationships.length === 0) {
+    const { data: sectorEntities } = await supabase
+      .from('entities')
+      .select('id, name, symbol, country, sector, entity_type')
+      .eq('sector', canonical?.sector ?? '')
+      .neq('id', entityRow.id)
+      .limit(80);
+    for (const e of sectorEntities ?? []) {
+      pushUniqueEntity(envelope, {
+        id: e.id,
+        type: (e.entity_type as any) ?? 'company',
+        display_name: e.name,
+        ticker: e.symbol ?? undefined,
+        country: e.country ?? undefined,
+        sector: e.sector ?? undefined,
+        aliases: [e.name, e.symbol ?? ''].filter(Boolean),
+      });
+      pushUniqueRelationship(envelope, {
+        from_id: entityRow.id,
+        to_id: e.id,
+        relationship_type: 'SECTOR_LINK',
+        weight: 0.2,
+      });
+    }
+  }
+
+  if (envelope.relationships.length === 0) {
+    const { data: countryEntities } = await supabase
+      .from('entities')
+      .select('id, name, symbol, country, sector, entity_type')
+      .eq('country', canonical?.country ?? '')
+      .neq('id', entityRow.id)
+      .limit(80);
+    for (const e of countryEntities ?? []) {
+      pushUniqueEntity(envelope, {
+        id: e.id,
+        type: (e.entity_type as any) ?? 'company',
+        display_name: e.name,
+        ticker: e.symbol ?? undefined,
+        country: e.country ?? undefined,
+        sector: e.sector ?? undefined,
+        aliases: [e.name, e.symbol ?? ''].filter(Boolean),
+      });
+      pushUniqueRelationship(envelope, {
+        from_id: entityRow.id,
+        to_id: e.id,
+        relationship_type: 'COUNTRY_LINK',
+        weight: 0.1,
+      });
+    }
+  }
+
+  if (envelope.relationships.length === 0) {
+    explanation = 'No linked intelligence available after graph, document, peer, sector, and country expansion for the current filters.';
+    envelope.events.push({
+      id: `intel-empty-${entityRow.id}`,
+      label: explanation,
+      entity_ids: [entityRow.id],
+      occurred_at: new Date().toISOString(),
+      source: 'fallback-chain',
+    });
+  }
+
+  const firstDegreeNeighborIds = Array.from(
+    new Set(
+      envelope.relationships
+        .flatMap((edge) => {
+          if (edge.from_id === entityRow.id) return [edge.to_id];
+          if (edge.to_id === entityRow.id) return [edge.from_id];
+          return [];
+        })
+        .filter(Boolean)
+    )
+  );
+  const docEntityScope = Array.from(new Set([entityRow.id, ...firstDegreeNeighborIds]));
+  let docQuery = supabase
+    .from('documents')
+    .select('id, title, body, source, url, published_at, country_tags, entity_ids')
+    .overlaps('entity_ids', docEntityScope)
+    .order('published_at', { ascending: false })
+    .limit(200);
+
+  if (filters?.date) {
+    docQuery = docQuery.eq('published_at', filters.date);
+  }
+
+  const { data: docs } = await docQuery;
+  const neighborWeight = new Map<string, number>();
+  for (const edge of envelope.relationships) {
+    if (edge.from_id === entityRow.id) {
+      neighborWeight.set(edge.to_id, Math.max(neighborWeight.get(edge.to_id) ?? 0, edge.weight));
+    } else if (edge.to_id === entityRow.id) {
+      neighborWeight.set(edge.from_id, Math.max(neighborWeight.get(edge.from_id) ?? 0, edge.weight));
+    }
+  }
+
+  const rankedDocs = (docs ?? [])
+    .map((d: any) => {
+      const entityIds = (d.entity_ids ?? []) as string[];
+      const rootHit = entityIds.includes(entityRow.id) ? 100 : 0;
+      const neighborHit = entityIds.reduce((sum, id) => sum + (neighborWeight.get(id) ?? 0) * 30, 0);
+      const ageDays = Math.max(
+        0,
+        Math.floor((Date.now() - new Date(d.published_at ?? Date.now()).getTime()) / (1000 * 60 * 60 * 24))
+      );
+      const recency = Math.max(0, 30 - ageDays) * 0.5;
+      return { doc: d, score: rootHit + neighborHit + recency };
+    })
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.doc);
+
+  const news = rankedDocs.map((d: any) => `${d.title} (${d.published_at})`);
+  envelope.documents = rankedDocs.map((d: any) => ({
+    id: d.id,
+    title: d.title ?? '',
+    body: d.body ?? '',
+    entity_ids: d.entity_ids ?? [],
+    country_tags: d.country_tags ?? [],
+    published_at: d.published_at ?? '',
+    source: d.source ?? '',
+    url: d.url ?? '',
+  }));
+
+  if (explanation) {
+    news.unshift(`NOTICE: ${explanation}`);
+  }
+
+  if (process.env.INTEL_TELEMETRY === '1') {
+    console.info('[INTEL_TELEMETRY]', {
+      query: entity,
+      canonicalEntityId: entityRow.id,
+      entityCount: envelope.entities.length,
+      relationshipCount: envelope.relationships.length,
+      documentCount: envelope.documents.length,
+      filterState: filters ?? {},
+      explanation: explanation ?? null,
+    });
   }
 
   return {
@@ -155,5 +360,6 @@ export async function fetchEntityIntel(
     supplyChain,
     news,
     envelope,
+    explanation,
   };
 }

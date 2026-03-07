@@ -16,6 +16,11 @@ if (!SUPABASE_URL || !SUPABASE_KEY || !NEO4J_URL || !NEO4J_USERNAME || !NEO4J_PA
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value: string): boolean {
+  return UUID_RE.test(value);
+}
 
 function authHeader(username: string, password: string): string {
   return `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
@@ -44,6 +49,7 @@ async function run() {
     .select('id, symbol, name, display_name, country, sector, entity_type')
     .limit(10000);
   if (entitiesErr) throw entitiesErr;
+  const canonicalEntityIds = new Set((entities ?? []).map((e) => e.id).filter((id): id is string => typeof id === 'string'));
 
   const { data: rels, error: relsErr } = await supabase
     .from('relationships')
@@ -87,7 +93,14 @@ async function run() {
     );
   }
 
+  let rejected = 0;
   for (const r of rels ?? []) {
+    const fromId = String(r.source_entity_id ?? '');
+    const toId = String(r.target_entity_id ?? '');
+    if (!isUuid(fromId) || !isUuid(toId) || !canonicalEntityIds.has(fromId) || !canonicalEntityIds.has(toId)) {
+      rejected++;
+      continue;
+    }
     await neo4j(
       `
       MATCH (a:Entity {id: $fromId})
@@ -98,8 +111,8 @@ async function run() {
           rel.created_at = $createdAt
       `,
       {
-        fromId: r.source_entity_id,
-        toId: r.target_entity_id,
+        fromId,
+        toId,
         relationshipType: r.relationship_type,
         country: r.country,
         weight: r.weight ?? 1,
@@ -108,7 +121,7 @@ async function run() {
     );
   }
 
-  console.log(`Synced ${entities?.length ?? 0} entities and ${rels?.length ?? 0} relationships to Neo4j`);
+  console.log(`Synced ${entities?.length ?? 0} entities and ${(rels?.length ?? 0) - rejected} relationships to Neo4j (${rejected} rejected by canonical gate)`);
 }
 
 run().catch((e) => {

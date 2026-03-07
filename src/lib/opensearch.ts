@@ -25,8 +25,26 @@ export async function searchDocumentsOpenSearch(params: {
   dateTo?: string;
   size?: number;
 }): Promise<IntelligenceDocument[]> {
+  const result = await searchDocumentsOpenSearchPaged({
+    query: params.query,
+    entityId: params.entityId,
+    dateFrom: params.dateFrom,
+    dateTo: params.dateTo,
+    size: params.size,
+  });
+  return result.items;
+}
+
+export async function searchDocumentsOpenSearchPaged(params: {
+  query: string;
+  entityId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  size?: number;
+  from?: number;
+}): Promise<{ items: IntelligenceDocument[]; total: number }> {
   const { endpoint, username, password, index } = getConfig();
-  if (!endpoint) return [];
+  if (!endpoint) return { items: [], total: 0 };
 
   const must: any[] = [];
   const filter: any[] = [];
@@ -64,15 +82,16 @@ export async function searchDocumentsOpenSearch(params: {
     },
     body: JSON.stringify({
       size: params.size ?? 50,
+      from: Math.max(0, params.from ?? 0),
       query: { bool: { must, filter } },
       sort: [{ _score: 'desc' }, { published_at: 'desc' }],
     }),
   });
 
-  if (!res.ok) return [];
+  if (!res.ok) return { items: [], total: 0 };
   const json: any = await res.json();
   const hits = json?.hits?.hits ?? [];
-  return hits.map((h: any) => {
+  const items = hits.map((h: any) => {
     const src = h._source ?? {};
     return {
       id: src.id ?? h._id,
@@ -85,6 +104,8 @@ export async function searchDocumentsOpenSearch(params: {
       url: src.url ?? '',
     } as IntelligenceDocument;
   });
+  const total = Number(json?.hits?.total?.value ?? items.length);
+  return { items, total };
 }
 
 export async function indexDocumentOpenSearch(doc: IntelligenceDocument & { aliases?: string[] }): Promise<boolean> {

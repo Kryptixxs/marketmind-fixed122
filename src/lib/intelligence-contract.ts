@@ -48,11 +48,37 @@ export interface IntelligenceEvent {
   source?: string;
 }
 
+export interface IntelligenceSymbol {
+  symbol: string;
+  name: string;
+  type: string;
+}
+
 export interface IntelligenceEnvelope {
   entities: IntelligenceEntity[];
   documents: IntelligenceDocument[];
   relationships: IntelligenceGraphEdge[];
   events: IntelligenceEvent[];
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  nextCursor?: string;
+  total?: number;
+}
+
+export interface IntelligenceResponse {
+  entities: PaginatedResult<IntelligenceEntity>;
+  documents: PaginatedResult<IntelligenceDocument>;
+  relationships: PaginatedResult<IntelligenceGraphEdge>;
+  events: PaginatedResult<IntelligenceEvent>;
+  symbols?: PaginatedResult<IntelligenceSymbol>;
+  metadata: {
+    query: string;
+    canonicalEntityId?: string;
+    filterState?: Record<string, string | undefined>;
+    provisional?: boolean;
+  };
 }
 
 export function emptyIntelligenceEnvelope(): IntelligenceEnvelope {
@@ -61,5 +87,11 @@ export function emptyIntelligenceEnvelope(): IntelligenceEnvelope {
     documents: [],
     relationships: [],
     events: [],
+  };
+}
+
+export function emptyPaginatedResult<T>(): PaginatedResult<T> {
+  return {
+    items: [],
   };
 }

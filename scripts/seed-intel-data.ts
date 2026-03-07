@@ -5,6 +5,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { createHash } from 'node:crypto';
 import {
   getSupplyChain,
   SUPPLY_CHAIN_SYMBOLS,
@@ -53,6 +54,11 @@ function deriveCountry(entry: SupplyChainEntry): string | null {
   if (entry.note?.toUpperCase().includes('UK')) return 'UK';
   if (entry.segment === 'Gov' && (entry.name.includes('US') || entry.name.includes('DoD') || entry.name.includes('NASA') || entry.name.includes('FDA') || entry.name.includes('CBP'))) return 'US';
   return null;
+}
+
+function deterministicUuid(input: string): string {
+  const hex = createHash('sha1').update(input).digest('hex').slice(0, 32);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
 async function ensureEntity(symbol: string | null, name: string, sector: string | null, country: string | null): Promise<string> {
@@ -174,7 +180,7 @@ async function seed() {
   for (const n of sampleNews) {
     const eid = symbolToId.get(n.symbol);
     if (!eid) continue;
-    const docId = `${n.symbol}-${n.date}-${n.title}`.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 120);
+    const docId = deterministicUuid(`${n.symbol}|${n.date}|${n.title}`);
     await supabase.from('documents').upsert(
       {
         id: docId,

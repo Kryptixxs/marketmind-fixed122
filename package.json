@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "clean": "node -e \"require('fs').rmSync('.next',{ recursive: true, force: true })\"",
     "seed:intel": "npx tsx scripts/seed-intel-data.ts",
+    "index:bootstrap": "npx tsx scripts/bootstrap-opensearch-index.ts",
     "index:docs": "npx tsx scripts/index-documents-opensearch.ts",
     "sync:graph": "npx tsx scripts/sync-graph-neo4j.ts"
   },

@@ -1,4 +1,4 @@
-import type { IntelligenceGraphEdge } from '@/lib/intelligence-contract';
+import type { IntelligenceEntity, IntelligenceGraphEdge } from '@/lib/intelligence-contract';
 
 function config() {
   return {
@@ -24,13 +24,13 @@ export async function traverseEntityGraphNeo4j(params: {
   country?: string;
   dateFrom?: string;
   dateTo?: string;
-}): Promise<IntelligenceGraphEdge[]> {
+}): Promise<{ relationships: IntelligenceGraphEdge[]; entities: IntelligenceEntity[] }> {
   const { url, username, password } = config();
-  if (!url) return [];
+  if (!url) return { relationships: [], entities: [] };
 
   const depth = Math.min(Math.max(params.depth ?? 1, 1), 3);
   const filters: string[] = [];
-  if (params.relationshipType) filters.push(`toLower(type(rel)) = toLower($relationshipType)`);
+  if (params.relationshipType) filters.push(`toLower(coalesce(rel.relationship_type, type(rel))) = toLower($relationshipType)`);
   if (params.country) filters.push(`toLower(coalesce(rel.country, '')) CONTAINS toLower($country)`);
   if (params.dateFrom) filters.push(`datetime(coalesce(rel.created_at, datetime('1970-01-01T00:00:00Z'))) >= datetime($dateFrom)`);
   if (params.dateTo) filters.push(`datetime(coalesce(rel.created_at, datetime())) <= datetime($dateTo)`);
@@ -41,7 +41,30 @@ export async function traverseEntityGraphNeo4j(params: {
     UNWIND r AS rel
     WITH startNode(rel) AS a, endNode(rel) AS b, rel
     ${relFilter}
-    RETURN DISTINCT a.id AS from_id, b.id AS to_id, type(rel) AS relationship_type, coalesce(rel.weight, 1) AS weight, toString(rel.created_at) AS created_at
+    RETURN DISTINCT
+      a.id AS from_id,
+      b.id AS to_id,
+      coalesce(rel.relationship_type, type(rel)) AS relationship_type,
+      coalesce(rel.weight, 1) AS weight,
+      toString(rel.created_at) AS created_at,
+      {
+        id: a.id,
+        type: toLower(coalesce(a.entity_type, 'company')),
+        display_name: coalesce(a.display_name, a.name, a.ticker, a.id),
+        ticker: a.ticker,
+        country: a.country,
+        sector: a.sector,
+        aliases: coalesce(a.aliases, [])
+      } AS from_entity,
+      {
+        id: b.id,
+        type: toLower(coalesce(b.entity_type, 'company')),
+        display_name: coalesce(b.display_name, b.name, b.ticker, b.id),
+        ticker: b.ticker,
+        country: b.country,
+        sector: b.sector,
+        aliases: coalesce(b.aliases, [])
+      } AS to_entity
   `;
 
   const res = await fetch(url, {
@@ -66,10 +89,10 @@ export async function traverseEntityGraphNeo4j(params: {
     }),
   });
 
-  if (!res.ok) return [];
+  if (!res.ok) return { relationships: [], entities: [] };
   const json: any = await res.json();
   const rows = json?.results?.[0]?.data ?? [];
-  return rows.map((r: any) => {
+  const relationships = rows.map((r: any) => {
     const row = r.row ?? [];
     return {
       from_id: row[0],
@@ -79,4 +102,23 @@ export async function traverseEntityGraphNeo4j(params: {
       created_at: row[4] ?? undefined,
     } as IntelligenceGraphEdge;
   });
+  const entitiesMap = new Map<string, IntelligenceEntity>();
+  for (const r of rows) {
+    const row = r.row ?? [];
+    const fromEntity = row[5];
+    const toEntity = row[6];
+    for (const candidate of [fromEntity, toEntity]) {
+      if (!candidate?.id || entitiesMap.has(candidate.id)) continue;
+      entitiesMap.set(candidate.id, {
+        id: String(candidate.id),
+        type: (candidate.type as IntelligenceEntity['type']) ?? 'company',
+        display_name: String(candidate.display_name ?? candidate.id),
+        ticker: candidate.ticker ? String(candidate.ticker) : undefined,
+        country: candidate.country ? String(candidate.country) : undefined,
+        sector: candidate.sector ? String(candidate.sector) : undefined,
+        aliases: Array.isArray(candidate.aliases) ? candidate.aliases.map((a: unknown) => String(a)) : [],
+      });
+    }
+  }
+  return { relationships, entities: Array.from(entitiesMap.values()) };
 }

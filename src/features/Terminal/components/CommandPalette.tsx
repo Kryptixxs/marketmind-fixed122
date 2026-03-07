@@ -28,7 +28,8 @@ import {
   TOP_SYMBOLS,
   WORKSPACE_FUNCTIONS,
 } from "@/features/Terminal/services/command-registry"
-import { globalSearch, type GlobalSearchResult } from "@/app/actions/globalSearch"
+import { globalSearchV2 } from "@/app/actions/globalSearch"
+import type { IntelligenceResponse, IntelligenceEntity, IntelligenceDocument, IntelligenceSymbol } from "@/lib/intelligence-contract"
 
 const NAV_ICONS: Record<string, React.ElementType> = {
   "/dashboard": LayoutGrid,
@@ -52,8 +53,9 @@ const WORKSPACE_ICONS: Record<string, React.ElementType> = {
 export function CommandPalette() {
   const [open, setOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState('')
-  const [searchResults, setSearchResults] = React.useState<GlobalSearchResult | null>(null)
+  const [searchResults, setSearchResults] = React.useState<IntelligenceResponse | null>(null)
   const [searching, setSearching] = React.useState(false)
+  const [loadingMoreGroup, setLoadingMoreGroup] = React.useState<"entities" | "documents" | "symbols" | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const { push } = useTunnel()
@@ -95,7 +97,7 @@ export function CommandPalette() {
     const timer = setTimeout(async () => {
       setSearching(true)
       try {
-        const res = await globalSearch(q)
+        const res = await globalSearchV2(q, { pageSize: 12 })
         setSearchResults(res)
       } finally {
         setSearching(false)
@@ -103,6 +105,76 @@ export function CommandPalette() {
     }, 300)
     return () => clearTimeout(timer)
   }, [searchValue])
+
+  const mergeUniqueByKey = <T,>(current: T[], incoming: T[], getKey: (item: T) => string): T[] => {
+    const seen = new Set<string>(current.map(getKey))
+    const merged = [...current]
+    for (const item of incoming) {
+      const key = getKey(item)
+      if (seen.has(key)) continue
+      seen.add(key)
+      merged.push(item)
+    }
+    return merged
+  }
+
+  const loadMore = async (group: "entities" | "documents" | "symbols") => {
+    if (!searchResults) return
+    const cursor =
+      group === "entities"
+        ? searchResults.entities.nextCursor
+        : group === "documents"
+          ? searchResults.documents.nextCursor
+          : searchResults.symbols?.nextCursor
+    if (!cursor) return
+    setLoadingMoreGroup(group)
+    try {
+      const res = await globalSearchV2(searchValue.trim(), {
+        pageSize: 12,
+        cursors: {
+          entities: group === "entities" ? cursor : undefined,
+          documents: group === "documents" ? cursor : undefined,
+          symbols: group === "symbols" ? cursor : undefined,
+        },
+      })
+      setSearchResults((prev) => {
+        if (!prev) return res
+        const nextEntities = group === "entities"
+          ? mergeUniqueByKey<IntelligenceEntity>(prev.entities.items, res.entities.items, (x) => x.id)
+          : prev.entities.items
+        const nextDocuments = group === "documents"
+          ? mergeUniqueByKey<IntelligenceDocument>(prev.documents.items, res.documents.items, (x) => x.id)
+          : prev.documents.items
+        const prevSymbols = prev.symbols?.items ?? []
+        const resSymbols = res.symbols?.items ?? []
+        const nextSymbols = group === "symbols"
+          ? mergeUniqueByKey<IntelligenceSymbol>(prevSymbols, resSymbols, (x) => x.symbol)
+          : prevSymbols
+
+        return {
+          ...prev,
+          entities: {
+            ...prev.entities,
+            items: nextEntities,
+            nextCursor: group === "entities" ? res.entities.nextCursor : prev.entities.nextCursor,
+          },
+          documents: {
+            ...prev.documents,
+            items: nextDocuments,
+            nextCursor: group === "documents" ? res.documents.nextCursor : prev.documents.nextCursor,
+          },
+          symbols: {
+            ...(prev.symbols ?? { items: [], total: 0 }),
+            items: nextSymbols,
+            nextCursor: group === "symbols" ? res.symbols?.nextCursor : prev.symbols?.nextCursor,
+            total: prev.symbols?.total ?? res.symbols?.total,
+          },
+        }
+      })
+    } finally {
+      setLoadingMoreGroup(null)
+    }
+  }
 
   const handleNav = (path: string) => {
     setOpen(false);
@@ -137,9 +209,9 @@ export function CommandPalette() {
   }
 
   const hasSearchResults = searchResults && (
-    searchResults.entities.length > 0 ||
-    searchResults.documents.length > 0 ||
-    searchResults.symbols.length > 0
+    searchResults.entities.items.length > 0 ||
+    searchResults.documents.items.length > 0 ||
+    (searchResults.symbols?.items.length ?? 0) > 0
   )
 
   return (
@@ -165,15 +237,15 @@ export function CommandPalette() {
         {hasSearchResults && (
           <>
             <CommandGroup heading="Search Results">
-              {searchResults!.entities.map((ent) => (
+              {searchResults!.entities.items.map((ent) => (
                 <CommandItem
                   key={`ent-${ent.id}`}
-                  value={`${ent.name} ${ent.symbol} entity`}
+                  value={`${ent.display_name} ${ent.ticker ?? ''} entity`}
                   onSelect={() => {
                     setOpen(false)
-                    const sym = ent.symbol || ent.name
+                    const sym = ent.ticker || ent.display_name
                     dispatchSymbol(sym)
-                    push({ type: 'SYMBOL', symbol: sym, label: ent.name })
+                    push({ type: 'SYMBOL', symbol: sym, label: ent.display_name })
                     if (pathname !== '/dashboard' && pathname !== '/charts') {
                       setTimeout(() => router.push('/dashboard'), 50)
                     }
@@ -181,15 +253,25 @@ export function CommandPalette() {
                 >
                   <Building2 className="mr-2 h-3.5 w-3.5 text-cyan" />
                   <div className="flex flex-col">
-                    <span className="font-bold text-[11px]">{ent.name}</span>
+                    <span className="font-bold text-[11px]">{ent.display_name}</span>
                     <span className="text-[9px] text-text-tertiary">
-                      {ent.symbol} {ent.relationshipCount != null && ent.relationshipCount > 0 ? `· ${ent.relationshipCount} relationships` : ''}
+                      {ent.ticker ?? ent.type}
                     </span>
                   </div>
                   <CommandShortcut>Entity</CommandShortcut>
                 </CommandItem>
               ))}
-              {searchResults!.documents.slice(0, 8).map((doc) => (
+              {searchResults!.entities.nextCursor && (
+                <CommandItem
+                  value="load more entities"
+                  onSelect={() => loadMore("entities")}
+                  disabled={loadingMoreGroup === "entities"}
+                >
+                  <Loader2 className={`mr-2 h-3.5 w-3.5 ${loadingMoreGroup === "entities" ? "animate-spin" : ""}`} />
+                  <span className="text-[10px] uppercase font-bold">Load More Entities</span>
+                </CommandItem>
+              )}
+              {searchResults!.documents.items.map((doc) => (
                 <CommandItem
                   key={`doc-${doc.id}`}
                   value={`${doc.title} ${doc.published_at} news`}
@@ -200,7 +282,7 @@ export function CommandPalette() {
                       id: doc.id,
                       title: doc.title,
                       label: doc.title,
-                      source: doc.source,
+                      source: doc.source ?? '',
                       time: doc.published_at,
                     })
                     setTimeout(() => router.push('/news'), 50)
@@ -214,7 +296,17 @@ export function CommandPalette() {
                   <CommandShortcut>News</CommandShortcut>
                 </CommandItem>
               ))}
-              {searchResults!.symbols.slice(0, 6).map((s) => (
+              {searchResults!.documents.nextCursor && (
+                <CommandItem
+                  value="load more documents"
+                  onSelect={() => loadMore("documents")}
+                  disabled={loadingMoreGroup === "documents"}
+                >
+                  <Loader2 className={`mr-2 h-3.5 w-3.5 ${loadingMoreGroup === "documents" ? "animate-spin" : ""}`} />
+                  <span className="text-[10px] uppercase font-bold">Load More News</span>
+                </CommandItem>
+              )}
+              {(searchResults!.symbols?.items ?? []).map((s) => (
                 <CommandItem
                   key={`sym-${s.symbol}`}
                   value={`${s.symbol} ${s.name} ${s.type}`}
@@ -228,6 +320,16 @@ export function CommandPalette() {
                   <CommandShortcut>{s.type}</CommandShortcut>
                 </CommandItem>
               ))}
+              {searchResults!.symbols?.nextCursor && (
+                <CommandItem
+                  value="load more symbols"
+                  onSelect={() => loadMore("symbols")}
+                  disabled={loadingMoreGroup === "symbols"}
+                >
+                  <Loader2 className={`mr-2 h-3.5 w-3.5 ${loadingMoreGroup === "symbols" ? "animate-spin" : ""}`} />
+                  <span className="text-[10px] uppercase font-bold">Load More Symbols</span>
+                </CommandItem>
+              )}
             </CommandGroup>
             <CommandSeparator />
           </>
