@@ -7,6 +7,8 @@ import { fetchMarketData, fetchMarketDataBatch } from './fetchMarketData';
 import { fetchOptionsChain } from './fetchOptionsChain';
 import { fetchSECFilings } from './fetchSECFilings';
 import { searchDocuments } from './searchDocuments';
+import { toDateISO } from '@/lib/synthetic/seed';
+import { emptyIntelligenceEnvelope } from '@/lib/intelligence-contract';
 import type { DataProvenance } from '@/lib/synthetic/contracts';
 import { generateSyntheticIntel } from '@/lib/synthetic/intel-generator';
 
@@ -80,8 +82,24 @@ export interface InstitutionalDepth {
     flows: Array<{ vehicle: string; flowUsdM: number; direction: 'Inflow' | 'Outflow' }>;
     correlations: Array<{ pair: string; corr: number }>;
   };
+  riskProfile: {
+    debtMaturityLadder: Array<{ bucket: string; amount: number; pctOfDebt: number }>;
+    interestCoverageTrend: Array<{ year: number; ratio: number }>;
+    countryRevenuePct: Array<{ country: string; pct: number }>;
+    fxExposurePct: Array<{ currency: string; pct: number }>;
+    sanctionsRiskFlag: boolean;
+    regulatoryRiskScore: number;
+  };
+  flowPositioning: {
+    etfOwnershipPct: number;
+    passiveIndexWeightPct: number;
+    institutionalOwnershipPct: number;
+    shortInterestTrend: Array<{ date: string; shortPctFloat: number }>;
+    borrowCostPct: number;
+    volatilityPercentile: number;
+  };
   news: {
-    archive: Array<{ title: string; published_at: string; source: string }>;
+    archive: Array<{ title: string; published_at: string; source: string; relevanceWeight: number }>;
     topics: Array<{ topic: string; count: number; sentiment: number }>;
     impacts: Array<{ date: string; event: string; priceImpactPct: number; volShiftPct: number }>;
   };
@@ -123,14 +141,14 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
   const seed = mkSeed(symbol);
   const synthetic = generateSyntheticIntel(symbol);
 
-  const intel = await fetchEntityIntel(symbol);
-  const earnings = await fetchHistoricalEarnings(symbol);
-  const options = await fetchOptionsChain(symbol);
-  const macro = await fetchEconomicCalendar();
-  const secFilings = await fetchSECFilings(symbol);
-  const market = await fetchMarketDataBatch(['SPX500', 'NAS100', 'US30', 'RUT2000']);
-  const symbolMarket = await fetchMarketData(symbol);
-  const docs = await searchDocuments(symbol);
+  const intel = await fetchEntityIntel(symbol).catch(() => ({ news: [], envelope: emptyIntelligenceEnvelope() }));
+  const earnings = await fetchHistoricalEarnings(symbol).catch(() => []);
+  const options = await fetchOptionsChain(symbol).catch(() => ({ chain: [] }));
+  const macro = await fetchEconomicCalendar().catch(() => []);
+  const secFilings = await fetchSECFilings(symbol).catch(() => []);
+  const market = await fetchMarketDataBatch(['SPX500', 'NAS100', 'US30', 'RUT2000']).catch(() => []);
+  const symbolMarket = await fetchMarketData(symbol).catch(() => null);
+  const docs = await searchDocuments(symbol).catch(() => []);
 
   const revSeries = mkYearSeries(seed, 20, Math.max(20, synthetic.financialHistory.points[0]?.revenue ?? 100), 0.055);
   const assetSeries = mkYearSeries(seed + 31, 20, Math.max(40, (symbolMarket?.price ?? 100) * 2.6), 0.045);
@@ -170,17 +188,20 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
       title: `[SIMULATED] ${d.title}`,
       published_at: d.date,
       source: 'demo-wire',
+      relevanceWeight: d.relevanceWeight,
     })),
     ...docs.map((d) => ({
       title: d.title,
       published_at: d.published_at,
       source: d.source ?? 'wire',
+      relevanceWeight: 0.5,
     })),
   ];
   const denseNewsArchive = ensureMinItems(newsArchive, 28, (index) => ({
     title: `[SIMULATED] ${symbol} coverage update ${index + 1}`,
-    published_at: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? new Date().toISOString().slice(0, 10),
+    published_at: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? toDateISO(index * 9),
     source: 'demo-wire',
+    relevanceWeight: Number((0.42 + (index % 11) * 0.04).toFixed(3)),
   }));
 
   const impacts = ensureMinItems(synthetic.eventTimeline.events.map((e) => ({
@@ -189,7 +210,7 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
     priceImpactPct: e.priceImpactPct,
     volShiftPct: e.volatilityImpactPct,
   })), 24, (index) => ({
-    date: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? new Date().toISOString().slice(0, 10),
+    date: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? toDateISO(index * 11),
     event: `${symbol} synthetic event ${index + 1}`,
     priceImpactPct: Number((Math.sin(index * 0.27) * 2.4).toFixed(2)),
     volShiftPct: Number((Math.cos(index * 0.23) * 5.2).toFixed(2)),
@@ -200,7 +221,7 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
     16,
     (index) => ({
       form: index % 3 === 0 ? '8-K' : index % 3 === 1 ? '10-Q' : '4',
-      filed: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? new Date().toISOString().slice(0, 10),
+      filed: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? toDateISO(index * 13),
       description: `${symbol} simulated filing ${index + 1}`,
       url: '#',
     }),
@@ -231,7 +252,7 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
     })),
     16,
     (index) => ({
-      date: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? new Date().toISOString().slice(0, 10),
+      date: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? toDateISO(index * 15),
       title: `Synthetic macro catalyst ${index + 1}`,
       impact: index % 4 === 0 ? 'High' : 'Medium',
       forecast: `${(2.1 + index * 0.04).toFixed(2)}%`,
@@ -245,7 +266,7 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
     ],
     30,
     (index) => ({
-      date: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? new Date().toISOString().slice(0, 10),
+      date: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? toDateISO(index * 17),
       type: 'Event',
       title: `${symbol} synthetic catalyst ${index + 1}`,
     }),
@@ -444,17 +465,13 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
     },
     sec: {
       filings: denseSecFilings,
-      insider: Array.from({ length: 40 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - i * 5);
-        return {
-          insider: i % 2 === 0 ? 'Director' : 'Officer',
-          side: i % 3 === 0 ? 'Sell' : 'Buy',
-          shares: 1000 + i * 320,
-          price: Number((120 + Math.sin(i * 0.13) * 22).toFixed(2)),
-          date: d.toISOString().slice(0, 10),
-        };
-      }),
+      insider: Array.from({ length: 40 }, (_, i) => ({
+        insider: i % 2 === 0 ? 'Director' : 'Officer',
+        side: i % 3 === 0 ? 'Sell' : 'Buy',
+        shares: 1000 + i * 320,
+        price: Number((120 + Math.sin(i * 0.13) * 22).toFixed(2)),
+        date: toDateISO(i * 5),
+      })),
       holders: [
         { holder: 'Vanguard', shares: 1240000000, pctOut: 7.2, changePct: 0.2 },
         { holder: 'BlackRock', shares: 1030000000, pctOut: 6.1, changePct: 0.1 },
@@ -490,6 +507,22 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
         { pair: 'NDX/VIX', corr: -0.79 },
         { pair: 'GOLD/DXY', corr: -0.72 },
       ],
+    },
+    riskProfile: {
+      debtMaturityLadder: synthetic.riskProfile.debtMaturityLadder,
+      interestCoverageTrend: synthetic.riskProfile.interestCoverageTrend,
+      countryRevenuePct: synthetic.riskProfile.countryRevenuePct,
+      fxExposurePct: synthetic.riskProfile.fxExposurePct,
+      sanctionsRiskFlag: synthetic.riskProfile.sanctionsRiskFlag,
+      regulatoryRiskScore: synthetic.riskProfile.regulatoryRiskScore,
+    },
+    flowPositioning: {
+      etfOwnershipPct: synthetic.flowMetrics.etfOwnershipPct,
+      passiveIndexWeightPct: synthetic.flowMetrics.passiveIndexWeightPct,
+      institutionalOwnershipPct: synthetic.flowMetrics.institutionalOwnershipPct,
+      shortInterestTrend: synthetic.flowMetrics.shortInterestTrend,
+      borrowCostPct: synthetic.flowMetrics.borrowCostPct,
+      volatilityPercentile: synthetic.flowMetrics.volatilityPercentile,
     },
     news: {
       archive: denseNewsArchive,

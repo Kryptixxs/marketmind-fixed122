@@ -63,34 +63,32 @@ export function ExecutionCockpitModule() {
           </button>
         ))}
       </div>
-      <div key={`exec-${selected.toLowerCase()}`} className="flex-1 min-h-0 flex flex-col gap-px bg-black">
-        <div className="flex-[4] min-h-0 flex gap-px bg-black">
-          <div className="basis-[18rem] max-w-[24%] min-w-[220px] min-h-0 flex flex-col gap-px">
-            <div className="flex-[1.2] min-h-0">
-              <MonitorPanel />
-            </div>
-            <div className="flex-1 min-h-0">
-              <CrossAssetMatrixPanel />
-            </div>
+      <div key={`exec-${selected.toLowerCase()}`} className="flex-1 min-h-0 flex gap-px bg-black">
+        <aside className="w-64 shrink-0 min-h-0 flex flex-col gap-px">
+          <div className="flex-1 min-h-0">
+            <MonitorPanel />
           </div>
-          <div className="flex-1 min-w-0 min-h-0">
-            <ExecCenterStack execMode={selected} />
+          <div className="flex-1 min-h-0">
+            <CrossAssetMatrixPanel />
           </div>
-          <div className="basis-[34%] min-w-[320px] max-w-[44%] min-h-0 flex flex-col gap-px">
-            <div className="flex-[1.25] min-h-0">
-              <RightRailPanel execMode={selected} />
-            </div>
-            <div className="flex-1 min-h-0">
-              <FeedPanel execMode={selected} />
-            </div>
-            <div className="flex-[0.9] min-h-0">
-              <BlotterPanel />
-            </div>
-          </div>
+        </aside>
+        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+          <ExecCenterStack execMode={selected} />
         </div>
-        <div className="flex-1 min-h-0">
-          <SystemPulsePanel />
-        </div>
+        <aside className="w-[34rem] shrink-0 min-h-0 flex flex-col gap-px">
+          <div className="flex-[1.3] min-h-0">
+            <RightRailPanel execMode={selected} />
+          </div>
+          <div className="flex-1 min-h-0">
+            <FeedPanel execMode={selected} />
+          </div>
+          <div className="flex-1 min-h-0">
+            <BlotterPanel />
+          </div>
+          <div className="flex-1 min-h-0">
+            <SystemPulsePanel />
+          </div>
+        </aside>
       </div>
     </div>
   );

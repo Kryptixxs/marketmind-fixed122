@@ -11,6 +11,28 @@ function cagr(start: number, end: number, years: number): number {
   return Number(((Math.pow(end / start, 1 / years) - 1) * 100).toFixed(2));
 }
 
+function slope(values: number[]): number {
+  if (values.length < 2) return 0;
+  const n = values.length;
+  const xMean = (n - 1) / 2;
+  const yMean = values.reduce((acc, v) => acc + v, 0) / n;
+  let num = 0;
+  let den = 0;
+  for (let i = 0; i < n; i += 1) {
+    const dx = i - xMean;
+    num += dx * (values[i] - yMean);
+    den += dx * dx;
+  }
+  return Number((num / Math.max(1e-9, den)).toFixed(4));
+}
+
+function percentile(values: number[], p: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.round((p / 100) * (sorted.length - 1))));
+  return Number(sorted[idx].toFixed(2));
+}
+
 function trendFrom(points: YearMetricPoint[]): TrendDirection {
   if (points.length < 3) return 'FLAT';
   const first = points[0]?.revenue ?? 0;
@@ -75,6 +97,42 @@ export function generateFinancialHistory(symbol: string, seed: number): Financia
     cagrEbitdaPct: cagr(points[0]?.ebitda ?? 1, points[points.length - 1]?.ebitda ?? 1, points.length - 1),
     cagrNetIncomePct: cagr(points[0]?.netIncome ?? 1, points[points.length - 1]?.netIncome ?? 1, points.length - 1),
     cagrFcfPct: cagr(points[0]?.fcf ?? 1, points[points.length - 1]?.fcf ?? 1, points.length - 1),
+    slopeRevenue: slope(points.map((p) => p.revenue)),
+    slopeEbitda: slope(points.map((p) => p.ebitda)),
+    slopeNetIncome: slope(points.map((p) => p.netIncome)),
+    slopeFcf: slope(points.map((p) => p.fcf)),
+    percentileBands: {
+      revenue: {
+        p10: percentile(points.map((p) => p.revenue), 10),
+        p50: percentile(points.map((p) => p.revenue), 50),
+        p90: percentile(points.map((p) => p.revenue), 90),
+      },
+      ebitda: {
+        p10: percentile(points.map((p) => p.ebitda), 10),
+        p50: percentile(points.map((p) => p.ebitda), 50),
+        p90: percentile(points.map((p) => p.ebitda), 90),
+      },
+      netIncome: {
+        p10: percentile(points.map((p) => p.netIncome), 10),
+        p50: percentile(points.map((p) => p.netIncome), 50),
+        p90: percentile(points.map((p) => p.netIncome), 90),
+      },
+      fcf: {
+        p10: percentile(points.map((p) => p.fcf), 10),
+        p50: percentile(points.map((p) => p.fcf), 50),
+        p90: percentile(points.map((p) => p.fcf), 90),
+      },
+      marginPct: {
+        p10: percentile(points.map((p) => p.marginPct), 10),
+        p50: percentile(points.map((p) => p.marginPct), 50),
+        p90: percentile(points.map((p) => p.marginPct), 90),
+      },
+      debt: {
+        p10: percentile(points.map((p) => p.debt), 10),
+        p50: percentile(points.map((p) => p.debt), 50),
+        p90: percentile(points.map((p) => p.debt), 90),
+      },
+    },
     trend: trendFrom(points),
     provenance,
   };

@@ -14,15 +14,9 @@ import { TopTickerBar } from './TopTickerBar';
 
 function TerminalWorkbenchBody() {
   const { state } = useTerminalStore();
-  const telemetry = [
-    `CLK ${state.tickMs}`,
-    `Q${state.streamClock.quotes} D${state.streamClock.depth} E${state.streamClock.execution} F${state.streamClock.feed}`,
-    `IMB ${(state.microstructure.imbalance * 100).toFixed(1)} OFI ${(state.microstructure.orderFlowImbalance * 100).toFixed(1)}`,
-    `GROSS ${state.risk.grossExposure.toFixed(1)} NET ${state.risk.netExposure.toFixed(1)} VAR ${state.risk.intradayVar.toFixed(1)}`,
-  ];
 
   return (
-    <div className="w-full h-full min-h-0 flex flex-col overflow-hidden bg-black text-white font-mono bbg-hard-frame">
+    <div className="h-screen w-full min-h-0 flex flex-col overflow-hidden bg-black text-white font-mono bbg-hard-frame">
       <Suspense fallback={null}>
         <RouteSync />
       </Suspense>
@@ -32,7 +26,7 @@ function TerminalWorkbenchBody() {
       <DeskStatusStrip />
       <FunctionHierarchyStrip />
       <div className="flex-1 min-h-0 relative overflow-hidden bg-black terminal-grid-bg">
-        <div className="relative z-10 h-full min-h-0">
+        <div className="relative z-10 min-h-0 h-full flex flex-col">
           <FunctionRouter activeFunction={state.activeFunction} />
         </div>
       </div>

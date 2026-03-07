@@ -21,7 +21,7 @@ export function TerminalTutorialModal({
 
   return (
     <div className="fixed inset-0 z-[120] bg-black/70 flex items-center justify-center px-3">
-      <div className="w-full max-w-5xl h-[78vh] border border-[#1a1a1a] bg-black grid grid-rows-[28px_1fr_28px]">
+      <div className="w-full h-full max-w-5xl border border-[#1a1a1a] bg-black flex flex-col min-h-0">
         <div className="px-2 border-b border-[#1a1a1a] bg-[#0a0a0a] flex items-center justify-between text-[10px]">
           <span className="text-[#f4cf76] font-bold">TERMINAL OPERATOR TUTORIAL</span>
           <button onClick={onClose} className="h-5 px-1 border border-[#5a1f35] bg-[#2b1019] text-[#ffd5e1] text-[9px] font-bold">CLOSE</button>

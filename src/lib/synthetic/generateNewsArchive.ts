@@ -31,6 +31,7 @@ export function generateNewsArchive(symbol: string, seed: number, entityIds: str
       linkedEntityIds,
       countryTag,
       eventType,
+      relevanceWeight: Number((0.35 + Math.abs(Math.sin((seed + i) * 0.23)) * 0.65).toFixed(3)),
     });
   }
 

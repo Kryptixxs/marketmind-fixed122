@@ -32,6 +32,18 @@ export interface FinancialHistoryDataset {
   cagrEbitdaPct: number;
   cagrNetIncomePct: number;
   cagrFcfPct: number;
+  slopeRevenue: number;
+  slopeEbitda: number;
+  slopeNetIncome: number;
+  slopeFcf: number;
+  percentileBands: {
+    revenue: { p10: number; p50: number; p90: number };
+    ebitda: { p10: number; p50: number; p90: number };
+    netIncome: { p10: number; p50: number; p90: number };
+    fcf: { p10: number; p50: number; p90: number };
+    marginPct: { p10: number; p50: number; p90: number };
+    debt: { p10: number; p50: number; p90: number };
+  };
   trend: TrendDirection;
   provenance: DataProvenance;
 }
@@ -90,6 +102,7 @@ export interface SyntheticNewsArticle {
   linkedEntityIds: string[];
   countryTag: string;
   eventType: 'earnings' | 'm&a' | 'litigation' | 'regulatory';
+  relevanceWeight: number;
 }
 
 export interface NewsArchiveDataset {

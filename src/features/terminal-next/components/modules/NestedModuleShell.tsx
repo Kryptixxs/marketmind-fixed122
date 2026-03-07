@@ -17,7 +17,7 @@ export function NestedModuleShell({ moduleCode, title, subtabs, buildRows }: Nes
 
   return (
     <div className="flex-1 min-h-0 flex gap-px bg-black">
-      <section className="basis-[20rem] max-w-[28%] min-w-[220px] bg-black min-h-0 overflow-hidden flex flex-col">
+      <section className="w-72 shrink-0 bg-black min-h-0 overflow-hidden flex flex-col">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] flex items-center justify-between">
           <span className="text-[#9bc3e8] font-bold">CONTEXT</span>
           <span className="text-[#7f99ba]">{moduleCode}</span>
@@ -42,7 +42,7 @@ export function NestedModuleShell({ moduleCode, title, subtabs, buildRows }: Nes
         </div>
       </section>
 
-      <section className="flex-1 min-w-0 bg-black min-h-0 overflow-hidden flex flex-col">
+      <section className="flex-1 min-w-0 min-h-0 bg-black overflow-hidden flex flex-col">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] flex items-center justify-between">
           <span className="text-[#9bc3e8] font-bold">{title}</span>
           <div className="flex items-center gap-1">

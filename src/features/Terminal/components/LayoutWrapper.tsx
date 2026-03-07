@@ -11,7 +11,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
 
   if (isAuthPage) {
     return (
-      <main className="w-full min-h-[100dvh] bg-background text-text-primary overflow-x-hidden">
+      <main className="w-full min-h-screen bg-background text-text-primary overflow-x-hidden">
         {children}
       </main>
     );
@@ -19,7 +19,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <TunnelProvider>
-      <main className="w-full h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#05080d] relative">
+      <main className="w-full h-screen min-h-0 overflow-hidden bg-[#05080d] relative">
         <TerminalWorkbench />
         <CommandPalette />
       </main>

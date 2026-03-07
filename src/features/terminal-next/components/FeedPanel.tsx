@@ -8,16 +8,17 @@ export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MI
   const newsRef = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
   const alertRef = useRef<HTMLDivElement>(null);
-  const laneBasis =
+  const laneWeights =
     execMode === 'EVENTS'
-      ? { news: '52%', system: '30%', alerts: '18%' }
+      ? { news: 2.8, system: 1.7, alerts: 1 }
       : execMode === 'MICROSTRUCTURE'
-        ? { news: '30%', system: '40%', alerts: '30%' }
+        ? { news: 1.6, system: 2, alerts: 1.6 }
         : execMode === 'FACTORS'
-          ? { news: '34%', system: '46%', alerts: '20%' }
+          ? { news: 1.8, system: 2.5, alerts: 1.1 }
           : execMode === 'ESC'
-            ? { news: '28%', system: '47%', alerts: '25%' }
-          : { news: '40%', system: '35%', alerts: '25%' };
+            ? { news: 1.5, system: 2.7, alerts: 1.4 }
+          : { news: 2.2, system: 1.9, alerts: 1.3 };
+  const laneStyle = (key: keyof typeof laneWeights) => ({ flexBasis: 0, flexGrow: laneWeights[key] });
   const title = execMode === 'EVENTS' ? 'EVENT FEED / SYSTEM / ALERT LOG' : 'NEWS / SYSTEM / ALERT LOG';
   const modeHeaderClass =
     execMode === 'MICROSTRUCTURE'
@@ -50,7 +51,7 @@ export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MI
         </div>
       </div>
       <div className="flex gap-px bg-[#1a1a1a] flex-1 min-h-0">
-        <div ref={newsRef} style={{ flexBasis: laneBasis.news, flexGrow: 1 }} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
+        <div ref={newsRef} style={laneStyle('news')} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
           {state.headlines.map((n, i) => (
             <button
               key={`${n}-${i}`}
@@ -62,12 +63,12 @@ export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MI
             </button>
           ))}
         </div>
-        <div ref={centerRef} style={{ flexBasis: laneBasis.system, flexGrow: 1 }} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
+        <div ref={centerRef} style={laneStyle('system')} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
           {(state.feedTab === 'SYSTEM' ? state.systemFeed : state.headlines).map((line, i) => (
             <div key={`${line}-${i}`} className="text-[9px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#aebed2]">{line}</div>
           ))}
         </div>
-        <div ref={alertRef} style={{ flexBasis: laneBasis.alerts, flexGrow: 1 }} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
+        <div ref={alertRef} style={laneStyle('alerts')} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
           {state.alerts.map((line, i) => (
             <div key={`${line}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#e3b4ff]">
               {line}

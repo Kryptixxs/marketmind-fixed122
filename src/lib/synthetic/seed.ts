@@ -32,8 +32,10 @@ export function createSeededRandom(seed: number): SeededRandom {
 }
 
 export function toDateISO(daysAgo: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
+  // Fixed epoch keeps synthetic timelines stable across reloads.
+  const epoch = new Date(Date.UTC(2026, 0, 1));
+  const d = new Date(epoch);
+  d.setUTCDate(d.getUTCDate() - daysAgo);
   return d.toISOString().slice(0, 10);
 }
 
