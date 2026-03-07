@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { fetchInstitutionalDepth, type InstitutionalDepth } from '@/app/actions/fetchInstitutionalDepth';
 import { generateSyntheticIntel } from '@/lib/synthetic/intel-generator';
 import { useTerminalStore } from '../store/TerminalStore';
-import { StackedIntelRenderer, type StackBlock, type StackedIntelRow } from './StackedIntelRenderer';
+import { StackedIntelRenderer, type StackBlock, type StackVisualSpec, type StackedIntelRow } from './StackedIntelRenderer';
 
 function compact(text: string): string {
   return text
@@ -41,9 +41,11 @@ function densifyRows(rows: StackedIntelRow[], minimum: number, prefix: string): 
 export function ExecCenterStack({
   execMode,
   titleOverride,
+  moduleCode,
 }: {
   execMode: 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' | 'ESC';
   titleOverride?: string;
+  moduleCode?: 'EXEC' | 'DES' | 'FA' | 'HP' | 'WEI' | 'YAS' | 'OVME' | 'PORT' | 'INTEL' | 'NEWS' | 'CAL' | 'SEC' | 'MKT';
 }) {
   const { state } = useTerminalStore();
   const [depth, setDepth] = useState<InstitutionalDepth | null>(null);
@@ -55,6 +57,7 @@ export function ExecCenterStack({
   }, [symbol]);
 
   const p = depth?.meta?.sections ?? {};
+  const activeModule = moduleCode ?? (state.activeFunction as 'EXEC' | 'DES' | 'FA' | 'HP' | 'WEI' | 'YAS' | 'OVME' | 'PORT' | 'INTEL' | 'NEWS' | 'CAL' | 'SEC' | 'MKT');
   const marketIndices = depth?.market.indices ?? synthetic.peerComparison.peers.map((peer, idx) => ({
     symbol: peer.symbol,
     level: Number((100 + peer.relativeValuation * 18 + idx * 3.1).toFixed(2)),
@@ -286,23 +289,26 @@ export function ExecCenterStack({
     },
   ];
 
-  const marketVisual = [
+  const marketVisualSeries = [
     ...marketIndices.map((r) => r.movePct),
     ...marketSectors.map((s) => s.movePct),
     ...marketCorrelations.map((c) => c.corr * 10),
   ];
-  const volatilityVisual = [
+  const marketVisualSecondary = [...marketIndices.map((r) => r.level), ...marketIndices.map((r) => r.volumeM)];
+  const volatilityVisualSeries = [
     ...skewHistory.map((r) => r.rr25d),
     ...skewHistory.map((r) => r.bf25d),
     ...optionsSurface.map((r) => (r.w1 + r.m1 + r.m3 + r.m6) / 4),
   ];
-  const flowVisual = [
+  const volatilityVisualSecondary = optionsSurface.flatMap((r) => [r.w1, r.m1, r.m3, r.m6]);
+  const flowVisualSeries = [
     ...marketFlows.map((r) => r.flowUsdM),
     ...shortTrend.map((r) => r.shortPctFloat),
     ...factors.map((f) => f.contribution),
   ];
-  const peerVisual = peerEntities.map((_, idx) => Math.sin((synthetic.seed + idx) * 0.37) * 9 + idx * 0.35);
-  const riskVisual = [
+  const flowVisualSecondary = factors.map((f) => f.exposure);
+  const peerVisualSeries = peerEntities.map((_, idx) => Math.sin((synthetic.seed + idx) * 0.37) * 9 + idx * 0.35);
+  const riskVisualSeries = [
     state.risk.realizedVol,
     state.risk.impliedVolProxy,
     state.risk.intradayVar,
@@ -310,15 +316,20 @@ export function ExecCenterStack({
     ...riskProfile.interestCoverageTrend.map((r) => r.ratio),
     ...riskProfile.fxExposurePct.map((r) => r.pct),
   ];
-  const eventVisual = impacts.flatMap((e) => [e.priceImpactPct, e.volShiftPct]);
-  const docsVisual = newsArchive.map((d) => d.relevanceWeight * 100);
-  const relVisual = relationshipEdges.flatMap((e) => [e.weight * 100, e.weightedStrength]);
-  const historicalVisual = [
+  const riskVisualSecondary = [...riskProfile.countryRevenuePct.map((r) => r.pct), ...riskProfile.fxExposurePct.map((r) => r.pct)];
+  const eventVisualSeries = impacts.flatMap((e) => [e.priceImpactPct, e.volShiftPct]);
+  const eventVisualSecondary = impacts.map((e) => Math.abs(e.volShiftPct));
+  const docsVisualSeries = newsArchive.map((d) => d.relevanceWeight * 100);
+  const docsVisualSecondary = newsArchive.map((_, idx) => Math.sin((synthetic.seed + idx) * 0.23) * 30 + 50);
+  const relVisualSeries = relationshipEdges.flatMap((e) => [e.weight * 100, e.weightedStrength]);
+  const relVisualSecondary = relationshipEdges.map((e) => e.weightedStrength);
+  const historicalVisualSeries = [
     ...historicalSeries.map((h) => h.yoy),
     ...historicalCrises.map((c) => c.drawdownPct),
     ...historicalEvents.map((e) => e.impactPct),
   ];
-  const ownershipVisual = [
+  const historicalVisualSecondary = historicalSeries.map((h) => h.value);
+  const ownershipVisualSeries = [
     ...secHolders.map((h) => h.changePct),
     ...secInsider.map((i) => (i.side === 'Buy' ? 1 : -1) * i.shares * 0.001),
     ...exposures.map((e) => e.net),
@@ -326,18 +337,106 @@ export function ExecCenterStack({
     flowPositioning.passiveIndexWeightPct,
     flowPositioning.institutionalOwnershipPct,
   ];
+  const ownershipVisualSecondary = [...exposures.map((e) => e.gross), ...secHolders.map((h) => h.pctOut)];
+
+  const pickVisualKind = (blockId: string): StackVisualSpec['kind'] => {
+    if (activeModule === 'EXEC') {
+      if (execMode === 'MICROSTRUCTURE' || blockId === 'flow-positioning' || blockId === 'risk-diagnostics') return 'execution_microstructure';
+      if (blockId === 'volatility-skew') return 'options_surface';
+      if (blockId === 'event-timeline') return 'event_timeline';
+      if (blockId === 'linked-documents') return 'news_flow';
+      return 'breadth_grid';
+    }
+    if (activeModule === 'DES' || activeModule === 'HP') return 'price_technical';
+    if (activeModule === 'FA') return 'financial_trajectory';
+    if (activeModule === 'PORT') return 'allocation_drift';
+    if (activeModule === 'MKT') return 'breadth_grid';
+    if (activeModule === 'SEC') return blockId === 'ownership-positioning' ? 'ownership_flow' : 'event_timeline';
+    if (activeModule === 'INTEL') return 'event_timeline';
+    if (activeModule === 'OVME') return 'options_surface';
+    if (activeModule === 'YAS') return 'yield_curve';
+    if (activeModule === 'NEWS' || activeModule === 'CAL' || activeModule === 'WEI') return 'news_flow';
+    return 'financial_trajectory';
+  };
+
+  const mkVisual = (blockId: string, series: number[], secondary?: number[], labels?: string[]): StackVisualSpec => ({
+    kind: pickVisualKind(blockId),
+    series,
+    secondary,
+    labels,
+  });
 
   const blocks: StackBlock[] = [
-    { id: 'market-overview', title: 'MARKET OVERVIEW', rows: densifyRows(marketOverviewRows, 36, 'MO'), visual: marketVisual, provenance: p.financial },
-    { id: 'volatility-skew', title: 'VOLATILITY & SKEW', rows: densifyRows(volatilityRows, 36, 'VS'), visual: volatilityVisual, provenance: p.flow },
-    { id: 'flow-positioning', title: 'FLOW & POSITIONING', rows: densifyRows(flowRows, 36, 'FP'), visual: flowVisual, provenance: p.flow },
-    { id: 'peer-comparison', title: 'PEER COMPARISON', rows: densifyRows(peerRows, 30, 'PC'), visual: peerVisual, provenance: p.peers },
-    { id: 'risk-diagnostics', title: 'RISK DIAGNOSTICS', rows: densifyRows(riskRows, 40, 'RD'), visual: riskVisual, provenance: p.risk },
-    { id: 'event-timeline', title: 'EVENT TIMELINE', rows: densifyRows(eventRows, 32, 'EV'), visual: eventVisual, provenance: p.events },
-    { id: 'linked-documents', title: 'LINKED DOCUMENTS', rows: densifyRows(linkedDocsRows, 42, 'LD'), visual: docsVisual, provenance: p.news },
-    { id: 'relationship-summary', title: 'RELATIONSHIP SUMMARY', rows: densifyRows(relationshipRows, 34, 'RS'), visual: relVisual, provenance: p.relationships },
-    { id: 'historical-performance', title: 'HISTORICAL PERFORMANCE', rows: densifyRows(historicalRows, 40, 'HP'), visual: historicalVisual, provenance: p.financial },
-    { id: 'ownership-positioning', title: 'OWNERSHIP & POSITIONING BREAKDOWN', rows: densifyRows(ownershipRows, 36, 'OP'), visual: ownershipVisual, provenance: p.flow },
+    {
+      id: 'market-overview',
+      title: 'MARKET OVERVIEW',
+      rows: densifyRows(marketOverviewRows, 36, 'MO'),
+      visual: mkVisual('market-overview', marketVisualSeries, marketVisualSecondary, marketIndices.map((r) => r.symbol)),
+      provenance: p.financial,
+    },
+    {
+      id: 'volatility-skew',
+      title: 'VOLATILITY & SKEW',
+      rows: densifyRows(volatilityRows, 36, 'VS'),
+      visual: mkVisual('volatility-skew', volatilityVisualSeries, volatilityVisualSecondary, optionsSurface.map((r) => r.delta)),
+      provenance: p.flow,
+    },
+    {
+      id: 'flow-positioning',
+      title: 'FLOW & POSITIONING',
+      rows: densifyRows(flowRows, 36, 'FP'),
+      visual: mkVisual('flow-positioning', flowVisualSeries, flowVisualSecondary, marketFlows.map((r) => r.vehicle)),
+      provenance: p.flow,
+    },
+    {
+      id: 'peer-comparison',
+      title: 'PEER COMPARISON',
+      rows: densifyRows(peerRows, 30, 'PC'),
+      visual: mkVisual('peer-comparison', peerVisualSeries, marketVisualSeries, peerEntities.map((e) => e.symbol)),
+      provenance: p.peers,
+    },
+    {
+      id: 'risk-diagnostics',
+      title: 'RISK DIAGNOSTICS',
+      rows: densifyRows(riskRows, 40, 'RD'),
+      visual: mkVisual('risk-diagnostics', riskVisualSeries, riskVisualSecondary, riskProfile.debtMaturityLadder.map((d) => d.bucket)),
+      provenance: p.risk,
+    },
+    {
+      id: 'event-timeline',
+      title: 'EVENT TIMELINE',
+      rows: densifyRows(eventRows, 32, 'EV'),
+      visual: mkVisual('event-timeline', eventVisualSeries, eventVisualSecondary, impacts.map((e) => e.date)),
+      provenance: p.events,
+    },
+    {
+      id: 'linked-documents',
+      title: 'LINKED DOCUMENTS',
+      rows: densifyRows(linkedDocsRows, 42, 'LD'),
+      visual: mkVisual('linked-documents', docsVisualSeries, docsVisualSecondary, newsArchive.map((d) => d.published_at)),
+      provenance: p.news,
+    },
+    {
+      id: 'relationship-summary',
+      title: 'RELATIONSHIP SUMMARY',
+      rows: densifyRows(relationshipRows, 34, 'RS'),
+      visual: mkVisual('relationship-summary', relVisualSeries, relVisualSecondary, relationshipEdges.map((e) => e.relationshipType)),
+      provenance: p.relationships,
+    },
+    {
+      id: 'historical-performance',
+      title: 'HISTORICAL PERFORMANCE',
+      rows: densifyRows(historicalRows, 40, 'HP'),
+      visual: mkVisual('historical-performance', historicalVisualSeries, historicalVisualSecondary, historicalSeries.map((h) => `${h.year}`)),
+      provenance: p.financial,
+    },
+    {
+      id: 'ownership-positioning',
+      title: 'OWNERSHIP & POSITIONING BREAKDOWN',
+      rows: densifyRows(ownershipRows, 36, 'OP'),
+      visual: mkVisual('ownership-positioning', ownershipVisualSeries, ownershipVisualSecondary, secHolders.map((h) => h.holder)),
+      provenance: p.flow,
+    },
   ];
 
   return (
