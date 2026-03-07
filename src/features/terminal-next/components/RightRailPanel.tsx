@@ -2,7 +2,6 @@
 
 import { useRef } from 'react';
 import { useTerminalStore } from '../store/TerminalStore';
-import { useVisibleRows } from '../hooks/useVisibleRows';
 
 const fmt = (v: number, d = 2) => v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 
@@ -11,9 +10,6 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
   const depthRef = useRef<HTMLDivElement>(null);
   const tapeRef = useRef<HTMLDivElement>(null);
   const alertRef = useRef<HTMLDivElement>(null);
-  const visibleDepthRows = useVisibleRows(depthRef, 18);
-  const visibleTapeRows = useVisibleRows(tapeRef, 18);
-  const visibleAlertRows = useVisibleRows(alertRef, 18);
   const sweepPulse = state.microstructure.sweep.active ? 'animate-pulse' : '';
   const activeRailTab = state.rightRailTab;
   const rowsClass =
@@ -26,8 +22,8 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
           : execMode === 'ESC'
             ? 'grid-rows-[34%_30%_36%]'
           : 'grid-rows-[53%_22%_25%]';
-  const ladderRows = state.orderBook.slice(0, visibleDepthRows);
-  const tapeRows = state.tape.slice(0, visibleTapeRows);
+  const ladderRows = state.orderBook;
+  const tapeRows = state.tape;
   const railLabel = execMode === 'FACTORS' ? 'FACTOR MICROSTRUCTURE' : execMode === 'EVENTS' ? 'EVENT RAIL' : 'MICROSTRUCTURE';
   const modeHeaderClass =
     execMode === 'MICROSTRUCTURE'
@@ -49,7 +45,7 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
       {tab}
     </button>
   );
-  const backgroundLines = Array.from({ length: visibleAlertRows }, (_, i) => {
+  const backgroundLines = Array.from({ length: Math.max(state.alerts.length, state.quotes.length) }, (_, i) => {
     const q = state.quotes[i % Math.max(1, state.quotes.length)];
     return `${q?.symbol ?? '---'} ${q ? fmt(q.last, q.last < 10 ? 4 : 2) : '0.00'} ${(q?.pct ?? 0).toFixed(2)}%`;
   });

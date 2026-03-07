@@ -9,8 +9,7 @@ export function CommandInputBar() {
   const suggestions = useMemo(() => {
     if (!query || query.endsWith(' GO')) return [];
     return state.quotes
-      .filter((q) => q.symbol.toUpperCase().includes(query) || q.name.toUpperCase().includes(query))
-      .slice(0, 8);
+      .filter((q) => q.symbol.toUpperCase().includes(query) || q.name.toUpperCase().includes(query));
   }, [query, state.quotes]);
 
   const applySuggestion = (symbol: string) => {
@@ -41,7 +40,7 @@ export function CommandInputBar() {
         </button>
       </div>
       {suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-40 border-x border-b border-[#1a1a1a] bg-[#0a0a0a] max-h-32 overflow-y-auto custom-scrollbar">
+        <div className="absolute left-0 right-0 top-full z-40 border-x border-b border-[#1a1a1a] bg-[#0a0a0a] overflow-y-auto custom-scrollbar">
           {suggestions.map((s) => (
             <button
               key={s.symbol}

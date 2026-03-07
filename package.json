@@ -11,7 +11,8 @@
     "seed:intel": "npx tsx scripts/seed-intel-data.ts",
     "index:bootstrap": "npx tsx scripts/bootstrap-opensearch-index.ts",
     "index:docs": "npx tsx scripts/index-documents-opensearch.ts",
-    "sync:graph": "npx tsx scripts/sync-graph-neo4j.ts"
+    "sync:graph": "npx tsx scripts/sync-graph-neo4j.ts",
+    "validate:synthetic": "npx tsx scripts/validate-synthetic-depth.ts"
   },
   "dependencies": {
     "@google/genai": "^1.17.0",

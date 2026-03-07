@@ -1,17 +1,23 @@
 'use server';
 
+import { fetchEconomicCalendar } from './fetchEconomicCalendar';
 import { fetchEntityIntel } from './fetchEntityIntel';
 import { fetchHistoricalEarnings } from './fetchHistoricalEarnings';
-import { fetchOptionsChain } from './fetchOptionsChain';
-import { fetchEconomicCalendar } from './fetchEconomicCalendar';
-import { fetchSECFilings } from './fetchSECFilings';
 import { fetchMarketData, fetchMarketDataBatch } from './fetchMarketData';
+import { fetchOptionsChain } from './fetchOptionsChain';
+import { fetchSECFilings } from './fetchSECFilings';
 import { searchDocuments } from './searchDocuments';
+import type { DataProvenance } from '@/lib/synthetic/contracts';
+import { generateSyntheticIntel } from '@/lib/synthetic/intel-generator';
 
 type YearPoint = { year: number; value: number; yoy: number };
 
 export interface InstitutionalDepth {
   symbol: string;
+  meta?: {
+    overall: DataProvenance;
+    sections: Record<string, DataProvenance>;
+  };
   financial: {
     statement20y: Array<{
       year: number;
@@ -79,6 +85,10 @@ export interface InstitutionalDepth {
     topics: Array<{ topic: string; count: number; sentiment: number }>;
     impacts: Array<{ date: string; event: string; priceImpactPct: number; volShiftPct: number }>;
   };
+  relationships?: {
+    entities: Array<{ id: string; symbol: string; name: string; country: string; sector: string }>;
+    edges: Array<{ fromId: string; toId: string; relationshipType: string; weight: number }>;
+  };
 }
 
 function mkSeed(symbol: string) {
@@ -92,7 +102,7 @@ function mkYearSeries(seed: number, years: number, base: number, drift: number):
     const year = now - i;
     const cycle = Math.sin((seed + i) * 0.17) * 0.08;
     const value = Number((base * (1 + drift * (years - 1 - i)) * (1 + cycle)).toFixed(2));
-    const prev = out[out.length - 1]?.value ?? (value / (1 + drift));
+    const prev = out[out.length - 1]?.value ?? value / (1 + drift);
     const yoy = prev ? Number((((value - prev) / prev) * 100).toFixed(2)) : 0;
     out.push({ year, value, yoy });
   }
@@ -102,6 +112,8 @@ function mkYearSeries(seed: number, years: number, base: number, drift: number):
 export async function fetchInstitutionalDepth(symbolInput: string): Promise<InstitutionalDepth> {
   const symbol = symbolInput.toUpperCase().replace(/\s+.*$/, '') || 'AAPL';
   const seed = mkSeed(symbol);
+  const synthetic = generateSyntheticIntel(symbol);
+
   const intel = await fetchEntityIntel(symbol);
   const earnings = await fetchHistoricalEarnings(symbol);
   const options = await fetchOptionsChain(symbol);
@@ -111,56 +123,74 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
   const symbolMarket = await fetchMarketData(symbol);
   const docs = await searchDocuments(symbol);
 
-  const revSeries = mkYearSeries(seed, 20, Math.max(20, (symbolMarket?.price ?? 100) * 1.8), 0.055);
+  const revSeries = mkYearSeries(seed, 20, Math.max(20, synthetic.financialHistory.points[0]?.revenue ?? 100), 0.055);
   const assetSeries = mkYearSeries(seed + 31, 20, Math.max(40, (symbolMarket?.price ?? 100) * 2.6), 0.045);
-  const marginSeries = mkYearSeries(seed + 7, 20, 16, 0.008);
 
   const statement20y = revSeries.map((r, i) => {
-    const ebit = Number((r.value * 0.28).toFixed(2));
-    const ni = Number((r.value * 0.21).toFixed(2));
-    const fcf = Number((r.value * 0.19).toFixed(2));
+    const src = synthetic.financialHistory.points[i % synthetic.financialHistory.points.length];
     const assets = assetSeries[i]?.value ?? r.value * 1.8;
-    const liabilities = Number((assets * 0.73).toFixed(2));
+    const liabilities = Number((Math.max(src?.debt ?? 0, assets * 0.52)).toFixed(2));
     const shares = Number((6.5 - i * 0.08 + Math.sin(i * 0.2) * 0.09).toFixed(2));
-    return { year: r.year, revenue: r.value, ebit, netIncome: ni, fcf, assets, liabilities, shares, marginPct: marginSeries[i]?.value ?? 20 };
+    return {
+      year: r.year,
+      revenue: src?.revenue ?? r.value,
+      ebit: src?.ebitda ?? Number((r.value * 0.28).toFixed(2)),
+      netIncome: src?.netIncome ?? Number((r.value * 0.21).toFixed(2)),
+      fcf: src?.fcf ?? Number((r.value * 0.19).toFixed(2)),
+      assets,
+      liabilities,
+      shares,
+      marginPct: src?.marginPct ?? Number((16 + Math.sin(i * 0.33) * 4).toFixed(2)),
+    };
   });
 
   const optionRows = options?.chain ?? [];
   const surface = ['10D', '25D', '50D', '75D', '90D'].map((delta, i) => ({
     delta,
-    w1: Number(((18 + i * 1.6) + (seed % 7) * 0.35).toFixed(2)),
-    m1: Number(((19 + i * 1.3) + (seed % 5) * 0.31).toFixed(2)),
-    m3: Number(((20 + i * 1.1) + (seed % 9) * 0.28).toFixed(2)),
-    m6: Number(((21 + i * 0.9) + (seed % 11) * 0.22).toFixed(2)),
+    w1: Number((18 + i * 1.6 + (seed % 7) * 0.35).toFixed(2)),
+    m1: Number((19 + i * 1.3 + (seed % 5) * 0.31).toFixed(2)),
+    m3: Number((20 + i * 1.1 + (seed % 9) * 0.28).toFixed(2)),
+    m6: Number((21 + i * 0.9 + (seed % 11) * 0.22).toFixed(2)),
   }));
 
-  const oiHeatmap = optionRows.slice(0, 120).map((c) => ({
-    expiration: c.expiration,
-    strike: c.strike,
-    oi: c.openInterest,
-  }));
+  const oiHeatmap = optionRows.map((c) => ({ expiration: c.expiration, strike: c.strike, oi: c.openInterest }));
+  const gammaExposure = optionRows.map((c) => ({ strike: c.strike, gamma: Number((c.gamma ?? 0).toFixed(4)), openInterest: c.openInterest }));
 
-  const gammaExposure = optionRows.slice(0, 90).map((c) => ({
-    strike: c.strike,
-    gamma: Number((c.gamma ?? 0).toFixed(4)),
-    openInterest: c.openInterest,
-  }));
+  const newsArchive = [
+    ...synthetic.newsArchive.articles.map((d) => ({
+      title: `[SIMULATED] ${d.title}`,
+      published_at: d.date,
+      source: 'demo-wire',
+    })),
+    ...docs.map((d) => ({
+      title: d.title,
+      published_at: d.published_at,
+      source: d.source ?? 'wire',
+    })),
+  ];
 
-  const newsArchive = docs.map((d) => ({
-    title: d.title,
-    published_at: d.published_at,
-    source: d.source ?? 'wire',
-  }));
-
-  const impacts = newsArchive.slice(0, 120).map((d, i) => ({
-    date: d.published_at,
-    event: d.title,
-    priceImpactPct: Number((((Math.sin((seed + i) * 0.21) * 0.5) + (i % 4) * 0.12)).toFixed(2)),
-    volShiftPct: Number((((Math.cos((seed + i) * 0.19) * 1.5) + (i % 5) * 0.2)).toFixed(2)),
+  const impacts = synthetic.eventTimeline.events.map((e) => ({
+    date: e.date,
+    event: e.title,
+    priceImpactPct: e.priceImpactPct,
+    volShiftPct: e.volatilityImpactPct,
   }));
 
   return {
     symbol,
+    meta: {
+      overall: synthetic.provenance,
+      sections: {
+        financial: synthetic.financialHistory.provenance,
+        analyst: synthetic.analystRevisions.provenance,
+        relationships: synthetic.relationshipGraph.provenance,
+        news: synthetic.newsArchive.provenance,
+        risk: synthetic.riskProfile.provenance,
+        flow: synthetic.flowMetrics.provenance,
+        peers: synthetic.peerComparison.provenance,
+        events: synthetic.eventTimeline.provenance,
+      },
+    },
     financial: {
       statement20y,
       segmentBreakdown: [
@@ -169,30 +199,24 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
         { segment: 'Enterprise', revenuePct: 18, marginPct: 31 },
         { segment: 'Emerging', revenuePct: 12, marginPct: 22 },
       ],
-      geoBreakdown: [
-        { geography: 'US', revenuePct: 42, assetsPct: 48 },
-        { geography: 'EU', revenuePct: 22, assetsPct: 18 },
-        { geography: 'APAC', revenuePct: 24, assetsPct: 21 },
-        { geography: 'LATAM', revenuePct: 7, assetsPct: 8 },
-        { geography: 'MEA', revenuePct: 5, assetsPct: 5 },
-      ],
+      geoBreakdown: synthetic.riskProfile.countryRevenuePct.map((row) => ({
+        geography: row.country,
+        revenuePct: row.pct,
+        assetsPct: Number((Math.max(3, row.pct - 4)).toFixed(2)),
+      })),
       valuationBand: statement20y.map((r, i) => ({
         year: r.year,
         pe: Number((19 + (i % 9) * 1.2 + Math.sin(i * 0.33) * 2.1).toFixed(2)),
         evEbitda: Number((12 + (i % 7) * 0.9 + Math.cos(i * 0.3) * 1.6).toFixed(2)),
         peg: Number((1.1 + (i % 5) * 0.15 + Math.sin(i * 0.4) * 0.1).toFixed(2)),
       })),
-      analystRevisions: Array.from({ length: 80 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - i * 6);
-        return {
-          date: d.toISOString().slice(0, 10),
-          epsRevPct: Number((Math.sin(i * 0.23) * 3.6).toFixed(2)),
-          revRevPct: Number((Math.cos(i * 0.19) * 2.3).toFixed(2)),
-          target: Number((180 + Math.sin(i * 0.14) * 35 + (seed % 20)).toFixed(2)),
-          dispersion: Number((8 + Math.abs(Math.cos(i * 0.17) * 11)).toFixed(2)),
-        };
-      }),
+      analystRevisions: synthetic.analystRevisions.rows.map((r) => ({
+        date: r.date,
+        epsRevPct: r.epsRevisionDeltaPct,
+        revRevPct: Number((r.epsRevisionDeltaPct * 0.74).toFixed(2)),
+        target: r.targetPrice,
+        dispersion: synthetic.analystRevisions.consensusDispersion,
+      })),
     },
     historical: {
       history20y: mkYearSeries(seed + 5, 20, Math.max(60, symbolMarket?.price ?? 120), 0.07),
@@ -203,7 +227,7 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
         { period: '2022 Inflation Shock', drawdownPct: -29, recoveryMonths: 13, volShiftPct: 98 },
       ],
       priceRevenueCorr: statement20y.map((r, i) => ({ year: r.year, corr: Number((0.35 + Math.sin(i * 0.27) * 0.5).toFixed(2)) })),
-      eventMarkers: impacts.slice(0, 100).map((i) => ({ date: i.date, event: i.event, impactPct: i.priceImpactPct })),
+      eventMarkers: synthetic.eventTimeline.events.map((e) => ({ date: e.date, event: e.title, impactPct: e.priceImpactPct })),
     },
     earnings: {
       history: earnings,
@@ -214,19 +238,12 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
         { bucket: 'Miss 0-5%', count: 12 },
         { bucket: 'Miss >5%', count: 6 },
       ],
-      revisionsTimeline: Array.from({ length: 90 }, (_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - i * 4);
-        return {
-          date: d.toISOString().slice(0, 10),
-          epsDeltaPct: Number((Math.sin(i * 0.25) * 3.2).toFixed(2)),
-          revDeltaPct: Number((Math.cos(i * 0.22) * 2.1).toFixed(2)),
-        };
-      }),
-      surpriseStreak: earnings.map((e) => ({
-        quarter: `${e.year}-${e.quarter || 'Q?'}`,
-        surprisePct: e.surprise ?? 0,
+      revisionsTimeline: synthetic.analystRevisions.rows.map((r) => ({
+        date: r.date,
+        epsDeltaPct: r.epsRevisionDeltaPct,
+        revDeltaPct: Number((r.epsRevisionDeltaPct * 0.7).toFixed(2)),
       })),
+      surpriseStreak: synthetic.analystRevisions.rows.map((r) => ({ quarter: r.quarter, surprisePct: r.surprisePct })),
     },
     bond: {
       curve: ['2Y', '3Y', '5Y', '7Y', '10Y', '20Y', '30Y'].map((tenor, i) => ({
@@ -295,20 +312,20 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
       }),
     },
     calendar: {
-      macro: macro.slice(0, 220).map((m) => ({
+      macro: macro.map((m) => ({
         date: m.date,
         title: m.title,
         impact: m.impact ?? 'Medium',
         forecast: m.forecast ?? 'N/A',
       })),
-      earnings: earnings.slice(0, 160).map((e) => ({
+      earnings: synthetic.analystRevisions.rows.map((e) => ({
         date: e.date,
         ticker: symbol,
-        epsEst: e.epsEst,
-        revEst: e.revEst,
+        epsEst: e.epsEstimate,
+        revEst: Number((e.epsEstimate * 3.2).toFixed(2)),
       })),
       catalysts: [
-        ...newsArchive.slice(0, 80).map((d) => ({ date: d.published_at, type: 'News', title: d.title })),
+        ...newsArchive.map((d) => ({ date: d.published_at, type: 'News', title: d.title })),
         ...(intel.envelope.events ?? []).map((e) => ({ date: e.occurred_at ?? '', type: 'Event', title: e.label })),
       ],
     },
@@ -377,6 +394,9 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
       ],
       impacts,
     },
+    relationships: {
+      entities: synthetic.relationshipGraph.entities,
+      edges: synthetic.relationshipGraph.edges,
+    },
   };
 }
-

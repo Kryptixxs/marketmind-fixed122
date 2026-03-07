@@ -9,11 +9,12 @@ const fmt = (v: number, d = 2) => v.toLocaleString(undefined, { minimumFractionD
 export function TopTickerBar() {
   const { state, dispatch } = useTerminalStore();
   const [helpOpen, setHelpOpen] = useState(false);
-  const sorted = [...state.quotes].sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 10);
+  const sorted = [...state.quotes].sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
   return (
     <>
       <div className="h-5 border-b border-[#1a1a1a] bg-black px-1 flex items-center gap-1 text-[9px] tabular-nums">
-        <div className="flex-1 min-w-0 grid grid-cols-10 gap-x-1">
+        <div className="flex-1 min-w-0 overflow-x-auto custom-scrollbar">
+          <div className="min-w-max grid auto-cols-[140px] grid-flow-col gap-x-1 pr-1">
           {sorted.map((q, idx) => (
             <button
               key={`top-${q.symbol}`}
@@ -30,6 +31,7 @@ export function TopTickerBar() {
               </span>
             </button>
           ))}
+          </div>
         </div>
         <button
           onClick={() => setHelpOpen(true)}

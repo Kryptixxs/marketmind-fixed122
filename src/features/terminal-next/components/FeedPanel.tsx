@@ -2,16 +2,12 @@
 
 import { useRef } from 'react';
 import { useTerminalStore } from '../store/TerminalStore';
-import { useVisibleRows } from '../hooks/useVisibleRows';
 
 export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' | 'ESC' }) {
   const { state, dispatch } = useTerminalStore();
   const newsRef = useRef<HTMLDivElement>(null);
   const centerRef = useRef<HTMLDivElement>(null);
   const alertRef = useRef<HTMLDivElement>(null);
-  const visibleNewsRows = useVisibleRows(newsRef, 18);
-  const visibleCenterRows = useVisibleRows(centerRef, 18);
-  const visibleAlertRows = useVisibleRows(alertRef, 18);
   const colsClass =
     execMode === 'EVENTS'
       ? 'grid-cols-[52%_30%_18%]'
@@ -55,7 +51,7 @@ export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MI
       </div>
       <div className={`grid ${colsClass} gap-px bg-[#1a1a1a] flex-1 min-h-0`}>
         <div ref={newsRef} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
-          {state.headlines.slice(0, visibleNewsRows).map((n, i) => (
+          {state.headlines.map((n, i) => (
             <button
               key={`${n}-${i}`}
               onClick={() => dispatch({ type: 'SET_COMMAND', payload: `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''} ${state.security.assetClass} TOP GO` })}
@@ -67,12 +63,12 @@ export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MI
           ))}
         </div>
         <div ref={centerRef} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
-          {(state.feedTab === 'SYSTEM' ? state.systemFeed : state.headlines).slice(0, visibleCenterRows).map((line, i) => (
+          {(state.feedTab === 'SYSTEM' ? state.systemFeed : state.headlines).map((line, i) => (
             <div key={`${line}-${i}`} className="text-[9px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#aebed2]">{line}</div>
           ))}
         </div>
         <div ref={alertRef} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
-          {state.alerts.slice(0, visibleAlertRows).map((line, i) => (
+          {state.alerts.map((line, i) => (
             <div key={`${line}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#e3b4ff]">
               {line}
             </div>

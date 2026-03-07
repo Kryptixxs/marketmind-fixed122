@@ -1,9 +1,9 @@
 'use client';
 
 import { useTerminalStore } from '../../store/TerminalStore';
-import { AnalyticsPanel } from '../AnalyticsPanel';
 import { BlotterPanel } from '../BlotterPanel';
 import { CrossAssetMatrixPanel } from '../CrossAssetMatrixPanel';
+import { ExecCenterStack } from '../ExecCenterStack';
 import { FeedPanel } from '../FeedPanel';
 import { MonitorPanel } from '../MonitorPanel';
 import { RightRailPanel } from '../RightRailPanel';
@@ -63,77 +63,19 @@ export function ExecutionCockpitModule() {
           </button>
         ))}
       </div>
-      {selected === 'PRIMARY' && (
-        <div key="exec-primary" className="flex-1 min-h-0 grid grid-cols-[18%_50%_32%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
-          <MonitorPanel />
-          <AnalyticsPanel execMode="PRIMARY" />
-          <RightRailPanel execMode="PRIMARY" />
-          <CrossAssetMatrixPanel />
-          <FeedPanel execMode="PRIMARY" />
-          <BlotterPanel />
-          <div className="col-span-3 min-h-0">
-            <SystemPulsePanel />
-          </div>
+      <div key={`exec-${selected.toLowerCase()}`} className="flex-1 min-h-0 grid grid-cols-[15%_53%_32%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
+        <MonitorPanel />
+        <div className="row-span-2 min-h-0 h-full">
+          <ExecCenterStack execMode={selected} />
         </div>
-      )}
-      {selected === 'MICROSTRUCTURE' && (
-        <div key="exec-microstructure" className="flex-1 min-h-0 grid grid-cols-[16%_41%_43%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
-          <MonitorPanel />
-          <AnalyticsPanel execMode="MICROSTRUCTURE" />
-          <div className="row-span-2 min-h-0">
-            <RightRailPanel execMode="MICROSTRUCTURE" />
-          </div>
-          <CrossAssetMatrixPanel />
-          <BlotterPanel />
-          <div className="col-span-2 min-h-0">
-            <FeedPanel execMode="MICROSTRUCTURE" />
-          </div>
+        <RightRailPanel execMode={selected} />
+        <CrossAssetMatrixPanel />
+        <FeedPanel execMode={selected} />
+        <BlotterPanel />
+        <div className="col-span-3 min-h-0">
           <SystemPulsePanel />
         </div>
-      )}
-      {selected === 'FACTORS' && (
-        <div key="exec-factors" className="flex-1 min-h-0 grid grid-cols-[16%_54%_30%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
-          <MonitorPanel />
-          <div className="row-span-2 min-h-0">
-            <AnalyticsPanel execMode="FACTORS" />
-          </div>
-          <RightRailPanel execMode="FACTORS" />
-          <CrossAssetMatrixPanel />
-          <BlotterPanel />
-          <div className="col-span-2 min-h-0">
-            <FeedPanel execMode="FACTORS" />
-          </div>
-          <SystemPulsePanel />
-        </div>
-      )}
-      {selected === 'EVENTS' && (
-        <div key="exec-events" className="flex-1 min-h-0 grid grid-cols-[15%_42%_43%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
-          <MonitorPanel />
-          <AnalyticsPanel execMode="EVENTS" />
-          <div className="row-span-2 min-h-0">
-            <FeedPanel execMode="EVENTS" />
-          </div>
-          <CrossAssetMatrixPanel />
-          <RightRailPanel execMode="EVENTS" />
-          <div className="col-span-2 min-h-0">
-            <BlotterPanel />
-          </div>
-          <SystemPulsePanel />
-        </div>
-      )}
-      {selected === 'ESC' && (
-        <div key="exec-esc" className="flex-1 min-h-0 grid grid-cols-[15%_53%_32%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
-          <MonitorPanel />
-          <AnalyticsPanel execMode="ESC" />
-          <RightRailPanel execMode="ESC" />
-          <CrossAssetMatrixPanel />
-          <FeedPanel execMode="ESC" />
-          <BlotterPanel />
-          <div className="col-span-3 min-h-0">
-            <SystemPulsePanel />
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

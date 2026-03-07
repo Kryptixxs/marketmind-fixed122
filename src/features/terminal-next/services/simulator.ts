@@ -438,7 +438,7 @@ export function buildBarsForSymbol(existing: IntradayBar[] | undefined, quote: Q
     }
   }
 
-  const trimmed = bars.slice(-80);
+  const trimmed = bars;
   let cumPv = 0;
   let cumVol = 0;
   for (let i = 0; i < trimmed.length; i += 1) {
@@ -456,7 +456,7 @@ export function buildBarsForSymbol(existing: IntradayBar[] | undefined, quote: Q
 
 export function buildBlotter(quotes: Quote[], previous: BlotterRow[] | undefined, tape: TapePrint[], tick: number): BlotterRow[] {
   const prevMap = new Map((previous ?? []).map((r) => [r.symbol, r]));
-  return quotes.slice(0, 32).map((q, i) => {
+  return quotes.map((q, i) => {
     const side: 'BUY' | 'SELL' = i % 2 === 0 ? 'BUY' : 'SELL';
     const qty = 50 + i * 25;
     const prior = prevMap.get(q.symbol);
@@ -497,7 +497,7 @@ export function buildExecutionEvents(blotter: BlotterRow[], previous: BlotterRow
       });
     }
   }
-  return events.slice(0, 24);
+  return events;
 }
 
 export function rotateHeadlines(tick: number): string[] {
@@ -549,7 +549,7 @@ export function functionDeck(functionCode: FunctionCode, risk: TerminalState['ri
   if (functionCode === 'WEI') return [['RV', `${risk.realizedVol}%`], ['IVx', `${risk.impliedVolProxy}%`], ['CorrSPX', `${risk.corrToBenchmark}`], ['Spread', `${micro.insideSpreadBps}bp`], ['Regime', risk.regime], ['OFI', `${(micro.orderFlowImbalance * 100).toFixed(1)}%`], ['Imb', `${(micro.imbalance * 100).toFixed(1)}%`]];
   if (functionCode === 'YAS') return [['YTW', '4.91%'], ['Duration', '7.18'], ['Convexity', '0.90'], ['Spread', `${micro.insideSpreadBps}bp`], ['ZSpread', '172 bps'], ['DV01', '$18.3k'], ['OAS', '186 bps']];
   if (functionCode === 'ECO') return [['CPI', 'Tue 08:30'], ['FOMC', 'Wed 14:00'], ['NFP', 'Fri 08:30'], ['ECB', 'Thu 13:15'], ['BoJ', 'Fri 03:00'], ['Retail', 'Wed 08:30'], ['PMI', 'Mon 09:45']];
-  if (functionCode === 'TOP') return [['LeadTheme', 'Rates + Growth'], ['OFI', `${(micro.orderFlowImbalance * 100).toFixed(1)}%`], ['Imbalance', `${(micro.imbalance * 100).toFixed(1)}%`], ['Sweep', micro.sweep.text], ['Regime', risk.regime], ['Beta', risk.beta.toFixed(2)], ['Corr', risk.corrToBenchmark]];
+  if (functionCode === 'TOP') return [['LeadTheme', 'Rates + Growth'], ['OFI', `${(micro.orderFlowImbalance * 100).toFixed(1)}%`], ['Imbalance', `${(micro.imbalance * 100).toFixed(1)}%`], ['Sweep', micro.sweep.text], ['Regime', risk.regime], ['Beta', risk.beta.toFixed(2)], ['Corr', `${risk.corrToBenchmark}`]];
   if (functionCode === 'HP') return [['Headline', 'Risk assets firmer'], ['Sentiment', 'Constructive'], ['Catalyst', 'Macro data'], ['Impact', 'Moderate'], ['DeskFocus', 'Index tech'], ['Breadth', '62% adv'], ['Vol', `${risk.realizedVol}%`]];
   return [['Query', 'Ticker + topic'], ['Ranking', 'Relevance'], ['Sources', 'Cross-wire'], ['Recency', 'High'], ['Priority', 'Desk'], ['OFI', `${(micro.orderFlowImbalance * 100).toFixed(1)}%`]];
 }

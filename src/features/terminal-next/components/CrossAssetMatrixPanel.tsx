@@ -2,17 +2,15 @@
 
 import { useMemo, useRef } from 'react';
 import { useTerminalStore } from '../store/TerminalStore';
-import { useVisibleRows } from '../hooks/useVisibleRows';
 
 const fmt = (v: number, d = 2) => v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 
 export function CrossAssetMatrixPanel() {
   const { state, dispatch } = useTerminalStore();
   const matrixRef = useRef<HTMLDivElement>(null);
-  const visibleRows = useVisibleRows(matrixRef, 18);
 
   const ranked = useMemo(() => [...state.quotes].sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)), [state.quotes]);
-  const displayRanked = ranked.slice(0, visibleRows);
+  const displayRanked = ranked;
 
   return (
     <section className="bg-black min-h-0 overflow-hidden flex flex-col">
