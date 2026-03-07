@@ -33,14 +33,6 @@ function sectionRows(modeRows: Row[], peerSectorFlow: Row[], revisionSystem: Row
   };
 }
 
-function modeSplitClass(mode: ExecMode): string {
-  if (mode === 'MICROSTRUCTURE') return 'grid-cols-[40%_60%]';
-  if (mode === 'FACTORS') return 'grid-cols-[38%_62%]';
-  if (mode === 'EVENTS') return 'grid-cols-[35%_65%]';
-  if (mode === 'ESC') return 'grid-cols-[34%_66%]';
-  return 'grid-cols-[42%_58%]';
-}
-
 function modeBandClass(mode: ExecMode): string {
   if (mode === 'MICROSTRUCTURE') return 'bg-[#081925]';
   if (mode === 'FACTORS') return 'bg-[#0a1f15]';
@@ -247,6 +239,48 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
   const resolvedRiskRows = sectionRows(riskRows, peerSectorFlow, revisionSystem, 'No risk/regime rows available.');
   const resolvedFlowRows = sectionRows(peerSectorFlow, revisionSystem, [], 'No flow/peer rows available.');
   const resolvedLinkedRows = sectionRows(revisionSystem, peerSectorFlow, [], 'No linked system/news/revision rows available.');
+  const eventRows: Row[] = [
+    ...(depth?.calendar.macro ?? []).map((m) => ({
+      label: `${m.date} ${m.impact}`,
+      value: m.title,
+      tone: m.impact === 'High' ? 'negative' : 'neutral',
+    })),
+    ...impactRows.map((i) => ({
+      label: `${i.date} ${i.event}`,
+      value: `${i.priceImpactPct >= 0 ? '+' : ''}${i.priceImpactPct.toFixed(2)}% / vol ${i.volShiftPct >= 0 ? '+' : ''}${i.volShiftPct.toFixed(2)}%`,
+      tone: i.priceImpactPct >= 0 ? 'positive' : 'negative',
+    })),
+    ...state.headlines.map((h) => ({ label: 'HEADLINE', value: h, tone: 'accent' as Tone })),
+  ];
+  const peerRowsDense: Row[] = state.quotes
+    .filter((q) => q.symbol !== active?.symbol)
+    .map((q) => ({
+      label: `${q.symbol} b${q.betaToSPX.toFixed(2)} c${q.corrToSPX.toFixed(2)} lq${q.liquidityScore}`,
+      value: `${q.last.toFixed(q.last < 10 ? 4 : 2)} / ${q.pct >= 0 ? '+' : ''}${q.pct.toFixed(2)}%`,
+      tone: q.pct >= 0 ? 'positive' : 'negative',
+    }));
+  const microRows: Row[] = [
+    ...depthTelemetryRows,
+    ...state.tape.map((t) => ({
+      label: `${t.time} ${t.side}`,
+      value: `${t.price.toFixed(2)} x ${t.size}${t.isSweep ? ' SWP' : ''}`,
+      tone: t.side === 'BUY' ? 'positive' : 'negative',
+    })),
+    ...state.executionEvents.map((e) => ({
+      label: `${e.symbol} ${e.status}`,
+      value: `${e.fillQty}@${fmt(e.fillPrice, 2)}`,
+      tone: 'accent',
+    })),
+  ];
+  const stackBlocks: Array<{ id: string; title: string; rows: Row[]; reason?: string }> = [
+    { id: 'focus', title: `${execMode} FOCUS`, rows: resolvedModeRows.rows, reason: resolvedModeRows.reason },
+    { id: 'risk', title: 'RISK / HORIZON / REGIME', rows: horizonRowsDense.concat(resolvedRiskRows.rows), reason: resolvedRiskRows.reason },
+    { id: 'micro', title: 'MICROSTRUCTURE', rows: microRows },
+    { id: 'flow', title: 'FLOW / SECTOR / POSITIONING', rows: resolvedFlowRows.rows, reason: resolvedFlowRows.reason },
+    { id: 'peer', title: 'PEER COMPARISON GRID', rows: peerRowsDense },
+    { id: 'events', title: 'EVENT TIMELINE', rows: eventRows },
+    { id: 'linked', title: 'LINKED REVISIONS / NEWS / SYSTEM', rows: resolvedLinkedRows.rows, reason: resolvedLinkedRows.reason },
+  ];
 
   return (
     <section className="bg-black min-h-0 overflow-hidden flex flex-col">
@@ -285,88 +319,47 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         </div>
       </div>
 
-      <div className={`grid ${modeSplitClass(execMode)} gap-px bg-[#1a1a1a] flex-1 min-h-0`}>
-        <div className={`${modePanelBand} min-h-0 overflow-y-auto custom-scrollbar`}>
-          <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">{execMode === 'ESC' ? 'ESC PRICE STRIP (COMPACT)' : 'PRICE STRIP (COMPACT)'}</div>
-          <div className="p-1 border-b border-[#1a1a1a]">
-            <svg viewBox={`0 0 ${chartW} ${svgH}`} preserveAspectRatio="none" className="w-full h-[96px]">
-              <line x1="0" y1={chartH} x2={chartW} y2={chartH} stroke="#1f3149" strokeWidth="1" />
-              {recentBars.map((b, i) => {
-                const x = (i / Math.max(1, recentBars.length - 1)) * chartW;
-                const openY = yPrice(b.open);
-                const closeY = yPrice(b.close);
-                const highY = yPrice(b.high);
-                const lowY = yPrice(b.low);
-                const up = b.close >= b.open;
-                return (
-                  <g key={`c-${b.ts}-${i}`}>
-                    <line x1={x} y1={highY} x2={x} y2={lowY} stroke={up ? '#50e8ac' : '#ff7ca3'} strokeWidth="1" />
-                    <rect x={x - bodyW / 2} y={Math.min(openY, closeY)} width={bodyW} height={Math.max(1, Math.abs(closeY - openY))} fill={up ? '#1f5a41' : '#59243a'} stroke={up ? '#50e8ac' : '#ff7ca3'} strokeWidth="0.8" />
-                    <rect x={x - bodyW / 2} y={yVol(b.volume)} width={bodyW} height={Math.max(1, svgH - yVol(b.volume))} fill={up ? '#1f5a41aa' : '#59243aaa'} />
-                  </g>
-                );
-              })}
-              <polyline fill="none" stroke="#8cc7f3" strokeWidth="1.3" points={points(vwap, chartW, yPrice)} />
-              <polyline fill="none" stroke="#f4cf6b" strokeWidth="1" points={points(ma9, chartW, yPrice)} />
-              <polyline fill="none" stroke="#d18cff" strokeWidth="1" points={points(ma21, chartW, yPrice)} />
-            </svg>
+      <div className={`${modePanelBand} flex-1 min-h-0 overflow-y-auto custom-scrollbar`}>
+        <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">
+          {execMode === 'ESC' ? 'ESC VERTICAL INTELLIGENCE STACK' : 'VERTICAL INTELLIGENCE STACK'}
+        </div>
+        <div className="p-1 border-b border-[#1a1a1a]">
+          <svg viewBox={`0 0 ${chartW} ${svgH}`} preserveAspectRatio="none" className="w-full h-[96px]">
+            <line x1="0" y1={chartH} x2={chartW} y2={chartH} stroke="#1f3149" strokeWidth="1" />
+            {recentBars.map((b, i) => {
+              const x = (i / Math.max(1, recentBars.length - 1)) * chartW;
+              const openY = yPrice(b.open);
+              const closeY = yPrice(b.close);
+              const highY = yPrice(b.high);
+              const lowY = yPrice(b.low);
+              const up = b.close >= b.open;
+              return (
+                <g key={`c-${b.ts}-${i}`}>
+                  <line x1={x} y1={highY} x2={x} y2={lowY} stroke={up ? '#50e8ac' : '#ff7ca3'} strokeWidth="1" />
+                  <rect x={x - bodyW / 2} y={Math.min(openY, closeY)} width={bodyW} height={Math.max(1, Math.abs(closeY - openY))} fill={up ? '#1f5a41' : '#59243a'} stroke={up ? '#50e8ac' : '#ff7ca3'} strokeWidth="0.8" />
+                  <rect x={x - bodyW / 2} y={yVol(b.volume)} width={bodyW} height={Math.max(1, svgH - yVol(b.volume))} fill={up ? '#1f5a41aa' : '#59243aaa'} />
+                </g>
+              );
+            })}
+            <polyline fill="none" stroke="#8cc7f3" strokeWidth="1.3" points={points(vwap, chartW, yPrice)} />
+            <polyline fill="none" stroke="#f4cf6b" strokeWidth="1" points={points(ma9, chartW, yPrice)} />
+            <polyline fill="none" stroke="#d18cff" strokeWidth="1" points={points(ma21, chartW, yPrice)} />
+          </svg>
+        </div>
+        {stackBlocks.map((block) => (
+          <div key={block.id} className="border-b border-[#1a1a1a]">
+            <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">{block.title}</div>
+            {block.rows.map((row, idx) => (
+              <div key={`${block.id}-${row.label}-${idx}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_1fr] gap-1">
+                <span className="text-[#93a9c6] truncate">{row.label}</span>
+                <span className={`${toneClass[row.tone ?? 'neutral']} truncate text-right font-bold`}>{row.value}</span>
+              </div>
+            ))}
+            {block.reason ? (
+              <div className="text-[8px] px-1 py-[1px] text-[#7fa4c8]">CHAIN: {block.reason}</div>
+            ) : null}
           </div>
-
-          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">HORIZON / REGIME</div>
-          {horizonRowsDense.concat(resolvedRiskRows.rows).map((row, idx) => (
-            <div key={`${row.label}-${idx}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[0.8fr_1.2fr] gap-1">
-              <span className="text-[#9fb4cd] truncate">{row.label}</span>
-              <span className={`${toneClass[row.tone ?? 'neutral']} text-right font-bold truncate`}>{row.value}</span>
-            </div>
-          ))}
-          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">MICROSTRUCTURE TELEMETRY</div>
-          {depthTelemetryRows.map((row, idx) => (
-            <div key={`tele-${row.label}-${idx}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[0.8fr_1.2fr] gap-1">
-              <span className="text-[#9fb4cd] truncate">{row.label}</span>
-              <span className={`${toneClass[row.tone ?? 'neutral']} text-right font-bold truncate`}>{row.value}</span>
-            </div>
-          ))}
-          {resolvedRiskRows.reason ? (
-            <div className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#7fa4c8]">CHAIN: {resolvedRiskRows.reason}</div>
-          ) : null}
-        </div>
-
-        <div className={`${modePanelBand} min-h-0 overflow-y-auto custom-scrollbar`}>
-          <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">EXECUTION INTELLIGENCE STACK</div>
-
-          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">{execMode} FOCUS</div>
-          {resolvedModeRows.rows.map((row, idx) => (
-            <div key={`mode-${row.label}-${idx}`} className="text-[9px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_1fr] gap-1">
-              <span className="text-[#93a9c6] truncate">{row.label}</span>
-              <span className={`${toneClass[row.tone ?? 'neutral']} text-right font-bold truncate`}>{row.value}</span>
-            </div>
-          ))}
-          {resolvedModeRows.reason ? (
-            <div className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#7fa4c8]">CHAIN: {resolvedModeRows.reason}</div>
-          ) : null}
-
-          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">FLOW / SECTOR / POSITIONING</div>
-          {resolvedFlowRows.rows.map((row, idx) => (
-            <div key={`flow-${row.label}-${idx}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_1fr] gap-1">
-              <span className="text-[#93a9c6] truncate">{row.label}</span>
-              <span className={`${toneClass[row.tone ?? 'neutral']} text-right font-bold truncate`}>{row.value}</span>
-            </div>
-          ))}
-          {resolvedFlowRows.reason ? (
-            <div className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#7fa4c8]">CHAIN: {resolvedFlowRows.reason}</div>
-          ) : null}
-
-          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">LINKED INTELLIGENCE</div>
-          {resolvedLinkedRows.rows.map((row, idx) => (
-            <div key={`linked-${row.label}-${idx}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[0.75fr_1.25fr] gap-1">
-              <span className="text-[#93a9c6] truncate">{row.label}</span>
-              <span className={`${toneClass[row.tone ?? 'neutral']} truncate`}>{row.value}</span>
-            </div>
-          ))}
-          {resolvedLinkedRows.reason ? (
-            <div className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#7fa4c8]">CHAIN: {resolvedLinkedRows.reason}</div>
-          ) : null}
-        </div>
+        ))}
       </div>
     </section>
   );

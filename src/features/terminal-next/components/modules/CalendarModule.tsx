@@ -43,6 +43,10 @@ export function CalendarModule() {
   const macroEvents = depth?.calendar.macro ?? ECO_EVENTS.map(([title, time, act, fcst, impact]) => ({ date: new Date().toISOString().slice(0, 10), title, impact, forecast: fcst }));
   const earningsRows = depth?.calendar.earnings ?? EARNINGS_THIS_WEEK.map(([ticker, date, _call, eps, _rev]) => ({ ticker, date, epsEst: Number(eps), revEst: null }));
   const catalysts = depth?.calendar.catalysts ?? [];
+  const filingRows = depth?.sec.filings ?? [];
+  const impactRows = depth?.news.impacts ?? [];
+  const flowRows = depth?.market.flows ?? [];
+  const revisionRows = depth?.earnings.revisionsTimeline ?? [];
 
   return (
     <div className="flex-1 min-h-0 grid grid-cols-[20%_38%_42%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
@@ -100,27 +104,68 @@ export function CalendarModule() {
       </section>
       <section className="bg-black min-h-0 overflow-hidden flex flex-col col-span-2">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[9px] font-bold text-white">UPCOMING DIVIDENDS / SPLITS / IPOs</div>
-        <div className="flex-1 overflow-y-auto text-[8px] grid grid-cols-3 gap-px">
-          <div className="overflow-y-auto">
-            <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">DIVIDENDS</div>
-            {[['AAPL', '0.24', '05/09'], ['MSFT', '0.83', '05/15'], ['JPM', '1.15', '05/06'], ['V', '0.52', '05/08'], ['WMT', '0.83', '05/08'], ['PG', '1.06', '05/15'], ['KO', '0.485', '05/15'], ['PEP', '1.355', '05/09']].map(([s, amt, d], i) => (
-              <div key={`div-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{s}</span><span>{amt} ex {d}</span></div>
-            ))}
+        <div className="flex-1 min-h-0 grid grid-cols-3 gap-px bg-[#1a1a1a] text-[8px]">
+          <div className="grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-[#1a1a1a] min-h-0">
+            <div className="bg-black overflow-y-auto">
+              <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">DIVIDENDS</div>
+              {[['AAPL', '0.24', '05/09'], ['MSFT', '0.83', '05/15'], ['JPM', '1.15', '05/06'], ['V', '0.52', '05/08'], ['WMT', '0.83', '05/08'], ['PG', '1.06', '05/15'], ['KO', '0.485', '05/15'], ['PEP', '1.355', '05/09']].map(([s, amt, d], i) => (
+                <div key={`div-${i}`} className="px-1 py-[1px] border-b border-[#262626] flex justify-between text-gray-300"><span>{s}</span><span>{amt} ex {d}</span></div>
+              ))}
+            </div>
+            <div className="bg-black overflow-y-auto">
+              <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">REVISION TRACE</div>
+              {revisionRows.map((r, i) => (
+                <div key={`rev-${r.date}-${i}`} className="px-1 py-[1px] border-b border-[#262626] text-gray-300">
+                  {`${r.date} EPS ${r.epsDeltaPct >= 0 ? '+' : ''}${r.epsDeltaPct.toFixed(2)} REV ${r.revDeltaPct >= 0 ? '+' : ''}${r.revDeltaPct.toFixed(2)}`}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="overflow-y-auto">
-            <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">SPLITS</div>
-            {[['NVDA', '10:1', '06/10'], ['GOOGL', '20:1', '07/15'], ['TSLA', '3:1', '08/25']].map(([s, r, d], i) => (
-              <div key={`spl-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{s}</span><span>{r} {d}</span></div>
-            ))}
+          <div className="grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-[#1a1a1a] min-h-0">
+            <div className="bg-black overflow-y-auto">
+              <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">SPLITS + CATALYSTS</div>
+              {[['NVDA', '10:1', '06/10'], ['GOOGL', '20:1', '07/15'], ['TSLA', '3:1', '08/25']].map(([s, r, d], i) => (
+                <div key={`spl-${i}`} className="px-1 py-[1px] border-b border-[#262626] flex justify-between text-gray-300"><span>{s}</span><span>{r} {d}</span></div>
+              ))}
+              {catalysts.map((c, i) => (
+                <div key={`cat-${i}`} className="px-1 py-[1px] border-b border-[#262626] flex justify-between text-gray-300"><span>{c.type}</span><span>{c.date} {c.title}</span></div>
+              ))}
+            </div>
+            <div className="bg-black overflow-y-auto">
+              <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">FLOW + IMPACT TRACE</div>
+              {flowRows.map((f, i) => (
+                <div key={`flow-${i}`} className="px-1 py-[1px] border-b border-[#262626] flex justify-between text-gray-300">
+                  <span>{f.vehicle}</span>
+                  <span className={f.direction === 'Inflow' ? 'text-green-500' : 'text-red-500'}>
+                    {`${f.flowUsdM >= 0 ? '+' : ''}$${f.flowUsdM.toFixed(0)}M`}
+                  </span>
+                </div>
+              ))}
+              {impactRows.map((x, i) => (
+                <div key={`imp-${x.date}-${i}`} className="px-1 py-[1px] border-b border-[#262626] text-gray-300">
+                  {`${x.date} ${x.event} ${x.priceImpactPct >= 0 ? '+' : ''}${x.priceImpactPct.toFixed(2)}%`}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="overflow-y-auto">
-            <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">IPOs / CONF</div>
-            {[['Reddit', 'IPO', '03/21'], ['Astera', 'IPO', '03/20'], ['Berkshire AGM', '05/03', 'Omaha'], ['Apple WWDC', '06/10', 'Cupertino']].map(([n, t, d], i) => (
-              <div key={`ipo-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{n}</span><span>{t} {d}</span></div>
-            ))}
-            {catalysts.map((c, i) => (
-              <div key={`cat-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{c.type}</span><span>{c.date} {c.title}</span></div>
-            ))}
+          <div className="grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-[#1a1a1a] min-h-0">
+            <div className="bg-black overflow-y-auto">
+              <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">IPOs / CONF</div>
+              {[['Reddit', 'IPO', '03/21'], ['Astera', 'IPO', '03/20'], ['Berkshire AGM', '05/03', 'Omaha'], ['Apple WWDC', '06/10', 'Cupertino']].map(([n, t, d], i) => (
+                <div key={`ipo-${i}`} className="px-1 py-[1px] border-b border-[#262626] flex justify-between text-gray-300"><span>{n}</span><span>{t} {d}</span></div>
+              ))}
+            </div>
+            <div className="bg-black overflow-y-auto">
+              <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">REGULATORY FILINGS + SYSTEM</div>
+              {filingRows.map((f, i) => (
+                <div key={`file-${f.form}-${f.filed}-${i}`} className="px-1 py-[1px] border-b border-[#262626] text-gray-300">
+                  {`${f.filed} ${f.form} ${f.description}`}
+                </div>
+              ))}
+              {state.systemFeed.map((line, i) => (
+                <div key={`sys-${line}-${i}`} className="px-1 py-[1px] border-b border-[#262626] text-gray-400">{line}</div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

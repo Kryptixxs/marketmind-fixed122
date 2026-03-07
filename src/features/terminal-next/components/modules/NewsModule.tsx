@@ -38,6 +38,10 @@ export function NewsModule() {
       : [...state.headlines, ...state.systemFeed, ...state.headlines];
   const sectorNews = (depth?.market.sectors ?? []).map((s) => [s.sector, `${s.movePct >= 0 ? '+' : ''}${s.movePct.toFixed(2)}%`] as const);
   const macroItems = (depth?.calendar.macro ?? []).map((m) => `${m.date} ${m.title} ${m.impact}`);
+  const revisions = depth?.earnings.revisionsTimeline ?? [];
+  const secFilings = depth?.sec.filings ?? [];
+  const insiderTape = depth?.sec.insider ?? [];
+  const impactTape = depth?.news.impacts ?? [];
 
   return (
     <div className={`flex-1 min-h-0 grid grid-cols-[18%_28%_54%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black`}>
@@ -79,26 +83,56 @@ export function NewsModule() {
       </section>
       <section className="bg-black min-h-0 overflow-hidden flex flex-col col-span-2">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[9px] font-bold text-white">EARNINGS + ANALYST + REG</div>
-        <div className="flex-1 overflow-y-auto text-[8px] grid grid-cols-4 gap-px">
-          {state.quotes.map((q) => (
-            <div key={q.symbol} className="px-1 py-0.5 border-b border-[#262626] grid grid-cols-[1fr_auto]">
-              <span className="text-gray-200">{q.symbol}</span>
-              <span className={`font-bold ${q.pct >= 0 ? 'text-green-500' : 'text-red-500'}`}>{q.pct >= 0 ? '+' : ''}{q.pct.toFixed(1)}%</span>
-            </div>
-          ))}
-          {['10-K', '10-Q', '8-K', 'Proxy', 'S-1', '424B'].map((f, i) => (
-            <div key={`f-${i}`} className="px-1 py-0.5 border-b border-[#262626] text-gray-400">{state.activeSymbol} {f}</div>
-          ))}
-          {(depth?.news.topics ?? []).map((t) => (
-            <div key={t.topic} className="px-1 py-0.5 border-b border-[#262626] text-gray-400">
-              {`${t.topic} ${t.count} sentiment ${t.sentiment >= 0 ? '+' : ''}${t.sentiment.toFixed(2)}`}
-            </div>
-          ))}
-          {(depth?.news.impacts ?? []).map((imp, i) => (
-            <div key={`${imp.date}-${i}`} className="px-1 py-0.5 border-b border-[#262626] text-gray-400">
-              {`${imp.date} ${imp.priceImpactPct >= 0 ? '+' : ''}${imp.priceImpactPct.toFixed(2)}% vol ${imp.volShiftPct >= 0 ? '+' : ''}${imp.volShiftPct.toFixed(2)}%`}
-            </div>
-          ))}
+        <div className="flex-1 min-h-0 grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-[#1a1a1a]">
+          <div className="bg-black min-h-0 overflow-y-auto text-[8px]">
+            <div className="h-4 px-1 border-b border-[#262626] text-[8px] text-[#f4cf76] flex items-center">EARNINGS + REVISION TRACE</div>
+            {state.quotes.map((q) => (
+              <div key={q.symbol} className="px-1 py-[1px] border-b border-[#262626] grid grid-cols-[1fr_auto_auto] gap-2">
+                <span className="text-gray-200 truncate">{q.symbol}</span>
+                <span className={`font-bold text-right ${q.pct >= 0 ? 'text-green-500' : 'text-red-500'}`}>{q.pct >= 0 ? '+' : ''}{q.pct.toFixed(1)}%</span>
+                <span className="text-gray-400 text-right">IVx {state.risk.impliedVolProxy.toFixed(1)}</span>
+              </div>
+            ))}
+            {revisions.map((r, i) => (
+              <div key={`rev-${r.date}-${i}`} className="px-1 py-[1px] border-b border-[#262626] text-gray-400">
+                {`${r.date} EPS ${r.epsDeltaPct >= 0 ? '+' : ''}${r.epsDeltaPct.toFixed(2)}% REV ${r.revDeltaPct >= 0 ? '+' : ''}${r.revDeltaPct.toFixed(2)}%`}
+              </div>
+            ))}
+          </div>
+          <div className="bg-black min-h-0 overflow-y-auto text-[8px]">
+            <div className="h-4 px-1 border-b border-[#262626] text-[8px] text-[#f4cf76] flex items-center">REGULATORY + FILING STACK</div>
+            {secFilings.map((f, i) => (
+              <div key={`fil-${f.form}-${f.filed}-${i}`} className="px-1 py-[1px] border-b border-[#262626] grid grid-cols-[auto_auto_1fr] gap-2">
+                <span className="text-gray-200">{f.form}</span>
+                <span className="text-gray-400">{f.filed}</span>
+                <span className="text-gray-400 truncate">{f.description}</span>
+              </div>
+            ))}
+            {insiderTape.map((x, i) => (
+              <div key={`ins-${x.insider}-${x.date}-${i}`} className="px-1 py-[1px] border-b border-[#262626] grid grid-cols-[1fr_auto_auto_auto] gap-2">
+                <span className="text-gray-300 truncate">{x.insider}</span>
+                <span className={x.side === 'Buy' ? 'text-green-500 font-bold' : 'text-red-500 font-bold'}>{x.side}</span>
+                <span className="text-gray-400">{x.shares}</span>
+                <span className="text-gray-300">{x.price.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+          <div className="bg-black min-h-0 overflow-y-auto text-[8px]">
+            <div className="h-4 px-1 border-b border-[#262626] text-[8px] text-[#f4cf76] flex items-center">TERTIARY IMPACT / TOPIC / SYSTEM</div>
+            {(depth?.news.topics ?? []).map((t) => (
+              <div key={`topic-${t.topic}`} className="px-1 py-[1px] border-b border-[#262626] text-gray-400">
+                {`${t.topic} count ${t.count} sentiment ${t.sentiment >= 0 ? '+' : ''}${t.sentiment.toFixed(2)}`}
+              </div>
+            ))}
+            {impactTape.map((imp, i) => (
+              <div key={`${imp.date}-${i}`} className="px-1 py-[1px] border-b border-[#262626] text-gray-400">
+                {`${imp.date} ${imp.priceImpactPct >= 0 ? '+' : ''}${imp.priceImpactPct.toFixed(2)}% vol ${imp.volShiftPct >= 0 ? '+' : ''}${imp.volShiftPct.toFixed(2)}% ${imp.event}`}
+              </div>
+            ))}
+            {state.systemFeed.map((line, i) => (
+              <div key={`sys-${line}-${i}`} className="px-1 py-[1px] border-b border-[#262626] text-gray-400">{line}</div>
+            ))}
+          </div>
         </div>
       </section>
     </div>

@@ -40,6 +40,9 @@ export function MarketModule() {
   const indices = depth?.market.indices ?? INDICES.map(([symbol, level, move]) => ({ symbol, level, movePct: Number(String(move).replace('%', '')), volumeM: 0 }));
   const flows = depth?.market.flows ?? [];
   const corrs = depth?.market.correlations ?? [];
+  const macroCalendar = depth?.calendar.macro ?? [];
+  const impactRows = depth?.news.impacts ?? [];
+  const revisionRows = depth?.financial.analystRevisions ?? [];
 
   return (
     <div className="flex-1 min-h-0 grid grid-cols-[18%_40%_42%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
@@ -99,24 +102,65 @@ export function MarketModule() {
       </section>
       <section className="bg-black min-h-0 overflow-hidden flex flex-col col-span-2">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[9px] font-bold text-white">FLOWS / MACRO / CORRELATIONS</div>
-        <div className="flex-1 overflow-y-auto text-[8px] grid grid-cols-3 gap-px">
-          <div className="overflow-y-auto border-r border-[#262626]">
-            <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">ETF FLOWS</div>
-            {flows.map((f, i) => (
-              <div key={`fl-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{f.vehicle}</span><span className={f.direction === 'Inflow' ? 'text-green-500' : 'text-red-500'}>{`${f.flowUsdM >= 0 ? '+' : ''}$${f.flowUsdM.toFixed(0)}M`}</span></div>
-            ))}
+        <div className="flex-1 min-h-0 grid grid-cols-3 gap-px bg-[#1a1a1a] text-[8px]">
+          <div className="grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px min-h-0">
+            <div className="bg-black overflow-y-auto">
+              <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">ETF FLOWS</div>
+              {flows.map((f, i) => (
+                <div key={`fl-${i}`} className="px-1 py-[1px] border-b border-[#262626] flex justify-between text-gray-300"><span>{f.vehicle}</span><span className={f.direction === 'Inflow' ? 'text-green-500' : 'text-red-500'}>{`${f.flowUsdM >= 0 ? '+' : ''}$${f.flowUsdM.toFixed(0)}M`}</span></div>
+              ))}
+            </div>
+            <div className="bg-black overflow-y-auto">
+              <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">SECTOR CONCENTRATION TRACE</div>
+              {sectors.map((s, i) => (
+                <div key={`sec-x-${i}`} className="px-1 py-[1px] border-b border-[#262626] flex justify-between text-gray-300">
+                  <span>{s.sector}</span>
+                  <span className={s.movePct >= 0 ? 'text-green-500' : 'text-red-500'}>
+                    {`${s.movePct >= 0 ? '+' : ''}${s.movePct.toFixed(2)}% / c${s.concentrationPct.toFixed(1)}`}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="overflow-y-auto border-r border-[#262626]">
-            <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">MACRO</div>
-            {[['US10Y', '4.22%', '+2bp'], ['DXY', '104.2', '-0.1%'], ['WTI', '$79.2', '+0.8%'], ['Gold', '$2350', '+0.3%'], ['BTC', '$90.5K', '+1.2%']].map(([m, v, ch], i) => (
-              <div key={`mac-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{m}</span><span>{v} </span><span className={ch.startsWith('+') ? 'text-green-500' : 'text-red-500'}>{ch}</span></div>
-            ))}
+          <div className="grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px min-h-0">
+            <div className="bg-black overflow-y-auto">
+              <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">MACRO</div>
+              {[['US10Y', '4.22%', '+2bp'], ['DXY', '104.2', '-0.1%'], ['WTI', '$79.2', '+0.8%'], ['Gold', '$2350', '+0.3%'], ['BTC', '$90.5K', '+1.2%']].map(([m, v, ch], i) => (
+                <div key={`mac-${i}`} className="px-1 py-[1px] border-b border-[#262626] flex justify-between text-gray-300"><span>{m}</span><span>{v} </span><span className={ch.startsWith('+') ? 'text-green-500' : 'text-red-500'}>{ch}</span></div>
+              ))}
+              {macroCalendar.map((m, i) => (
+                <div key={`mcal-${m.date}-${i}`} className="px-1 py-[1px] border-b border-[#262626] text-gray-300">
+                  {`${m.date} ${m.title} ${m.impact}`}
+                </div>
+              ))}
+            </div>
+            <div className="bg-black overflow-y-auto">
+              <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">REVISION STACK</div>
+              {revisionRows.map((r, i) => (
+                <div key={`rev-${r.date}-${i}`} className="px-1 py-[1px] border-b border-[#262626] text-gray-300">
+                  {`${r.date} EPS ${r.epsRevPct >= 0 ? '+' : ''}${r.epsRevPct.toFixed(2)} REV ${r.revRevPct >= 0 ? '+' : ''}${r.revRevPct.toFixed(2)} TP ${r.target.toFixed(2)}`}
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="overflow-y-auto">
-            <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">CORR MATRIX</div>
-            {corrs.map((c, i) => (
-              <div key={`corr-${i}`} className="px-1 py-0.5 border-b border-[#262626] flex justify-between text-gray-300"><span>{c.pair}</span><span>{c.corr.toFixed(2)}</span></div>
-            ))}
+          <div className="grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px min-h-0">
+            <div className="bg-black overflow-y-auto">
+              <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">CORR MATRIX</div>
+              {corrs.map((c, i) => (
+                <div key={`corr-${i}`} className="px-1 py-[1px] border-b border-[#262626] flex justify-between text-gray-300"><span>{c.pair}</span><span>{c.corr.toFixed(2)}</span></div>
+              ))}
+            </div>
+            <div className="bg-black overflow-y-auto">
+              <div className="px-1 py-0.5 bg-[#0a0a0a] font-bold text-gray-400 border-b border-[#1a1a1a]">TERTIARY IMPACT + SYSTEM</div>
+              {impactRows.map((x, i) => (
+                <div key={`imp-${x.date}-${i}`} className="px-1 py-[1px] border-b border-[#262626] text-gray-300">
+                  {`${x.date} ${x.event} ${x.priceImpactPct >= 0 ? '+' : ''}${x.priceImpactPct.toFixed(2)}%`}
+                </div>
+              ))}
+              {state.systemFeed.map((line, i) => (
+                <div key={`sys-${line}-${i}`} className="px-1 py-[1px] border-b border-[#262626] text-gray-400">{line}</div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
