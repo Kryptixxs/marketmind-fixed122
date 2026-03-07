@@ -19,7 +19,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <TunnelProvider>
-      <main className="w-full h-full min-h-0 overflow-hidden bg-[#05080d] relative">
+      <main className="w-full h-[100dvh] min-h-[100dvh] overflow-hidden bg-[#05080d] relative">
         <TerminalWorkbench />
         <CommandPalette />
       </main>

@@ -134,20 +134,44 @@ export function FinancialAnalysisModule() {
 
       <section className="bg-black min-h-0 overflow-hidden flex flex-col">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-[#f4cf76] font-bold flex items-center">VALUATION + METRICS</div>
-        <div className="flex-1 overflow-y-auto custom-scrollbar text-[9px] bg-black">
+        <div className="flex-1 overflow-y-auto custom-scrollbar text-[8px] bg-black">
           {(depth?.financial.valuationBand ?? []).flatMap((v) => [
             [`P/E ${v.year}`, v.pe.toFixed(2)],
             [`EV/EBITDA ${v.year}`, v.evEbitda.toFixed(2)],
             [`PEG ${v.year}`, v.peg.toFixed(2)],
           ]).map(([k, v]) => (
-            <div key={k} className="px-1 py-[2px] border-b border-[#1a1a1a] flex justify-between"><span className="text-[#9fb4cd]">{k}</span><span className="text-[#e7f1ff] font-bold">{v}</span></div>
+            <div key={k} className="px-1 py-[1px] border-b border-[#1a1a1a] flex justify-between"><span className="text-[#9fb4cd]">{k}</span><span className="text-[#e7f1ff] font-bold">{v}</span></div>
           ))}
+          <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">SEGMENT + GEO CONTRIBUTION</div>
           {(depth?.financial.segmentBreakdown ?? []).map((s) => (
-            <div key={`seg-${s.segment}`} className="px-1 py-[2px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto] gap-2">
+            <div key={`seg-${s.segment}`} className="px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto] gap-2">
               <span className="text-[#9fb4cd]">{s.segment}</span>
               <span className="text-[#e7f1ff] font-bold">{s.revenuePct.toFixed(1)}%</span>
               <span className="text-[#b2c4db]">Mgn {s.marginPct.toFixed(1)}%</span>
             </div>
+          ))}
+          {(depth?.financial.geoBreakdown ?? []).map((g) => (
+            <div key={`geo-${g.geography}`} className="px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto] gap-2">
+              <span className="text-[#9fb4cd]">{g.geography}</span>
+              <span className="text-[#e7f1ff] font-bold">{g.revenuePct.toFixed(1)}%</span>
+              <span className="text-[#b2c4db]">Assets {g.assetsPct.toFixed(1)}%</span>
+            </div>
+          ))}
+          <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">PEER DELTA MATRIX</div>
+          {state.quotes.map((q) => (
+            <div key={`peer-${q.symbol}`} className="px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto_auto] gap-2">
+              <span className="text-[#9fb4cd] truncate">{q.symbol}</span>
+              <span className="text-[#e7f1ff] text-right">{q.last.toFixed(q.last < 10 ? 4 : 2)}</span>
+              <span className={`text-right font-bold ${q.pct >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}`}>{q.pct >= 0 ? '+' : ''}{q.pct.toFixed(2)}%</span>
+              <span className="text-[#b2c4db] text-right">LQ {q.liquidityScore}</span>
+            </div>
+          ))}
+          <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">LINKED REVISION + NEWS TRACE</div>
+          {state.systemFeed.map((line, i) => (
+            <div key={`sys-${line}-${i}`} className="px-1 py-[1px] border-b border-[#1a1a1a] text-[#9fb4cd]">{line}</div>
+          ))}
+          {state.headlines.map((line, i) => (
+            <div key={`head-${line}-${i}`} className="px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">{line}</div>
           ))}
         </div>
       </section>

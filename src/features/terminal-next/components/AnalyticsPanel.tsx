@@ -12,6 +12,43 @@ function points(values: number[], width: number, y: (v: number) => number) {
   return values.map((v, i) => `${(i / Math.max(1, values.length - 1)) * width},${y(v)}`).join(' ');
 }
 
+type ExecMode = 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' | 'ESC';
+type Tone = 'neutral' | 'positive' | 'negative' | 'accent';
+type Row = { label: string; value: string; tone?: Tone };
+
+const toneClass: Record<Tone, string> = {
+  neutral: 'text-[#d8e6f8]',
+  positive: 'text-[#4ce0a5]',
+  negative: 'text-[#ff7ca3]',
+  accent: 'text-[#8cc7f3]',
+};
+
+function sectionRows(modeRows: Row[], peerSectorFlow: Row[], revisionSystem: Row[], explanation: string): { rows: Row[]; reason?: string } {
+  if (modeRows.length > 0) return { rows: modeRows };
+  if (peerSectorFlow.length > 0) return { rows: peerSectorFlow, reason: 'fallback: peer/sector/flow' };
+  if (revisionSystem.length > 0) return { rows: revisionSystem, reason: 'fallback: revision/news/system' };
+  return {
+    rows: [{ label: 'NOTICE', value: explanation, tone: 'accent' }],
+    reason: 'explicit-empty-state',
+  };
+}
+
+function modeSplitClass(mode: ExecMode): string {
+  if (mode === 'MICROSTRUCTURE') return 'grid-cols-[40%_60%]';
+  if (mode === 'FACTORS') return 'grid-cols-[38%_62%]';
+  if (mode === 'EVENTS') return 'grid-cols-[35%_65%]';
+  if (mode === 'ESC') return 'grid-cols-[34%_66%]';
+  return 'grid-cols-[42%_58%]';
+}
+
+function modeBandClass(mode: ExecMode): string {
+  if (mode === 'MICROSTRUCTURE') return 'bg-[#081925]';
+  if (mode === 'FACTORS') return 'bg-[#0a1f15]';
+  if (mode === 'EVENTS') return 'bg-[#1a0c16]';
+  if (mode === 'ESC') return 'bg-[#0a1a14]';
+  return 'bg-[#08111d]';
+}
+
 export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MICROSTRUCTURE' | 'FACTORS' | 'EVENTS' | 'ESC' }) {
   const { state, dispatch, deckRows } = useTerminalStore();
   const [depth, setDepth] = useState<InstitutionalDepth | null>(null);
@@ -27,19 +64,19 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
   }, [state.quotes, state.security.market, state.security.ticker]);
 
   const moduleDef = resolveFunctionModule(state.activeFunction);
-  const recentBars = (state.barsBySymbol[active?.symbol ?? ''] ?? []).slice(-72);
+  const recentBars = state.barsBySymbol[active?.symbol ?? ''] ?? [];
   const high = Math.max(...recentBars.map((b) => b.high), active?.high ?? 0);
   const low = Math.min(...recentBars.map((b) => b.low), active?.low ?? 0);
   const range = Math.max(0.0001, high - low);
   const maxVol = Math.max(1, ...recentBars.map((b) => b.volume), 1);
 
   const chartW = 430;
-  const chartH = execMode === 'ESC' ? 108 : 126;
-  const volTop = chartH + 10;
-  const svgH = chartH + 58;
+  const chartH = execMode === 'ESC' ? 66 : execMode === 'EVENTS' ? 72 : 78;
+  const volTop = chartH + 8;
+  const svgH = chartH + 30;
   const bodyW = Math.max(4, (chartW / Math.max(1, recentBars.length)) * 0.58);
   const yPrice = (p: number) => chartH - ((p - low) / range) * chartH;
-  const yVol = (v: number) => volTop + 28 - (v / maxVol) * 28;
+  const yVol = (v: number) => volTop + 18 - (v / maxVol) * 18;
 
   const effectiveTab = execMode === 'FACTORS' ? 'FACTORS' : execMode === 'EVENTS' ? 'EVENTS' : state.analyticsTab;
   const tabRows = useMemo(() => {
@@ -66,13 +103,6 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
     ];
   }, [active?.betaToSPX, active?.corrToNDX, active?.corrToSPX, active?.liquidityScore, active?.momentum, deckRows, effectiveTab, state.microstructure.orderFlowImbalance, state.microstructure.sweep.text, state.risk.concentration, state.risk.grossExposure, state.risk.impliedVolProxy, state.risk.intradayVar, state.risk.netExposure, state.risk.realizedVol, state.risk.regime]);
 
-  const splitClass =
-    execMode === 'MICROSTRUCTURE' ? 'grid-cols-[42%_58%]'
-      : execMode === 'FACTORS' ? 'grid-cols-[40%_60%]'
-        : execMode === 'EVENTS' ? 'grid-cols-[36%_64%]'
-          : execMode === 'ESC' ? 'grid-cols-[32%_68%]'
-            : 'grid-cols-[44%_56%]';
-
   const modeHeaderClass =
     execMode === 'MICROSTRUCTURE'
       ? 'border-[#274b66] text-[#63c8ff]'
@@ -84,16 +114,7 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
             ? 'border-[#1a5f4b] text-[#99f1d6]'
             : 'border-[#2b3f5f] text-[#9bc3e8]';
 
-  const modePanelBand =
-    execMode === 'MICROSTRUCTURE'
-      ? 'bg-[#091a2b]'
-      : execMode === 'FACTORS'
-        ? 'bg-[#0a1f15]'
-        : execMode === 'EVENTS'
-          ? 'bg-[#1a0c16]'
-          : execMode === 'ESC'
-            ? 'bg-[#0a1a14]'
-            : 'bg-[#08111d]';
+  const modePanelBand = modeBandClass(execMode);
 
   const horizonRows = [
     ['1m', recentBars.length > 2 ? (((recentBars[recentBars.length - 1]?.close ?? 0) / (recentBars[recentBars.length - 2]?.close ?? 1) - 1) * 100).toFixed(2) : '0.00'],
@@ -109,9 +130,123 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
   const flowRows = depth?.market.flows ?? [];
   const impactRows = depth?.news.impacts ?? [];
   const revisionRows = depth?.financial.analystRevisions ?? [];
-  const peerRows = state.quotes.filter((q) => q.symbol !== active?.symbol).slice(0, 80);
+  const peerRows = state.quotes.filter((q) => q.symbol !== active?.symbol).slice(0, 120);
 
   const flashClass = state.delta.priceFlash[active?.symbol ?? ''] === 'up' ? 'text-[#7dffcc]' : state.delta.priceFlash[active?.symbol ?? ''] === 'down' ? 'text-[#ff9bbb]' : 'text-[#edf4fc]';
+
+  const riskRows: Row[] = [
+    { label: 'RV', value: `${state.risk.realizedVol}%`, tone: 'accent' },
+    { label: 'IVx', value: `${state.risk.impliedVolProxy}%`, tone: 'accent' },
+    { label: 'BETA', value: `${state.risk.beta}` },
+    { label: 'CORR', value: `${state.risk.corrToBenchmark}` },
+    { label: 'Regime', value: `${state.risk.regime}` },
+    { label: 'VaR', value: fmt(state.risk.intradayVar, 0) },
+    { label: 'Gross', value: fmt(state.risk.grossExposure, 0) },
+    { label: 'Net', value: fmt(state.risk.netExposure, 0) },
+  ];
+
+  const horizonRowsDense: Row[] = horizonRows.map(([h, r]) => ({
+    label: h,
+    value: `${Number(r) >= 0 ? '+' : ''}${r}%`,
+    tone: Number(r) >= 0 ? 'positive' : 'negative',
+  }));
+
+  const modeRows: Record<ExecMode, Row[]> = {
+    PRIMARY: [
+      ...tabRows.map(([k, v]) => ({ label: k, value: String(v), tone: 'neutral' as Tone })),
+      ...state.executionEvents.map((e) => ({
+        label: `${e.symbol} ${e.status}`,
+        value: `${e.fillQty}@${fmt(e.fillPrice, 2)}`,
+        tone: 'accent' as Tone,
+      })),
+    ],
+    MICROSTRUCTURE: [
+      { label: 'OFI', value: `${(state.microstructure.orderFlowImbalance * 100).toFixed(1)}%`, tone: state.microstructure.orderFlowImbalance >= 0 ? 'positive' : 'negative' },
+      { label: 'Sweep', value: state.microstructure.sweep.text, tone: 'accent' },
+      { label: 'Liquidity', value: `${active?.liquidityScore ?? 0}` },
+      { label: 'Momentum', value: `${active?.momentum.toFixed(2) ?? '0.00'}` },
+      ...state.executionEvents.map((e) => ({
+        label: `${e.status}`,
+        value: `${e.symbol} ${e.fillQty}@${fmt(e.fillPrice, 2)}`,
+        tone: 'accent' as Tone,
+      })),
+    ],
+    FACTORS: [
+      ...tabRows.map(([k, v]) => ({ label: k, value: String(v), tone: 'neutral' as Tone })),
+      ...peerRows.map((q) => ({
+        label: `${q.symbol} b${q.betaToSPX.toFixed(2)} c${q.corrToSPX.toFixed(2)}`,
+        value: `${q.pct >= 0 ? '+' : ''}${q.pct.toFixed(2)}%`,
+        tone: q.pct >= 0 ? 'positive' : 'negative',
+      })),
+    ],
+    EVENTS: [
+      ...impactRows.map((i) => ({
+        label: `${i.date} ${i.event}`,
+        value: `${i.priceImpactPct >= 0 ? '+' : ''}${i.priceImpactPct.toFixed(2)}% / vol ${i.volShiftPct >= 0 ? '+' : ''}${i.volShiftPct.toFixed(2)}%`,
+        tone: i.priceImpactPct >= 0 ? 'positive' : 'negative',
+      })),
+      ...state.headlines.map((h) => ({ label: 'HEADLINE', value: h, tone: 'accent' as Tone })),
+    ],
+    ESC: [
+      ...state.executionEvents.map((e) => ({
+        label: `${e.symbol} ${e.status}`,
+        value: `${e.fillQty}@${fmt(e.fillPrice, 2)}`,
+        tone: 'accent' as Tone,
+      })),
+      ...horizonRowsDense,
+      ...riskRows.slice(0, 6),
+    ],
+  };
+
+  const peerSectorFlow: Row[] = [
+    ...sectorRows.map((s) => ({
+      label: `${s.sector} b${s.beta.toFixed(2)}`,
+      value: `${s.movePct >= 0 ? '+' : ''}${s.movePct.toFixed(2)}%`,
+      tone: s.movePct >= 0 ? 'positive' : 'negative',
+    })),
+    ...flowRows.map((f) => ({
+      label: `${f.vehicle} ${f.direction}`,
+      value: `${f.flowUsdM >= 0 ? '+' : ''}$${f.flowUsdM.toFixed(0)}M`,
+      tone: f.direction === 'Inflow' ? 'positive' : 'negative',
+    })),
+    ...peerRows.map((q) => ({
+      label: `${q.symbol} LQ ${q.liquidityScore}`,
+      value: `${q.pct >= 0 ? '+' : ''}${q.pct.toFixed(2)}%`,
+      tone: q.pct >= 0 ? 'positive' : 'negative',
+    })),
+  ];
+
+  const revisionSystem: Row[] = [
+    ...revisionRows.map((r) => ({
+      label: `${r.date} EPS ${r.epsRevPct >= 0 ? '+' : ''}${r.epsRevPct.toFixed(2)}%`,
+      value: `REV ${r.revRevPct >= 0 ? '+' : ''}${r.revRevPct.toFixed(2)}% TP ${r.target.toFixed(2)}`,
+      tone: r.epsRevPct >= 0 ? 'positive' : 'negative',
+    })),
+    ...state.systemFeed.map((line) => ({ label: 'SYSTEM', value: line, tone: 'accent' as Tone })),
+    ...state.headlines.map((line) => ({ label: 'NEWS', value: line, tone: 'neutral' as Tone })),
+  ];
+  const depthTelemetryRows: Row[] = state.orderBook.flatMap((r, idx) => [
+    {
+      label: `L${idx + 1} BID`,
+      value: `${r.bid.toFixed(2)} x ${r.bidSize}`,
+      tone: 'positive',
+    },
+    {
+      label: `L${idx + 1} ASK`,
+      value: `${r.ask.toFixed(2)} x ${r.askSize}`,
+      tone: 'negative',
+    },
+  ]);
+
+  const resolvedModeRows = sectionRows(
+    modeRows[execMode],
+    peerSectorFlow,
+    revisionSystem,
+    `No ${execMode} intelligence rows available after fallback chain.`
+  );
+  const resolvedRiskRows = sectionRows(riskRows, peerSectorFlow, revisionSystem, 'No risk/regime rows available.');
+  const resolvedFlowRows = sectionRows(peerSectorFlow, revisionSystem, [], 'No flow/peer rows available.');
+  const resolvedLinkedRows = sectionRows(revisionSystem, peerSectorFlow, [], 'No linked system/news/revision rows available.');
 
   return (
     <section className="bg-black min-h-0 overflow-hidden flex flex-col">
@@ -150,11 +285,11 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         </div>
       </div>
 
-      <div className={`grid ${splitClass} gap-px bg-[#1a1a1a] flex-1 min-h-0`}>
+      <div className={`grid ${modeSplitClass(execMode)} gap-px bg-[#1a1a1a] flex-1 min-h-0`}>
         <div className={`${modePanelBand} min-h-0 overflow-y-auto custom-scrollbar`}>
-          <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">{execMode === 'ESC' ? 'ESC PRICE CONTEXT (COMPACT)' : 'INTRADAY PRICE CONTEXT'}</div>
+          <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">{execMode === 'ESC' ? 'ESC PRICE STRIP (COMPACT)' : 'PRICE STRIP (COMPACT)'}</div>
           <div className="p-1 border-b border-[#1a1a1a]">
-            <svg viewBox={`0 0 ${chartW} ${svgH}`} preserveAspectRatio="none" className="w-full h-[170px]">
+            <svg viewBox={`0 0 ${chartW} ${svgH}`} preserveAspectRatio="none" className="w-full h-[96px]">
               <line x1="0" y1={chartH} x2={chartW} y2={chartH} stroke="#1f3149" strokeWidth="1" />
               {recentBars.map((b, i) => {
                 const x = (i / Math.max(1, recentBars.length - 1)) * chartW;
@@ -167,7 +302,7 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
                   <g key={`c-${b.ts}-${i}`}>
                     <line x1={x} y1={highY} x2={x} y2={lowY} stroke={up ? '#50e8ac' : '#ff7ca3'} strokeWidth="1" />
                     <rect x={x - bodyW / 2} y={Math.min(openY, closeY)} width={bodyW} height={Math.max(1, Math.abs(closeY - openY))} fill={up ? '#1f5a41' : '#59243a'} stroke={up ? '#50e8ac' : '#ff7ca3'} strokeWidth="0.8" />
-                    <rect x={x - bodyW / 2} y={yVol(b.volume)} width={bodyW} height={svgH - yVol(b.volume)} fill={up ? '#1f5a41aa' : '#59243aaa'} />
+                    <rect x={x - bodyW / 2} y={yVol(b.volume)} width={bodyW} height={Math.max(1, svgH - yVol(b.volume))} fill={up ? '#1f5a41aa' : '#59243aaa'} />
                   </g>
                 );
               })}
@@ -177,81 +312,60 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
             </svg>
           </div>
 
-          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">RISK + HORIZON SNAPSHOT</div>
-          <div className="grid grid-cols-4 gap-px bg-[#142034] text-[9px] border-b border-[#1a1a1a]">
-            <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">RV</div><div className="text-[#e7f1ff] font-bold">{state.risk.realizedVol}%</div></div>
-            <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">IVx</div><div className="text-[#e7f1ff] font-bold">{state.risk.impliedVolProxy}%</div></div>
-            <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">BETA</div><div className="text-[#e7f1ff] font-bold">{state.risk.beta}</div></div>
-            <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">CORR</div><div className="text-[#e7f1ff] font-bold">{state.risk.corrToBenchmark}</div></div>
-          </div>
-          {horizonRows.map(([h, r]) => (
-            <div key={h} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] flex justify-between">
-              <span className="text-[#9fb4cd]">{h}</span>
-              <span className={`${Number(r) >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'} font-bold`}>{Number(r) >= 0 ? '+' : ''}{r}%</span>
+          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">HORIZON / REGIME</div>
+          {horizonRowsDense.concat(resolvedRiskRows.rows).map((row, idx) => (
+            <div key={`${row.label}-${idx}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[0.8fr_1.2fr] gap-1">
+              <span className="text-[#9fb4cd] truncate">{row.label}</span>
+              <span className={`${toneClass[row.tone ?? 'neutral']} text-right font-bold truncate`}>{row.value}</span>
             </div>
           ))}
+          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">MICROSTRUCTURE TELEMETRY</div>
+          {depthTelemetryRows.map((row, idx) => (
+            <div key={`tele-${row.label}-${idx}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[0.8fr_1.2fr] gap-1">
+              <span className="text-[#9fb4cd] truncate">{row.label}</span>
+              <span className={`${toneClass[row.tone ?? 'neutral']} text-right font-bold truncate`}>{row.value}</span>
+            </div>
+          ))}
+          {resolvedRiskRows.reason ? (
+            <div className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#7fa4c8]">CHAIN: {resolvedRiskRows.reason}</div>
+          ) : null}
         </div>
 
         <div className={`${modePanelBand} min-h-0 overflow-y-auto custom-scrollbar`}>
-          <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">ANALYTICS + FLOW STACK</div>
-          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">PRIMARY ANALYTICS</div>
-          {tabRows.map(([k, v]) => (
-            <div key={k} className="text-[10px] px-1 py-0.5 border-b border-[#1a1a1a] flex items-center justify-between">
-              <span className="text-[#93a9c6]">{k}</span>
-              <span className="text-[#e0eaf7] font-bold">{v}</span>
-            </div>
-          ))}
+          <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">EXECUTION INTELLIGENCE STACK</div>
 
-          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">SECTOR / FLOW / IMPACT</div>
-          {sectorRows.map((s) => (
-            <div key={`sec-${s.sector}`} className="text-[9px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto]">
-              <span className="text-[#93a9c6]">{s.sector}</span>
-              <span className={`text-right ${s.movePct >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'} font-bold`}>{s.movePct >= 0 ? '+' : ''}{s.movePct.toFixed(2)}%</span>
-              <span className="text-right text-[#b2c4db]">b {s.beta.toFixed(2)}</span>
+          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">{execMode} FOCUS</div>
+          {resolvedModeRows.rows.map((row, idx) => (
+            <div key={`mode-${row.label}-${idx}`} className="text-[9px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_1fr] gap-1">
+              <span className="text-[#93a9c6] truncate">{row.label}</span>
+              <span className={`${toneClass[row.tone ?? 'neutral']} text-right font-bold truncate`}>{row.value}</span>
             </div>
           ))}
-          {flowRows.map((f) => (
-            <div key={`flow-${f.vehicle}`} className="text-[9px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto]">
-              <span className="text-[#93a9c6]">{f.vehicle}</span>
-              <span className={`${f.direction === 'Inflow' ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'} font-bold`}>{`${f.flowUsdM >= 0 ? '+' : ''}$${f.flowUsdM.toFixed(0)}M`}</span>
-              <span className="text-right text-[#b2c4db]">{f.direction}</span>
-            </div>
-          ))}
-          {impactRows.map((i, idx) => (
-            <div key={`imp-${idx}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">
-              {`${i.date} ${i.priceImpactPct >= 0 ? '+' : ''}${i.priceImpactPct.toFixed(2)}% vol ${i.volShiftPct >= 0 ? '+' : ''}${i.volShiftPct.toFixed(2)}%`}
-            </div>
-          ))}
+          {resolvedModeRows.reason ? (
+            <div className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#7fa4c8]">CHAIN: {resolvedModeRows.reason}</div>
+          ) : null}
 
-          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">EXEC FLOW</div>
-          {state.executionEvents.map((e) => (
-            <div key={e.id} className="text-[9px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_.9fr_auto]">
-              <span className="text-[#c8d8ee] truncate">{e.symbol}</span>
-              <span className="text-[#9bb2cc]">{e.status}</span>
-              <span className="text-right text-[#ffd98f]">{e.fillQty}@{fmt(e.fillPrice, 2)}</span>
+          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">FLOW / SECTOR / POSITIONING</div>
+          {resolvedFlowRows.rows.map((row, idx) => (
+            <div key={`flow-${row.label}-${idx}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_1fr] gap-1">
+              <span className="text-[#93a9c6] truncate">{row.label}</span>
+              <span className={`${toneClass[row.tone ?? 'neutral']} text-right font-bold truncate`}>{row.value}</span>
             </div>
           ))}
+          {resolvedFlowRows.reason ? (
+            <div className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#7fa4c8]">CHAIN: {resolvedFlowRows.reason}</div>
+          ) : null}
 
-          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">PEER + REVISIONS + SYSTEM</div>
-          {peerRows.map((q) => (
-            <div key={`peer-${q.symbol}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto_auto]">
-              <span className="text-[#93a9c6]">{q.symbol}</span>
-              <span className="text-right text-[#b2c4db]">{fmt(q.last, 2)}</span>
-              <span className={`text-right ${q.pct >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'} font-bold`}>{q.pct >= 0 ? '+' : ''}{q.pct.toFixed(2)}%</span>
-              <span className="text-right text-[#6e85a3]">LQ {q.liquidityScore}</span>
+          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">LINKED INTELLIGENCE</div>
+          {resolvedLinkedRows.rows.map((row, idx) => (
+            <div key={`linked-${row.label}-${idx}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[0.75fr_1.25fr] gap-1">
+              <span className="text-[#93a9c6] truncate">{row.label}</span>
+              <span className={`${toneClass[row.tone ?? 'neutral']} truncate`}>{row.value}</span>
             </div>
           ))}
-          {revisionRows.map((r) => (
-            <div key={r.date} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">
-              {`${r.date} EPS ${r.epsRevPct >= 0 ? '+' : ''}${r.epsRevPct.toFixed(2)}% REV ${r.revRevPct >= 0 ? '+' : ''}${r.revRevPct.toFixed(2)}% TP ${r.target.toFixed(2)}`}
-            </div>
-          ))}
-          {state.systemFeed.map((line, i) => (
-            <div key={`${line}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">{line}</div>
-          ))}
-          {state.headlines.map((line, i) => (
-            <div key={`head-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">{line}</div>
-          ))}
+          {resolvedLinkedRows.reason ? (
+            <div className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#7fa4c8]">CHAIN: {resolvedLinkedRows.reason}</div>
+          ) : null}
         </div>
       </div>
     </section>

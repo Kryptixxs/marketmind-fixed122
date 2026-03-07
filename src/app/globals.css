@@ -102,8 +102,8 @@ html, body {
   background-color: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-mono);
-  font-size: 11px;
-  line-height: 1.25;
+  font-size: 10px;
+  line-height: 1.15;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;

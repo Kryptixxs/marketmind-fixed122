@@ -64,7 +64,7 @@ export function ExecutionCockpitModule() {
         ))}
       </div>
       {selected === 'PRIMARY' && (
-        <div key="exec-primary" className="flex-1 min-h-0 grid grid-cols-[22%_44%_34%] grid-rows-[minmax(0,0.48fr)_minmax(0,0.32fr)_minmax(0,0.2fr)] gap-px bg-black">
+        <div key="exec-primary" className="flex-1 min-h-0 grid grid-cols-[18%_50%_32%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
           <MonitorPanel />
           <AnalyticsPanel execMode="PRIMARY" />
           <RightRailPanel execMode="PRIMARY" />
@@ -77,7 +77,7 @@ export function ExecutionCockpitModule() {
         </div>
       )}
       {selected === 'MICROSTRUCTURE' && (
-        <div key="exec-microstructure" className="flex-1 min-h-0 grid grid-cols-[18%_32%_50%] grid-rows-[minmax(0,0.5fr)_minmax(0,0.3fr)_minmax(0,0.2fr)] gap-px bg-black">
+        <div key="exec-microstructure" className="flex-1 min-h-0 grid grid-cols-[16%_41%_43%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
           <MonitorPanel />
           <AnalyticsPanel execMode="MICROSTRUCTURE" />
           <div className="row-span-2 min-h-0">
@@ -92,7 +92,7 @@ export function ExecutionCockpitModule() {
         </div>
       )}
       {selected === 'FACTORS' && (
-        <div key="exec-factors" className="flex-1 min-h-0 grid grid-cols-[20%_55%_25%] grid-rows-[minmax(0,0.45fr)_minmax(0,0.34fr)_minmax(0,0.21fr)] gap-px bg-black">
+        <div key="exec-factors" className="flex-1 min-h-0 grid grid-cols-[16%_54%_30%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
           <MonitorPanel />
           <div className="row-span-2 min-h-0">
             <AnalyticsPanel execMode="FACTORS" />
@@ -107,7 +107,7 @@ export function ExecutionCockpitModule() {
         </div>
       )}
       {selected === 'EVENTS' && (
-        <div key="exec-events" className="flex-1 min-h-0 grid grid-cols-[20%_30%_50%] grid-rows-[minmax(0,0.42fr)_minmax(0,0.36fr)_minmax(0,0.22fr)] gap-px bg-black">
+        <div key="exec-events" className="flex-1 min-h-0 grid grid-cols-[15%_42%_43%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
           <MonitorPanel />
           <AnalyticsPanel execMode="EVENTS" />
           <div className="row-span-2 min-h-0">
@@ -122,7 +122,7 @@ export function ExecutionCockpitModule() {
         </div>
       )}
       {selected === 'ESC' && (
-        <div key="exec-esc" className="flex-1 min-h-0 grid grid-cols-[18%_34%_48%] grid-rows-[minmax(0,0.38fr)_minmax(0,0.38fr)_minmax(0,0.24fr)] gap-px bg-black">
+        <div key="exec-esc" className="flex-1 min-h-0 grid grid-cols-[15%_53%_32%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
           <MonitorPanel />
           <AnalyticsPanel execMode="ESC" />
           <RightRailPanel execMode="ESC" />
