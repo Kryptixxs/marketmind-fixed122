@@ -12,14 +12,14 @@ export function TopTickerBar() {
   const sorted = [...state.quotes].sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
   return (
     <>
-      <div className="h-5 border-b border-[#1a1a1a] bg-black px-1 flex items-center gap-1 text-[9px] tabular-nums">
+      <div className="h-[14px] border-b border-[#111] bg-black px-[2px] flex items-center gap-[2px] text-[8px] font-mono tracking-tight uppercase tabular-nums">
         <div className="flex-1 min-w-0 overflow-x-auto custom-scrollbar">
-          <div className="min-w-max grid auto-cols-[140px] grid-flow-col gap-x-1 pr-1">
+          <div className="min-w-max grid auto-cols-[116px] grid-flow-col gap-x-[2px] pr-[2px]">
           {sorted.map((q, idx) => (
             <button
               key={`top-${q.symbol}`}
               onClick={() => dispatch({ type: 'SET_SYMBOL', payload: q.symbol })}
-              className="flex items-center justify-between min-w-0 border-r border-[#1a1a1a] last:border-r-0 pr-1"
+              className="flex items-center justify-between min-w-0 border-r border-[#111] last:border-r-0 pr-[2px]"
             >
               <span className={`truncate ${idx === 0 ? 'text-[#fbe4aa] font-bold' : 'text-[#a8bad0]'}`}>{q.symbol}</span>
               <span
@@ -35,7 +35,7 @@ export function TopTickerBar() {
         </div>
         <button
           onClick={() => setHelpOpen(true)}
-          className="h-4 px-1 border border-[#5a1f35] bg-[#2b1019] text-[#ffd5e1] text-[8px] font-bold shrink-0"
+          className="h-[12px] px-[2px] border border-[#5a1f35] bg-[#2b1019] text-[#ffd5e1] text-[7px] font-bold shrink-0 leading-none"
         >
           HELP
         </button>

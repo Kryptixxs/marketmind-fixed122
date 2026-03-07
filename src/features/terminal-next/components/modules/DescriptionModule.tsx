@@ -130,30 +130,29 @@ export function DescriptionModule() {
   };
 
   return (
-    <div key={`des-${selected}`} className="flex-1 min-h-0 flex gap-px bg-black">
+    <div key={`des-${selected}`} className="flex-1 w-full min-w-0 min-h-0 flex gap-px bg-black font-mono tracking-tight uppercase tabular-nums">
       {/* LEFT COLUMN: navigation + universe + primary profile */}
-      <section className="w-80 shrink-0 bg-black min-h-0 overflow-hidden flex flex-col border-r border-[#1a1a1a]">
-        <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] flex items-center justify-between">
+      <section className="flex-[1.05] min-w-0 bg-black min-h-0 overflow-hidden flex flex-col border-r border-[#111]">
+        <div className="h-[14px] px-[2px] border-b border-[#111] bg-[#0a0a0a] text-[8px] flex items-center justify-between">
           <span className="text-white font-bold">DES / ISSUER CONTEXT</span>
           <span className="text-gray-400">{selected}</span>
         </div>
-        <div className="flex-1 overflow-y-auto custom-scrollbar text-[9px]">
+        <div className="flex-1 overflow-y-auto custom-scrollbar text-[8px]">
           {TABS.map((t) => (
             <button
               key={t}
               onClick={() => dispatch({ type: 'SET_ACTIVE_SUBTAB', payload: t })}
-              className={`w-full text-left px-1 py-0.5 border-b border-[#262626] ${selected === t ? 'bg-[#0d1f0d] text-green-400 border-green-600' : 'text-gray-400 hover:bg-[#0f0f0f]'}`}
+              className={`w-full text-left px-[2px] py-[1px] border-b border-[#111] ${selected === t ? 'bg-[#0d1f0d] text-green-400 border-green-600' : 'text-gray-400 hover:bg-[#0f0f0f]'}`}
             >
               {t}
             </button>
           ))}
 
-          <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#9fb4cd] font-bold flex items-center">PRIMARY DATASET / LIVE UNIVERSE</div>
+          <div className="h-[12px] px-[2px] border-y border-[#111] text-[7px] text-[#9fb4cd] font-bold flex items-center">PRIMARY DATASET / LIVE UNIVERSE</div>
           {state.quotes.map((q) => (
-            <button key={q.symbol} onClick={() => applySymbol(q.symbol)} className="w-full text-left px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto] text-[8px] hover:bg-[#111]">
+            <button key={q.symbol} onClick={() => applySymbol(q.symbol)} className="w-full text-left px-[2px] py-[1px] border-b border-[#111] grid grid-cols-[auto_1fr] gap-[2px] text-[7px] hover:bg-[#111]">
               <span className="text-gray-200 truncate">{q.symbol}</span>
-              <span className="text-right text-gray-300">{q.last.toFixed(q.last < 10 ? 4 : 2)}</span>
-              <span className={`text-right font-bold ${q.pct >= 0 ? 'text-green-500' : 'text-red-500'}`}>{q.pct >= 0 ? '+' : ''}{q.pct.toFixed(2)}</span>
+              <span className={`text-right text-gray-300 ${q.pct >= 0 ? 'text-green-500' : 'text-red-500'}`}>{q.last.toFixed(q.last < 10 ? 4 : 2)} | {q.pct >= 0 ? '+' : ''}{q.pct.toFixed(2)}%</span>
             </button>
           ))}
 
@@ -197,9 +196,9 @@ export function DescriptionModule() {
       </section>
 
       {/* CENTER COLUMN: multi-layer historical + financial context */}
-      <section className="w-[30rem] shrink-0 bg-black min-h-0 overflow-hidden flex flex-col border-r border-[#1a1a1a]">
-        <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-gray-200 font-bold flex items-center">PRIMARY + SECONDARY + HISTORICAL STACK</div>
-        <div className="flex-1 overflow-y-auto custom-scrollbar text-[9px]">
+      <section className="flex-[1.3] min-w-0 bg-black min-h-0 overflow-hidden flex flex-col border-r border-[#111]">
+        <div className="h-[14px] px-[2px] border-b border-[#111] bg-[#0a0a0a] text-[8px] text-gray-200 font-bold flex items-center">PRIMARY + SECONDARY + HIST STACK</div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar text-[8px]">
           <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] font-bold flex items-center">MARKET CAP HISTORY (10Y)</div>
           {longMktCap.map((r) => (
             <div key={`mc-${r.year}`} className="px-1 py-[2px] border-b border-[#1a1a1a] grid grid-cols-[auto_1fr_auto_auto] gap-2">
@@ -249,9 +248,9 @@ export function DescriptionModule() {
       </section>
 
       {/* RIGHT COLUMN: tertiary intelligence, relationships, docs, management, board, timeline */}
-      <section className="flex-1 min-w-0 min-h-0 bg-black overflow-hidden flex flex-col">
-        <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-gray-200 font-bold flex items-center">TERTIARY / LINKED / OPERATIONS LAYERS</div>
-        <div className="flex-1 overflow-y-auto custom-scrollbar text-[9px]">
+      <section className="flex-[1.65] min-w-0 min-h-0 bg-black overflow-hidden flex flex-col">
+        <div className="h-[14px] px-[2px] border-b border-[#111] bg-[#0a0a0a] text-[8px] text-gray-200 font-bold flex items-center">TERTIARY / LINKED / OPS</div>
+        <div className="flex-1 overflow-y-auto custom-scrollbar text-[8px]">
           <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#4ce0a5] font-bold flex items-center">RELATIONSHIP GRAPH EDGES</div>
           {(relationshipLines.length > 0 ? relationshipLines : ['No graph edges loaded.']).map((line, i) => (
             <div key={`rel-${i}`} className="px-1 py-[2px] border-b border-[#1a1a1a] text-[#d7e3f3]">{line}</div>

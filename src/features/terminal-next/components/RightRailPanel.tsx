@@ -41,7 +41,7 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
   const tabButton = (tab: 'DEPTH' | 'TAPE' | 'ALERTS') => (
     <button
       onClick={() => dispatch({ type: 'SET_RIGHT_TAB', payload: tab })}
-      className={`px-1 border text-[8px] ${activeRailTab === tab ? 'border-green-600 bg-[#0d1f0d] text-green-400' : 'border-[#262626] bg-[#0a0a0a] text-gray-400'}`}
+      className={`px-[2px] border text-[7px] leading-none ${activeRailTab === tab ? 'border-green-600 bg-[#0d1f0d] text-green-400' : 'border-[#262626] bg-[#0a0a0a] text-gray-400'}`}
     >
       {tab}
     </button>
@@ -52,14 +52,14 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
   });
 
   return (
-    <section className="bg-black min-h-0 overflow-hidden flex flex-col">
-      <div className={`h-5 px-1 border-b bg-[#0a0a0a] flex items-center justify-between text-[10px] ${modeHeaderClass}`}>
-        <div className="flex items-center gap-2">
+    <section className="bg-black min-h-0 overflow-hidden flex flex-col font-mono tracking-tight uppercase tabular-nums">
+      <div className={`h-[14px] px-[2px] border-b border-[#111] bg-[#0a0a0a] flex items-center justify-between text-[8px] ${modeHeaderClass}`}>
+        <div className="flex items-center gap-[2px] min-w-0">
           <span className={`font-bold ${pulseClass}`}>{railLabel}</span>
           <span className="text-[#b2c0d7]">Spr {fmt(state.microstructure.insideSpreadBps, 2)}bp</span>
           <span className={state.microstructure.imbalance >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}>Imb {(state.microstructure.imbalance * 100).toFixed(1)}%</span>
         </div>
-        <div className={`text-[9px] ${state.microstructure.sweep.active ? 'text-[#ffaf66]' : 'text-[#7f99ba]'} ${sweepPulse}`}>
+        <div className={`text-[7px] ${state.microstructure.sweep.active ? 'text-[#ffaf66]' : 'text-[#7f99ba]'} ${sweepPulse}`}>
           {state.microstructure.sweep.active ? `SWEEP ${state.microstructure.sweep.side}` : 'NO SWEEP'}
         </div>
       </div>
@@ -68,37 +68,37 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         {activeRailTab === 'DEPTH' && (
           <>
             <div ref={depthRef} style={sectionStyle('depth')} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
-              <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center justify-between">
+              <div className="h-[14px] px-[2px] border-b border-[#111] text-[8px] text-[#8cc7f3] flex items-center justify-between">
                 <span>ORDER BOOK DEPTH</span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-[2px]">
                   {tabButton('DEPTH')}
                   {tabButton('TAPE')}
                   {tabButton('ALERTS')}
                 </div>
               </div>
-              <table className="w-full text-[9px] tabular-nums">
+              <table className="w-full text-[8px] tabular-nums">
                 <thead className="sticky top-0 bg-[#0a0a0a] text-[#7db0db]">
                   <tr>
-                    <th className="text-right px-1 py-0.5">BidSz</th>
-                    <th className="text-right px-1 py-0.5">CumB</th>
-                    <th className="text-right px-1 py-0.5">Bid</th>
-                    <th className="text-right px-1 py-0.5">Ask</th>
-                    <th className="text-right px-1 py-0.5">CumA</th>
-                    <th className="text-right px-1 py-0.5">AskSz</th>
+                    <th className="text-right px-[2px] py-[1px]">Bz</th>
+                    <th className="text-right px-[2px] py-[1px]">CB</th>
+                    <th className="text-right px-[2px] py-[1px]">Bid</th>
+                    <th className="text-right px-[2px] py-[1px]">Ask</th>
+                    <th className="text-right px-[2px] py-[1px]">CA</th>
+                    <th className="text-right px-[2px] py-[1px]">Az</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {ladderRows.map((r) => (
-                    <tr key={`bk-${r.level}`} className="border-t border-[#1a1a1a]">
-                      <td className="relative text-right px-1 py-0.5 text-[#4ce0a5]">
+                  {ladderRows.map((r, idx) => (
+                    <tr key={`bk-${r.level}`} className={`border-t border-[#111] ${idx % 2 === 0 ? 'bg-[#0a0a0a]' : 'bg-[#090f18]'}`}>
+                      <td className="relative text-right px-[2px] py-[1px] text-[#4ce0a5]">
                         <span className="relative z-10">{r.bidSize}</span>
                         <span className="absolute left-0 top-0 h-full bg-[#17443266]" style={{ width: `${r.bidHeat}%` }} />
                       </td>
-                      <td className="text-right px-1 py-0.5 text-[#8cc7f3]">{r.cumBidSize}</td>
-                      <td className="text-right px-1 py-0.5 text-[#4ce0a5]">{fmt(r.bid, r.bid < 10 ? 4 : 2)}</td>
-                      <td className="text-right px-1 py-0.5 text-[#ff7ca3]">{fmt(r.ask, r.ask < 10 ? 4 : 2)}</td>
-                      <td className="text-right px-1 py-0.5 text-[#8cc7f3]">{r.cumAskSize}</td>
-                      <td className="relative text-right px-1 py-0.5 text-[#ff7ca3]">
+                      <td className="text-right px-[2px] py-[1px] text-[#8cc7f3]">{r.cumBidSize}</td>
+                      <td className="text-right px-[2px] py-[1px] text-[#4ce0a5]">{fmt(r.bid, r.bid < 10 ? 4 : 2)}</td>
+                      <td className="text-right px-[2px] py-[1px] text-[#ff7ca3]">{fmt(r.ask, r.ask < 10 ? 4 : 2)}</td>
+                      <td className="text-right px-[2px] py-[1px] text-[#8cc7f3]">{r.cumAskSize}</td>
+                      <td className="relative text-right px-[2px] py-[1px] text-[#ff7ca3]">
                         <span className="relative z-10">{r.askSize}</span>
                         <span className="absolute right-0 top-0 h-full bg-[#5a1f3566]" style={{ width: `${r.askHeat}%` }} />
                       </td>
@@ -108,31 +108,29 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
               </table>
             </div>
             <div ref={tapeRef} style={sectionStyle('tape')} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
-              <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center justify-between">
+              <div className="h-[14px] px-[2px] border-b border-[#111] text-[8px] text-[#8cc7f3] flex items-center justify-between">
                 <span>TIME &amp; SALES</span>
-                <button onClick={() => dispatch({ type: 'SET_RIGHT_TAB', payload: nextRailTab })} className="text-[9px] text-[#9fb4cd]">{nextRailTab}</button>
+                <button onClick={() => dispatch({ type: 'SET_RIGHT_TAB', payload: nextRailTab })} className="text-[7px] text-[#9fb4cd]">{nextRailTab}</button>
               </div>
               {tapeRows.map((r) => {
                 const pulse = state.delta.tapePulseIds.includes(r.id);
                 return (
-                  <div key={r.id} className={`text-[9px] px-1 py-0.5 border-b border-[#1a1a1a] grid grid-cols-[1fr_1fr_auto_auto] tabular-nums ${pulse ? 'bg-[#1a2c40]' : ''}`}>
+                  <div key={r.id} className={`text-[8px] px-[2px] py-[1px] border-b border-[#111] grid grid-cols-[auto_1fr] gap-[2px] tabular-nums ${pulse ? 'bg-[#1a2c40]' : ''}`}>
                     <span className="text-[#8aa2bf]">{r.time}</span>
-                    <span className={r.side === 'BUY' ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}>{fmt(r.price, 2)}</span>
-                    <span className={r.isSweep ? 'text-[#ffaf66] font-bold' : 'text-[#d8e4f4]'}>{r.size}</span>
-                    <span className={r.side === 'BUY' ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}>{r.side}</span>
+                    <span className={`text-right ${r.side === 'BUY' ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}`}>{fmt(r.price, 2)} | {r.size} | {r.side}{r.isSweep ? ' | SWP' : ''}</span>
                   </div>
                 );
               })}
             </div>
             <div ref={alertRef} style={sectionStyle('alerts')} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
-              <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center">ALERT PREVIEW</div>
+              <div className="h-[14px] px-[2px] border-b border-[#111] text-[8px] text-[#8cc7f3] flex items-center">ALERT PREVIEW</div>
               {state.alerts.map((a) => (
-                <div key={a} className={`w-full text-left text-[9px] px-1 py-0.5 border-b border-[#1a1a1a] text-[#dbe7f7] ${a.includes('[ACTIVE]') || a.includes('[SWEEP]') ? 'bg-[#2f1830] text-[#ffd5ff]' : ''}`}>
+                <div key={a} className={`w-full text-left text-[8px] px-[2px] py-[1px] border-b border-[#111] text-[#dbe7f7] ${a.includes('[ACTIVE]') || a.includes('[SWEEP]') ? 'bg-[#2f1830] text-[#ffd5ff]' : ''}`}>
                   {a}
                 </div>
               ))}
               {backgroundLines.map((line, i) => (
-                <div key={`bga-${line}-${i}`} className="text-[8px] px-1 py-0.5 border-b border-[#1a1a1a] text-[#6e85a3]">{line}</div>
+                <div key={`bga-${line}-${i}`} className="text-[7px] px-[2px] py-[1px] border-b border-[#111] text-[#6e85a3]">{line}</div>
               ))}
             </div>
           </>
@@ -140,9 +138,9 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         {activeRailTab === 'TAPE' && (
           <>
             <div style={{ flexBasis: 0, flexGrow: modeWeights.depth + modeWeights.tape }} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
-              <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center justify-between">
+              <div className="h-[14px] px-[2px] border-b border-[#111] text-[8px] text-[#8cc7f3] flex items-center justify-between">
                 <span>TIME &amp; SALES STREAM</span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-[2px]">
                   {tabButton('DEPTH')}
                   {tabButton('TAPE')}
                   {tabButton('ALERTS')}
@@ -151,24 +149,22 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
               {tapeRows.map((r) => {
                 const pulse = state.delta.tapePulseIds.includes(r.id);
                 return (
-                  <div key={r.id} className={`text-[9px] px-1 py-0.5 border-b border-[#1a1a1a] grid grid-cols-[1fr_1fr_auto_auto] tabular-nums ${pulse ? 'bg-[#1a2c40]' : ''}`}>
+                  <div key={r.id} className={`text-[8px] px-[2px] py-[1px] border-b border-[#111] grid grid-cols-[auto_1fr] gap-[2px] tabular-nums ${pulse ? 'bg-[#1a2c40]' : ''}`}>
                     <span className="text-[#8aa2bf]">{r.time}</span>
-                    <span className={r.side === 'BUY' ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}>{fmt(r.price, 2)}</span>
-                    <span className={r.isSweep ? 'text-[#ffaf66] font-bold' : 'text-[#d8e4f4]'}>{r.size}</span>
-                    <span className={r.side === 'BUY' ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}>{r.side}</span>
+                    <span className={`text-right ${r.side === 'BUY' ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}`}>{fmt(r.price, 2)} | {r.size} | {r.side}{r.isSweep ? ' | SWP' : ''}</span>
                   </div>
                 );
               })}
             </div>
             <div style={sectionStyle('alerts')} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
-              <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center">ALERTS</div>
+              <div className="h-[14px] px-[2px] border-b border-[#111] text-[8px] text-[#8cc7f3] flex items-center">ALERTS</div>
               {state.alerts.map((a) => (
-                <div key={a} className={`w-full text-left text-[9px] px-1 py-0.5 border-b border-[#1a1a1a] text-[#dbe7f7] ${a.includes('[ACTIVE]') || a.includes('[SWEEP]') ? 'bg-[#2f1830] text-[#ffd5ff]' : ''}`}>
+                <div key={a} className={`w-full text-left text-[8px] px-[2px] py-[1px] border-b border-[#111] text-[#dbe7f7] ${a.includes('[ACTIVE]') || a.includes('[SWEEP]') ? 'bg-[#2f1830] text-[#ffd5ff]' : ''}`}>
                   {a}
                 </div>
               ))}
               {backgroundLines.map((line, i) => (
-                <div key={`bgt-${line}-${i}`} className="text-[8px] px-1 py-0.5 border-b border-[#1a1a1a] text-[#6e85a3]">{line}</div>
+                <div key={`bgt-${line}-${i}`} className="text-[7px] px-[2px] py-[1px] border-b border-[#111] text-[#6e85a3]">{line}</div>
               ))}
             </div>
           </>
@@ -176,31 +172,30 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         {activeRailTab === 'ALERTS' && (
           <>
             <div style={{ flexBasis: 0, flexGrow: modeWeights.tape + modeWeights.alerts }} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
-              <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center justify-between">
+              <div className="h-[14px] px-[2px] border-b border-[#111] text-[8px] text-[#8cc7f3] flex items-center justify-between">
                 <span>ALERTS CONSOLE</span>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-[2px]">
                   {tabButton('DEPTH')}
                   {tabButton('TAPE')}
                   {tabButton('ALERTS')}
                 </div>
               </div>
               {[...state.alerts, ...state.systemFeed, ...backgroundLines].map((a, i) => (
-                <div key={`${a}-${i}`} className={`w-full text-left text-[9px] px-1 py-0.5 border-b border-[#1a1a1a] ${a.includes('REJECTED') ? 'text-[#ff7ca3]' : a.includes('FUNCTION CONTEXT') ? 'text-[#63c8ff]' : 'text-[#dbe7f7]'}`}>
+                <div key={`${a}-${i}`} className={`w-full text-left text-[8px] px-[2px] py-[1px] border-b border-[#111] ${a.includes('REJECTED') ? 'text-[#ff7ca3]' : a.includes('FUNCTION CONTEXT') ? 'text-[#63c8ff]' : 'text-[#dbe7f7]'}`}>
                   {a}
                 </div>
               ))}
             </div>
             <div style={sectionStyle('depth')} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
-              <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center">RECENT PRINTS</div>
+              <div className="h-[14px] px-[2px] border-b border-[#111] text-[8px] text-[#8cc7f3] flex items-center">RECENT PRINTS</div>
               {tapeRows.map((r) => (
-                <div key={r.id} className="text-[9px] px-1 py-0.5 border-b border-[#1a1a1a] grid grid-cols-[1fr_1fr_auto] tabular-nums">
+                <div key={r.id} className="text-[8px] px-[2px] py-[1px] border-b border-[#111] grid grid-cols-[auto_1fr] gap-[2px] tabular-nums">
                   <span className="text-[#8aa2bf]">{r.time}</span>
-                  <span className={r.side === 'BUY' ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}>{fmt(r.price, 2)}</span>
-                  <span className="text-right text-[#d8e4f4]">{r.size}</span>
+                  <span className={`text-right ${r.side === 'BUY' ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}`}>{fmt(r.price, 2)} | {r.size}</span>
                 </div>
               ))}
               {backgroundLines.map((line, i) => (
-                <div key={`bgp-${line}-${i}`} className="text-[8px] px-1 py-0.5 border-b border-[#1a1a1a] text-[#6e85a3]">{line}</div>
+                <div key={`bgp-${line}-${i}`} className="text-[7px] px-[2px] py-[1px] border-b border-[#111] text-[#6e85a3]">{line}</div>
               ))}
             </div>
           </>

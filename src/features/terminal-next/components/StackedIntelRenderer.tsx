@@ -35,28 +35,28 @@ const EMPTY_BLOCK_ROWS: StackedIntelRow[] = [
 
 export function StackedIntelRenderer({ blocks, className }: { blocks: StackBlock[]; className?: string }) {
   return (
-    <div className={`flex flex-col overflow-y-auto h-full min-h-0 custom-scrollbar ${className ?? ''}`}>
+    <div className={`flex flex-col flex-1 w-full min-w-0 min-h-0 overflow-y-auto custom-scrollbar font-mono tracking-tight uppercase tabular-nums ${className ?? ''}`}>
       {blocks.map((block) => (
         <div key={block.id} className="border-b border-[#1a1a1a]">
-          <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center justify-between">
-            <span>{block.title}</span>
+          <div className="h-[14px] px-[2px] border-b border-[#111] text-[8px] text-[#9bc3e8] flex items-center justify-between leading-none">
+            <span className="truncate">{block.title}</span>
             {block.provenance ? (
-              <span className="text-[8px] text-[#f4cf76]">{block.provenance.label}</span>
+              <span className="text-[7px] text-[#f4cf76] whitespace-nowrap">{block.provenance.label}</span>
             ) : null}
           </div>
           {block.render ? (
             block.render()
           ) : (
-            <>
+            <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-px bg-[#090f18]">
               {((block.rows?.length ?? 0) > 0 ? block.rows! : EMPTY_BLOCK_ROWS).map((row, idx) => (
-                <div key={`${block.id}-${idx}-${row.label}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_1fr] gap-1">
-                  <span className="text-[#93a9c6] truncate">{row.label}</span>
+                <div key={`${block.id}-${idx}-${row.label}`} className="text-[8px] px-[2px] py-[1px] border-b border-[#111] grid grid-cols-[auto_1fr] gap-[2px] leading-none">
+                  <span className="text-[#93a9c6] whitespace-nowrap">{row.label}</span>
                   <span className={`${toneClass[row.tone ?? 'neutral']} truncate text-right font-bold`}>{row.value}</span>
                 </div>
               ))}
-            </>
+            </div>
           )}
-          {block.reason ? <div className="text-[8px] px-1 py-[1px] text-[#7fa4c8]">CHAIN: {block.reason}</div> : null}
+          {block.reason ? <div className="text-[7px] px-[2px] py-[1px] text-[#7fa4c8] border-t border-[#111]">CHAIN: {block.reason}</div> : null}
         </div>
       ))}
     </div>

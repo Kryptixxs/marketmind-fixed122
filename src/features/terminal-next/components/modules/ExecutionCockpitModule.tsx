@@ -50,21 +50,21 @@ export function ExecutionCockpitModule() {
   };
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col">
-      <div className={`h-5 px-1 border-y ${modeStripClass} flex items-center gap-1 text-[9px]`}>
-        <span className="text-[#f4cf76] font-bold mr-1">EXEC SUBMODULE</span>
+    <div className="flex-1 w-full min-w-0 min-h-0 flex flex-col font-mono tracking-tight uppercase">
+      <div className={`h-[14px] px-[2px] border-y ${modeStripClass} flex items-center gap-[2px] text-[8px]`}>
+        <span className="text-[#f4cf76] font-bold mr-[2px]">EXEC SUBMODULE</span>
         {EXEC_TABS.map((tab) => (
           <button
             key={tab}
             onClick={() => activate(tab)}
-            className={`px-1 border ${selected === tab ? 'border-[#95ca2d] bg-[#2b3a07] text-[#efffc7]' : 'border-[#4f3a18] bg-[#18130a] text-[#d8be8d]'}`}
+            className={`px-[2px] border text-[7px] leading-none ${selected === tab ? 'border-[#95ca2d] bg-[#2b3a07] text-[#efffc7]' : 'border-[#4f3a18] bg-[#18130a] text-[#d8be8d]'}`}
           >
             {tab}
           </button>
         ))}
       </div>
       <div key={`exec-${selected.toLowerCase()}`} className="flex-1 min-h-0 flex gap-px bg-black">
-        <aside className="w-64 shrink-0 min-h-0 flex flex-col gap-px">
+        <aside className="flex-[1.1] min-w-0 min-h-0 flex flex-col gap-px">
           <div className="flex-1 min-h-0">
             <MonitorPanel />
           </div>
@@ -72,10 +72,10 @@ export function ExecutionCockpitModule() {
             <CrossAssetMatrixPanel />
           </div>
         </aside>
-        <div className="flex-1 min-w-0 min-h-0 flex flex-col">
+        <div className="flex-[2.2] min-w-0 min-h-0 flex flex-col">
           <ExecCenterStack execMode={selected} />
         </div>
-        <aside className="w-[34rem] shrink-0 min-h-0 flex flex-col gap-px">
+        <aside className="flex-[1.7] min-w-0 min-h-0 flex flex-col gap-px">
           <div className="flex-[1.3] min-h-0">
             <RightRailPanel execMode={selected} />
           </div>

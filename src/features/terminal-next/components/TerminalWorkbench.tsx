@@ -16,7 +16,7 @@ function TerminalWorkbenchBody() {
   const { state } = useTerminalStore();
 
   return (
-    <div className="h-screen w-full min-h-0 flex flex-col overflow-hidden bg-black text-white font-mono bbg-hard-frame">
+    <div className="h-screen w-full min-h-0 flex flex-col overflow-hidden bg-black text-white font-mono tracking-tight uppercase tabular-nums bbg-hard-frame">
       <Suspense fallback={null}>
         <RouteSync />
       </Suspense>
@@ -25,7 +25,7 @@ function TerminalWorkbenchBody() {
       <CommandInputBar />
       <DeskStatusStrip />
       <FunctionHierarchyStrip />
-      <div className="flex-1 min-h-0 relative overflow-hidden bg-black terminal-grid-bg">
+      <div className="flex-1 w-full min-w-0 min-h-0 relative overflow-hidden bg-black terminal-grid-bg">
         <div className="relative z-10 min-h-0 h-full flex flex-col">
           <FunctionRouter activeFunction={state.activeFunction} />
         </div>

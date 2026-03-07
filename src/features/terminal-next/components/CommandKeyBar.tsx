@@ -27,7 +27,7 @@ export function CommandKeyBar() {
   };
 
   return (
-    <div className="h-7 border-b border-[#1a1a1a] bg-black px-1 flex items-center gap-1 overflow-x-auto custom-scrollbar">
+    <div className="h-[16px] border-b border-[#111] bg-black px-[2px] flex items-center gap-[2px] overflow-x-auto custom-scrollbar font-mono tracking-tight uppercase tabular-nums">
       {KEYBAR.map((k) => (
         <button
           key={k.label}
@@ -38,7 +38,7 @@ export function CommandKeyBar() {
               applyAsset(k.label);
             }
           }}
-          className={`h-5 px-1.5 border text-[9px] font-bold tracking-wide shrink-0 active:translate-y-px ${
+          className={`h-[12px] px-[2px] border text-[7px] font-bold tracking-tight leading-none shrink-0 active:translate-y-px ${
             k.role === 'go'
               ? 'bg-[#0d5e2a] border-[#2fd370] text-[#dbffe7]'
               : k.role === 'danger'
@@ -62,7 +62,7 @@ export function CommandKeyBar() {
               dispatch({ type: 'EXECUTE_COMMAND' });
             }
           }}
-          className={`h-5 px-1 border text-[9px] font-bold shrink-0 active:translate-y-px ${
+          className={`h-[12px] px-[2px] border text-[7px] font-bold leading-none shrink-0 active:translate-y-px ${
             state.activeFunction === f
               ? 'bg-[#0d1f0d] border-green-600 text-green-400'
               : 'bg-[#0a0a0a] border-[#262626] text-gray-400'
@@ -99,7 +99,7 @@ export function CommandKeyBar() {
             if (k === 'NEWS') dispatch({ type: 'SET_FEED_TAB', payload: 'NEWS' });
             if (k === 'SYSTEM') dispatch({ type: 'SET_FEED_TAB', payload: 'SYSTEM' });
           }}
-          className={`h-5 px-1 border text-[9px] font-bold shrink-0 active:translate-y-px ${
+          className={`h-[12px] px-[2px] border text-[7px] font-bold leading-none shrink-0 active:translate-y-px ${
             (k === 'DEPTH' && state.rightRailTab === 'DEPTH')
             || (k === 'ESC' && state.activeFunction === 'EXEC' && state.activeSubTab === 'ESC')
             || (k === 'TAPE' && state.rightRailTab === 'TAPE')

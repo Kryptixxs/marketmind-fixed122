@@ -28,7 +28,7 @@ export function EarningsHistoryChart({ data }: { data: HistoricalEarningsRow[] }
                   backgroundColor: beat ? '#4ce0a5' : r.surprise != null && r.surprise < 0 ? '#ff7ca3' : '#63c8ff',
                 }}
               />
-              <span className="text-[6px] text-gray-400 truncate max-w-full">{labels[i]}</span>
+              <span className="text-[6px] text-gray-400 truncate">{labels[i]}</span>
             </div>
           );
         })}

@@ -19,37 +19,36 @@ export function CommandInputBar() {
   };
 
   return (
-    <div className="border-b border-[#1a1a1a] bg-black px-1 pt-[2px] pb-[1px] relative">
-      <div className="h-6 flex items-center gap-1">
-        <span className="text-[10px] text-[#f4cf76] font-bold">{state.security.ticker} {state.security.market}</span>
-        <span className="text-[10px] text-[#d8be8d]">&lt;{state.security.assetClass}&gt;</span>
-        <span className="text-[#7a5a21]">{'>'}</span>
+    <div className="border-b border-[#111] bg-black px-[2px] pt-[1px] pb-[1px] relative font-mono tracking-tight uppercase tabular-nums">
+      <div className="h-[14px] flex items-center gap-[2px]">
+        <span className="text-[8px] text-[#f4cf76] font-bold">{state.security.ticker} {state.security.market}</span>
+        <span className="text-[8px] text-[#d8be8d]">&lt;{state.security.assetClass}&gt;</span>
+        <span className="text-[7px] text-[#7a5a21]">{'>'}</span>
         <input
           id="terminal-command-input"
           value={state.commandInput}
           onChange={(e) => dispatch({ type: 'SET_COMMAND', payload: e.target.value })}
           onKeyDown={(e) => e.key === 'Enter' && dispatch({ type: 'EXECUTE_COMMAND' })}
           spellCheck={false}
-          className="flex-1 h-5 border border-[#262626] bg-[#0a0a0a] px-1 text-[10px] text-gray-200 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
+          className="flex-1 h-[12px] border border-[#262626] bg-[#0a0a0a] px-[2px] text-[8px] text-gray-200 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
         />
         <button
           onClick={() => dispatch({ type: 'EXECUTE_COMMAND' })}
-          className="h-5 px-1.5 border border-[#2fd370] bg-[#0f6730] text-[#dbffe7] text-[9px] font-bold active:translate-y-px"
+          className="h-[12px] px-[2px] border border-[#2fd370] bg-[#0f6730] text-[#dbffe7] text-[7px] font-bold leading-none active:translate-y-px"
         >
           GO
         </button>
       </div>
       {suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-40 border-x border-b border-[#1a1a1a] bg-[#0a0a0a] overflow-y-auto custom-scrollbar">
+        <div className="absolute left-0 right-0 top-full z-40 border-x border-b border-[#111] bg-[#0a0a0a] overflow-y-auto custom-scrollbar">
           {suggestions.map((s) => (
             <button
               key={s.symbol}
               onClick={() => applySuggestion(s.symbol)}
-              className="w-full px-1 py-[2px] border-t border-[#1a1a1a] text-left text-[9px] grid grid-cols-[1fr_auto_auto] gap-1 hover:bg-[#0f0f0f]"
+              className="w-full px-[2px] py-[1px] border-t border-[#111] text-left text-[8px] grid grid-cols-[auto_1fr] gap-[2px] hover:bg-[#0f0f0f]"
             >
               <span className="text-[#dbe7f7] truncate">{s.symbol}</span>
-              <span className="text-[#9fb4cd] truncate">{s.name}</span>
-              <span className={`font-bold ${s.pct >= 0 ? 'text-green-500' : 'text-red-500'}`}>{s.pct >= 0 ? '+' : ''}{s.pct.toFixed(2)}%</span>
+              <span className={`font-bold text-right ${s.pct >= 0 ? 'text-green-500' : 'text-red-500'}`}>{s.name} | {s.pct >= 0 ? '+' : ''}{s.pct.toFixed(2)}%</span>
             </button>
           ))}
         </div>

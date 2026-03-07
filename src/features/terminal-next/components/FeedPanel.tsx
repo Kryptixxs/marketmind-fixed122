@@ -32,19 +32,19 @@ export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MI
           : 'border-[#2b3f5f] text-[#f4cf76]';
 
   return (
-    <section className="bg-black min-h-0 overflow-hidden flex flex-col">
-      <div className={`h-5 px-1 border-b bg-[#0a0a0a] flex items-center justify-between text-[10px] ${modeHeaderClass}`}>
+    <section className="bg-black min-h-0 overflow-hidden flex flex-col font-mono tracking-tight uppercase tabular-nums">
+      <div className={`h-[14px] px-[2px] border-b border-[#111] bg-[#0a0a0a] flex items-center justify-between text-[8px] ${modeHeaderClass}`}>
         <span className="font-bold">{title}</span>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-[2px]">
           <button
             onClick={() => dispatch({ type: 'SET_FEED_TAB', payload: 'NEWS' })}
-            className={`px-1 border text-[9px] ${state.feedTab === 'NEWS' ? 'border-[#2a7b60] text-[#99f1d6] bg-[#113328]' : 'border-[#263247] text-[#9fb4cd] bg-[#09111c]'}`}
+            className={`px-[2px] border text-[7px] leading-none ${state.feedTab === 'NEWS' ? 'border-[#2a7b60] text-[#99f1d6] bg-[#113328]' : 'border-[#263247] text-[#9fb4cd] bg-[#09111c]'}`}
           >
             NEWS
           </button>
           <button
             onClick={() => dispatch({ type: 'SET_FEED_TAB', payload: 'SYSTEM' })}
-            className={`px-1 border text-[9px] ${state.feedTab === 'SYSTEM' ? 'border-[#2a7b60] text-[#99f1d6] bg-[#113328]' : 'border-[#263247] text-[#9fb4cd] bg-[#09111c]'}`}
+            className={`px-[2px] border text-[7px] leading-none ${state.feedTab === 'SYSTEM' ? 'border-[#2a7b60] text-[#99f1d6] bg-[#113328]' : 'border-[#263247] text-[#9fb4cd] bg-[#09111c]'}`}
           >
             SYSTEM
           </button>
@@ -52,28 +52,34 @@ export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MI
       </div>
       <div className="flex gap-px bg-[#1a1a1a] flex-1 min-h-0">
         <div ref={newsRef} style={laneStyle('news')} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
-          {state.headlines.map((n, i) => (
-            <button
-              key={`${n}-${i}`}
-              onClick={() => dispatch({ type: 'SET_COMMAND', payload: `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''} ${state.security.assetClass} TOP GO` })}
-              className="w-full text-left text-[9px] px-1 py-[1px] border-b border-[#1a1a1a]"
-            >
-              <span className="text-[#f4cf76] mr-1">BN {680 + i}</span>
-              <span className="text-[#dbe7f7]">{n}</span>
-            </button>
-          ))}
+          <div className="grid grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3 gap-px bg-[#090f18]">
+            {state.headlines.map((n, i) => (
+              <button
+                key={`${n}-${i}`}
+                onClick={() => dispatch({ type: 'SET_COMMAND', payload: `${state.security.ticker}${state.security.market ? ` ${state.security.market}` : ''} ${state.security.assetClass} TOP GO` })}
+                className="w-full text-left text-[8px] px-[2px] py-[1px] border-b border-[#111]"
+              >
+                <span className="text-[#f4cf76] mr-[2px]">BN{680 + i}</span>
+                <span className="text-[#dbe7f7]">{n}</span>
+              </button>
+            ))}
+          </div>
         </div>
         <div ref={centerRef} style={laneStyle('system')} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
-          {(state.feedTab === 'SYSTEM' ? state.systemFeed : state.headlines).map((line, i) => (
-            <div key={`${line}-${i}`} className="text-[9px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#aebed2]">{line}</div>
-          ))}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-px bg-[#090f18]">
+            {(state.feedTab === 'SYSTEM' ? state.systemFeed : state.headlines).map((line, i) => (
+              <div key={`${line}-${i}`} className="text-[8px] px-[2px] py-[1px] border-b border-[#111] text-[#aebed2]">{line}</div>
+            ))}
+          </div>
         </div>
         <div ref={alertRef} style={laneStyle('alerts')} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
-          {state.alerts.map((line, i) => (
-            <div key={`${line}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#e3b4ff]">
-              {line}
-            </div>
-          ))}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-px bg-[#090f18]">
+            {state.alerts.map((line, i) => (
+              <div key={`${line}-${i}`} className="text-[7px] px-[2px] py-[1px] border-b border-[#111] text-[#e3b4ff]">
+                {line}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </section>
