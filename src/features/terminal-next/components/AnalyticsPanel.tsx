@@ -94,8 +94,8 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
   const flashClass = state.delta.priceFlash[active?.symbol ?? ''] === 'up' ? 'text-[#7dffcc]' : state.delta.priceFlash[active?.symbol ?? ''] === 'down' ? 'text-[#ff9bbb]' : 'text-[#edf4fc]';
 
   return (
-    <section className="bg-[#070e18] min-h-0 overflow-hidden flex flex-col">
-      <div className={`h-5 px-1 border-b bg-[#0b1320] flex items-center justify-between text-[10px] ${modeHeaderClass}`}>
+    <section className="bg-black min-h-0 overflow-hidden flex flex-col">
+      <div className={`h-5 px-1 border-b bg-[#0a0a0a] flex items-center justify-between text-[10px] ${modeHeaderClass}`}>
         <span className="font-bold">{state.security.ticker} {state.security.market} &lt;{state.activeFunction}&gt; {moduleDef.title.toUpperCase()} [{execMode}]</span>
         <div className="flex items-center gap-1">
           <span className={`text-[9px] ${moduleDef.isDeferred ? 'text-[#ffb2c8]' : 'text-[#7f99ba]'}`}>{moduleDef.track === 'A' ? 'TRACK-A' : 'TRACK-B'}</span>
@@ -103,7 +103,7 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
             <button
               key={tab}
               onClick={() => dispatch({ type: 'SET_ANALYTICS_TAB', payload: tab })}
-              className={`px-1 border text-[9px] ${effectiveTab === tab ? 'border-[#2a7b60] text-[#99f1d6] bg-[#113328]' : 'border-[#263247] text-[#9fb4cd] bg-[#09111c]'}`}
+              className={`px-1 border text-[9px] ${effectiveTab === tab ? 'border-[#2a7b60] text-[#99f1d6] bg-[#113328]' : 'border-[#263247] text-[#9fb4cd] bg-[#0a0a0a]'}`}
             >
               {tab}
             </button>
@@ -111,7 +111,7 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         </div>
       </div>
 
-      <div className="h-11 grid grid-cols-4 gap-px bg-[#1a2433] text-[10px]">
+      <div className="h-11 grid grid-cols-4 gap-px bg-[#1a1a1a] text-[10px]">
         <div className="bg-[#08111d] px-1 py-0.5">
           <div className="text-[#6f89aa]">Last</div>
           <div className={`font-bold text-[13px] tabular-nums ${flashClass}`}>{fmt(active?.last ?? 0, active && active.last < 10 ? 4 : 2)}</div>
@@ -130,7 +130,7 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         </div>
       </div>
 
-      <div className={`grid ${splitClass} gap-px bg-[#1a2433] flex-1 min-h-0`}>
+      <div className={`grid ${splitClass} gap-px bg-[#1a1a1a] flex-1 min-h-0`}>
         <div className={`${modePanelBand} min-h-0 grid ${leftRowsClass}`}>
           <div className="min-h-0 flex flex-col">
           <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">INTRADAY (CANDLE + VWAP + MA + VOL)</div>
@@ -185,14 +185,20 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
           </div>
         </div>
           <div className="bg-[#08111d] min-h-0 overflow-y-auto custom-scrollbar">
-            <div className="h-4 px-1 border-b border-[#142034] text-[9px] text-[#9bc3e8] flex items-center">RISK SNAPSHOT</div>
-            <div className="grid grid-cols-3 gap-px bg-[#142034] text-[9px]">
-              <div className="bg-[#09111c] px-1 py-[2px]"><div className="text-[#7d91ac]">RV</div><div className="text-[#e7f1ff] font-bold">{state.risk.realizedVol}%</div></div>
-              <div className="bg-[#09111c] px-1 py-[2px]"><div className="text-[#7d91ac]">IVx</div><div className="text-[#e7f1ff] font-bold">{state.risk.impliedVolProxy}%</div></div>
-              <div className="bg-[#09111c] px-1 py-[2px]"><div className="text-[#7d91ac]">BETA</div><div className="text-[#e7f1ff] font-bold">{state.risk.beta}</div></div>
-              <div className="bg-[#09111c] px-1 py-[2px]"><div className="text-[#7d91ac]">CORR</div><div className="text-[#e7f1ff] font-bold">{state.risk.corrToBenchmark}</div></div>
-              <div className="bg-[#09111c] px-1 py-[2px]"><div className="text-[#7d91ac]">OFI</div><div className="text-[#e7f1ff] font-bold">{(state.microstructure.orderFlowImbalance * 100).toFixed(1)}%</div></div>
-              <div className="bg-[#09111c] px-1 py-[2px]"><div className="text-[#7d91ac]">LIQ</div><div className="text-[#e7f1ff] font-bold">{active?.liquidityScore ?? 0}</div></div>
+            <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">RISK SNAPSHOT</div>
+            <div className="grid grid-cols-4 gap-px bg-[#142034] text-[9px]">
+              <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">RV</div><div className="text-[#e7f1ff] font-bold">{state.risk.realizedVol}%</div></div>
+              <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">IVx</div><div className="text-[#e7f1ff] font-bold">{state.risk.impliedVolProxy}%</div></div>
+              <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">BETA</div><div className="text-[#e7f1ff] font-bold">{state.risk.beta}</div></div>
+              <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">CORR</div><div className="text-[#e7f1ff] font-bold">{state.risk.corrToBenchmark}</div></div>
+              <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">OFI</div><div className="text-[#e7f1ff] font-bold">{(state.microstructure.orderFlowImbalance * 100).toFixed(1)}%</div></div>
+              <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">LIQ</div><div className="text-[#e7f1ff] font-bold">{active?.liquidityScore ?? 0}</div></div>
+              <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">VaR</div><div className="text-[#e7f1ff] font-bold">{fmt(state.risk.intradayVar, 0)}</div></div>
+              <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">Sharpe</div><div className="text-[#e7f1ff] font-bold">{(1.2 + state.risk.beta * 0.3).toFixed(2)}</div></div>
+              <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">Drawdown</div><div className="text-[#e7f1ff] font-bold">{(state.risk.intradayVar * 0.4).toFixed(1)}%</div></div>
+              <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">Gross</div><div className="text-[#e7f1ff] font-bold">{fmt(state.risk.grossExposure, 0)}</div></div>
+              <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">Net</div><div className="text-[#e7f1ff] font-bold">{fmt(state.risk.netExposure, 0)}</div></div>
+              <div className="bg-[#0a0a0a] px-1 py-[2px]"><div className="text-[#7d91ac]">Conc</div><div className="text-[#e7f1ff] font-bold">{state.risk.concentration}%</div></div>
             </div>
           </div>
         </div>
@@ -200,16 +206,16 @@ export function AnalyticsPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
           <div className="min-h-0 overflow-y-auto custom-scrollbar">
             <div className="h-5 px-1 border-b border-[#1a2433] text-[10px] text-[#8cc7f3] flex items-center">ANALYTICS STACK</div>
             {tabRows.map(([k, v]) => (
-              <div key={k} className="text-[10px] px-1 py-0.5 border-b border-[#142034] flex items-center justify-between">
+              <div key={k} className="text-[10px] px-1 py-0.5 border-b border-[#1a1a1a] flex items-center justify-between">
                 <span className="text-[#93a9c6]">{k}</span>
                 <span className="text-[#e0eaf7] font-bold">{v}</span>
               </div>
             ))}
           </div>
           <div className="min-h-0 overflow-y-auto custom-scrollbar">
-            <div className="h-4 px-1 border-b border-[#142034] text-[9px] text-[#9bc3e8] flex items-center">EXEC FLOW</div>
-            {state.executionEvents.slice(0, 10).map((e) => (
-              <div key={e.id} className="text-[9px] px-1 py-[1px] border-b border-[#142034] grid grid-cols-[1fr_.9fr_auto]">
+            <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">EXEC FLOW</div>
+            {state.executionEvents.map((e) => (
+              <div key={e.id} className="text-[9px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_.9fr_auto]">
                 <span className="text-[#c8d8ee] truncate">{e.symbol}</span>
                 <span className="text-[#9bb2cc]">{e.status}</span>
                 <span className="text-right text-[#ffd98f]">{e.fillQty}@{fmt(e.fillPrice, 2)}</span>

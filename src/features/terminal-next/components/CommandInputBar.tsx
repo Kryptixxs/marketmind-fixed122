@@ -20,7 +20,7 @@ export function CommandInputBar() {
   };
 
   return (
-    <div className="border-b bbg-hard-divider bg-[#050a14] px-1 pt-[2px] pb-[1px] relative">
+    <div className="border-b border-[#1a1a1a] bg-black px-1 pt-[2px] pb-[1px] relative">
       <div className="h-6 flex items-center gap-1">
         <span className="text-[10px] text-[#f4cf76] font-bold">{state.security.ticker} {state.security.market}</span>
         <span className="text-[10px] text-[#d8be8d]">&lt;{state.security.assetClass}&gt;</span>
@@ -31,7 +31,7 @@ export function CommandInputBar() {
           onChange={(e) => dispatch({ type: 'SET_COMMAND', payload: e.target.value })}
           onKeyDown={(e) => e.key === 'Enter' && dispatch({ type: 'EXECUTE_COMMAND' })}
           spellCheck={false}
-          className="flex-1 h-5 border border-[#7a5a21] bg-[#090d14] px-1 text-[10px] text-[#ffd98f] outline-none focus:border-[#f4cf76] focus:bbg-command-focus"
+          className="flex-1 h-5 border border-[#262626] bg-[#0a0a0a] px-1 text-[10px] text-gray-200 outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500"
         />
         <button
           onClick={() => dispatch({ type: 'EXECUTE_COMMAND' })}
@@ -41,16 +41,16 @@ export function CommandInputBar() {
         </button>
       </div>
       {suggestions.length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-40 border-x border-b border-[#2a2416] bg-[#07101b] max-h-32 overflow-y-auto custom-scrollbar">
+        <div className="absolute left-0 right-0 top-full z-40 border-x border-b border-[#1a1a1a] bg-[#0a0a0a] max-h-32 overflow-y-auto custom-scrollbar">
           {suggestions.map((s) => (
             <button
               key={s.symbol}
               onClick={() => applySuggestion(s.symbol)}
-              className="w-full px-1 py-[2px] border-t border-[#142034] text-left text-[9px] grid grid-cols-[1fr_auto_auto] gap-1 hover:bg-[#102034]"
+              className="w-full px-1 py-[2px] border-t border-[#1a1a1a] text-left text-[9px] grid grid-cols-[1fr_auto_auto] gap-1 hover:bg-[#0f0f0f]"
             >
               <span className="text-[#dbe7f7] truncate">{s.symbol}</span>
               <span className="text-[#9fb4cd] truncate">{s.name}</span>
-              <span className={`font-bold ${s.pct >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}`}>{s.pct >= 0 ? '+' : ''}{s.pct.toFixed(2)}%</span>
+              <span className={`font-bold ${s.pct >= 0 ? 'text-green-500' : 'text-red-500'}`}>{s.pct >= 0 ? '+' : ''}{s.pct.toFixed(2)}%</span>
             </button>
           ))}
         </div>

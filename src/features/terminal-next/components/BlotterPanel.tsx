@@ -8,8 +8,8 @@ export function BlotterPanel() {
   const { state, dispatch } = useTerminalStore();
 
   return (
-    <section className="bg-[#070e18] min-h-0 overflow-hidden flex flex-col">
-      <div className="h-5 px-1 border-b border-[#1a2433] bg-[#0b1320] flex items-center justify-between text-[10px]">
+    <section className="bg-black min-h-0 overflow-hidden flex flex-col">
+      <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] flex items-center justify-between text-[10px]">
         <span className="text-[#9bc3e8] font-bold">EXECUTION BLOTTER</span>
         <button
           onClick={() => dispatch({ type: 'SET_FUNCTION', payload: 'YAS' })}
@@ -33,7 +33,7 @@ export function BlotterPanel() {
           </thead>
           <tbody>
             {state.blotter.map((r) => (
-              <tr key={r.id} className="border-t border-[#142034]">
+              <tr key={r.id} className="border-t border-[#1a1a1a]">
                 <td className="px-1 py-[1px] text-[#dbe7f7]">{r.symbol}</td>
                 <td className={`px-1 py-[1px] font-bold ${r.side === 'BUY' ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}`}>{r.side}</td>
                 <td className="px-1 py-[1px] text-right text-[#edf3fb]">{r.qty}</td>

@@ -4,6 +4,18 @@ import { useEffect, useRef } from 'react';
 import * as LightweightCharts from 'lightweight-charts';
 import { ColorType, CrosshairMode, IChartApi, ISeriesApi } from 'lightweight-charts';
 
+/** Theme colors matching globals.css (background, surface, border, positive, negative, cyan, text-tertiary) */
+const THEME = {
+  background: '#000205',
+  surface: '#070d17',
+  border: '#2b3f5f',
+  borderMuted: 'rgba(43, 63, 95, 0.4)',
+  text: '#7a90ac',
+  positive: '#4ce0a5',
+  negative: '#ff7ca3',
+  cyan: '#63c8ff',
+};
+
 export interface ChartData {
   time: number;
   open: number;
@@ -14,10 +26,14 @@ export interface ChartData {
 
 export function TradingChart({
   data,
-  symbol = ''
+  symbol = '',
+  height,
+  compact = false,
 }: {
   data: ChartData[];
   symbol?: string;
+  height?: number;
+  compact?: boolean;
 }) {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -31,49 +47,47 @@ export function TradingChart({
     const chart = LightweightCharts.createChart(chartContainerRef.current, {
       autoSize: true,
       layout: {
-        background: { type: ColorType.Solid, color: '#060a13' },
-        textColor: '#475569',
+        background: { type: ColorType.Solid, color: THEME.background },
+        textColor: THEME.text,
         fontFamily: 'JetBrains Mono, monospace',
-        fontSize: 10,
+        fontSize: compact ? 9 : 10,
       },
-      localization: {
-        locale: navigator.language,
-      },
+      localization: { locale: navigator.language },
       grid: {
-        vertLines: { color: 'rgba(30, 41, 59, 0.4)' },
-        horzLines: { color: 'rgba(30, 41, 59, 0.4)' },
+        vertLines: { color: THEME.borderMuted },
+        horzLines: { color: THEME.borderMuted },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { width: 1, color: '#334155', style: 3, labelBackgroundColor: '#131c2e' },
-        horzLine: { width: 1, color: '#334155', style: 3, labelBackgroundColor: '#131c2e' },
+        vertLine: { width: 1, color: THEME.border, style: 3, labelBackgroundColor: THEME.surface },
+        horzLine: { width: 1, color: THEME.border, style: 3, labelBackgroundColor: THEME.surface },
       },
       rightPriceScale: {
-        borderColor: '#1e293b',
+        borderColor: THEME.border,
         autoScale: true,
         alignLabels: true,
       },
       timeScale: {
-        borderColor: '#1e293b',
+        borderColor: THEME.border,
         timeVisible: true,
         secondsVisible: false,
-        barSpacing: 10,
+        barSpacing: compact ? 6 : 10,
       },
     });
 
     const candlestickSeries = chart.addCandlestickSeries({
-      upColor: '#10b981',
-      borderUpColor: '#10b981',
-      wickUpColor: '#10b981',
-      downColor: '#ef4444',
-      borderDownColor: '#ef4444',
-      wickDownColor: '#ef4444',
+      upColor: THEME.positive,
+      borderUpColor: THEME.positive,
+      wickUpColor: THEME.positive,
+      downColor: THEME.negative,
+      borderDownColor: THEME.negative,
+      wickDownColor: THEME.negative,
       borderVisible: true,
       wickVisible: true,
     });
 
     const lineSeries = chart.addLineSeries({
-      color: '#22d3ee',
+      color: THEME.cyan,
       lineWidth: 2,
       crosshairMarkerVisible: false,
       priceLineVisible: false,
@@ -116,5 +130,12 @@ export function TradingChart({
     lastDataRef.current = unique;
   }, [data]);
 
-  return <div ref={chartContainerRef} className="w-full h-full" />;
+  const style = height != null ? { height: `${height}px` } : undefined;
+  return (
+    <div
+      ref={chartContainerRef}
+      className="w-full"
+      style={style}
+    />
+  );
 }

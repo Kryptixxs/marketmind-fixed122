@@ -7,7 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "clean": "node -e \"require('fs').rmSync('.next',{ recursive: true, force: true })\""
+    "clean": "node -e \"require('fs').rmSync('.next',{ recursive: true, force: true })\"",
+    "seed:intel": "npx tsx scripts/seed-intel-data.ts",
+    "seed:intel": "npx tsx scripts/seed-intel-data.ts",
+    "seed:intel": "npx tsx scripts/seed-intel-data.ts",
+    "seed:intel": "npx tsx scripts/seed-intel-data.ts",
+    "seed:intel": "npx tsx scripts/seed-intel-data.ts",
+    "seed:intel": "npx tsx scripts/seed-intel-data.ts",
+    "seed:intel": "npx tsx scripts/seed-intel-data.ts"
   },
   "dependencies": {
     "@google/genai": "^1.17.0",

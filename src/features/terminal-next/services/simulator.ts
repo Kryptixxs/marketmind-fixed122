@@ -350,7 +350,7 @@ export function buildOrderBook(price: number, tick: number, seed: number): Order
   const step = price > 1000 ? 0.5 : price > 100 ? 0.05 : 0.01;
   let runningBid = 0;
   let runningAsk = 0;
-  return Array.from({ length: 22 }, (_, i) => {
+  return Array.from({ length: 32 }, (_, i) => {
     const bias = Math.sin(tick * 0.18) > 0 ? 1.08 : 0.92;
     const n = mulberry32(seed + tick * 199 + i * 17)();
     const bidSize = Math.round((95 + Math.abs(Math.sin((tick + i) * 0.27)) * 1500) * bias * (0.9 + n * 0.25));
@@ -376,7 +376,7 @@ export function buildOrderBook(price: number, tick: number, seed: number): Order
 export function buildTape(book: OrderBookLevel[], hhmmss: string, tick: number, seed: number): TapePrint[] {
   const prints: TapePrint[] = [];
   const rand = mulberry32(seed + tick * 4099);
-  const printCount = 14 + Math.floor(rand() * 8);
+  const printCount = 28 + Math.floor(rand() * 14);
   for (let i = 0; i < printCount; i += 1) {
     const level = book[i % Math.min(8, book.length)];
     const buyBias = Math.sin(tick * 0.16) > 0;
@@ -456,7 +456,7 @@ export function buildBarsForSymbol(existing: IntradayBar[] | undefined, quote: Q
 
 export function buildBlotter(quotes: Quote[], previous: BlotterRow[] | undefined, tape: TapePrint[], tick: number): BlotterRow[] {
   const prevMap = new Map((previous ?? []).map((r) => [r.symbol, r]));
-  return quotes.slice(0, 18).map((q, i) => {
+  return quotes.slice(0, 32).map((q, i) => {
     const side: 'BUY' | 'SELL' = i % 2 === 0 ? 'BUY' : 'SELL';
     const qty = 50 + i * 25;
     const prior = prevMap.get(q.symbol);
@@ -497,12 +497,12 @@ export function buildExecutionEvents(blotter: BlotterRow[], previous: BlotterRow
       });
     }
   }
-  return events.slice(0, 12);
+  return events.slice(0, 24);
 }
 
 export function rotateHeadlines(tick: number): string[] {
   const start = tick % HEADLINES.length;
-  return Array.from({ length: 28 }, (_, i) => HEADLINES[(start + i) % HEADLINES.length]);
+  return Array.from({ length: 48 }, (_, i) => HEADLINES[(start + i) % HEADLINES.length]);
 }
 
 export function activeAlerts(tick: number, sweepActive: boolean): string[] {
@@ -544,14 +544,14 @@ export function buildMicrostructure(orderBook: OrderBookLevel[], tape: TapePrint
 }
 
 export function functionDeck(functionCode: FunctionCode, risk: TerminalState['risk'], micro: MicrostructureStats): Array<[string, string]> {
-  if (functionCode === 'DES') return [['Sector', 'Technology'], ['MktCap', '$3.1T'], ['52W', '144.8 - 213.2'], ['Beta', `${risk.beta.toFixed(2)}`], ['RevTTM', '$389.5B']];
-  if (functionCode === 'FA') return [['GrossMgn', '45.6%'], ['OpMgn', '30.3%'], ['ROE', '152.7%'], ['Debt/EBITDA', '1.8x'], ['FCFYield', '3.6%']];
-  if (functionCode === 'WEI') return [['RV', `${risk.realizedVol}%`], ['IVx', `${risk.impliedVolProxy}%`], ['CorrSPX', `${risk.corrToBenchmark}`], ['Spread', `${micro.insideSpreadBps}bp`], ['Regime', risk.regime]];
-  if (functionCode === 'YAS') return [['YTW', '4.91%'], ['Duration', '7.18'], ['Convexity', '0.90'], ['Spread', `${micro.insideSpreadBps}bp`], ['ZSpread', '172 bps']];
-  if (functionCode === 'ECO') return [['CPI', 'Tue 08:30'], ['FOMC', 'Wed 14:00'], ['NFP', 'Fri 08:30'], ['ECB', 'Thu 13:15'], ['BoJ', 'Fri 03:00']];
-  if (functionCode === 'TOP') return [['LeadTheme', 'Rates + Growth'], ['OFI', `${(micro.orderFlowImbalance * 100).toFixed(1)}%`], ['Imbalance', `${(micro.imbalance * 100).toFixed(1)}%`], ['Sweep', micro.sweep.text], ['Regime', risk.regime]];
-  if (functionCode === 'HP') return [['Headline', 'Risk assets firmer'], ['Sentiment', 'Constructive'], ['Catalyst', 'Macro data'], ['Impact', 'Moderate'], ['DeskFocus', 'Index tech']];
-  return [['Query', 'Ticker + topic'], ['Ranking', 'Relevance'], ['Sources', 'Cross-wire'], ['Recency', 'High'], ['Priority', 'Desk']];
+  if (functionCode === 'DES') return [['Sector', 'Technology'], ['MktCap', '$3.1T'], ['52W', '144.8 - 213.2'], ['Beta', `${risk.beta.toFixed(2)}`], ['RevTTM', '$389.5B'], ['Float', '15.6B'], ['Index', 'SPX NDX'], ['Venue', 'NASDAQ']];
+  if (functionCode === 'FA') return [['GrossMgn', '45.6%'], ['OpMgn', '30.3%'], ['ROE', '152.7%'], ['Debt/EBITDA', '1.8x'], ['FCFYield', '3.6%'], ['P/E', '31.2'], ['EV/EBITDA', '22.4'], ['PEG', '1.8']];
+  if (functionCode === 'WEI') return [['RV', `${risk.realizedVol}%`], ['IVx', `${risk.impliedVolProxy}%`], ['CorrSPX', `${risk.corrToBenchmark}`], ['Spread', `${micro.insideSpreadBps}bp`], ['Regime', risk.regime], ['OFI', `${(micro.orderFlowImbalance * 100).toFixed(1)}%`], ['Imb', `${(micro.imbalance * 100).toFixed(1)}%`]];
+  if (functionCode === 'YAS') return [['YTW', '4.91%'], ['Duration', '7.18'], ['Convexity', '0.90'], ['Spread', `${micro.insideSpreadBps}bp`], ['ZSpread', '172 bps'], ['DV01', '$18.3k'], ['OAS', '186 bps']];
+  if (functionCode === 'ECO') return [['CPI', 'Tue 08:30'], ['FOMC', 'Wed 14:00'], ['NFP', 'Fri 08:30'], ['ECB', 'Thu 13:15'], ['BoJ', 'Fri 03:00'], ['Retail', 'Wed 08:30'], ['PMI', 'Mon 09:45']];
+  if (functionCode === 'TOP') return [['LeadTheme', 'Rates + Growth'], ['OFI', `${(micro.orderFlowImbalance * 100).toFixed(1)}%`], ['Imbalance', `${(micro.imbalance * 100).toFixed(1)}%`], ['Sweep', micro.sweep.text], ['Regime', risk.regime], ['Beta', risk.beta.toFixed(2)], ['Corr', risk.corrToBenchmark]];
+  if (functionCode === 'HP') return [['Headline', 'Risk assets firmer'], ['Sentiment', 'Constructive'], ['Catalyst', 'Macro data'], ['Impact', 'Moderate'], ['DeskFocus', 'Index tech'], ['Breadth', '62% adv'], ['Vol', `${risk.realizedVol}%`]];
+  return [['Query', 'Ticker + topic'], ['Ranking', 'Relevance'], ['Sources', 'Cross-wire'], ['Recency', 'High'], ['Priority', 'Desk'], ['OFI', `${(micro.orderFlowImbalance * 100).toFixed(1)}%`]];
 }
 
 export type TickBatch = {

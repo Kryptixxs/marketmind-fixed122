@@ -31,6 +31,9 @@ const SYMBOL_DB: Record<string, SymbolMapping> = {
   QCOM: { yahoo: 'QCOM', finnhub: 'QCOM', assetClass: 'equity', label: 'Qualcomm' },
   AVGO: { yahoo: 'AVGO', finnhub: 'AVGO', assetClass: 'equity', label: 'Broadcom' },
   TXN: { yahoo: 'TXN', finnhub: 'TXN', assetClass: 'equity', label: 'Texas Instruments' },
+  PLTR: { yahoo: 'PLTR', finnhub: 'PLTR', assetClass: 'equity', label: 'Palantir Technologies' },
+  SNOW: { yahoo: 'SNOW', finnhub: 'SNOW', assetClass: 'equity', label: 'Snowflake' },
+  CRM: { yahoo: 'CRM', finnhub: 'CRM', assetClass: 'equity', label: 'Salesforce' },
 
   // Indices
   NAS100: { yahoo: '^NDX', assetClass: 'index', label: 'Nasdaq 100' },

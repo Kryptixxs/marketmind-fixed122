@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { Tick } from '@/features/MarketData/services/marketdata/types';
 import { findSwingPoints, findUnmitigatedFVGs } from '@/lib/tech-math';
+import { PANEL_LIMITS } from '@/lib/panel-limits';
 
 export function ICTPanel({ tick }: { tick?: Tick }) {
   const mathData = useMemo(() => {
@@ -20,13 +21,13 @@ export function ICTPanel({ tick }: { tick?: Tick }) {
     <div className="h-full overflow-y-auto custom-scrollbar p-2 space-y-4">
       <div className="space-y-1">
         <div className="text-[9px] font-bold text-text-tertiary uppercase border-b border-border pb-1 mb-2">Liquidity Zones</div>
-        {mathData.swingHighs.filter(h => !h.mitigated).slice(0, 3).map((h, i) => (
+        {mathData.swingHighs.filter(h => !h.mitigated).slice(0, PANEL_LIMITS.liquidityZones / 2).map((h, i) => (
           <div key={i} className="flex justify-between text-[10px]">
             <span className="text-negative">Buy-Side Liquidity</span>
             <span className="font-mono">{h.price.toFixed(2)}</span>
           </div>
         ))}
-        {mathData.swingLows.filter(l => !l.mitigated).slice(0, 3).map((l, i) => (
+        {mathData.swingLows.filter(l => !l.mitigated).slice(0, PANEL_LIMITS.liquidityZones / 2).map((l, i) => (
           <div key={i} className="flex justify-between text-[10px]">
             <span className="text-positive">Sell-Side Liquidity</span>
             <span className="font-mono">{l.price.toFixed(2)}</span>
@@ -36,7 +37,7 @@ export function ICTPanel({ tick }: { tick?: Tick }) {
 
       <div className="space-y-1">
         <div className="text-[9px] font-bold text-text-tertiary uppercase border-b border-border pb-1 mb-2">Fair Value Gaps</div>
-        {mathData.fvgs.slice(0, 4).map((f, i) => (
+        {mathData.fvgs.slice(0, PANEL_LIMITS.fvgs).map((f, i) => (
           <div key={i} className="flex justify-between text-[10px]">
             <span className={f.type === 'BISI' ? 'text-positive' : 'text-negative'}>
               {f.type === 'BISI' ? 'Bullish FVG' : 'Bearish FVG'}

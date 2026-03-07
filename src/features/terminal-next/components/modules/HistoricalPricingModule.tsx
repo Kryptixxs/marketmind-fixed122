@@ -39,9 +39,9 @@ export function HistoricalPricingModule() {
   };
 
   return (
-    <div key={`hp-${selected}`} className={`flex-1 min-h-0 grid ${layoutClass} gap-px bg-[#20170a]`}>
-      <section className="bg-[#070e18] min-h-0 overflow-hidden flex flex-col">
-        <div className="h-5 px-1 border-b border-[#2a2416] bg-[#0b1320] text-[10px] flex items-center justify-between">
+    <div key={`hp-${selected}`} className={`flex-1 min-h-0 grid ${layoutClass} gap-px bg-black`}>
+      <section className="bg-black min-h-0 overflow-hidden flex flex-col">
+        <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] flex items-center justify-between">
           <span className="text-[#f4cf76] font-bold">HP / HISTORICAL PRICING</span>
           <div className="flex items-center gap-1">
             {TABS.map((t) => (
@@ -59,7 +59,7 @@ export function HistoricalPricingModule() {
                 ? (ref?.dailyBars ?? []).slice(-24).map((d) => ({ ts: d.date, open: d.close * 0.997, high: d.close * 1.006, low: d.close * 0.994, close: d.close, volume: d.volume }))
                 : recent.map((b) => ({ ts: new Date(b.ts).toISOString().slice(11, 19), ...b }))
               ).map((b, i) => (
-                <tr key={`${b.ts}-${i}`} className="border-t border-[#142034]">
+                <tr key={`${b.ts}-${i}`} className="border-t border-[#1a1a1a]">
                   <td className="px-1 py-[1px] text-[#d8e4f4]">{String(b.ts)}</td>
                   <td className="px-1 py-[1px] text-right text-[#bcd1ea]">{b.open.toFixed(2)}</td>
                   <td className="px-1 py-[1px] text-right text-[#4ce0a5]">{b.high.toFixed(2)}</td>
@@ -70,9 +70,9 @@ export function HistoricalPricingModule() {
               ))}
             </tbody>
           </table>
-          <div className="h-4 px-1 border-y border-[#142034] text-[8px] text-[#f4cf76] flex items-center">SYMBOL SWITCH</div>
+          <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">SYMBOL SWITCH</div>
           {state.quotes.slice(0, 8).map((q) => (
-            <button key={q.symbol} onClick={() => applySymbol(q.symbol)} className="w-full text-left px-1 py-[1px] border-b border-[#142034] grid grid-cols-[1fr_auto_auto] text-[8px]">
+            <button key={q.symbol} onClick={() => applySymbol(q.symbol)} className="w-full text-left px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto_auto] text-[8px]">
               <span className="text-[#cdd9ea] truncate">{q.symbol}</span>
               <span className="text-right text-[#d7e3f3]">{q.last.toFixed(q.last < 10 ? 4 : 2)}</span>
               <span className={`text-right font-bold ${q.pct >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}`}>{q.pct >= 0 ? '+' : ''}{q.pct.toFixed(2)}</span>
@@ -81,24 +81,24 @@ export function HistoricalPricingModule() {
         </div>
       </section>
 
-      <section className="bg-[#070e18] min-h-0 overflow-hidden flex flex-col row-span-2">
-        <div className="h-5 px-1 border-b border-[#2a2416] bg-[#0b1320] text-[10px] text-[#f4cf76] font-bold flex items-center">HP ANALYTICS STACK</div>
+      <section className="bg-black min-h-0 overflow-hidden flex flex-col row-span-2">
+        <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-[#f4cf76] font-bold flex items-center">HP ANALYTICS STACK</div>
         <div className="flex-1 overflow-y-auto custom-scrollbar text-[9px]">
-          <div className="px-1 py-[2px] border-b border-[#142034] bg-[#08111d]">
+          <div className="px-1 py-[2px] border-b border-[#1a1a1a] bg-[#0a0a0a]">
             <div className="text-[8px] text-[#9fb4cd]">MICRO SPARKLINE</div>
             <div className="text-[9px] text-[#e7f1ff] font-bold tracking-wide truncate">{spark || '..................'}</div>
           </div>
           {[['Window', selected === 'Daily' ? '24 sessions' : '24 bars'], ['RV', `${state.risk.realizedVol}%`], ['IVx', `${state.risk.impliedVolProxy}%`], ['Beta', `${state.risk.beta}`], ['Corr', `${state.risk.corrToBenchmark}`], ['Momentum', `${state.quotes.find((q) => q.symbol === state.activeSymbol)?.momentum ?? 0}`], ['Liquidity', `${state.quotes.find((q) => q.symbol === state.activeSymbol)?.liquidityScore ?? 0}`], ['Regime', state.risk.regime], ['Spread', `${state.microstructure.insideSpreadBps}bp`], ['OFI', `${(state.microstructure.orderFlowImbalance * 100).toFixed(1)}%`], ['AvgVol/Bar', `${avgVol}`], ['VWAP Drift', recent.length ? `${(((recent[recent.length - 1]?.close ?? 0) / ((recent[recent.length - 1]?.vwap ?? 1)) - 1) * 100).toFixed(2)}%` : '0.00%']].map(([k, v]) => (
-            <div key={k} className="px-1 py-[2px] border-b border-[#142034] flex justify-between"><span className="text-[#9fb4cd]">{k}</span><span className="text-[#e7f1ff] font-bold">{v}</span></div>
+            <div key={k} className="px-1 py-[2px] border-b border-[#1a1a1a] flex justify-between"><span className="text-[#9fb4cd]">{k}</span><span className="text-[#e7f1ff] font-bold">{v}</span></div>
           ))}
-          <div className="h-4 px-1 border-y border-[#142034] text-[8px] text-[#f4cf76] flex items-center">MULTI-HORIZON RETURN GRID</div>
+          <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">MULTI-HORIZON RETURN GRID</div>
           <table className="w-full text-[8px] tabular-nums">
             <thead className="bg-[#09111c] text-[#9fb4cd]">
               <tr><th className="text-left px-1 py-[1px]">Hzn</th><th className="text-right px-1 py-[1px]">Ret%</th><th className="text-right px-1 py-[1px]">VolScale</th></tr>
             </thead>
             <tbody>
               {horizonRows.map(([h, r], i) => (
-                <tr key={`${h}-${i}`} className="border-t border-[#142034]">
+                <tr key={`${h}-${i}`} className="border-t border-[#1a1a1a]">
                   <td className="px-1 py-[1px] text-[#d8e4f4]">{h}</td>
                   <td className={`px-1 py-[1px] text-right font-bold ${Number(r) >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}`}>{Number(r) >= 0 ? '+' : ''}{r}</td>
                   <td className="px-1 py-[1px] text-right text-[#9fb4cd]">{(1 + Math.abs(Number(r)) / 3).toFixed(2)}x</td>
@@ -109,19 +109,19 @@ export function HistoricalPricingModule() {
         </div>
       </section>
 
-      <section className="bg-[#070e18] min-h-0 overflow-hidden flex flex-col">
-        <div className="h-5 px-1 border-b border-[#2a2416] bg-[#0b1320] text-[10px] text-[#f4cf76] font-bold flex items-center">HP EVENT TAPE</div>
+      <section className="bg-black min-h-0 overflow-hidden flex flex-col">
+        <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-[#f4cf76] font-bold flex items-center">HP EVENT TAPE</div>
         <div className="flex-1 overflow-y-auto custom-scrollbar">
-          <div className="grid grid-cols-3 gap-px bg-[#1a2433] border-b border-[#142034]">
-            <div className="px-1 py-[2px] text-[8px] bg-[#08111d] text-[#9fb4cd]">ExecCt <span className="text-[#e7f1ff] font-bold">{state.executionEvents.length}</span></div>
-            <div className="px-1 py-[2px] text-[8px] bg-[#08111d] text-[#9fb4cd]">Sweep <span className={`font-bold ${state.microstructure.sweep.active ? 'text-[#ffaf66]' : 'text-[#e7f1ff]'}`}>{state.microstructure.sweep.text}</span></div>
-            <div className="px-1 py-[2px] text-[8px] bg-[#08111d] text-[#9fb4cd]">Cadence <span className="text-[#e7f1ff] font-bold">Q{state.streamClock.quotes}/E{state.streamClock.execution}</span></div>
+          <div className="grid grid-cols-3 gap-px bg-[#1a1a1a] border-b border-[#1a1a1a]">
+            <div className="px-1 py-[2px] text-[8px] bg-[#0a0a0a] text-[#9fb4cd]">ExecCt <span className="text-[#e7f1ff] font-bold">{state.executionEvents.length}</span></div>
+            <div className="px-1 py-[2px] text-[8px] bg-[#0a0a0a] text-[#9fb4cd]">Sweep <span className={`font-bold ${state.microstructure.sweep.active ? 'text-[#ffaf66]' : 'text-[#e7f1ff]'}`}>{state.microstructure.sweep.text}</span></div>
+            <div className="px-1 py-[2px] text-[8px] bg-[#0a0a0a] text-[#9fb4cd]">Cadence <span className="text-[#e7f1ff] font-bold">Q{state.streamClock.quotes}/E{state.streamClock.execution}</span></div>
           </div>
           {state.executionEvents.slice(0, 24).map((e) => (
-            <div key={e.id} className="text-[8px] px-1 py-[1px] border-b border-[#142034] text-[#b7c8dd]">{e.symbol} {e.status} {e.fillQty}@{e.fillPrice.toFixed(2)}</div>
+            <div key={e.id} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#b7c8dd]">{e.symbol} {e.status} {e.fillQty}@{e.fillPrice.toFixed(2)}</div>
           ))}
           {state.systemFeed.slice(0, 14).map((line, i) => (
-            <div key={`${line}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#142034] text-[#6e85a3]">{line}</div>
+            <div key={`${line}-${i}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">{line}</div>
           ))}
         </div>
       </section>

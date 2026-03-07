@@ -28,22 +28,22 @@ export function OptionsAnalyticsModule() {
   };
 
   return (
-    <div key={`ovme-${selected}`} className={`flex-1 min-h-0 grid ${layoutClass} gap-px bg-[#20170a]`}>
-      <section className="bg-[#070e18] min-h-0 overflow-hidden flex flex-col">
-        <div className="h-5 px-1 border-b border-[#2a2416] bg-[#0b1320] text-[10px] flex items-center justify-between">
+    <div key={`ovme-${selected}`} className={`flex-1 min-h-0 grid ${layoutClass} gap-px bg-black`}>
+      <section className="bg-black min-h-0 overflow-hidden flex flex-col">
+        <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] flex items-center justify-between">
           <span className="text-[#f4cf76] font-bold">OVME / VOLATILITY SURFACE</span>
           <div className="flex items-center gap-1">{TABS.map((t) => <button key={t} onClick={() => dispatch({ type: 'SET_ACTIVE_SUBTAB', payload: t })} className={`px-1 border text-[8px] ${selected === t ? 'border-[#95ca2d] bg-[#2b3a07] text-[#efffc7]' : 'border-[#4f3a18] bg-[#18130a] text-[#d8be8d]'}`}>{t}</button>)}</div>
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar text-[9px]">
-          {[['25D RR', '1.8'], ['25D BF', '0.7'], ['ATM IV', `${state.risk.impliedVolProxy}%`], ['Skew Slope', '0.12'], ['Term Curvature', '0.05'], ['Spot-Vol Corr', '-0.31']].map(([k, v]) => <div key={k} className="px-1 py-[2px] border-b border-[#142034] flex justify-between"><span className="text-[#9fb4cd]">{k}</span><span className="text-[#e7f1ff] font-bold">{v}</span></div>)}
-          <div className="h-4 px-1 border-y border-[#142034] text-[8px] text-[#f4cf76] flex items-center">VOL SURFACE (DELTA x TENOR)</div>
+          {[['25D RR', '1.8'], ['25D BF', '0.7'], ['ATM IV', `${state.risk.impliedVolProxy}%`], ['Skew Slope', '0.12'], ['Term Curvature', '0.05'], ['Spot-Vol Corr', '-0.31']].map(([k, v]) => <div key={k} className="px-1 py-[2px] border-b border-[#1a1a1a] flex justify-between"><span className="text-[#9fb4cd]">{k}</span><span className="text-[#e7f1ff] font-bold">{v}</span></div>)}
+          <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">VOL SURFACE (DELTA x TENOR)</div>
           <table className="w-full text-[8px] tabular-nums">
-            <thead className="bg-[#09111c] text-[#9fb4cd]">
+            <thead className="bg-[#0a0a0a] text-[#9fb4cd]">
               <tr><th className="text-left px-1 py-[1px]">Delta</th><th className="text-right px-1 py-[1px]">1W</th><th className="text-right px-1 py-[1px]">1M</th><th className="text-right px-1 py-[1px]">3M</th></tr>
             </thead>
             <tbody>
               {volSurface.map((r) => (
-                <tr key={r.delta} className="border-t border-[#142034]">
+                <tr key={r.delta} className="border-t border-[#1a1a1a]">
                   <td className="px-1 py-[1px] text-[#d7e3f3]">{r.delta}</td>
                   <td className="px-1 py-[1px] text-right text-[#e7f1ff]">{r.w1.toFixed(1)}%</td>
                   <td className="px-1 py-[1px] text-right text-[#e7f1ff]">{r.m1.toFixed(1)}%</td>
@@ -52,23 +52,23 @@ export function OptionsAnalyticsModule() {
               ))}
             </tbody>
           </table>
-          <div className="h-4 px-1 border-y border-[#142034] text-[8px] text-[#f4cf76] flex items-center">UNDERLYING</div>
-          {state.quotes.slice(0, 18).map((q) => (
-            <button key={q.symbol} onClick={() => applySymbol(q.symbol)} className="w-full text-left px-1 py-[1px] border-b border-[#142034] grid grid-cols-[1fr_auto] text-[8px]">
+          <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">UNDERLYING</div>
+          {state.quotes.map((q) => (
+            <button key={q.symbol} onClick={() => applySymbol(q.symbol)} className="w-full text-left px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto] text-[8px]">
               <span className="text-[#cdd9ea] truncate">{q.symbol}</span>
               <span className="text-right text-[#d7e3f3]">{q.last.toFixed(q.last < 10 ? 4 : 2)} <span className={q.pct >= 0 ? 'text-[#4ce0a5]' : 'text-[#ff7ca3]'}>{q.pct >= 0 ? '+' : ''}{q.pct.toFixed(2)}%</span></span>
             </button>
           ))}
         </div>
       </section>
-      <section className="bg-[#070e18] min-h-0 overflow-hidden flex flex-col">
-        <div className="h-5 px-1 border-b border-[#2a2416] bg-[#0b1320] text-[10px] text-[#f4cf76] font-bold flex items-center">GREEKS / RISK DELTA</div>
+      <section className="bg-black min-h-0 overflow-hidden flex flex-col">
+        <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-[#f4cf76] font-bold flex items-center">GREEKS / RISK DELTA</div>
         <div className="grid grid-rows-[58%_42%] gap-px bg-[#1a2433] flex-1 min-h-0">
-          <div className="bg-[#08111d] min-h-0 overflow-y-auto custom-scrollbar text-[9px]">
-            {[['Delta', '0.42'], ['Gamma', '0.08'], ['Vega', '0.21'], ['Theta', '-0.03'], ['Charm', '-0.02'], ['Vanna', '0.04'], ['Vomma', '0.06'], ['Color', '-0.01']].map(([k, v]) => <div key={k} className="px-1 py-[2px] border-b border-[#142034] flex justify-between"><span className="text-[#9fb4cd]">{k}</span><span className="text-[#e7f1ff] font-bold">{v}</span></div>)}
-            <div className="h-4 px-1 border-y border-[#142034] text-[8px] text-[#f4cf76] flex items-center">SCENARIO GRID</div>
+          <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar text-[9px]">
+            {[['Delta', '0.42'], ['Gamma', '0.08'], ['Vega', '0.21'], ['Theta', '-0.03'], ['Charm', '-0.02'], ['Vanna', '0.04'], ['Vomma', '0.06'], ['Color', '-0.01']].map(([k, v]) => <div key={k} className="px-1 py-[2px] border-b border-[#1a1a1a] flex justify-between"><span className="text-[#9fb4cd]">{k}</span><span className="text-[#e7f1ff] font-bold">{v}</span></div>)}
+            <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] flex items-center">SCENARIO GRID</div>
             {scenarios.map((row) => (
-              <div key={row[0]} className="px-1 py-[1px] border-b border-[#142034] grid grid-cols-[1.3fr_repeat(4,1fr)] text-[8px]">
+              <div key={row[0]} className="px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1.3fr_repeat(4,1fr)] text-[8px]">
                 <span className="text-[#9fb4cd]">{row[0]}</span>
                 <span className="text-right text-[#e7f1ff]">{Number(row[1]).toFixed(2)}</span>
                 <span className="text-right text-[#e7f1ff]">{Number(row[2]).toFixed(2)}</span>
@@ -77,9 +77,9 @@ export function OptionsAnalyticsModule() {
               </div>
             ))}
           </div>
-          <div className="bg-[#08111d] min-h-0 overflow-y-auto custom-scrollbar text-[8px]">
-            {state.systemFeed.slice(0, 20).map((l, i) => <div key={`${l}-${i}`} className="px-1 py-[1px] border-b border-[#142034] text-[#b7c8dd]">{l}</div>)}
-            {volSurface.map((r) => <div key={`diag-${r.delta}`} className="px-1 py-[1px] border-b border-[#142034] text-[#6e85a3]">SURF {r.delta} {r.w1.toFixed(1)}/{r.m1.toFixed(1)}/{r.m3.toFixed(1)}</div>)}
+          <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar text-[8px]">
+            {state.systemFeed.map((l, i) => <div key={`${l}-${i}`} className="px-1 py-[1px] border-b border-[#1a1a1a] text-[#b7c8dd]">{l}</div>)}
+            {volSurface.map((r) => <div key={`diag-${r.delta}`} className="px-1 py-[1px] border-b border-[#1a1a1a] text-[#6e85a3]">SURF {r.delta} {r.w1.toFixed(1)}/{r.m1.toFixed(1)}/{r.m3.toFixed(1)}</div>)}
           </div>
         </div>
       </section>

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { parseCommand } from '../services/commandParser';
+import { routeSearch } from '../services/searchRouter';
 import {
   buildDepthTapeStream,
   buildExecutionStream,
@@ -14,6 +15,7 @@ import {
 import { resolveFunctionDeck } from '../services/functionRouter';
 import { DeltaState, FunctionCode, TerminalFunction, TerminalState } from '../types';
 import { deriveRiskSnapshot } from '../selectors/riskSelectors';
+import { TAPE_MAX_ROWS, SYSTEM_FEED_MAX_ROWS } from '@/lib/panel-limits';
 
 type TerminalAction =
   | { type: 'TICK_QUOTES' }
@@ -28,7 +30,8 @@ type TerminalAction =
   | { type: 'SET_ANALYTICS_TAB'; payload: TerminalState['analyticsTab'] }
   | { type: 'SET_RIGHT_TAB'; payload: TerminalState['rightRailTab'] }
   | { type: 'SET_FEED_TAB'; payload: TerminalState['feedTab'] }
-  | { type: 'SET_SYMBOL'; payload: string };
+  | { type: 'SET_SYMBOL'; payload: string }
+  | { type: 'SET_INTEL_FILTERS'; payload: { country?: string; date?: string } | undefined };
 
 type TerminalContextType = {
   state: TerminalState;
@@ -55,9 +58,7 @@ const STREAM_CADENCE = {
 const TerminalContext = createContext<TerminalContextType | null>(null);
 
 function toActiveFunction(code: FunctionCode): TerminalFunction {
-  if (code === 'DES' || code === 'FA' || code === 'HP' || code === 'WEI' || code === 'YAS' || code === 'OVME' || code === 'PORT') {
-    return code;
-  }
+  if (['DES', 'FA', 'HP', 'WEI', 'YAS', 'OVME', 'PORT', 'NEWS', 'CAL', 'SEC', 'MKT', 'INTEL'].includes(code)) return code as TerminalFunction;
   return 'EXEC';
 }
 
@@ -193,6 +194,7 @@ const initialState: TerminalState = {
   delta: emptyDelta(),
   streamClock: { quotes: 0, depth: 0, execution: 0, feed: 0 },
   staged: { quotesReadyAt: 0, depthReadyAt: 0, executionReadyAt: 0, feedReadyAt: 0, commitSeq: 0 },
+  drillPath: [],
 };
 
 function terminalReducer(state: TerminalState, action: TerminalAction): TerminalState {
@@ -213,9 +215,10 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
     const streamTick = state.streamClock.depth + 1;
     const quote = activeQuoteFrom(state);
     const batch = buildDepthTapeStream(state.seed, streamTick, state.tickMs, quote?.last ?? 100);
+    const accumulatedTape = [...batch.tape, ...state.tape].slice(0, TAPE_MAX_ROWS);
     return deriveNext(state, {
       orderBook: batch.orderBook,
-      tape: batch.tape,
+      tape: accumulatedTape,
       microstructure: batch.micro,
       streamClock: { ...state.streamClock, depth: streamTick },
       staged: nextStaged(state, 'depthReadyAt', state.tickMs),
@@ -230,7 +233,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       blotter: batch.blotter,
       executionEvents: batch.executionEvents,
       barsBySymbol: batch.barsBySymbol,
-      systemFeed: [...executionLines, ...state.systemFeed].slice(0, 40),
+      systemFeed: [...executionLines, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
       streamClock: { ...state.streamClock, execution: streamTick },
       staged: nextStaged(state, 'executionReadyAt', state.tickMs),
     });
@@ -242,7 +245,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
     return deriveNext(state, {
       headlines: batch.headlines,
       alerts: batch.alerts,
-      systemFeed: [`FEED ROTATE -> H${streamTick}`, ...state.systemFeed].slice(0, 40),
+      systemFeed: [`FEED ROTATE -> H${streamTick}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
       streamClock: { ...state.streamClock, feed: streamTick },
       staged: nextStaged(state, 'feedReadyAt', state.tickMs),
     });
@@ -259,7 +262,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       activeFunction,
       activeSubTab: undefined,
       commandInput: normalized,
-      systemFeed: [`FUNCTION CONTEXT -> ${activeFunction}`, ...state.systemFeed].slice(0, 40),
+      systemFeed: [`FUNCTION CONTEXT -> ${activeFunction}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
     };
   }
 
@@ -271,7 +274,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       activeFunction: action.payload,
       activeSubTab: undefined,
       commandInput: command,
-      systemFeed: [`FUNCTION CONTEXT -> ${action.payload}`, ...state.systemFeed].slice(0, 40),
+      systemFeed: [`FUNCTION CONTEXT -> ${action.payload}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
     };
   }
 
@@ -288,12 +291,40 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       security: { ticker, market, assetClass },
       activeSymbol: `${ticker}${market ? ` ${market}` : ''}`,
       commandInput: `${ticker}${market ? ` ${market}` : ''} ${state.activeFunction} GO`,
-      systemFeed: [`SYMBOL CONTEXT -> ${ticker}${market ? ` ${market}` : ''}`, ...state.systemFeed].slice(0, 40),
+      systemFeed: [`SYMBOL CONTEXT -> ${ticker}${market ? ` ${market}` : ''}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
     };
+  }
+
+  if (action.type === 'SET_INTEL_FILTERS') {
+    return { ...state, intelFilters: action.payload };
   }
 
   if (action.type === 'EXECUTE_COMMAND') {
     let raw = action.payload ?? state.commandInput;
+    const trimmed = raw.replace(/\s+/g, ' ').trim();
+    const intent = routeSearch(trimmed);
+
+    if (intent.type === 'INTEL_ENTITY') {
+      const entity = intent.entity;
+      const filters = intent.filters;
+      const normalized = `${entity} INTEL GO`;
+      return {
+        ...state,
+        commandInput: normalized,
+        security: { ticker: entity, market: '', assetClass: 'EQUITY' },
+        activeSymbol: entity,
+        functionCode: 'INTEL',
+        activeFunction: 'INTEL',
+        activeSubTab: undefined,
+        intelFilters: filters,
+        systemFeed: [`LOADED ${normalized}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
+      };
+    }
+
+    if (intent.type === 'TICKER' && intent.ticker) {
+      raw = `${intent.ticker}${intent.market ? ` ${intent.market}` : ''} EXEC GO`;
+    }
+
     const compact = raw.replace(/\s+/g, ' ').trim().toUpperCase();
     if (compact && !compact.endsWith(' GO')) {
       const guess = state.quotes.find(
@@ -306,10 +337,24 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
     }
     const result = parseCommand(raw);
     if (!result.ok) {
+      if (intent.type === 'UNKNOWN' && trimmed) {
+        const entity = trimmed.split(/\s+/)[0] ?? trimmed;
+        return {
+          ...state,
+          commandInput: `${entity} INTEL GO`,
+          security: { ticker: entity, market: '', assetClass: 'EQUITY' },
+          activeSymbol: entity,
+          functionCode: 'INTEL',
+          activeFunction: 'INTEL',
+          activeSubTab: undefined,
+          intelFilters: undefined,
+          systemFeed: [`FALLBACK INTEL: ${entity}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
+        };
+      }
       return {
         ...state,
         commandInput: result.normalized,
-        systemFeed: [`REJECTED: ${result.error}`, ...state.systemFeed].slice(0, 40),
+        systemFeed: [`REJECTED: ${result.error}`, ...state.systemFeed].slice(0, SYSTEM_FEED_MAX_ROWS),
       };
     }
 
@@ -322,7 +367,8 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       functionCode: result.functionCode,
       activeFunction: result.activeFunction,
       activeSubTab: undefined,
-      systemFeed: [transitionLine, `LOADED ${result.normalized}`, ...state.systemFeed].filter(Boolean).slice(0, 40),
+      intelFilters: result.activeFunction === 'INTEL' ? state.intelFilters : undefined,
+      systemFeed: [transitionLine, `LOADED ${result.normalized}`, ...state.systemFeed].filter(Boolean).slice(0, SYSTEM_FEED_MAX_ROWS),
     };
   }
 

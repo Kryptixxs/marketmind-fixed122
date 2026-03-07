@@ -1,5 +1,5 @@
-export type FunctionCode = 'EXEC' | 'DES' | 'FA' | 'WEI' | 'HP' | 'YAS' | 'TOP' | 'ECO' | 'NI' | 'OVME' | 'PORT';
-export type TerminalFunction = 'EXEC' | 'DES' | 'FA' | 'HP' | 'WEI' | 'YAS' | 'OVME' | 'PORT';
+export type FunctionCode = 'EXEC' | 'DES' | 'FA' | 'WEI' | 'HP' | 'YAS' | 'TOP' | 'ECO' | 'NI' | 'OVME' | 'PORT' | 'NEWS' | 'CAL' | 'SEC' | 'MKT' | 'INTEL';
+export type TerminalFunction = 'EXEC' | 'DES' | 'FA' | 'HP' | 'WEI' | 'YAS' | 'OVME' | 'PORT' | 'NEWS' | 'CAL' | 'SEC' | 'MKT' | 'INTEL';
 
 export type AssetClass = 'EQUITY' | 'CORP' | 'GOVT' | 'CMDTY' | 'CURNCY';
 
@@ -179,6 +179,7 @@ export type TerminalState = {
   functionCode: FunctionCode;
   activeFunction: TerminalFunction;
   activeSubTab?: string;
+  drillPath: string[];
   analyticsTab: AnalyticsTab;
   rightRailTab: RightRailTab;
   feedTab: FeedTab;
@@ -197,4 +198,5 @@ export type TerminalState = {
   delta: DeltaState;
   streamClock: StreamClock;
   staged: StagedStreamState;
+  intelFilters?: { country?: string; date?: string };
 };

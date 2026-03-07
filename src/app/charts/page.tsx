@@ -275,37 +275,85 @@ export default function ChartsPage() {
           </div>
         </div>
 
-        {/* Chart Area */}
-        <div className="flex-1 bg-background relative min-h-0 flex flex-col">
-          {chartData.length > 0 ? (
-            <TradingChart key={`${activeSymbol}-${timeframe.yf}`} data={chartData} symbol={activeSymbol} />
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3">
-              <Loader2 size={24} className="animate-spin text-accent" />
-              <span className="text-[10px] uppercase font-bold tracking-[0.2em] text-text-tertiary">Loading Chart...</span>
-            </div>
-          )}
+        {/* Chart + Data Area */}
+        <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {/* Compact horizontal chart - fixed height */}
+          <div className="h-[220px] shrink-0 border-b border-border bg-surface">
+            {chartData.length > 0 ? (
+              <TradingChart key={`${activeSymbol}-${timeframe.yf}`} data={chartData} symbol={activeSymbol} height={220} compact />
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center gap-2">
+                <Loader2 size={20} className="animate-spin text-accent" />
+                <span className="text-[9px] uppercase font-bold tracking-widest text-text-tertiary">Loading Chart...</span>
+              </div>
+            )}
+          </div>
 
-          {/* Overlay Info */}
-          {activeQuote && (
-            <div className="absolute top-3 left-3 pointer-events-none">
-              <div className="bg-surface/85 backdrop-blur border border-border rounded px-3 py-2 flex items-center gap-4">
-                <div>
-                  <div className="text-lg font-black text-text-primary tracking-tight">{activeSymbol}</div>
-                  <div className="text-[9px] text-text-tertiary uppercase font-bold">{LABEL_MAP[activeSymbol] || ''} • {timeframe.label}</div>
+          {/* Data panel - fills remaining space */}
+          <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar p-3">
+            {activeQuote && (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <div className="bg-surface border border-border rounded px-3 py-2">
+                  <div className="text-[8px] uppercase font-bold tracking-widest text-text-tertiary mb-0.5">Open</div>
+                  <div className="text-xs font-mono font-bold text-text-primary">
+                    {activeQuote.history?.[0]?.open != null ? activeQuote.history[0].open.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
+                  </div>
                 </div>
-                <div className="flex flex-col items-end">
-                  <span className="text-sm font-mono font-bold text-text-primary">
-                    {activeQuote.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                  </span>
-                  <span className={`text-xs font-mono font-bold flex items-center gap-0.5 ${activeQuote.changePercent >= 0 ? 'text-positive' : 'text-negative'}`}>
-                    {activeQuote.changePercent >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-                    {activeQuote.changePercent >= 0 ? '+' : ''}{activeQuote.changePercent.toFixed(2)}%
-                  </span>
+                <div className="bg-surface border border-border rounded px-3 py-2">
+                  <div className="text-[8px] uppercase font-bold tracking-widest text-text-tertiary mb-0.5">High</div>
+                  <div className="text-xs font-mono font-bold text-positive">
+                    {activeQuote.high != null ? activeQuote.high.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
+                  </div>
+                </div>
+                <div className="bg-surface border border-border rounded px-3 py-2">
+                  <div className="text-[8px] uppercase font-bold tracking-widest text-text-tertiary mb-0.5">Low</div>
+                  <div className="text-xs font-mono font-bold text-negative">
+                    {activeQuote.low != null ? activeQuote.low.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
+                  </div>
+                </div>
+                <div className="bg-surface border border-border rounded px-3 py-2">
+                  <div className="text-[8px] uppercase font-bold tracking-widest text-text-tertiary mb-0.5">Last</div>
+                  <div className="text-xs font-mono font-bold text-text-primary">
+                    {activeQuote.price != null ? activeQuote.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
+                  </div>
+                </div>
+                <div className="bg-surface border border-border rounded px-3 py-2">
+                  <div className="text-[8px] uppercase font-bold tracking-widest text-text-tertiary mb-0.5">Chg %</div>
+                  <div className={`text-xs font-mono font-bold flex items-center gap-0.5 ${(activeQuote.changePercent ?? 0) >= 0 ? 'text-positive' : 'text-negative'}`}>
+                    {(activeQuote.changePercent ?? 0) >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
+                    {(activeQuote.changePercent ?? 0) >= 0 ? '+' : ''}{(activeQuote.changePercent ?? 0).toFixed(2)}%
+                  </div>
+                </div>
+                <div className="bg-surface border border-border rounded px-3 py-2">
+                  <div className="text-[8px] uppercase font-bold tracking-widest text-text-tertiary mb-0.5">Volume</div>
+                  <div className="text-xs font-mono font-bold text-text-primary">
+                    {activeQuote.volume != null ? `${(activeQuote.volume / 1e6).toFixed(2)}M` : '—'}
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+            {activeQuote?.history && activeQuote.history.length > 1 && (
+              <div className="mt-4">
+                <div className="text-[9px] uppercase font-bold tracking-widest text-text-tertiary mb-2">Session range</div>
+                <div className="bg-surface border border-border rounded p-3 text-[10px] font-mono text-text-secondary">
+                  {(() => {
+                    const bars = activeQuote.history;
+                    const sessionHigh = Math.max(...bars.map((b: any) => b.high));
+                    const sessionLow = Math.min(...bars.map((b: any) => b.low));
+                    const range = sessionHigh - sessionLow;
+                    const rangePct = sessionLow > 0 ? ((range / sessionLow) * 100).toFixed(2) : '—';
+                    return (
+                      <div className="grid grid-cols-3 gap-4">
+                        <span>High: <span className="text-positive font-bold">{sessionHigh.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></span>
+                        <span>Low: <span className="text-negative font-bold">{sessionLow.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span></span>
+                        <span>Range: <span className="text-text-primary font-bold">{rangePct}%</span></span>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right Panel - Trade Setup */}

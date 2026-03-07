@@ -17,12 +17,12 @@ export function ExecutionCockpitModule() {
   const selected: ExecTab = state.activeSubTab && EXEC_TABS.includes(state.activeSubTab as ExecTab) ? (state.activeSubTab as ExecTab) : 'PRIMARY';
   const modeStripClass =
     selected === 'MICROSTRUCTURE'
-      ? 'border-[#274b66] bg-[#081321]'
+      ? 'border-[#1a1a1a] bg-[#0a0a0a]'
       : selected === 'FACTORS'
-        ? 'border-[#174432] bg-[#08180f]'
+        ? 'border-green-600/50 bg-[#0a0a0a]'
         : selected === 'EVENTS'
-          ? 'border-[#5a1f35] bg-[#160912]'
-          : 'border-[#2b3f5f] bg-[#0b1320]';
+          ? 'border-red-600/50 bg-[#0a0a0a]'
+          : 'border-[#1a1a1a] bg-[#0a0a0a]';
 
   const activate = (tab: ExecTab) => {
     dispatch({ type: 'SET_ACTIVE_SUBTAB', payload: tab });
@@ -57,7 +57,7 @@ export function ExecutionCockpitModule() {
         ))}
       </div>
       {selected === 'PRIMARY' && (
-        <div key="exec-primary" className="flex-1 min-h-0 grid grid-cols-[22%_44%_34%] grid-rows-[54%_30%_16%] gap-px bg-[#20170a]">
+        <div key="exec-primary" className="flex-1 min-h-0 grid grid-cols-[22%_44%_34%] grid-rows-[54%_30%_16%] gap-px bg-black">
           <MonitorPanel />
           <AnalyticsPanel execMode="PRIMARY" />
           <RightRailPanel execMode="PRIMARY" />
@@ -70,7 +70,7 @@ export function ExecutionCockpitModule() {
         </div>
       )}
       {selected === 'MICROSTRUCTURE' && (
-        <div key="exec-microstructure" className="flex-1 min-h-0 grid grid-cols-[18%_32%_50%] grid-rows-[58%_27%_15%] gap-px bg-[#20170a]">
+        <div key="exec-microstructure" className="flex-1 min-h-0 grid grid-cols-[18%_32%_50%] grid-rows-[58%_27%_15%] gap-px bg-black">
           <MonitorPanel />
           <AnalyticsPanel execMode="MICROSTRUCTURE" />
           <div className="row-span-2 min-h-0">
@@ -85,7 +85,7 @@ export function ExecutionCockpitModule() {
         </div>
       )}
       {selected === 'FACTORS' && (
-        <div key="exec-factors" className="flex-1 min-h-0 grid grid-cols-[20%_55%_25%] grid-rows-[52%_30%_18%] gap-px bg-[#20170a]">
+        <div key="exec-factors" className="flex-1 min-h-0 grid grid-cols-[20%_55%_25%] grid-rows-[52%_30%_18%] gap-px bg-black">
           <MonitorPanel />
           <div className="row-span-2 min-h-0">
             <AnalyticsPanel execMode="FACTORS" />
@@ -100,7 +100,7 @@ export function ExecutionCockpitModule() {
         </div>
       )}
       {selected === 'EVENTS' && (
-        <div key="exec-events" className="flex-1 min-h-0 grid grid-cols-[20%_30%_50%] grid-rows-[45%_37%_18%] gap-px bg-[#20170a]">
+        <div key="exec-events" className="flex-1 min-h-0 grid grid-cols-[20%_30%_50%] grid-rows-[45%_37%_18%] gap-px bg-black">
           <MonitorPanel />
           <AnalyticsPanel execMode="EVENTS" />
           <div className="row-span-2 min-h-0">

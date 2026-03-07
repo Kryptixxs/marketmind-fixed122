@@ -1,22 +1,26 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import { useTerminalStore } from '../store/TerminalStore';
+import { useVisibleRows } from '../hooks/useVisibleRows';
 
 const fmt = (v: number, d = 2) => v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
 
 export function CrossAssetMatrixPanel() {
   const { state, dispatch } = useTerminalStore();
+  const matrixRef = useRef<HTMLDivElement>(null);
+  const visibleRows = useVisibleRows(matrixRef, 18);
 
   const ranked = useMemo(() => [...state.quotes].sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)), [state.quotes]);
+  const displayRanked = ranked.slice(0, visibleRows);
 
   return (
-    <section className="bg-[#070e18] min-h-0 overflow-hidden flex flex-col">
-      <div className="h-5 px-1 border-b border-[#1a2433] bg-[#0b1320] flex items-center justify-between text-[10px]">
+    <section className="bg-black min-h-0 overflow-hidden flex flex-col">
+      <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] flex items-center justify-between text-[10px]">
         <span className="text-[#9bc3e8] font-bold">CROSS-ASSET MATRIX</span>
         <span className="text-[#7f99ba]">|%| Rank</span>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
+      <div ref={matrixRef} className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
         <table className="w-full text-[9px] tabular-nums">
           <thead className="sticky top-0 bg-[#0a121f] text-[#7db0db]">
             <tr>
@@ -28,10 +32,10 @@ export function CrossAssetMatrixPanel() {
             </tr>
           </thead>
           <tbody>
-            {ranked.map((q) => (
+            {displayRanked.map((q) => (
               <tr
                 key={`mx-${q.symbol}`}
-                className="border-t border-[#142034] cursor-pointer hover:bg-[#0d1a2c]"
+                className="border-t border-[#1a1a1a] cursor-pointer hover:bg-[#0f0f0f]"
                 onClick={() => dispatch({ type: 'SET_SYMBOL', payload: q.symbol })}
               >
                 <td className="px-1 py-[1px] text-[#dbe7f7]">{q.symbol}</td>

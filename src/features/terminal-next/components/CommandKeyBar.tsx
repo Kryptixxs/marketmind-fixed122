@@ -13,7 +13,7 @@ const KEYBAR = [
   { label: 'GO', role: 'go' },
 ] as const;
 
-const FUNCTION_CODES: TerminalFunction[] = ['EXEC', 'DES', 'FA', 'HP', 'WEI', 'YAS', 'OVME', 'PORT'];
+const FUNCTION_CODES: TerminalFunction[] = ['EXEC', 'DES', 'FA', 'HP', 'WEI', 'YAS', 'OVME', 'PORT', 'INTEL', 'NEWS', 'CAL', 'SEC', 'MKT'];
 const OPERATOR_KEYS = ['DEPTH', 'TAPE', 'ALERTS', 'RISK', 'NEWS', 'SYSTEM'] as const;
 
 export function CommandKeyBar() {
@@ -27,7 +27,7 @@ export function CommandKeyBar() {
   };
 
   return (
-    <div className="h-7 border-b bbg-hard-divider bg-[#060c17] px-1 flex items-center gap-1 overflow-x-auto custom-scrollbar">
+    <div className="h-7 border-b border-[#1a1a1a] bg-black px-1 flex items-center gap-1 overflow-x-auto custom-scrollbar">
       {KEYBAR.map((k) => (
         <button
           key={k.label}
@@ -64,8 +64,8 @@ export function CommandKeyBar() {
           }}
           className={`h-5 px-1 border text-[9px] font-bold shrink-0 active:translate-y-px ${
             state.activeFunction === f
-              ? 'bg-[#113046] border-[#63c8ff] text-[#d4efff]'
-              : 'bg-[#151a24] border-[#274b66] text-[#9fc3df]'
+              ? 'bg-[#0d1f0d] border-green-600 text-green-400'
+              : 'bg-[#0a0a0a] border-[#262626] text-gray-400'
           }`}
         >
           {f}
@@ -101,8 +101,8 @@ export function CommandKeyBar() {
             || (k === 'RISK' && state.analyticsTab === 'FACTORS')
             || (k === 'NEWS' && state.feedTab === 'NEWS')
             || (k === 'SYSTEM' && state.feedTab === 'SYSTEM')
-              ? 'bg-[#1f2b0e] border-[#95ca2d] text-[#efffc7]'
-              : 'bg-[#11160c] border-[#44531f] text-[#bfd39a]'
+              ? 'bg-[#0d1f0d] border-green-600 text-green-400'
+              : 'bg-[#0a0a0a] border-[#262626] text-gray-400'
           }`}
         >
           {k}
