@@ -88,6 +88,17 @@ const HEADLINES = [
   'SYSTEMATIC VOL TARGETING MODELS RE-RISK AFTER DRAWDOWN STABILIZATION',
   'EUROPE OPEN MIXED WHILE US FUTURES HOLD NARROW OVERNIGHT RANGE',
   'FX OPTIONS DESKS REPORT STRONG DEMAND FOR UPSIDE DOLLAR STRUCTURES',
+  'EMERGING-MARKET EQUITIES REBOUND AS DOLLAR MOMENTUM EASES INTO CLOSE',
+  'SHORT-DATED INDEX HEDGING INCREASES AHEAD OF WEEKLY OPTIONS EXPIRATION',
+  'SEMICONDUCTOR SUPPLY CHAIN NAMES OUTPERFORM ON CAPEX UPGRADE CYCLE',
+  'HEALTHCARE DEFENSIVES ATTRACT INFLOWS DURING AFTERNOON VOLATILITY SPIKE',
+  'EU SOVEREIGN SPREADS TIGHTEN AS PERIPHERY AUCTION DEMAND IMPROVES',
+  'CREDIT ETF VOLUMES RISE WITH RISK-ON ROTATION INTO HIGH BETA SEGMENTS',
+  'LARGE-CAP QUALITY FACTOR LEADS AS SMALL-CAP BREADTH REMAINS MIXED',
+  'CROSS-CURRENCY BASIS NORMALIZES WHILE FRONT-END RATE DIFFERENTIALS HOLD',
+  'SYSTEMATIC EQUITY REBALANCERS BUY INTO CLOSE ON POSITIVE TREND SIGNALS',
+  'INDEX FUTURES BASIS NARROWS AS CASH-FUTURES ARBITRAGE FLOWS STABILIZE',
+  'COMMODITY COMPLEX SEES BROAD BID WITH METALS AND ENERGY MOVING TOGETHER',
 ];
 
 const ALERTS = [
@@ -98,6 +109,12 @@ const ALERTS = [
   'SWEEP ACTIVITY DETECTED AT INSIDE OFFER',
   'ORDER FLOW IMBALANCE EXCEEDS THRESHOLD',
   'SECTOR CONCENTRATION DRIFT BREACH',
+  'LIQUIDITY GAP DETECTED BETWEEN LIT AND DARK VENUES',
+  'OPTIONS SKEW SHIFTS TOWARD DOWNSIDE PROTECTION',
+  'SYSTEM PULSE THRESHOLD EXCEEDED IN CROSS-ASSET MONITOR',
+  'ETF PRIMARY FLOW DIVERGES FROM UNDERLYING BASKET MOMENTUM',
+  'EVENT RISK WINDOW ENTERED FOR HIGH-IMPACT MACRO RELEASE',
+  'EXECUTION SLIPPAGE TREND ELEVATED AGAINST BASELINE',
 ];
 
 const PROFILE_BASE: Record<string, Omit<ReferenceSecurityProfile, 'symbol' | 'dailyBars'>> = {
@@ -350,7 +367,7 @@ export function buildOrderBook(price: number, tick: number, seed: number): Order
   const step = price > 1000 ? 0.5 : price > 100 ? 0.05 : 0.01;
   let runningBid = 0;
   let runningAsk = 0;
-  return Array.from({ length: 32 }, (_, i) => {
+  return Array.from({ length: 40 }, (_, i) => {
     const bias = Math.sin(tick * 0.18) > 0 ? 1.08 : 0.92;
     const n = mulberry32(seed + tick * 199 + i * 17)();
     const bidSize = Math.round((95 + Math.abs(Math.sin((tick + i) * 0.27)) * 1500) * bias * (0.9 + n * 0.25));
@@ -376,7 +393,7 @@ export function buildOrderBook(price: number, tick: number, seed: number): Order
 export function buildTape(book: OrderBookLevel[], hhmmss: string, tick: number, seed: number): TapePrint[] {
   const prints: TapePrint[] = [];
   const rand = mulberry32(seed + tick * 4099);
-  const printCount = 28 + Math.floor(rand() * 14);
+  const printCount = 40 + Math.floor(rand() * 22);
   for (let i = 0; i < printCount; i += 1) {
     const level = book[i % Math.min(8, book.length)];
     const buyBias = Math.sin(tick * 0.16) > 0;
@@ -502,14 +519,15 @@ export function buildExecutionEvents(blotter: BlotterRow[], previous: BlotterRow
 
 export function rotateHeadlines(tick: number): string[] {
   const start = tick % HEADLINES.length;
-  return Array.from({ length: 48 }, (_, i) => HEADLINES[(start + i) % HEADLINES.length]);
+  return Array.from({ length: 72 }, (_, i) => HEADLINES[(start + i) % HEADLINES.length]);
 }
 
 export function activeAlerts(tick: number, sweepActive: boolean): string[] {
   return ALERTS.map((a, i) => {
     if (i === 0 && sweepActive) return `${a} [SWEEP]`;
     if (i === tick % ALERTS.length) return `${a} [ACTIVE]`;
-    return a;
+    if ((tick + i) % 5 === 0) return `${a} [WATCH]`;
+    return `${a} [MONITOR]`;
   });
 }
 

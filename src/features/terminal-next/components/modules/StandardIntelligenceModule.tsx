@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { fetchInstitutionalDepth, type InstitutionalDepth } from '@/app/actions/fetchInstitutionalDepth';
-import type { StackBlock } from '../StackedIntelRenderer';
+import type { StackBlock, StackedIntelRow } from '../StackedIntelRenderer';
 import { StackedIntelRenderer } from '../StackedIntelRenderer';
 import { useTerminalStore } from '../../store/TerminalStore';
 
@@ -10,6 +10,19 @@ type ModuleVariant = 'FA' | 'HP' | 'WEI' | 'YAS' | 'OVME' | 'PORT' | 'INTEL' | '
 
 function fmt(v: number, d = 2) {
   return v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+
+function withMinimumRows(rows: StackedIntelRow[], minimum: number, labelPrefix: string): StackedIntelRow[] {
+  if (rows.length >= minimum) return rows;
+  const out = [...rows];
+  while (out.length < minimum) {
+    out.push({
+      label: `${labelPrefix} ${out.length + 1}`,
+      value: 'SIMULATED DATA STANDBY',
+      tone: 'accent',
+    });
+  }
+  return out;
 }
 
 function variantRows(variant: ModuleVariant, depth: InstitutionalDepth | null) {
@@ -56,63 +69,63 @@ export function StandardIntelligenceModule({ code, title }: { code: ModuleVarian
     fetchInstitutionalDepth(sym).then(setDepth).catch(() => {});
   }, [state.activeSymbol]);
 
-  const primaryRows = useMemo(() => variantRows(code, depth), [code, depth]);
+  const primaryRows = useMemo(() => withMinimumRows(variantRows(code, depth), 18, `${code} ROW`), [code, depth]);
   const blockProv = depth?.meta?.sections ?? {};
-  const ladderRows = state.orderBook.flatMap((lvl, idx) => [
+  const ladderRows = withMinimumRows(state.orderBook.flatMap((lvl, idx) => [
     { label: `L${idx + 1} BID`, value: `${lvl.bid.toFixed(2)} x ${lvl.bidSize}`, tone: 'positive' as const },
     { label: `L${idx + 1} ASK`, value: `${lvl.ask.toFixed(2)} x ${lvl.askSize}`, tone: 'negative' as const },
-  ]);
-  const tapeRows = state.tape.map((t) => ({
+  ]), 28, 'LADDER');
+  const tapeRows = withMinimumRows(state.tape.map((t) => ({
     label: `${t.time} ${t.side}`,
     value: `${t.price.toFixed(2)} x ${t.size}${t.isSweep ? ' SWP' : ''}`,
     tone: t.side === 'BUY' ? ('positive' as const) : ('negative' as const),
-  }));
-  const executionRows = state.executionEvents.map((e) => ({
+  })), 24, 'TAPE');
+  const executionRows = withMinimumRows(state.executionEvents.map((e) => ({
     label: `${e.symbol} ${e.status}`,
     value: `${e.fillQty}@${fmt(e.fillPrice, 2)} ${e.source}`,
     tone: 'accent' as const,
-  }));
-  const telemetryRows = [...state.systemFeed, ...state.headlines, ...state.alerts].map((line, idx) => ({
+  })), 18, 'EXEC');
+  const telemetryRows = withMinimumRows([...state.systemFeed, ...state.headlines, ...state.alerts].map((line, idx) => ({
     label: `TRACE ${idx + 1}`,
     value: line,
     tone: line.includes('ALERT') || line.includes('SWEEP') ? ('negative' as const) : ('neutral' as const),
-  }));
-  const quoteRows = state.quotes.map((q) => ({
+  })), 40, 'TRACE');
+  const quoteRows = withMinimumRows(state.quotes.map((q) => ({
     label: `${q.symbol} LQ ${q.liquidityScore} B ${q.betaToSPX.toFixed(2)}`,
     value: `${fmt(q.last, q.last < 10 ? 4 : 2)} / ${q.pct >= 0 ? '+' : ''}${q.pct.toFixed(2)}%`,
     tone: q.pct >= 0 ? ('positive' as const) : ('negative' as const),
-  }));
+  })), 36, 'QUOTE');
 
   const blocks: StackBlock[] = [
     { id: `${code}-primary`, title: `${code} PRIMARY DATASET`, rows: primaryRows, provenance: blockProv.financial },
     {
       id: `${code}-vol`,
       title: 'VOLATILITY & SKEW',
-      rows: (depth?.options.skewHistory ?? []).map((r) => ({
+      rows: withMinimumRows((depth?.options.skewHistory ?? []).map((r) => ({
         label: r.date,
         value: `RR25 ${r.rr25d.toFixed(2)} | BF25 ${r.bf25d.toFixed(2)}`,
         tone: r.rr25d >= 0 ? ('positive' as const) : ('negative' as const),
-      })),
+      })), 24, 'VOL'),
       provenance: blockProv.flow,
     },
     {
       id: `${code}-flow`,
       title: 'FLOW & POSITIONING',
-      rows: (depth?.market.flows ?? []).map((r) => ({
+      rows: withMinimumRows((depth?.market.flows ?? []).map((r) => ({
         label: `${r.vehicle} ${r.direction}`,
         value: `${r.flowUsdM >= 0 ? '+' : ''}$${r.flowUsdM.toFixed(0)}M`,
         tone: r.direction === 'Inflow' ? ('positive' as const) : ('negative' as const),
-      })),
+      })), 16, 'FLOW'),
       provenance: blockProv.flow,
     },
     {
       id: `${code}-peers`,
       title: 'PEER COMPARISON',
-      rows: (depth?.relationships?.entities ?? []).slice(1).map((e) => ({
+      rows: withMinimumRows((depth?.relationships?.entities ?? []).slice(1).map((e) => ({
         label: `${e.symbol} ${e.sector}`,
         value: `${e.name} | ${e.country}`,
         tone: 'neutral' as const,
-      })),
+      })), 12, 'PEER'),
       provenance: blockProv.peers,
     },
     {
@@ -130,31 +143,31 @@ export function StandardIntelligenceModule({ code, title }: { code: ModuleVarian
     {
       id: `${code}-events`,
       title: 'EVENT TIMELINE',
-      rows: (depth?.news.impacts ?? []).map((e) => ({
+      rows: withMinimumRows((depth?.news.impacts ?? []).map((e) => ({
         label: `${e.date}`,
         value: `${e.event} | Px ${e.priceImpactPct >= 0 ? '+' : ''}${e.priceImpactPct}% | Vol ${e.volShiftPct >= 0 ? '+' : ''}${e.volShiftPct}%`,
         tone: e.priceImpactPct >= 0 ? ('positive' as const) : ('negative' as const),
-      })),
+      })), 20, 'EVENT'),
       provenance: blockProv.events,
     },
     {
       id: `${code}-docs`,
       title: 'LINKED DOCUMENTS',
-      rows: (depth?.news.archive ?? []).map((d) => ({
+      rows: withMinimumRows((depth?.news.archive ?? []).map((d) => ({
         label: `${d.published_at} ${d.source}`,
         value: d.title,
         tone: d.title.includes('[SIMULATED]') ? ('accent' as const) : ('neutral' as const),
-      })),
+      })), 24, 'DOC'),
       provenance: blockProv.news,
     },
     {
       id: `${code}-relationships`,
       title: 'RELATIONSHIP SUMMARY',
-      rows: (depth?.relationships?.edges ?? []).map((e) => ({
+      rows: withMinimumRows((depth?.relationships?.edges ?? []).map((e) => ({
         label: `${e.relationshipType} w${e.weight.toFixed(2)}`,
         value: `${e.fromId.slice(0, 8)} -> ${e.toId.slice(0, 8)}`,
         tone: 'neutral' as const,
-      })),
+      })), 16, 'REL'),
       provenance: blockProv.relationships,
     },
     { id: `${code}-ladder`, title: 'DEPTH LADDER TRACE', rows: ladderRows },

@@ -109,6 +109,15 @@ function mkYearSeries(seed: number, years: number, base: number, drift: number):
   return out;
 }
 
+function ensureMinItems<T>(rows: T[], minimum: number, makeItem: (index: number) => T): T[] {
+  if (rows.length >= minimum) return rows;
+  const out = [...rows];
+  while (out.length < minimum) {
+    out.push(makeItem(out.length));
+  }
+  return out;
+}
+
 export async function fetchInstitutionalDepth(symbolInput: string): Promise<InstitutionalDepth> {
   const symbol = symbolInput.toUpperCase().replace(/\s+.*$/, '') || 'AAPL';
   const seed = mkSeed(symbol);
@@ -168,13 +177,106 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
       source: d.source ?? 'wire',
     })),
   ];
+  const denseNewsArchive = ensureMinItems(newsArchive, 28, (index) => ({
+    title: `[SIMULATED] ${symbol} coverage update ${index + 1}`,
+    published_at: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? new Date().toISOString().slice(0, 10),
+    source: 'demo-wire',
+  }));
 
-  const impacts = synthetic.eventTimeline.events.map((e) => ({
+  const impacts = ensureMinItems(synthetic.eventTimeline.events.map((e) => ({
     date: e.date,
     event: e.title,
     priceImpactPct: e.priceImpactPct,
     volShiftPct: e.volatilityImpactPct,
+  })), 24, (index) => ({
+    date: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? new Date().toISOString().slice(0, 10),
+    event: `${symbol} synthetic event ${index + 1}`,
+    priceImpactPct: Number((Math.sin(index * 0.27) * 2.4).toFixed(2)),
+    volShiftPct: Number((Math.cos(index * 0.23) * 5.2).toFixed(2)),
   }));
+
+  const denseSecFilings = ensureMinItems(
+    secFilings.map((f) => ({ form: f.form, filed: f.filed, description: f.description, url: f.url })),
+    16,
+    (index) => ({
+      form: index % 3 === 0 ? '8-K' : index % 3 === 1 ? '10-Q' : '4',
+      filed: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? new Date().toISOString().slice(0, 10),
+      description: `${symbol} simulated filing ${index + 1}`,
+      url: '#',
+    }),
+  );
+
+  const denseMarketIndices = ensureMinItems(
+    (market.filter(Boolean) as NonNullable<typeof market[number]>[]).map((m) => ({
+      symbol: m.symbol,
+      level: m.price,
+      movePct: m.changePercent,
+      volumeM: Number((m.history.reduce((a, b) => a + b.volume, 0) / 1_000_000).toFixed(2)),
+    })),
+    8,
+    (index) => ({
+      symbol: `SIMIDX${index + 1}`,
+      level: Number((4200 + index * 93 + Math.sin(index * 0.4) * 22).toFixed(2)),
+      movePct: Number((Math.sin(index * 0.35) * 1.8).toFixed(2)),
+      volumeM: Number((210 + index * 17 + Math.abs(Math.cos(index * 0.2)) * 64).toFixed(2)),
+    }),
+  );
+
+  const denseMacro = ensureMinItems(
+    macro.map((m) => ({
+      date: m.date,
+      title: m.title,
+      impact: m.impact ?? 'Medium',
+      forecast: m.forecast ?? 'N/A',
+    })),
+    16,
+    (index) => ({
+      date: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? new Date().toISOString().slice(0, 10),
+      title: `Synthetic macro catalyst ${index + 1}`,
+      impact: index % 4 === 0 ? 'High' : 'Medium',
+      forecast: `${(2.1 + index * 0.04).toFixed(2)}%`,
+    }),
+  );
+
+  const denseCatalysts = ensureMinItems(
+    [
+      ...denseNewsArchive.map((d) => ({ date: d.published_at, type: 'News', title: d.title })),
+      ...(intel.envelope.events ?? []).map((e) => ({ date: e.occurred_at ?? '', type: 'Event', title: e.label })),
+    ],
+    30,
+    (index) => ({
+      date: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? new Date().toISOString().slice(0, 10),
+      type: 'Event',
+      title: `${symbol} synthetic catalyst ${index + 1}`,
+    }),
+  );
+
+  const denseRelationshipEntities = ensureMinItems(
+    synthetic.relationshipGraph.entities,
+    10,
+    (index) => ({
+      id: `sim-entity-${index + 1}`,
+      symbol: `${symbol}${index + 1}`,
+      name: `${symbol} synthetic peer ${index + 1}`,
+      country: index % 2 === 0 ? 'US' : 'UK',
+      sector: index % 2 === 0 ? 'Technology' : 'Industrials',
+    }),
+  );
+
+  const denseRelationshipEdges = ensureMinItems(
+    synthetic.relationshipGraph.edges,
+    20,
+    (index) => {
+      const from = denseRelationshipEntities[index % denseRelationshipEntities.length];
+      const to = denseRelationshipEntities[(index + 3) % denseRelationshipEntities.length];
+      return {
+        fromId: from.id,
+        toId: to.id,
+        relationshipType: index % 2 === 0 ? 'supplier' : 'peer',
+        weight: Number((0.3 + ((index % 7) * 0.1)).toFixed(2)),
+      };
+    },
+  );
 
   return {
     symbol,
@@ -270,7 +372,13 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
       ],
     },
     options: {
-      surface,
+      surface: ensureMinItems(surface, 8, (index) => ({
+        delta: `${Math.min(99, 5 + index * 10)}D`,
+        w1: Number((16 + index * 1.2).toFixed(2)),
+        m1: Number((17 + index * 1.1).toFixed(2)),
+        m3: Number((18 + index).toFixed(2)),
+        m6: Number((19 + index * 0.9).toFixed(2)),
+      })),
       skewHistory: Array.from({ length: 80 }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - i * 2);
@@ -280,8 +388,16 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
           bf25d: Number((0.7 + Math.cos(i * 0.16) * 1.1).toFixed(2)),
         };
       }),
-      gammaExposure,
-      oiHeatmap,
+      gammaExposure: ensureMinItems(gammaExposure, 32, (index) => ({
+        strike: Number((90 + index * 5).toFixed(2)),
+        gamma: Number((Math.sin(index * 0.24) * 0.08).toFixed(4)),
+        openInterest: 800 + index * 140,
+      })),
+      oiHeatmap: ensureMinItems(oiHeatmap, 32, (index) => ({
+        expiration: `2026-0${(index % 9) + 1}-15`,
+        strike: Number((95 + index * 4).toFixed(2)),
+        oi: 1200 + index * 110,
+      })),
     },
     portfolio: {
       exposures: [
@@ -312,25 +428,22 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
       }),
     },
     calendar: {
-      macro: macro.map((m) => ({
-        date: m.date,
-        title: m.title,
-        impact: m.impact ?? 'Medium',
-        forecast: m.forecast ?? 'N/A',
-      })),
-      earnings: synthetic.analystRevisions.rows.map((e) => ({
+      macro: denseMacro,
+      earnings: ensureMinItems(synthetic.analystRevisions.rows.map((e) => ({
         date: e.date,
         ticker: symbol,
         epsEst: e.epsEstimate,
         revEst: Number((e.epsEstimate * 3.2).toFixed(2)),
+      })), 24, (index) => ({
+        date: synthetic.eventTimeline.events[index % synthetic.eventTimeline.events.length]?.date ?? new Date().toISOString().slice(0, 10),
+        ticker: symbol,
+        epsEst: Number((2 + index * 0.05).toFixed(2)),
+        revEst: Number((6.5 + index * 0.21).toFixed(2)),
       })),
-      catalysts: [
-        ...newsArchive.map((d) => ({ date: d.published_at, type: 'News', title: d.title })),
-        ...(intel.envelope.events ?? []).map((e) => ({ date: e.occurred_at ?? '', type: 'Event', title: e.label })),
-      ],
+      catalysts: denseCatalysts,
     },
     sec: {
-      filings: secFilings.map((f) => ({ form: f.form, filed: f.filed, description: f.description, url: f.url })),
+      filings: denseSecFilings,
       insider: Array.from({ length: 40 }, (_, i) => {
         const d = new Date();
         d.setDate(d.getDate() - i * 5);
@@ -351,12 +464,7 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
       ],
     },
     market: {
-      indices: (market.filter(Boolean) as NonNullable<typeof market[number]>[]).map((m) => ({
-        symbol: m.symbol,
-        level: m.price,
-        movePct: m.changePercent,
-        volumeM: Number((m.history.reduce((a, b) => a + b.volume, 0) / 1_000_000).toFixed(2)),
-      })),
+      indices: denseMarketIndices,
       sectors: [
         { sector: 'Technology', movePct: 0.82, beta: 1.24, concentrationPct: 31 },
         { sector: 'Healthcare', movePct: 0.31, beta: 0.89, concentrationPct: 14 },
@@ -384,7 +492,7 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
       ],
     },
     news: {
-      archive: newsArchive,
+      archive: denseNewsArchive,
       topics: [
         { topic: 'Earnings', count: 42, sentiment: 0.19 },
         { topic: 'M&A', count: 13, sentiment: 0.07 },
@@ -395,8 +503,8 @@ export async function fetchInstitutionalDepth(symbolInput: string): Promise<Inst
       impacts,
     },
     relationships: {
-      entities: synthetic.relationshipGraph.entities,
-      edges: synthetic.relationshipGraph.edges,
+      entities: denseRelationshipEntities,
+      edges: denseRelationshipEdges,
     },
   };
 }

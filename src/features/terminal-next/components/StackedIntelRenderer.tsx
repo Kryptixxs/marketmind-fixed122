@@ -27,6 +27,12 @@ const toneClass: Record<StackedIntelTone, string> = {
   accent: 'text-[#8cc7f3]',
 };
 
+const EMPTY_BLOCK_ROWS: StackedIntelRow[] = [
+  { label: 'STATUS', value: 'DATA PIPELINE STANDBY', tone: 'accent' },
+  { label: 'SOURCE', value: 'SIMULATED FALLBACK', tone: 'neutral' },
+  { label: 'ACTION', value: 'WAITING FOR NEXT UPDATE', tone: 'neutral' },
+];
+
 export function StackedIntelRenderer({ blocks, className }: { blocks: StackBlock[]; className?: string }) {
   return (
     <div className={`flex flex-col overflow-y-auto h-full min-h-0 custom-scrollbar ${className ?? ''}`}>
@@ -42,7 +48,7 @@ export function StackedIntelRenderer({ blocks, className }: { blocks: StackBlock
             block.render()
           ) : (
             <>
-              {(block.rows ?? []).map((row, idx) => (
+              {((block.rows?.length ?? 0) > 0 ? block.rows! : EMPTY_BLOCK_ROWS).map((row, idx) => (
                 <div key={`${block.id}-${idx}-${row.label}`} className="text-[8px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1fr_1fr] gap-1">
                   <span className="text-[#93a9c6] truncate">{row.label}</span>
                   <span className={`${toneClass[row.tone ?? 'neutral']} truncate text-right font-bold`}>{row.value}</span>

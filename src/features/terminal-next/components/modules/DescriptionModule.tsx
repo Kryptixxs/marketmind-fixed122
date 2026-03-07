@@ -118,6 +118,9 @@ export function DescriptionModule() {
     ...entityNews,
     ...state.systemFeed,
   ];
+  const denseEventTimeline = eventTimeline.length > 0 ? eventTimeline : ['Awaiting catalyst stream update', 'Synthetic timeline standby', ...state.headlines.slice(0, 6)];
+  const counterparties = [...(supplyChain?.customers ?? []), ...(supplyChain?.suppliers ?? []), ...(supplyChain?.partners ?? [])];
+  const denseCounterparties = counterparties.length > 0 ? counterparties : [{ name: 'Synthetic Counterparty Alpha', segment: 'Core Supplier' }, { name: 'Synthetic Counterparty Beta', segment: 'Distribution Partner' }];
 
   const applySymbol = (symbol: string) => {
     const cmd = `${symbol} DES GO`;
@@ -263,7 +266,7 @@ export function DescriptionModule() {
           ))}
 
           <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#63c8ff] font-bold flex items-center">SUPPLY CHAIN / COUNTERPARTY</div>
-          {[...(supplyChain?.customers ?? []), ...(supplyChain?.suppliers ?? []), ...(supplyChain?.partners ?? [])].map((e, i) => (
+          {denseCounterparties.map((e, i) => (
             <div key={`sc-${i}`} className="px-1 py-[2px] border-b border-[#1a1a1a] grid grid-cols-[1fr_auto] gap-2">
               <span className="text-[#d7e3f3] truncate">{e.name}</span>
               <span className="text-[#9fb4cd] truncate">{e.segment ?? e.note ?? e.type}</span>
@@ -296,7 +299,7 @@ export function DescriptionModule() {
           ))}
 
           <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#ffb066] font-bold flex items-center">EVENT TIMELINE / SYSTEM TRACE</div>
-          {eventTimeline.map((line, i) => (
+          {denseEventTimeline.map((line, i) => (
             <div key={`evt-${i}`} className="px-1 py-[1px] border-b border-[#1a1a1a] text-[#9fb4cd]">{line}</div>
           ))}
         </div>
