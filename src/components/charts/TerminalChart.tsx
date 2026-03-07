@@ -20,6 +20,7 @@ export interface TerminalChartProps {
   labels?: string[];
   metricLabel?: string;
   metricValue?: string;
+  showHeader?: boolean;
   className?: string;
 }
 
@@ -37,7 +38,7 @@ function normalize(values: number[]): number[] {
 }
 
 const GRID = '#16304e';
-const AXIS = '#35506d';
+const AXIS = '#2d465f';
 const TICK = '#8ea4bf';
 const POS = '#4ce0a5';
 const NEG = '#ff7ca3';
@@ -54,6 +55,7 @@ export const TerminalChart = memo(function TerminalChart({
   labels = [],
   metricLabel,
   metricValue,
+  showHeader = true,
   className,
 }: TerminalChartProps) {
   const primaryNorm = useMemo(() => normalize(series), [series]);
@@ -96,24 +98,26 @@ export const TerminalChart = memo(function TerminalChart({
   const renderGrid = (
     <>
       {[20, 40, 60, 80].map((v) => (
-        <line key={`h-${v}`} x1={0} y1={v} x2={100} y2={v} stroke={GRID} strokeWidth="0.5" />
+        <line key={`h-${v}`} x1={0} y1={v} x2={100} y2={v} stroke={GRID} strokeWidth="0.4" opacity="0.55" />
       ))}
       {[20, 40, 60, 80].map((v) => (
-        <line key={`v-${v}`} x1={v} y1={0} x2={v} y2={100} stroke={GRID} strokeWidth="0.5" />
+        <line key={`v-${v}`} x1={v} y1={0} x2={v} y2={100} stroke={GRID} strokeWidth="0.4" opacity="0.55" />
       ))}
       <line x1={0} y1={100} x2={100} y2={100} stroke={AXIS} strokeWidth="0.8" />
       <line x1={0} y1={0} x2={0} y2={100} stroke={AXIS} strokeWidth="0.8" />
     </>
   );
 
-  const baseClass = `flex flex-col flex-1 w-full min-w-0 min-h-0 relative bg-[#081321] border border-[#0f1725] ${className ?? ''}`;
+  const baseClass = `flex flex-col flex-1 w-full min-w-0 min-h-0 relative bg-[#081321] border border-[#111] ${className ?? ''}`;
 
   return (
     <div className={baseClass}>
-      <div className="h-[14px] px-[2px] border-b border-[#0f1725] text-[7px] text-[#8ea4bf] flex items-center justify-between">
-        <span className="truncate font-mono tracking-tight">{metricLabel ?? type.toUpperCase()}</span>
-        <span className="font-mono tracking-tight">{metricValue ?? '--'}</span>
-      </div>
+      {showHeader ? (
+        <div className="h-[14px] px-[2px] border-b border-[#111] text-[7px] text-[#8ea4bf] flex items-center justify-between">
+          <span className="truncate font-mono tracking-tight">{metricLabel ?? type.toUpperCase()}</span>
+          <span className="font-mono tracking-tight">{metricValue ?? '--'}</span>
+        </div>
+      ) : null}
       <div className="flex-1 w-full min-w-0 min-h-0 relative">
         {type === 'matrix' || type === 'heatmap' || type === 'surface' ? (
           <div className="grid grid-cols-8 grid-rows-4 gap-[1px] p-[1px] h-full w-full">

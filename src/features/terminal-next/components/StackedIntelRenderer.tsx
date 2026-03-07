@@ -65,22 +65,23 @@ function matrixFromSeries(series: number[]): number[][] {
 }
 
 function chartTypes(kind: StackVisualKind): {
-  top: TerminalChartType;
-  bottom: TerminalChartType;
-  mid: TerminalChartType;
-  right: TerminalChartType;
+  primary: TerminalChartType;
+  secondary: TerminalChartType;
+  matrix: TerminalChartType;
+  microA: TerminalChartType;
+  microB: TerminalChartType;
   label: string;
 } {
-  if (kind === 'execution_microstructure') return { top: 'depth', bottom: 'line', mid: 'heatmap', right: 'ladder', label: 'DEPTH/IMB' };
-  if (kind === 'price_technical') return { top: 'candles', bottom: 'area', mid: 'matrix', right: 'ladder', label: 'PX/TA' };
-  if (kind === 'financial_trajectory') return { top: 'bar', bottom: 'line', mid: 'matrix', right: 'ladder', label: 'REV/MRG' };
-  if (kind === 'allocation_drift') return { top: 'area', bottom: 'line', mid: 'matrix', right: 'ladder', label: 'ALLOC/DRIFT' };
-  if (kind === 'breadth_grid') return { top: 'line', bottom: 'area', mid: 'matrix', right: 'depth', label: 'BREADTH/XA' };
-  if (kind === 'ownership_flow') return { top: 'bar', bottom: 'depth', mid: 'matrix', right: 'ladder', label: 'OWN/FLOW' };
-  if (kind === 'event_timeline') return { top: 'line', bottom: 'bar', mid: 'matrix', right: 'ladder', label: 'EVENT/IMP' };
-  if (kind === 'options_surface') return { top: 'surface', bottom: 'line', mid: 'heatmap', right: 'depth', label: 'IV/SKEW' };
-  if (kind === 'yield_curve') return { top: 'line', bottom: 'area', mid: 'matrix', right: 'depth', label: 'YLD/SPR' };
-  return { top: 'line', bottom: 'bar', mid: 'matrix', right: 'ladder', label: 'NEWS/FLOW' };
+  if (kind === 'execution_microstructure') return { primary: 'depth', secondary: 'line', matrix: 'heatmap', microA: 'ladder', microB: 'depth', label: 'DEPTH/IMB' };
+  if (kind === 'price_technical') return { primary: 'candles', secondary: 'area', matrix: 'matrix', microA: 'line', microB: 'ladder', label: 'PX/TA' };
+  if (kind === 'financial_trajectory') return { primary: 'bar', secondary: 'line', matrix: 'matrix', microA: 'area', microB: 'ladder', label: 'REV/MRG' };
+  if (kind === 'allocation_drift') return { primary: 'area', secondary: 'line', matrix: 'matrix', microA: 'bar', microB: 'ladder', label: 'ALLOC/DRIFT' };
+  if (kind === 'breadth_grid') return { primary: 'line', secondary: 'area', matrix: 'matrix', microA: 'depth', microB: 'ladder', label: 'BREADTH/XA' };
+  if (kind === 'ownership_flow') return { primary: 'bar', secondary: 'depth', matrix: 'matrix', microA: 'line', microB: 'ladder', label: 'OWN/FLOW' };
+  if (kind === 'event_timeline') return { primary: 'line', secondary: 'bar', matrix: 'matrix', microA: 'area', microB: 'ladder', label: 'EVENT/IMP' };
+  if (kind === 'options_surface') return { primary: 'surface', secondary: 'line', matrix: 'heatmap', microA: 'depth', microB: 'ladder', label: 'IV/SKEW' };
+  if (kind === 'yield_curve') return { primary: 'line', secondary: 'area', matrix: 'matrix', microA: 'depth', microB: 'ladder', label: 'YLD/SPR' };
+  return { primary: 'line', secondary: 'bar', matrix: 'matrix', microA: 'area', microB: 'ladder', label: 'NEWS/FLOW' };
 }
 
 function DenseChartDeck({ id, visual }: { id: string; visual: StackVisualSpec }) {
@@ -99,16 +100,25 @@ function DenseChartDeck({ id, visual }: { id: string; visual: StackVisualSpec })
 
   return (
     <div className="border-b border-[#111] bg-[#05080d] px-[2px] py-[1px]">
-      <div className="grid grid-cols-[1.55fr_1.05fr_58px] gap-[2px] h-[92px]">
+      <div className="h-[12px] px-[2px] border-b border-[#111] text-[7px] text-[#8ea4bf] grid grid-cols-4 gap-[2px] items-center">
+        <span className="truncate">{types.label}</span>
+        <span className="text-right">PX {(series.at(-1) ?? 0).toFixed(2)}</span>
+        <span className="text-right">Δ {((series.at(-1) ?? 0) - (series.at(-2) ?? 0)).toFixed(2)}</span>
+        <span className="text-right">N {series.length}</span>
+      </div>
+      <div className="grid grid-cols-[1.3fr_1fr_1fr_0.8fr] gap-[1px] h-[72px]">
+        <div className="min-h-0">
+          <TerminalChart showHeader={false} type={types.primary} series={series} secondary={secondary} candles={candles} labels={visual.labels} />
+        </div>
+        <div className="min-h-0">
+          <TerminalChart showHeader={false} type={types.secondary} series={series} secondary={secondary} labels={visual.labels} />
+        </div>
+        <div className="min-h-0">
+          <TerminalChart showHeader={false} type={types.matrix} series={series} secondary={secondary} matrix={matrixFromSeries(series)} labels={visual.labels} />
+        </div>
         <div className="grid grid-rows-2 gap-[1px] min-h-0">
-          <TerminalChart type={types.top} series={series} secondary={secondary} candles={candles} labels={visual.labels} metricLabel={types.label} metricValue={`${(series.at(-1) ?? 0).toFixed(2)}`} />
-          <TerminalChart type={types.bottom} series={series} secondary={secondary} labels={visual.labels} metricLabel="FLOW" metricValue={`${(secondary.at(-1) ?? 0).toFixed(2)}`} />
-        </div>
-        <div className="min-h-0">
-          <TerminalChart type={types.mid} series={series} secondary={secondary} matrix={matrixFromSeries(series)} labels={visual.labels} metricLabel="MATRIX" metricValue={`${series.length}`} />
-        </div>
-        <div className="min-h-0">
-          <TerminalChart type={types.right} series={series} secondary={secondary} labels={visual.labels} metricLabel="LADDER" metricValue={`${((series.at(-1) ?? 0) - (series.at(-2) ?? 0)).toFixed(2)}`} />
+          <TerminalChart showHeader={false} type={types.microA} series={series} secondary={secondary} labels={visual.labels} />
+          <TerminalChart showHeader={false} type={types.microB} series={series} secondary={secondary} labels={visual.labels} />
         </div>
       </div>
       <div className="h-[10px] text-[7px] text-[#7fa4c8] flex items-center justify-between">
