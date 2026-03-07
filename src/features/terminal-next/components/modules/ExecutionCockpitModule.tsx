@@ -63,16 +63,32 @@ export function ExecutionCockpitModule() {
           </button>
         ))}
       </div>
-      <div key={`exec-${selected.toLowerCase()}`} className="flex-1 min-h-0 grid grid-cols-[15%_53%_32%] grid-rows-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black">
-        <MonitorPanel />
-        <div className="row-span-2 min-h-0 h-full">
-          <ExecCenterStack execMode={selected} />
+      <div key={`exec-${selected.toLowerCase()}`} className="flex-1 min-h-0 flex flex-col gap-px bg-black">
+        <div className="flex-[4] min-h-0 flex gap-px bg-black">
+          <div className="basis-[18rem] max-w-[24%] min-w-[220px] min-h-0 flex flex-col gap-px">
+            <div className="flex-[1.2] min-h-0">
+              <MonitorPanel />
+            </div>
+            <div className="flex-1 min-h-0">
+              <CrossAssetMatrixPanel />
+            </div>
+          </div>
+          <div className="flex-1 min-w-0 min-h-0">
+            <ExecCenterStack execMode={selected} />
+          </div>
+          <div className="basis-[34%] min-w-[320px] max-w-[44%] min-h-0 flex flex-col gap-px">
+            <div className="flex-[1.25] min-h-0">
+              <RightRailPanel execMode={selected} />
+            </div>
+            <div className="flex-1 min-h-0">
+              <FeedPanel execMode={selected} />
+            </div>
+            <div className="flex-[0.9] min-h-0">
+              <BlotterPanel />
+            </div>
+          </div>
         </div>
-        <RightRailPanel execMode={selected} />
-        <CrossAssetMatrixPanel />
-        <FeedPanel execMode={selected} />
-        <BlotterPanel />
-        <div className="col-span-3 min-h-0">
+        <div className="flex-1 min-h-0">
           <SystemPulsePanel />
         </div>
       </div>

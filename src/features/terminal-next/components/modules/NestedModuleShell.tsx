@@ -16,8 +16,8 @@ export function NestedModuleShell({ moduleCode, title, subtabs, buildRows }: Nes
   const rows = useMemo(() => buildRows(selected), [buildRows, selected]);
 
   return (
-    <div className="flex-1 min-h-0 grid grid-cols-[22%_78%] gap-px bg-black">
-      <section className="bg-black min-h-0 overflow-hidden flex flex-col">
+    <div className="flex-1 min-h-0 flex gap-px bg-black">
+      <section className="basis-[20rem] max-w-[28%] min-w-[220px] bg-black min-h-0 overflow-hidden flex flex-col">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] flex items-center justify-between">
           <span className="text-[#9bc3e8] font-bold">CONTEXT</span>
           <span className="text-[#7f99ba]">{moduleCode}</span>
@@ -42,7 +42,7 @@ export function NestedModuleShell({ moduleCode, title, subtabs, buildRows }: Nes
         </div>
       </section>
 
-      <section className="bg-black min-h-0 overflow-hidden flex flex-col">
+      <section className="flex-1 min-w-0 bg-black min-h-0 overflow-hidden flex flex-col">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] flex items-center justify-between">
           <span className="text-[#9bc3e8] font-bold">{title}</span>
           <div className="flex items-center gap-1">
@@ -59,8 +59,8 @@ export function NestedModuleShell({ moduleCode, title, subtabs, buildRows }: Nes
             ))}
           </div>
         </div>
-        <div className="grid grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-px bg-black flex-1 min-h-0">
-          <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
+        <div className="flex flex-col gap-px bg-black flex-1 min-h-0">
+          <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar flex-[2]">
             {rows.map(([k, v]) => (
               <div key={`${k}-${v}`} className="text-[10px] px-1 py-[2px] border-b border-[#142034] flex items-center justify-between">
                 <span className="text-[#93a9c6]">{k}</span>
@@ -68,7 +68,7 @@ export function NestedModuleShell({ moduleCode, title, subtabs, buildRows }: Nes
               </div>
             ))}
           </div>
-          <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
+          <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar flex-1">
             {state.systemFeed.map((line, i) => (
               <div key={`${line}-${i}`} className="text-[9px] px-1 py-[1px] border-b border-[#142034] text-[#b7c8dd]">
                 {line}

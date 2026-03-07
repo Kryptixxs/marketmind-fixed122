@@ -15,8 +15,8 @@ export function SystemPulsePanel() {
         <span className="text-[#f4cf76] font-bold">SYSTEM PULSE / FLOW / EXPOSURE</span>
         <span className="text-[#8a9db4]">tick {state.tick}</span>
       </div>
-      <div className="grid grid-cols-[34%_33%_33%] gap-px bg-[#1a2433] flex-1 min-h-0">
-        <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
+      <div className="flex gap-px bg-[#1a2433] flex-1 min-h-0">
+        <div style={{ flexBasis: '34%', flexGrow: 1 }} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
           <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">TOP MOVERS</div>
           {movers.map((q) => (
             <div key={q.symbol} className="text-[9px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1.2fr_1fr_1fr] tabular-nums">
@@ -26,7 +26,7 @@ export function SystemPulsePanel() {
             </div>
           ))}
         </div>
-        <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
+        <div style={{ flexBasis: '33%', flexGrow: 1 }} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
           <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">SECTOR EXPOSURE</div>
           {state.risk.exposureBySector.map((x) => (
             <div key={x.sector} className="text-[9px] px-1 py-[1px] border-b border-[#1a1a1a] flex items-center justify-between tabular-nums">
@@ -43,7 +43,7 @@ export function SystemPulsePanel() {
             <span className="text-[#ffd98f] font-bold">{state.risk.regime}</span>
           </div>
         </div>
-        <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
+        <div style={{ flexBasis: '33%', flexGrow: 1 }} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
           <div className="h-4 px-1 border-b border-[#1a1a1a] text-[9px] text-[#9bc3e8] flex items-center">EXECUTION EVENTS</div>
           {state.executionEvents.map((e) => (
             <div key={e.id} className="text-[9px] px-1 py-[1px] border-b border-[#1a1a1a] grid grid-cols-[1.1fr_.9fr_.9fr_.8fr] tabular-nums">

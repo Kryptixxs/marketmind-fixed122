@@ -127,9 +127,9 @@ export function DescriptionModule() {
   };
 
   return (
-    <div key={`des-${selected}`} className="flex-1 min-h-0 grid grid-cols-[24%_40%_36%] gap-px bg-black">
+    <div key={`des-${selected}`} className="flex-1 min-h-0 flex gap-px bg-black">
       {/* LEFT COLUMN: navigation + universe + primary profile */}
-      <section className="bg-black min-h-0 overflow-hidden flex flex-col border-r border-[#1a1a1a]">
+      <section className="basis-[21rem] max-w-[30%] min-w-[230px] bg-black min-h-0 overflow-hidden flex flex-col border-r border-[#1a1a1a]">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] flex items-center justify-between">
           <span className="text-white font-bold">DES / ISSUER CONTEXT</span>
           <span className="text-gray-400">{selected}</span>
@@ -194,7 +194,7 @@ export function DescriptionModule() {
       </section>
 
       {/* CENTER COLUMN: multi-layer historical + financial context */}
-      <section className="bg-black min-h-0 overflow-hidden flex flex-col border-r border-[#1a1a1a]">
+      <section className="basis-[38%] min-w-[320px] bg-black min-h-0 overflow-hidden flex flex-col border-r border-[#1a1a1a]">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-gray-200 font-bold flex items-center">PRIMARY + SECONDARY + HISTORICAL STACK</div>
         <div className="flex-1 overflow-y-auto custom-scrollbar text-[9px]">
           <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#f4cf76] font-bold flex items-center">MARKET CAP HISTORY (10Y)</div>
@@ -246,7 +246,7 @@ export function DescriptionModule() {
       </section>
 
       {/* RIGHT COLUMN: tertiary intelligence, relationships, docs, management, board, timeline */}
-      <section className="bg-black min-h-0 overflow-hidden flex flex-col">
+      <section className="flex-1 min-w-0 bg-black min-h-0 overflow-hidden flex flex-col">
         <div className="h-5 px-1 border-b border-[#1a1a1a] bg-[#0a0a0a] text-[10px] text-gray-200 font-bold flex items-center">TERTIARY / LINKED / OPERATIONS LAYERS</div>
         <div className="flex-1 overflow-y-auto custom-scrollbar text-[9px]">
           <div className="h-4 px-1 border-y border-[#1a1a1a] text-[8px] text-[#4ce0a5] font-bold flex items-center">RELATIONSHIP GRAPH EDGES</div>

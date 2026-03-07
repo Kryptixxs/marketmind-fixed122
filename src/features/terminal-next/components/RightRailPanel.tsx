@@ -12,16 +12,17 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
   const alertRef = useRef<HTMLDivElement>(null);
   const sweepPulse = state.microstructure.sweep.active ? 'animate-pulse' : '';
   const activeRailTab = state.rightRailTab;
-  const rowsClass =
+  const modeWeights =
     execMode === 'MICROSTRUCTURE'
-      ? 'grid-rows-[62%_24%_14%]'
+      ? { depth: 3.5, tape: 1.35, alerts: 1.15 }
       : execMode === 'FACTORS'
-        ? 'grid-rows-[30%_20%_50%]'
+        ? { depth: 1.6, tape: 1.1, alerts: 2.6 }
         : execMode === 'EVENTS'
-          ? 'grid-rows-[26%_36%_38%]'
+          ? { depth: 1.4, tape: 2.2, alerts: 2.4 }
           : execMode === 'ESC'
-            ? 'grid-rows-[34%_30%_36%]'
-          : 'grid-rows-[53%_22%_25%]';
+            ? { depth: 1.9, tape: 1.75, alerts: 2.1 }
+          : { depth: 2.8, tape: 1.3, alerts: 1.6 };
+  const sectionStyle = (key: keyof typeof modeWeights) => ({ flexBasis: 0, flexGrow: modeWeights[key] });
   const ladderRows = state.orderBook;
   const tapeRows = state.tape;
   const railLabel = execMode === 'FACTORS' ? 'FACTOR MICROSTRUCTURE' : execMode === 'EVENTS' ? 'EVENT RAIL' : 'MICROSTRUCTURE';
@@ -63,10 +64,10 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         </div>
       </div>
 
-      <div className={`grid ${rowsClass} gap-px bg-[#1a2433] flex-1 min-h-0`}>
+      <div className="flex flex-col gap-px bg-[#1a2433] flex-1 min-h-0">
         {activeRailTab === 'DEPTH' && (
           <>
-            <div ref={depthRef} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
+            <div ref={depthRef} style={sectionStyle('depth')} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
               <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center justify-between">
                 <span>ORDER BOOK DEPTH</span>
                 <div className="flex items-center gap-1">
@@ -106,7 +107,7 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
                 </tbody>
               </table>
             </div>
-            <div ref={tapeRef} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
+            <div ref={tapeRef} style={sectionStyle('tape')} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
               <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center justify-between">
                 <span>TIME &amp; SALES</span>
                 <button onClick={() => dispatch({ type: 'SET_RIGHT_TAB', payload: nextRailTab })} className="text-[9px] text-[#9fb4cd]">{nextRailTab}</button>
@@ -123,7 +124,7 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
                 );
               })}
             </div>
-            <div ref={alertRef} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
+            <div ref={alertRef} style={sectionStyle('alerts')} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
               <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center">ALERT PREVIEW</div>
               {state.alerts.map((a) => (
                 <div key={a} className={`w-full text-left text-[9px] px-1 py-0.5 border-b border-[#1a1a1a] text-[#dbe7f7] ${a.includes('[ACTIVE]') || a.includes('[SWEEP]') ? 'bg-[#2f1830] text-[#ffd5ff]' : ''}`}>
@@ -138,7 +139,7 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         )}
         {activeRailTab === 'TAPE' && (
           <>
-            <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar row-span-2">
+            <div style={{ flexBasis: 0, flexGrow: modeWeights.depth + modeWeights.tape }} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
               <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center justify-between">
                 <span>TIME &amp; SALES STREAM</span>
                 <div className="flex items-center gap-1">
@@ -159,7 +160,7 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
                 );
               })}
             </div>
-            <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
+            <div style={sectionStyle('alerts')} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
               <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center">ALERTS</div>
               {state.alerts.map((a) => (
                 <div key={a} className={`w-full text-left text-[9px] px-1 py-0.5 border-b border-[#1a1a1a] text-[#dbe7f7] ${a.includes('[ACTIVE]') || a.includes('[SWEEP]') ? 'bg-[#2f1830] text-[#ffd5ff]' : ''}`}>
@@ -174,7 +175,7 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
         )}
         {activeRailTab === 'ALERTS' && (
           <>
-            <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar row-span-2">
+            <div style={{ flexBasis: 0, flexGrow: modeWeights.tape + modeWeights.alerts }} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
               <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center justify-between">
                 <span>ALERTS CONSOLE</span>
                 <div className="flex items-center gap-1">
@@ -189,7 +190,7 @@ export function RightRailPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' 
                 </div>
               ))}
             </div>
-            <div className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
+            <div style={sectionStyle('depth')} className="bg-[#0a0a0a] min-h-0 overflow-y-auto custom-scrollbar">
               <div className="h-5 px-1 border-b border-[#1a1a1a] text-[10px] text-[#8cc7f3] flex items-center">RECENT PRINTS</div>
               {tapeRows.map((r) => (
                 <div key={r.id} className="text-[9px] px-1 py-0.5 border-b border-[#1a1a1a] grid grid-cols-[1fr_1fr_auto] tabular-nums">
