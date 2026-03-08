@@ -16,8 +16,8 @@ import {
   getDockPaneOrder,
 } from './dockLayoutStore';
 import { listPinItems } from './pinboardStore';
-import { MNEMONIC_DEFS } from './MnemonicRegistry';
 import { Panel, Group, Separator } from 'react-resizable-panels';
+import { NavTreeRail } from './NavTreeRail';
 
 function ResizeHandle() {
   return (
@@ -147,36 +147,15 @@ export function NewPanelGrid() {
   const rightOrder = React.useMemo(() => getDockPaneOrder('right'), [dockState]);
   const leftFocus = leftOrder.includes(focusedPanel);
   const rightFocus = rightOrder.includes(focusedPanel);
-  const categories = React.useMemo(() => {
-    const groups = new Map<string, string[]>();
-    Object.values(MNEMONIC_DEFS).forEach((d) => {
-      const key = d.code.includes('.') ? d.code.split('.')[0]! : d.code.slice(0, 3);
-      const current = groups.get(key) ?? [];
-      current.push(d.code);
-      groups.set(key, current);
-    });
-    return Array.from(groups.entries()).slice(0, 24);
-  }, []);
 
   return (
     <div className="relative flex flex-1 min-h-0 overflow-hidden" style={{ background: DENSITY.gridlineColor }}>
       {dockState.navtreeVisible && (
-        <div className="flex-none overflow-auto terminal-scrollbar" style={{ width: 220, background: '#040404', borderRight: `1px solid ${DENSITY.gridlineColor}` }}>
-          <div style={{ height: DENSITY.toolbarHeightPx, display: 'flex', alignItems: 'center', padding: `0 ${DENSITY.pad4}px`, color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny }}>
-            NAVTREE
-          </div>
-          {categories.map(([group, codes]) => (
-            <div key={group} style={{ borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `${DENSITY.pad2}px ${DENSITY.pad4}px` }}>
-              <div style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>{group}</div>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {codes.slice(0, 8).map((c) => (
-                  <button key={c} type="button" style={{ border: `1px solid ${DENSITY.borderColor}`, padding: '0 3px', color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny }} onClick={() => navigatePanel(focusedPanel, c)}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
+        <div
+          className="flex-none flex flex-col h-full min-h-0 overflow-hidden"
+          style={{ width: 232, borderRight: `1px solid ${DENSITY.borderColor}` }}
+        >
+          <NavTreeRail />
         </div>
       )}
       <div className="flex flex-col flex-1 min-h-0 overflow-hidden">

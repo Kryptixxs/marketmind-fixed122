@@ -17,6 +17,7 @@ import { isAllowedByRole } from '../entitlementsStore';
 import { appendErrorEntry } from '../errorConsoleStore';
 import { useTerminalStore } from '../../store/TerminalStore';
 import { listCatalogByTaxonomy, listCatalogMnemonics, type MnemonicCategory } from '../../mnemonics/catalog';
+import { NavTreePanel } from '../NavTreeRail';
 
 const LAYOUT_TEMPLATES = [
   { id: 'research', name: 'Research', mode: 'tile' as DockMode, columns: 2, mnemonics: ['DES', 'CN', 'GP', 'RELG'] },
@@ -196,79 +197,12 @@ export function FnPINBAR({ panelIdx = 0 }: { panelIdx?: number }) {
 }
 
 export function FnNAVTREE({ panelIdx = 0 }: { panelIdx?: number }) {
-  const { navigatePanel, focusedPanel } = useTerminalOS();
-  const [q, setQ] = React.useState('');
-  const [category, setCategory] = React.useState<'ALL' | MnemonicCategory>('ALL');
-  const [focusSet, setFocusSet] = React.useState<'ALL' | 'FAV' | 'RECENT' | 'PINNED'>('ALL');
-  const [dock, setDock] = React.useState(() => loadDockLayout());
-  React.useEffect(() => subscribeDockLayout(() => setDock(getDockLayout())), []);
-  const loadCodeSet = React.useCallback((key: string): Set<string> => {
-    if (typeof window === 'undefined') return new Set<string>();
-    try {
-      const raw = window.localStorage.getItem(key);
-      if (!raw) return new Set<string>();
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return new Set<string>();
-      return new Set(parsed.map((v) => String(v).toUpperCase()));
-    } catch {
-      return new Set<string>();
-    }
-  }, []);
-  const defs = React.useMemo(() => {
-    const qUp = q.toUpperCase().trim();
-    const fav = loadCodeSet('mm_fn_favorites');
-    const recent = loadCodeSet('mm_fn_recent');
-    const pinned = loadCodeSet('mm_fn_pinned');
-    const all = listCatalogMnemonics();
-    const filtered = all.filter((m) => {
-      if (category !== 'ALL' && m.category !== category) return false;
-      if (focusSet === 'FAV' && !fav.has(m.code)) return false;
-      if (focusSet === 'RECENT' && !recent.has(m.code)) return false;
-      if (focusSet === 'PINNED' && !pinned.has(m.code)) return false;
-      if (!qUp) return true;
-      const hay = `${m.code} ${m.title} ${m.keywords.join(' ')} ${m.searchSynonyms.join(' ')} ${m.category} ${m.assetClass} ${m.functionType} ${m.scope}`.toUpperCase();
-      return hay.includes(qUp);
-    });
-    return filtered
-      .sort((a, b) => {
-        const score = (m: typeof a) =>
-          (recent.has(m.code) ? 20 : 0) + (fav.has(m.code) ? 12 : 0) + (pinned.has(m.code) ? 9 : 0) + (m.code.startsWith(qUp) ? 7 : 0);
-        return score(b) - score(a) || a.code.localeCompare(b.code);
-      })
-      .slice(0, 1800)
-      .map((m) => ({
-        id: m.code,
-        code: m.code,
-        title: m.title,
-        taxonomy: `${m.category}/${m.functionType}/${m.scope}`,
-        related: m.relatedCodes.slice(0, 4).join(', '),
-      }));
-  }, [q, category, focusSet, loadCodeSet]);
-  const taxonomyGroups = React.useMemo(() => Object.keys(listCatalogByTaxonomy()).length, []);
-  const cols: DenseColumn[] = [
-    { key: 'code', header: 'Function', width: '90px' },
-    { key: 'title', header: 'Title', width: '1fr' },
-    { key: 'taxonomy', header: 'Taxonomy', width: '220px' },
-    { key: 'related', header: 'Related', width: '180px' },
-  ];
   return (
     <div className="flex flex-col h-full min-h-0">
-      <PanelSubHeader title="NAVTREE • Global Function Navigator" right={<StatusBadge label={`${defs.length} MATCH / ${taxonomyGroups} GROUPS`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search function catalog" style={{ flex: 1, height: 16, background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}`, color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
-        <select value={category} onChange={(e) => setCategory(e.target.value as 'ALL' | MnemonicCategory)} style={{ height: 16, background: DENSITY.bgBase, color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}>
-          {(['ALL', 'EQUITY', 'FX', 'RATES', 'CREDIT', 'DERIVS', 'MACRO', 'PORTFOLIO', 'NEWS_DOCS', 'OPS_ADMIN'] as const).map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-        <select value={focusSet} onChange={(e) => setFocusSet(e.target.value as 'ALL' | 'FAV' | 'RECENT' | 'PINNED')} style={{ height: 16, background: DENSITY.bgBase, color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}>
-          {(['ALL', 'FAV', 'RECENT', 'PINNED'] as const).map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-        <button type="button" onClick={() => setDockLayout({ navtreeVisible: !dock.navtreeVisible })}>{dock.navtreeVisible ? 'HIDE' : 'SHOW'} RAIL</button>
+      <PanelSubHeader title="NAVTREE • Global Function Navigator" right={<StatusBadge label="Full Catalog" variant="sim" />} />
+      <div className="flex-1 min-h-0 overflow-hidden">
+        <NavTreePanel panelIdx={panelIdx} />
       </div>
-      <DenseTable columns={cols} rows={defs as unknown as Record<string, unknown>[]} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" onRowClick={(r) => navigatePanel(focusedPanel, String(r.code))} />
     </div>
   );
 }
