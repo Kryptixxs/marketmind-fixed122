@@ -28,10 +28,10 @@ function categoryMainColumns(category: MnemonicCategory): DenseColumn[] {
     { key: 'sym', header: category === 'FX' ? 'Pair' : 'Security', width: '120px', entity: (r) => makeSecurity(String(r.sym), String(r.name)) },
     { key: 'name', header: 'Name', width: '1fr' },
     { key: 'sector', header: category === 'RATES' ? 'Curve' : 'Sector', width: '90px' },
-    { key: 'country', header: 'Rgn', width: '50px' },
+    { key: 'country', header: 'Region', width: '80px' },
     { key: 'last', header: 'Last', width: '80px', align: 'right', entity: (r) => makeFieldValueEntity('PX_LAST', r.last) },
-    { key: 'pct', header: '%Chg', width: '65px', align: 'right', tone: true, format: (v) => `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`, entity: (r) => makeFieldValueEntity('PCT_CHG', r.pct, { source: 'CALC' }) },
-    { key: 'vol', header: 'Vol', width: '65px', align: 'right', format: (v) => `${Number(v).toFixed(1)}M`, entity: (r) => makeFieldValueEntity('VOLUME', r.vol) },
+    { key: 'pct', header: 'Percent Change', width: '110px', align: 'right', tone: true, format: (v) => `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`, entity: (r) => makeFieldValueEntity('PCT_CHG', r.pct, { source: 'CALC' }) },
+    { key: 'vol', header: 'Volume', width: '85px', align: 'right', format: (v) => `${Number(v).toFixed(1)}M`, entity: (r) => makeFieldValueEntity('VOLUME', r.vol) },
     { key: 'score', header: 'Score', width: '60px', align: 'right', entity: (r) => makeFieldValueEntity('BETA', r.score, { source: 'CALC' }) },
   ];
   if (category === 'DERIVS') {
@@ -71,11 +71,11 @@ export function FnFactoryMnemonic({ panelIdx, code }: { panelIdx: number; code: 
   const evidenceCols: DenseColumn[] = [
     { key: 'evidence', header: 'Evidence', width: '1fr' },
     { key: 'score', header: 'Score', width: '70px', align: 'right', entity: (r) => makeFieldValueEntity('BETA', r.score, { source: 'CALC' }) },
-    { key: 'source', header: 'Prov', width: '70px' },
+    { key: 'source', header: 'Provenance', width: '90px' },
   ];
   const fnRows = relatedFunctions.map((fn, i) => ({ id: `${fn}-${i}`, fn, title: fn, entity: makeFunction(fn, fn) }));
   const fnCols: DenseColumn[] = [
-    { key: 'fn', header: 'Fn', width: '90px', entity: (r) => makeFunction(String(r.fn), String(r.title)) },
+    { key: 'fn', header: 'Function', width: '90px', entity: (r) => makeFunction(String(r.fn), String(r.title)) },
     { key: 'title', header: 'Related Function', width: '1fr' },
   ];
   const newsCols: DenseColumn[] = [
@@ -86,13 +86,13 @@ export function FnFactoryMnemonic({ panelIdx, code }: { panelIdx: number; code: 
   const edgeCols: DenseColumn[] = [
     { key: 'type', header: 'Type', width: '88px' },
     { key: 'to', header: 'Related', width: '1fr', entity: (r) => makeSecurity(`${String(r.to)} US Equity`, String(r.to)) },
-    { key: 'strength', header: 'Str', width: '62px', align: 'right', entity: (r) => makeFieldValueEntity('BETA', r.strength, { source: 'CALC' }) },
+    { key: 'strength', header: 'Strength', width: '82px', align: 'right', entity: (r) => makeFieldValueEntity('BETA', r.strength, { source: 'CALC' }) },
   ];
   const posCols: DenseColumn[] = [
     { key: 'symbol', header: 'Symbol', width: '1fr', entity: (r) => makeSecurity(String(r.symbol)) },
     { key: 'qty', header: 'Qty', width: '70px', align: 'right' },
-    { key: 'px', header: 'Px', width: '60px', align: 'right', entity: (r) => makeFieldValueEntity('PX_LAST', r.px) },
-    { key: 'pnl', header: 'PnL', width: '70px', align: 'right', tone: true, entity: (r) => makeFieldValueEntity('PX_CHG', r.pnl, { source: 'CALC' }) },
+    { key: 'px', header: 'Price', width: '70px', align: 'right', entity: (r) => makeFieldValueEntity('PX_LAST', r.px) },
+    { key: 'pnl', header: 'Profit and Loss', width: '120px', align: 'right', tone: true, entity: (r) => makeFieldValueEntity('PX_CHG', r.pnl, { source: 'CALC' }) },
   ];
 
   if (code === 'FCAT') {
@@ -100,7 +100,7 @@ export function FnFactoryMnemonic({ panelIdx, code }: { panelIdx: number; code: 
     const rows = Object.entries(groups).map(([k, v]) => ({ id: k, taxonomy: k, count: v.length }));
     const cols: DenseColumn[] = [
       { key: 'taxonomy', header: 'Taxonomy', width: '1fr' },
-      { key: 'count', header: 'Fns', width: '72px', align: 'right' },
+      { key: 'count', header: 'Functions', width: '90px', align: 'right' },
     ];
     const catRows = listCatalogMnemonics().slice(0, 320).map((m) => ({
       id: m.code,

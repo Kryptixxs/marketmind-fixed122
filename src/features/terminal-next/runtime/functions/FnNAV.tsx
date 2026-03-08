@@ -14,7 +14,7 @@ const COLS: DenseColumn[] = [
   { key: 'time', header: 'Time', width: '80px' },
   { key: 'mnemonic', header: 'Mnemonic', width: '90px' },
   { key: 'security', header: 'Security', width: '1fr' },
-  { key: 'idx', header: 'Idx', width: '50px', align: 'right' },
+  { key: 'idx', header: 'History Index', width: '100px', align: 'right' },
 ];
 
 export function FnNAV({ panelIdx = 0 }: { panelIdx?: number }) {

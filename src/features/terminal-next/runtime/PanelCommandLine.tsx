@@ -69,6 +69,39 @@ interface SuggestItem {
   sub: string;
 }
 
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const dp = Array.from({ length: a.length + 1 }, () => Array<number>(b.length + 1).fill(0));
+  for (let i = 0; i <= a.length; i += 1) dp[i]![0] = i;
+  for (let j = 0; j <= b.length; j += 1) dp[0]![j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      dp[i]![j] = Math.min(
+        (dp[i - 1]![j] ?? 0) + 1,
+        (dp[i]![j - 1] ?? 0) + 1,
+        (dp[i - 1]![j - 1] ?? 0) + cost,
+      );
+    }
+  }
+  return dp[a.length]![b.length] ?? 99;
+}
+
+function closestMnemonic(token: string): string | undefined {
+  const t = token.toUpperCase();
+  if (KNOWN_MNEMONICS.has(t)) return t;
+  const prefix = MNEMONIC_LIST.find((m) => m.code.startsWith(t));
+  if (prefix) return prefix.code;
+  let best: { code: string; dist: number } | null = null;
+  for (const m of MNEMONIC_LIST) {
+    const d = levenshtein(t, m.code);
+    if (d <= 2 && (!best || d < best.dist)) best = { code: m.code, dist: d };
+  }
+  return best?.code;
+}
+
 function getSuggestions(input: string): SuggestItem[] {
   const q = input.trim().toUpperCase();
   if (!q) return [];
@@ -112,7 +145,8 @@ export function parseGoCommand(input: string, _currentSecurity: string, _current
   const secTokens: string[] = [];
 
   for (const t of filtered) {
-    if (KNOWN_MNEMONICS.has(t) && !mnemonic) { mnemonic = t; continue; }
+    const maybeMnemonic = closestMnemonic(t);
+    if (!mnemonic && maybeMnemonic) { mnemonic = maybeMnemonic; continue; }
     if (SECTOR_KEYS[t] && !sector) { sector = SECTOR_KEYS[t]; continue; }
     secTokens.push(t);
   }
@@ -399,6 +433,16 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
     if (parsed.timeframe) dispatchPanel(panelIdx, { type: 'SET_TIMEFRAME', tf: parsed.timeframe });
   }, [p.commandInput, p.activeSecurity, p.activeMnemonic, p.marketSector, p.timeframe, panelIdx, panels, dispatchPanel, navigatePanel, addPanel, setFocusedPanel, setDockLayout]);
 
+  useEffect(() => {
+    const onExec = (e: Event) => {
+      const detail = (e as CustomEvent<{ panelIdx: number }>).detail;
+      if (!detail || detail.panelIdx !== panelIdx) return;
+      executeGo();
+    };
+    window.addEventListener('terminal-execute-go', onExec as EventListener);
+    return () => window.removeEventListener('terminal-execute-go', onExec as EventListener);
+  }, [panelIdx, executeGo]);
+
   const selectSuggestion = useCallback((item: SuggestItem) => {
     if (item.kind === 'mnemonic') {
       navigatePanel(panelIdx, item.code);
@@ -528,11 +572,14 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
     <div className="flex-none relative" style={{ zIndex: 10, fontFamily: DENSITY.fontFamily }}>
       <div
         className="flex items-center"
-        style={{ height: DENSITY.commandBarHeightPx, background: '#111', borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px` }}
+        style={{
+          height: DENSITY.commandBarHeightPx,
+          background: DENSITY.bgSurfaceAlt,
+          borderBottom: `1px solid ${DENSITY.gridlineColor}`,
+          padding: `0 8px`,
+        }}
       >
-        <span style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeMicro, marginRight: 4, fontWeight: 700 }}>
-          {panelIdx + 1}&gt;
-        </span>
+        <span style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, marginRight: 4, userSelect: 'none' }}>P{panelIdx+1}&gt;</span>
         <input
           id={commandInputId(panelIdx)}
           ref={inputRef}

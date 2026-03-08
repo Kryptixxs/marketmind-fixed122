@@ -57,7 +57,7 @@ import { FnBASK, FnEVID, FnIMP, FnNET, FnOUT, FnPATH, FnRELG, FnRELT, FnSENTR, F
 import { FnNEX, FnNMAP, FnNQ, FnNREL, FnNTIM, FnRGN, FnRGNC, FnRGNM, FnRGNN, FnRGNR } from './functions/FnRegionNewsIntel';
 import { FnBETAX, FnCUST, FnFAC, FnHEDGE, FnREGI, FnSCN, FnSCNR, FnSHOCKG, FnSUPPConcentration, FnXDRV } from './functions/FnSupplyDriverIntel';
 import { FnBKMK, FnCITY, FnCMPY, FnCTY, FnFOCUS, FnINDY, FnNAVG, FnRELATE, FnSECT, FnTRAIL } from './functions/FnNavDossierIntel';
-import { FnADMIN, FnALRTPlus, FnAPI, FnAUDITPlus, FnCMDK, FnDIAG, FnDOCK, FnFLOAT, FnFOCUSPlus, FnKEYMAP, FnLAYOUT, FnLINK, FnMONPlus, FnNAVTREE, FnOFFLINE, FnPINBAR, FnPOLICYPlus, FnSRC, FnSTATUS } from './functions/FnPlatformOS';
+import { FnADMIN, FnALRTPlus, FnAPI, FnAUDITPlus, FnCMDK, FnDIAG, FnDOCK, FnFLOAT, FnFOCUSPlus, FnKEYMAP, FnLAYOUT, FnLINK, FnMONPlus, FnNAVTREE, FnOFFLINE, FnPINBAR, FnPOLICYPlus, FnPREF, FnSRC, FnSTATUS, FnTUTOR } from './functions/FnPlatformOS';
 import { FnCAL24, FnCRSP, FnGMOV, FnNINT, FnRFCM, FnSECH } from './functions/FnWallBlocks';
 
 type FnC = React.ComponentType<{ panelIdx: number }>;
@@ -186,7 +186,7 @@ const FUNCTION_MAP: Record<string, FnC> = {
   KEYMAP: FnKEYMAP as FnC,
   CMDK: FnCMDK as FnC,
   LINK: FnLINK as FnC,
-  PREF: FnEnterpriseStub as FnC,
+  PREF: FnPREF as FnC,
   FORMAT: FnEnterpriseStub as FnC,
   AUTH: FnEnterpriseStub as FnC,
   MFA: FnEnterpriseStub as FnC,
@@ -213,8 +213,8 @@ const FUNCTION_MAP: Record<string, FnC> = {
   DIAG: FnDIAG as FnC,
   OFFLINE: FnOFFLINE as FnC,
   UPDATE: FnEnterpriseStub as FnC,
-  HELP: FnEnterpriseStub as FnC,
-  TUTOR: FnEnterpriseStub as FnC,
+  HELP: FnTUTOR as FnC,
+  TUTOR: FnTUTOR as FnC,
   DOCS: FnEnterpriseStub as FnC,
   LOCK: FnEnterpriseStub as FnC,
   PRIV: FnEnterpriseStub as FnC,

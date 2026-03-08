@@ -16,6 +16,7 @@ import { loadPolicyState, savePolicyState, checkPolicy } from '../policyStore';
 import { isAllowedByRole } from '../entitlementsStore';
 import { appendErrorEntry } from '../errorConsoleStore';
 import { useTerminalStore } from '../../store/TerminalStore';
+import { listCatalogByTaxonomy, listCatalogMnemonics, type MnemonicCategory } from '../../mnemonics/catalog';
 
 const LAYOUT_TEMPLATES = [
   { id: 'research', name: 'Research', mode: 'tile' as DockMode, columns: 2, mnemonics: ['DES', 'CN', 'GP', 'RELG'] },
@@ -76,7 +77,7 @@ export function FnFLOAT({ panelIdx = 0 }: { panelIdx?: number }) {
   }));
   const cols: DenseColumn[] = [
     { key: 'pane', header: 'Pane', width: '70px' },
-    { key: 'mnemonic', header: 'Fn', width: '70px' },
+    { key: 'mnemonic', header: 'Function', width: '90px' },
     { key: 'security', header: 'Security', width: '1fr' },
     { key: 'float', header: 'State', width: '90px' },
   ];
@@ -101,7 +102,7 @@ export function FnLAYOUT({ panelIdx = 0 }: { panelIdx?: number }) {
   const cols: DenseColumn[] = [
     { key: 'name', header: 'Template', width: '140px' },
     { key: 'mode', header: 'Mode', width: '70px' },
-    { key: 'columns', header: 'Cols', width: '50px', align: 'right' },
+    { key: 'columns', header: 'Columns', width: '70px', align: 'right' },
     { key: 'mnemonics', header: 'Default Panes', width: '1fr' },
   ];
   return (
@@ -165,7 +166,7 @@ export function FnPINBAR({ panelIdx = 0 }: { panelIdx?: number }) {
     { key: 'label', header: 'Pinned', width: '140px' },
     { key: 'value', header: 'Value', width: '90px', align: 'right' },
     { key: 'provenance', header: 'Prov', width: '60px' },
-    { key: 'targetMnemonic', header: 'Fn', width: '70px' },
+    { key: 'targetMnemonic', header: 'Function', width: '90px' },
   ];
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -197,22 +198,74 @@ export function FnPINBAR({ panelIdx = 0 }: { panelIdx?: number }) {
 export function FnNAVTREE({ panelIdx = 0 }: { panelIdx?: number }) {
   const { navigatePanel, focusedPanel } = useTerminalOS();
   const [q, setQ] = React.useState('');
+  const [category, setCategory] = React.useState<'ALL' | MnemonicCategory>('ALL');
+  const [focusSet, setFocusSet] = React.useState<'ALL' | 'FAV' | 'RECENT' | 'PINNED'>('ALL');
   const [dock, setDock] = React.useState(() => loadDockLayout());
   React.useEffect(() => subscribeDockLayout(() => setDock(getDockLayout())), []);
-  const defs = Object.values(MNEMONIC_DEFS)
-    .filter((d) => d.code.includes(q.toUpperCase()) || d.title.toUpperCase().includes(q.toUpperCase()))
-    .slice(0, 120)
-    .map((d) => ({ id: d.code, code: d.code, title: d.title, related: d.relatedCodes.slice(0, 3).join(', ') }));
+  const loadCodeSet = React.useCallback((key: string): Set<string> => {
+    if (typeof window === 'undefined') return new Set<string>();
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (!raw) return new Set<string>();
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return new Set<string>();
+      return new Set(parsed.map((v) => String(v).toUpperCase()));
+    } catch {
+      return new Set<string>();
+    }
+  }, []);
+  const defs = React.useMemo(() => {
+    const qUp = q.toUpperCase().trim();
+    const fav = loadCodeSet('mm_fn_favorites');
+    const recent = loadCodeSet('mm_fn_recent');
+    const pinned = loadCodeSet('mm_fn_pinned');
+    const all = listCatalogMnemonics();
+    const filtered = all.filter((m) => {
+      if (category !== 'ALL' && m.category !== category) return false;
+      if (focusSet === 'FAV' && !fav.has(m.code)) return false;
+      if (focusSet === 'RECENT' && !recent.has(m.code)) return false;
+      if (focusSet === 'PINNED' && !pinned.has(m.code)) return false;
+      if (!qUp) return true;
+      const hay = `${m.code} ${m.title} ${m.keywords.join(' ')} ${m.searchSynonyms.join(' ')} ${m.category} ${m.assetClass} ${m.functionType} ${m.scope}`.toUpperCase();
+      return hay.includes(qUp);
+    });
+    return filtered
+      .sort((a, b) => {
+        const score = (m: typeof a) =>
+          (recent.has(m.code) ? 20 : 0) + (fav.has(m.code) ? 12 : 0) + (pinned.has(m.code) ? 9 : 0) + (m.code.startsWith(qUp) ? 7 : 0);
+        return score(b) - score(a) || a.code.localeCompare(b.code);
+      })
+      .slice(0, 1800)
+      .map((m) => ({
+        id: m.code,
+        code: m.code,
+        title: m.title,
+        taxonomy: `${m.category}/${m.functionType}/${m.scope}`,
+        related: m.relatedCodes.slice(0, 4).join(', '),
+      }));
+  }, [q, category, focusSet, loadCodeSet]);
+  const taxonomyGroups = React.useMemo(() => Object.keys(listCatalogByTaxonomy()).length, []);
   const cols: DenseColumn[] = [
-    { key: 'code', header: 'Fn', width: '90px' },
+    { key: 'code', header: 'Function', width: '90px' },
     { key: 'title', header: 'Title', width: '1fr' },
-    { key: 'related', header: 'Related', width: '160px' },
+    { key: 'taxonomy', header: 'Taxonomy', width: '220px' },
+    { key: 'related', header: 'Related', width: '180px' },
   ];
   return (
     <div className="flex flex-col h-full min-h-0">
-      <PanelSubHeader title="NAVTREE • Global Function Navigator" right={<StatusBadge label={`${defs.length} MATCH`} variant="sim" />} />
+      <PanelSubHeader title="NAVTREE • Global Function Navigator" right={<StatusBadge label={`${defs.length} MATCH / ${taxonomyGroups} GROUPS`} variant="sim" />} />
       <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search function catalog" style={{ flex: 1, height: 16, background: '#000', border: '1px solid #222', color: '#e6e6e6', fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
+        <select value={category} onChange={(e) => setCategory(e.target.value as 'ALL' | MnemonicCategory)} style={{ height: 16, background: '#000', color: '#e6e6e6', border: '1px solid #222', fontSize: DENSITY.fontSizeTiny }}>
+          {(['ALL', 'EQUITY', 'FX', 'RATES', 'CREDIT', 'DERIVS', 'MACRO', 'PORTFOLIO', 'NEWS_DOCS', 'OPS_ADMIN'] as const).map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <select value={focusSet} onChange={(e) => setFocusSet(e.target.value as 'ALL' | 'FAV' | 'RECENT' | 'PINNED')} style={{ height: 16, background: '#000', color: '#e6e6e6', border: '1px solid #222', fontSize: DENSITY.fontSizeTiny }}>
+          {(['ALL', 'FAV', 'RECENT', 'PINNED'] as const).map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
         <button type="button" onClick={() => setDockLayout({ navtreeVisible: !dock.navtreeVisible })}>{dock.navtreeVisible ? 'HIDE' : 'SHOW'} RAIL</button>
       </div>
       <DenseTable columns={cols} rows={defs as unknown as Record<string, unknown>[]} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" onRowClick={(r) => navigatePanel(focusedPanel, String(r.code))} />
@@ -287,7 +340,7 @@ export function FnLINK({ panelIdx = 0 }: { panelIdx?: number }) {
   const cols: DenseColumn[] = [
     { key: 'pane', header: 'Pane', width: '70px' },
     { key: 'security', header: 'Security', width: '1fr' },
-    { key: 'mnemonic', header: 'Fn', width: '80px' },
+    { key: 'mnemonic', header: 'Function', width: '90px' },
     { key: 'group', header: 'Link', width: '70px' },
   ];
   const cycle: Array<'red' | 'green' | 'blue' | 'yellow' | null> = [null, 'red', 'green', 'blue', 'yellow'];
@@ -355,7 +408,7 @@ export function FnALRTPlus({ panelIdx = 0 }: { panelIdx?: number }) {
     { key: 'symbol', header: 'Symbol', width: '160px' },
     { key: 'condition', header: 'Condition', width: '130px' },
     { key: 'created', header: 'Created', width: '90px' },
-    { key: 'prov', header: 'Prov', width: '60px' },
+    { key: 'prov', header: 'Provenance', width: '100px' },
   ];
   const create = () => {
     const policy = loadPolicyState();
@@ -440,7 +493,7 @@ export function FnDIAG({ panelIdx = 0 }: { panelIdx?: number }) {
   const { state } = useTerminalStore();
   const fps = state.workerAnalytics?.uiFps ?? 60;
   const rows = Array.from({ length: 12 }, (_, i) => ({ id: `${i}`, pane: `P${i + 1}`, renderMs: Math.max(2, Math.round(1000 / Math.max(20, fps)) + i), memMb: 120 + i * 3, virt: i % 2 ? 'OK' : 'WARN' }));
-  const cols: DenseColumn[] = [{ key: 'pane', header: 'Pane', width: '70px' }, { key: 'renderMs', header: 'Render(ms)', width: '100px', align: 'right' }, { key: 'memMb', header: 'Mem(MB)', width: '90px', align: 'right' }, { key: 'virt', header: 'Virt', width: '80px' }];
+  const cols: DenseColumn[] = [{ key: 'pane', header: 'Pane', width: '70px' }, { key: 'renderMs', header: 'Render Time (ms)', width: '120px', align: 'right' }, { key: 'memMb', header: 'Memory (MB)', width: '100px', align: 'right' }, { key: 'virt', header: 'Virtualization', width: '100px' }];
   return <div className="flex flex-col h-full min-h-0"><PanelSubHeader title="DIAG • Diagnostics / Profiler" right={<StatusBadge label={`FPS ${fps}`} variant="sim" />} /><DenseTable columns={cols} rows={rows as unknown as Record<string, unknown>[]} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" /></div>;
 }
 
@@ -455,5 +508,245 @@ export function FnOFFLINE({ panelIdx = 0 }: { panelIdx?: number }) {
   ];
   const cols: DenseColumn[] = [{ key: 'key', header: 'Cache Area', width: '1fr' }, { key: 'value', header: 'Value', width: '120px' }, { key: 'stale', header: 'STALE', width: '80px' }];
   return <div className="flex flex-col h-full min-h-0"><PanelSubHeader title="OFFLINE • Cached Snapshot Mode" right={<StatusBadge label={policy.mode === 'frozen' ? 'STALE' : 'LIVE'} variant={policy.mode === 'frozen' ? 'stale' : 'live'} />} /><div className="px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}><button type="button" onClick={() => savePolicyState({ ...policy, mode: policy.mode === 'frozen' ? 'normal' : 'frozen' })}>{policy.mode === 'frozen' ? 'EXIT OFFLINE' : 'ENTER OFFLINE'}</button></div><DenseTable columns={cols} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" /></div>;
+}
+
+export function FnTUTOR({ panelIdx = 0 }: { panelIdx?: number }) {
+  const { navigatePanel, focusedPanel } = useTerminalOS();
+  const [track, setTrack] = React.useState<'CORE' | 'MAP' | 'PLATFORM'>('CORE');
+
+  const steps = React.useMemo(() => {
+    const core = [
+      { id: '1', step: '1', mnemonic: 'HL+', action: 'Open unified search', why: 'Discover any function/security/field quickly' },
+      { id: '2', step: '2', mnemonic: 'DES', action: 'Open reference sheet', why: 'Learn key fields and provenance badges' },
+      { id: '3', step: '3', mnemonic: 'TOP', action: 'Open news hub', why: 'Use tags/headlines for drill workflow' },
+      { id: '4', step: '4', mnemonic: 'FLD', action: 'Open field catalog', why: 'Understand field ids and cadence' },
+      { id: '5', step: '5', mnemonic: 'LINE', action: 'Open lineage view', why: 'Trace source transforms and freshness' },
+      { id: '6', step: '6', mnemonic: 'MON+', action: 'Build monitor worksheet', why: 'Create streaming table with custom columns' },
+      { id: '7', step: '7', mnemonic: 'ALRT+', action: 'Create field alerts', why: 'Route alert rules and evidence trails' },
+      { id: '8', step: '8', mnemonic: 'WS', action: 'Save workspace', why: 'Persist full dock layout and pane state' },
+    ];
+    const map = [
+      { id: 'm1', step: '1', mnemonic: 'GEO', action: 'Open global intelligence map', why: 'Primary world map drill entrypoint' },
+      { id: 'm2', step: '2', mnemonic: 'GEO.N', action: 'Open geo news heat', why: 'See region-tagged headline intensity' },
+      { id: 'm3', step: '3', mnemonic: 'GEO.C', action: 'Open company footprint map', why: 'Explore facilities and exposure' },
+      { id: 'm4', step: '4', mnemonic: 'RGN', action: 'Open region dossier', why: 'Region-centric macro/news/risk pack' },
+      { id: 'm5', step: '5', mnemonic: 'NMAP', action: 'Open news map overlay', why: 'Cross-check map + narrative signals' },
+      { id: 'm6', step: '6', mnemonic: 'RELG', action: 'Open relationship graph', why: 'Expand peer/ownership/correlation links' },
+      { id: 'm7', step: '7', mnemonic: 'SCN', action: 'Open supply chain network', why: 'Drill supplier/customer stress channels' },
+      { id: 'm8', step: '8', mnemonic: 'SHOCK.G', action: 'Run geo shock simulator', why: 'Test regional disruption scenarios' },
+    ];
+    const platform = [
+      { id: 'p1', step: '1', mnemonic: 'NAVTREE', action: 'Browse full function catalog', why: 'View taxonomy-scale mnemonic library' },
+      { id: 'p2', step: '2', mnemonic: 'DOCK', action: 'Manage pane engine', why: 'Split/tab/focus and 2-up workspace modes' },
+      { id: 'p3', step: '3', mnemonic: 'FLOAT', action: 'Use pop-out panes', why: 'Multi-monitor style workflows' },
+      { id: 'p4', step: '4', mnemonic: 'KEYMAP', action: 'Customize keybindings', why: 'Keyboard-first terminal operations' },
+      { id: 'p5', step: '5', mnemonic: 'PINBAR', action: 'Run global pin strip', why: 'Keep heads-up fields always visible' },
+      { id: 'p6', step: '6', mnemonic: 'STATUS', action: 'Check system health', why: 'Feed/runtime state and ops confidence' },
+      { id: 'p7', step: '7', mnemonic: 'DIAG', action: 'Open diagnostics', why: 'Validate FPS/render and memory' },
+      { id: 'p8', step: '8', mnemonic: 'OFFLINE', action: 'Toggle offline mode', why: 'Test stale/cached behavior safely' },
+    ];
+    return track === 'MAP' ? map : track === 'PLATFORM' ? platform : core;
+  }, [track]);
+
+  const cols: DenseColumn[] = [
+    { key: 'step', header: '#', width: '38px', align: 'right' },
+    { key: 'mnemonic', header: 'Function', width: '100px' },
+    { key: 'action', header: 'Action', width: '1fr' },
+    { key: 'why', header: 'Why', width: '1.1fr' },
+  ];
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      <PanelSubHeader title="TUTOR • Guided Walkthrough" right={<StatusBadge label={`${track} TRACK`} variant="sim" />} />
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+        <button type="button" onClick={() => setTrack('CORE')}>CORE</button>
+        <button type="button" onClick={() => setTrack('MAP')}>GLOBAL MAP</button>
+        <button type="button" onClick={() => setTrack('PLATFORM')}>PLATFORM</button>
+        <span style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>Click any row to open that function in the focused pane.</span>
+      </div>
+      <DenseTable
+        columns={cols}
+        rows={steps as unknown as Record<string, unknown>[]}
+        rowKey="id"
+        panelIdx={panelIdx}
+        className="h-[58%]"
+        onRowClick={(r) => navigatePanel(focusedPanel, String(r.mnemonic))}
+      />
+      <div style={{ borderTop: '1px solid #111', padding: '4px' }}>
+        <div style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, marginBottom: 2 }}>Where is the global map stack?</div>
+        <div className="flex flex-wrap gap-1">
+          {['GEO', 'GEO.N', 'GEO.C', 'GEO.R', 'GEO.M', 'RGN', 'NMAP', 'RELG', 'SCN'].map((m) => (
+            <button key={m} type="button" onClick={() => navigatePanel(focusedPanel, m)} style={{ border: '1px solid #222', background: '#000', color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }}>
+              {m}
+            </button>
+          ))}
+        </div>
+        <div style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, marginTop: 4 }}>
+          Tip: Use <code>NAVTREE GO</code> and filter NEWS_DOCS to browse the full map family.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── PREF — Preferences / Settings ────────────────────────────────────────────
+const DENSITY_OPTIONS = [
+  { id: 'comfortable', label: 'Comfortable', rowH: 22, fontSize: '13px', desc: 'More spacing, easier reading' },
+  { id: 'default',     label: 'Default',     rowH: 20, fontSize: '12px', desc: 'Balanced density (recommended)' },
+  { id: 'compact',     label: 'Compact',     rowH: 17, fontSize: '11px', desc: 'Bloomberg-style, maximum density' },
+];
+
+export function FnPREF({ panelIdx = 0 }: { panelIdx?: number }) {
+  const { navigatePanel } = useTerminalOS();
+  const [dock, setDock] = React.useState(() => loadDockLayout());
+  React.useEffect(() => subscribeDockLayout(() => setDock(getDockLayout())), []);
+
+  const [densityMode, setDensityMode] = React.useState<string>(() => {
+    if (typeof window === 'undefined') return 'default';
+    return window.localStorage.getItem('mm_density') ?? 'default';
+  });
+
+  const applyDensity = (id: string) => {
+    setDensityMode(id);
+    if (typeof window !== 'undefined') window.localStorage.setItem('mm_density', id);
+    appendAuditEvent({ panelIdx, type: 'GO', actor: 'USER', detail: `PREF density:${id}`, mnemonic: 'PREF' });
+  };
+
+  const D = DENSITY;
+  const rowStyle = (active: boolean): React.CSSProperties => ({
+    padding: '8px 12px',
+    background: active ? D.rowSelectedBg : D.bgSurface,
+    border: active ? `1px solid ${D.accentCyan}` : `1px solid ${D.borderColor}`,
+    cursor: 'pointer',
+    marginBottom: 4,
+  });
+
+  return (
+    <div className="flex flex-col h-full min-h-0" style={{ fontFamily: D.fontFamily }}>
+      <PanelSubHeader title="PREF • Preferences & Settings" right={<StatusBadge label="V1" variant="sim" />} />
+      <div className="flex-1 min-h-0 overflow-auto" style={{ padding: '10px 12px' }}>
+
+        {/* Density */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ color: D.accentAmber, fontSize: D.fontSizeHeader, fontWeight: 700, marginBottom: 6 }}>
+            Display Density
+          </div>
+          {DENSITY_OPTIONS.map((opt) => (
+            <div key={opt.id} onClick={() => applyDensity(opt.id)} style={rowStyle(densityMode === opt.id)}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: D.textPrimary, fontSize: D.fontSizeDefault, fontWeight: 600 }}>{opt.label}</span>
+                {densityMode === opt.id && <span style={{ color: D.accentGreen, fontSize: D.fontSizeTiny }}>✓ Active</span>}
+              </div>
+              <div style={{ color: D.textDim, fontSize: D.fontSizeTiny, marginTop: 1 }}>{opt.desc}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Layout mode */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ color: D.accentAmber, fontSize: D.fontSizeHeader, fontWeight: 700, marginBottom: 6 }}>
+            Layout Mode
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {(['tile', 'tab', 'stack'] as const).map((mode) => (
+              <button key={mode} type="button"
+                onClick={() => { setDockLayout({ mode }); setDock(getDockLayout()); appendAuditEvent({ panelIdx, type: 'GO', actor: 'USER', detail: `PREF layout:${mode}`, mnemonic: 'PREF' }); }}
+                style={{
+                  background: dock.mode === mode ? D.accentAmber : D.bgSurfaceAlt,
+                  color: dock.mode === mode ? '#000' : D.textSecondary,
+                  border: `1px solid ${D.borderColor}`,
+                  padding: '4px 14px',
+                  cursor: 'pointer',
+                  fontFamily: D.fontFamily,
+                  fontSize: D.fontSizeTiny,
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Live mode */}
+        <div style={{ marginBottom: 14 }}>
+          <div style={{ color: D.accentAmber, fontSize: D.fontSizeHeader, fontWeight: 700, marginBottom: 6 }}>
+            Streaming Mode
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button type="button"
+              onClick={() => { setDockLayout({ highDensityLiveMode: !dock.highDensityLiveMode }); appendAuditEvent({ panelIdx, type: 'GO', actor: 'USER', detail: 'PREF live toggle', mnemonic: 'PREF' }); }}
+              style={{
+                background: dock.highDensityLiveMode ? D.accentGreen : D.bgSurfaceAlt,
+                color: dock.highDensityLiveMode ? '#000' : D.textSecondary,
+                border: `1px solid ${D.borderColor}`,
+                padding: '4px 14px',
+                cursor: 'pointer',
+                fontFamily: D.fontFamily,
+                fontSize: D.fontSizeTiny,
+                fontWeight: 700,
+              }}
+            >
+              {dock.highDensityLiveMode ? '● Live Mode ON' : 'Live Mode OFF'}
+            </button>
+            <button type="button"
+              onClick={() => { setDockLayout({ highDensityMode: !dock.highDensityMode }); }}
+              style={{
+                background: dock.highDensityMode ? D.accentCyan : D.bgSurfaceAlt,
+                color: dock.highDensityMode ? '#000' : D.textSecondary,
+                border: `1px solid ${D.borderColor}`,
+                padding: '4px 14px',
+                cursor: 'pointer',
+                fontFamily: D.fontFamily,
+                fontSize: D.fontSizeTiny,
+                fontWeight: 700,
+              }}
+            >
+              {dock.highDensityMode ? '▪ High Density ON' : 'High Density OFF'}
+            </button>
+          </div>
+          <div style={{ color: D.textDim, fontSize: D.fontSizeTiny, marginTop: 4 }}>
+            Live Mode increases streaming rate and fills panels with more data. High Density reduces row padding.
+          </div>
+        </div>
+
+        {/* Quick links */}
+        <div>
+          <div style={{ color: D.accentAmber, fontSize: D.fontSizeHeader, fontWeight: 700, marginBottom: 6 }}>
+            Advanced Settings
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {[
+              { label: 'Keymap Editor', code: 'KEYMAP' },
+              { label: 'Layout Templates', code: 'LAYOUT' },
+              { label: 'Field Catalog', code: 'FLD' },
+              { label: 'Policy Rules', code: 'POLICY' },
+              { label: 'Entitlements', code: 'ENT' },
+              { label: 'Audit Log', code: 'AUD' },
+              { label: 'API Keys', code: 'API' },
+              { label: 'Data Sources', code: 'SRC' },
+            ].map(({ label, code }) => (
+              <button key={code} type="button"
+                onClick={() => navigatePanel(panelIdx, code)}
+                style={{
+                  background: D.bgSurfaceAlt,
+                  color: D.accentCyan,
+                  border: `1px solid ${D.borderColor}`,
+                  padding: '3px 10px',
+                  cursor: 'pointer',
+                  fontFamily: D.fontFamily,
+                  fontSize: D.fontSizeTiny,
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
 }
 

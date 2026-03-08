@@ -41,49 +41,34 @@ function PanelHeader({ panelIdx }: { panelIdx: number }) {
   return (
     <div
       className="flex items-center justify-between flex-none select-none"
-      style={{ height: DENSITY.panelHeaderHeightPx, background: DENSITY.bgHeader, borderBottom: `1px solid ${DENSITY.borderColor}`, padding: `0 ${DENSITY.pad4}px`, fontFamily: DENSITY.fontFamily }}
+      style={{
+        height: DENSITY.panelHeaderHeightPx,
+        background: isFocused ? DENSITY.bgHeader : DENSITY.bgHeaderUnfocused,
+        borderBottom: `1px solid ${isFocused ? DENSITY.focusBorderColor : DENSITY.borderColor}`,
+        padding: `0 8px`,
+        fontFamily: DENSITY.fontFamily,
+      }}
     >
-      <div className="flex items-center gap-1 min-w-0 truncate">
-        <span style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, fontWeight: 700, flexShrink: 0 }}>P{panelIdx + 1}</span>
-        <span style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeMicro, fontWeight: 700, flexShrink: 0 }}>{p.activeMnemonic}</span>
-        <span style={{ color: DENSITY.textSecondary, fontSize: DENSITY.fontSizeMicro, flexShrink: 0 }}>—</span>
-        <span className="truncate" style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeMicro }}>{p.activeSecurity}</span>
+      <div className="flex items-center gap-2 min-w-0 truncate">
+        <span style={{ color: isFocused ? DENSITY.accentAmber : DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, fontWeight: 700, flexShrink: 0 }}>P{panelIdx + 1}</span>
+        <span style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault, fontWeight: 700, flexShrink: 0 }}>{p.activeMnemonic}</span>
+        <span style={{ color: DENSITY.textSecondary, fontSize: DENSITY.fontSizeMicro, flexShrink: 0 }}>·</span>
+        <span className="truncate" style={{ color: DENSITY.textSecondary, fontSize: DENSITY.fontSizeMicro }}>{p.activeSecurity}</span>
       </div>
       <div className="flex items-center gap-2 flex-shrink-0">
-        <span style={{ color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeTiny, border: `1px solid ${DENSITY.accentCyan}`, padding: '0 2px' }}>SIM</span>
-        {isFocused && <span style={{ color: DENSITY.accentGreen, fontSize: DENSITY.fontSizeTiny }}>FOCUS</span>}
-        <span className="tabular-nums" style={{ color: DENSITY.textSecondary, fontSize: DENSITY.fontSizeTiny }}>{p.timeframe}</span>
-        <button type="button" title="Toggle float" onClick={(e) => { e.stopPropagation(); setPanelFloating(panelIdx, !dock.floatingPanels.includes(panelIdx)); }}
-          style={{ background: 'none', border: 'none', color: DENSITY.textSecondary, cursor: 'pointer', fontSize: DENSITY.fontSizeTiny }}>◱</button>
-        <button type="button" title="New tab pane (NP)" onClick={(e) => {
-          e.stopPropagation();
-          const next = addPanel(panelIdx);
-          insertPaneRelative(panelIdx, next, 'tab');
-          setActiveDockTab(next);
-        }}
-          style={{ background: 'none', border: 'none', color: DENSITY.textSecondary, cursor: 'pointer', fontSize: DENSITY.fontSizeTiny }}>＋</button>
-        <button type="button" title="Split pane horizontally" onClick={(e) => {
-          e.stopPropagation();
-          const next = addPanel(panelIdx);
-          insertPaneRelative(panelIdx, next, 'split-horizontal');
-          setActiveDockTab(next);
-        }}
-          style={{ background: 'none', border: 'none', color: DENSITY.textSecondary, cursor: 'pointer', fontSize: DENSITY.fontSizeTiny }}>H</button>
-        <button type="button" title="Split pane vertically" onClick={(e) => {
-          e.stopPropagation();
-          const next = addPanel(panelIdx);
-          insertPaneRelative(panelIdx, next, 'split-vertical');
-          setActiveDockTab(next);
-        }}
-          style={{ background: 'none', border: 'none', color: DENSITY.textSecondary, cursor: 'pointer', fontSize: DENSITY.fontSizeTiny }}>V</button>
+        {isFocused && <span style={{ color: DENSITY.accentGreen, fontSize: DENSITY.fontSizeTiny, fontWeight: 700 }}>● FOCUSED</span>}
+        <span style={{ color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeTiny, border: `1px solid ${DENSITY.accentCyan}`, padding: '0 4px' }}>SIM</span>
+        <span className="tabular-nums" style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>{p.timeframe}</span>
+        <button type="button" title="New tab pane (NP)" onClick={(e) => { e.stopPropagation(); const next = addPanel(panelIdx); insertPaneRelative(panelIdx, next, 'tab'); setActiveDockTab(next); }}
+          style={{ background: 'none', border: 'none', color: DENSITY.textSecondary, cursor: 'pointer', fontSize: DENSITY.fontSizeTiny, padding: '0 2px' }}>＋</button>
+        <button type="button" title="Split H" onClick={(e) => { e.stopPropagation(); const next = addPanel(panelIdx); insertPaneRelative(panelIdx, next, 'split-horizontal'); setActiveDockTab(next); }}
+          style={{ background: 'none', border: 'none', color: DENSITY.textSecondary, cursor: 'pointer', fontSize: DENSITY.fontSizeTiny, padding: '0 2px' }}>⊟</button>
+        <button type="button" title="Split V" onClick={(e) => { e.stopPropagation(); const next = addPanel(panelIdx); insertPaneRelative(panelIdx, next, 'split-vertical'); setActiveDockTab(next); }}
+          style={{ background: 'none', border: 'none', color: DENSITY.textSecondary, cursor: 'pointer', fontSize: DENSITY.fontSizeTiny, padding: '0 2px' }}>⊞</button>
         <button type="button" title="Close pane" onClick={(e) => { e.stopPropagation(); closePaneInDock(panelIdx); closePanel(panelIdx); }}
-          style={{ background: 'none', border: 'none', color: DENSITY.textSecondary, cursor: 'pointer', fontSize: DENSITY.fontSizeTiny }}>✕</button>
-        <button
-          type="button"
-          onClick={toggleLink}
-          title={p.linkGroup ? `Link: ${p.linkGroup}` : 'No link group'}
-          style={{ width: 10, height: 10, flexShrink: 0, background: p.linkGroup ? LINK_COLORS[p.linkGroup] : DENSITY.borderColor, border: `1px solid ${DENSITY.textDim}`, cursor: 'pointer' }}
-        />
+          style={{ background: 'none', border: 'none', color: DENSITY.textDim, cursor: 'pointer', fontSize: DENSITY.fontSizeTiny, padding: '0 2px' }}>✕</button>
+        <button type="button" onClick={toggleLink} title={p.linkGroup ? `Link: ${p.linkGroup}` : 'Link group'}
+          style={{ width: 12, height: 12, flexShrink: 0, background: p.linkGroup ? LINK_COLORS[p.linkGroup] : DENSITY.borderColor, border: `1px solid ${DENSITY.textDim}`, cursor: 'pointer' }} />
       </div>
     </div>
   );
@@ -162,13 +147,13 @@ function BreadcrumbStrip({ panelIdx }: { panelIdx: number }) {
   ];
   return (
     <div className="flex items-center flex-none truncate"
-      style={{ height: 13, background: DENSITY.panelBgAlt, borderBottom: `1px solid ${DENSITY.groupSeparator}`, padding: `0 ${DENSITY.pad4}px`, fontFamily: DENSITY.fontFamily, fontSize: '8px', color: DENSITY.textDim }}>
+      style={{ height: 16, background: DENSITY.bgSurface, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 8px`, fontFamily: DENSITY.fontFamily, fontSize: DENSITY.fontSizeTiny, color: DENSITY.textDim }}>
       {crumbs.map((c, i) => (
         <React.Fragment key={i}>
-          {i > 0 && <span style={{ margin: '0 3px', opacity: 0.5 }}>›</span>}
+          {i > 0 && <span style={{ margin: '0 4px', opacity: 0.4 }}>›</span>}
           <button type="button" onClick={(e) => { e.stopPropagation(); c.action(); }}
             className="hover:text-white"
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: i >= 2 ? DENSITY.textPrimary : DENSITY.textSecondary, fontSize: '8px', fontFamily: DENSITY.fontFamily, padding: 0 }}>
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: i >= 2 ? DENSITY.textSecondary : DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, fontFamily: DENSITY.fontFamily, padding: 0 }}>
             {c.label}
           </button>
         </React.Fragment>
@@ -192,9 +177,17 @@ const DEFAULT_HINT = 'ENTER=Drill  SHIFT+ENTER=SendPanel  ALT+ENTER=Inspect  ↑
 function KeyboardHintStrip({ panelIdx }: { panelIdx: number }) {
   const { panels } = useTerminalOS();
   const mn = panels[panelIdx]!.activeMnemonic;
-  const hint = MNEMONIC_HINTS[mn] ?? 'ENTER Drill | SHIFT+ENTER Send | ALT+ENTER Inspect | F2 MENU | F1 HELP | Ctrl+K HL';
+  const hint = MNEMONIC_HINTS[mn] ?? DEFAULT_HINT;
   return (
-    <div style={{ height: 12, background: DENSITY.panelBg, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: DENSITY.fontFamily, fontSize: '8px', color: DENSITY.textDim, overflow: 'hidden' }}>
+    <div style={{
+      height: 14,
+      background: DENSITY.bgSurfaceAlt,
+      borderBottom: `1px solid ${DENSITY.gridlineColor}`,
+      padding: `0 8px`,
+      display: 'flex', alignItems: 'center', flexShrink: 0,
+      fontFamily: DENSITY.fontFamily, fontSize: DENSITY.fontSizeTiny,
+      color: DENSITY.textDim, overflow: 'hidden',
+    }}>
       {hint}
     </div>
   );
