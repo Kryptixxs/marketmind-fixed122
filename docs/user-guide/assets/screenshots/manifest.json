@@ -2,92 +2,79 @@
   {
     "id": "home",
     "title": "Home Screen — Panel Ready",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "home.png",
+    "status": "ok"
   },
   {
     "id": "wakeup-quickstart",
     "title": "WakeUp Screen — Quick Start tab",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "wakeup-quickstart.png",
+    "status": "ok"
   },
   {
     "id": "wei-world-indices",
     "title": "WEI — World Equity Indices",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "wei-world-indices.png",
+    "status": "ok"
   },
   {
     "id": "des-description",
     "title": "DES — Security Description (AAPL)",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "des-description.png",
+    "status": "ok"
   },
   {
     "id": "gp-price-chart",
     "title": "GP — Price Chart (AAPL)",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "gp-price-chart.png",
+    "status": "ok"
   },
   {
     "id": "top-news",
     "title": "TOP — Top News",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "top-news.png",
+    "status": "ok"
   },
   {
     "id": "eco-calendar",
     "title": "ECO — Economic Calendar",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "eco-calendar.png",
+    "status": "ok"
   },
   {
     "id": "mon-monitor",
     "title": "MON — Monitor / Watchlist",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "mon-monitor.png",
+    "status": "ok"
   },
   {
     "id": "hl-search-overlay",
     "title": "HL — Search Overlay (Ctrl+K)",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "hl-search-overlay.png",
+    "status": "ok"
   },
   {
     "id": "navtree-function-catalog",
     "title": "NAVTREE — Function Catalog",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "navtree-function-catalog.png",
+    "status": "ok"
   },
   {
     "id": "pref-settings",
     "title": "PREF — Preferences & Settings",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "pref-settings.png",
+    "status": "ok"
   },
   {
     "id": "tutor-walkthrough",
     "title": "TUTOR — Guided Walkthrough",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "tutor-walkthrough.png",
+    "status": "ok"
   },
   {
     "id": "multi-pane-workspace",
     "title": "Multi-Pane Workspace",
-    "file": null,
-    "status": "failed",
-    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+    "file": "multi-pane-workspace.png",
+    "status": "ok"
   }
 ]

@@ -18,6 +18,7 @@ const QUICK_START: Array<{ cmd: string; title: string; category: string }> = [
   { cmd: 'PORT GO',            title: 'Portfolio Monitor',                       category: 'Portfolio' },
   { cmd: 'MON+ GO',            title: 'Monitor Builder — Custom Watchlist',      category: 'Monitor' },
   { cmd: 'NAVTREE GO',         title: 'Browse All 2,900+ Functions',             category: 'Discovery' },
+  { cmd: 'TUTOR GO',           title: 'Interactive Guided Tutorial',             category: 'Help' },
 ];
 
 const WORKFLOW_RECIPES: Array<{ name: string; cmds: Array<[string, string]> }> = [
@@ -302,6 +303,38 @@ export function WakeUpScreen({ panelIdx }: { panelIdx: number }) {
             )}
           </div>
         )}
+      </div>
+
+      {/* Guide download footer */}
+      <div style={{
+        borderTop: `1px solid ${D.borderColor}`,
+        padding: '6px 12px',
+        background: D.bgSurface,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        flexShrink: 0,
+      }}>
+        <span style={{ color: D.textDim, fontSize: D.fontSizeTiny }}>📖</span>
+        <a
+          href="/user-guide/"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{ color: D.accentCyan, fontSize: D.fontSizeTiny, textDecoration: 'none', fontWeight: 600 }}
+        >
+          Open Full User Guide ↗
+        </a>
+        <span style={{ color: D.textDim, fontSize: D.fontSizeTiny }}>·</span>
+        <a
+          href="/user-guide/index.html"
+          download="MarketMind-Terminal-User-Guide.html"
+          style={{ color: D.accentAmber, fontSize: D.fontSizeTiny, textDecoration: 'none', fontWeight: 600 }}
+        >
+          ⬇ Download HTML Guide
+        </a>
+        <span style={{ marginLeft: 'auto', color: D.textDim, fontSize: D.fontSizeTiny }}>
+          Or type <span style={{ color: D.accentAmber }}>TUTOR GO</span> for the interactive walkthrough
+        </span>
       </div>
     </div>
   );

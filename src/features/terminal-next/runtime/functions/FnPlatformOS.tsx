@@ -510,79 +510,182 @@ export function FnOFFLINE({ panelIdx = 0 }: { panelIdx?: number }) {
   return <div className="flex flex-col h-full min-h-0"><PanelSubHeader title="OFFLINE • Cached Snapshot Mode" right={<StatusBadge label={policy.mode === 'frozen' ? 'STALE' : 'LIVE'} variant={policy.mode === 'frozen' ? 'stale' : 'live'} />} /><div className="px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}><button type="button" onClick={() => savePolicyState({ ...policy, mode: policy.mode === 'frozen' ? 'normal' : 'frozen' })}>{policy.mode === 'frozen' ? 'EXIT OFFLINE' : 'ENTER OFFLINE'}</button></div><DenseTable columns={cols} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" /></div>;
 }
 
+const TUTOR_TRACKS = {
+  CORE: [
+    { id: 'c1', step: '1',  mnemonic: 'WEI',      security: '',                  action: 'World Equity Indices',          why: 'See all global markets at a glance' },
+    { id: 'c2', step: '2',  mnemonic: 'DES',       security: 'AAPL US Equity',    action: 'Security Description (AAPL)',   why: 'Full reference sheet — fundamentals, peers, events' },
+    { id: 'c3', step: '3',  mnemonic: 'GP',        security: 'AAPL US Equity',    action: 'Price Chart (AAPL)',            why: 'Candlestick chart with volume' },
+    { id: 'c4', step: '4',  mnemonic: 'HP',        security: 'AAPL US Equity',    action: 'Historical Pricing (AAPL)',     why: 'OHLCV table — click any row to drill' },
+    { id: 'c5', step: '5',  mnemonic: 'FA',        security: 'AAPL US Equity',    action: 'Financial Analysis (AAPL)',     why: 'Income statement, balance sheet, cash flow' },
+    { id: 'c6', step: '6',  mnemonic: 'OWN',       security: 'AAPL US Equity',    action: 'Institutional Ownership',       why: 'Top holders with stake % and changes' },
+    { id: 'c7', step: '7',  mnemonic: 'TOP',       security: '',                  action: 'Top News Headlines',           why: 'News hub — click tags to drill entities' },
+    { id: 'c8', step: '8',  mnemonic: 'ECO',       security: '',                  action: 'Economic Calendar',            why: 'Upcoming macro releases with consensus' },
+    { id: 'c9', step: '9',  mnemonic: 'MON',       security: '',                  action: 'Monitor / Watchlist',          why: 'Streaming watchlist — add any symbols' },
+    { id: 'c10', step: '10', mnemonic: 'ALRT',     security: '',                  action: 'Alerts Monitor',               why: 'Active alert rules and triggered status' },
+    { id: 'c11', step: '11', mnemonic: 'NAVTREE',  security: '',                  action: 'Function Catalog',             why: 'Browse all 2,900+ functions' },
+    { id: 'c12', step: '12', mnemonic: 'PREF',     security: '',                  action: 'Preferences & Settings',       why: 'Density, layout, streaming mode' },
+  ],
+  MAP: [
+    { id: 'm1', step: '1',  mnemonic: 'GEO',       security: '',                  action: 'Global Intelligence Map',      why: 'Primary world map — click any country' },
+    { id: 'm2', step: '2',  mnemonic: 'GEO.N',     security: '',                  action: 'Geo News Heat Overlay',        why: 'News intensity by region' },
+    { id: 'm3', step: '3',  mnemonic: 'GEO.C',     security: 'AAPL US Equity',    action: 'Company Footprint Map',        why: 'Facility locations and exposure' },
+    { id: 'm4', step: '4',  mnemonic: 'GEO.R',     security: '',                  action: 'Regional Risk Map',            why: 'Geopolitical / economic risk scores' },
+    { id: 'm5', step: '5',  mnemonic: 'GEO.M',     security: '',                  action: 'Macro Map',                    why: 'Macro signals by country' },
+    { id: 'm6', step: '6',  mnemonic: 'RGN',       security: '',                  action: 'Region Dossier',               why: 'Full region pack: companies, news, macro, risk' },
+    { id: 'm7', step: '7',  mnemonic: 'NMAP',      security: '',                  action: 'News Map Overlay',             why: 'Stories plotted geographically' },
+    { id: 'm8', step: '8',  mnemonic: 'SCN',       security: 'AAPL US Equity',    action: 'Supply Chain Network',         why: 'Supplier / customer stress channels' },
+    { id: 'm9', step: '9',  mnemonic: 'RELG',      security: 'AAPL US Equity',    action: 'Relationship Graph',           why: 'Peer / ownership / correlation links' },
+    { id: 'm10', step: '10', mnemonic: 'SHOCK.G',  security: '',                  action: 'Geo Shock Simulator',          why: 'Test regional disruption scenarios' },
+  ],
+  PLATFORM: [
+    { id: 'p1', step: '1',  mnemonic: 'NAVTREE',   security: '',                  action: 'Function Catalog (2,900+)',    why: 'Browse and launch any function' },
+    { id: 'p2', step: '2',  mnemonic: 'DOCK',      security: '',                  action: 'Docking Engine',               why: 'Split/tab panes, 2-up monitor mode' },
+    { id: 'p3', step: '3',  mnemonic: 'KEYMAP',    security: '',                  action: 'Keyboard Map Editor',          why: 'View and customize all hotkeys' },
+    { id: 'p4', step: '4',  mnemonic: 'MON+',      security: '',                  action: 'Monitor Builder',              why: 'Custom columns from field catalog' },
+    { id: 'p5', step: '5',  mnemonic: 'ALRT+',     security: '',                  action: 'Advanced Alert Creator',       why: 'Field-based threshold alerts' },
+    { id: 'p6', step: '6',  mnemonic: 'FLD',       security: '',                  action: 'Field Catalog',                why: 'All data fields — add to monitor/screener' },
+    { id: 'p7', step: '7',  mnemonic: 'LINE',      security: '',                  action: 'Data Lineage Viewer',          why: 'Trace any value: source → transform → display' },
+    { id: 'p8', step: '8',  mnemonic: 'WS',        security: '',                  action: 'Workspace Manager',            why: 'Save and restore full layouts' },
+    { id: 'p9', step: '9',  mnemonic: 'AUD',       security: '',                  action: 'Audit Trail',                  why: 'Full log of every action you have taken' },
+    { id: 'p10', step: '10', mnemonic: 'STAT',     security: '',                  action: 'System Status',                why: 'Feed health, FPS, latency, tick rate' },
+    { id: 'p11', step: '11', mnemonic: 'PREF',     security: '',                  action: 'Preferences',                  why: 'Density, layout, live mode, advanced links' },
+  ],
+} as const;
+
+type TutorTrack = keyof typeof TUTOR_TRACKS;
+
 export function FnTUTOR({ panelIdx = 0 }: { panelIdx?: number }) {
-  const { navigatePanel, focusedPanel } = useTerminalOS();
-  const [track, setTrack] = React.useState<'CORE' | 'MAP' | 'PLATFORM'>('CORE');
+  const { navigatePanel, panels, addPanel, setFocusedPanel } = useTerminalOS();
+  const [track, setTrack] = React.useState<TutorTrack>('CORE');
+  const [lastOpened, setLastOpened] = React.useState<string | null>(null);
+  const [targetPane, setTargetPane] = React.useState<'new' | 'current'>('new');
 
-  const steps = React.useMemo(() => {
-    const core = [
-      { id: '1', step: '1', mnemonic: 'HL+', action: 'Open unified search', why: 'Discover any function/security/field quickly' },
-      { id: '2', step: '2', mnemonic: 'DES', action: 'Open reference sheet', why: 'Learn key fields and provenance badges' },
-      { id: '3', step: '3', mnemonic: 'TOP', action: 'Open news hub', why: 'Use tags/headlines for drill workflow' },
-      { id: '4', step: '4', mnemonic: 'FLD', action: 'Open field catalog', why: 'Understand field ids and cadence' },
-      { id: '5', step: '5', mnemonic: 'LINE', action: 'Open lineage view', why: 'Trace source transforms and freshness' },
-      { id: '6', step: '6', mnemonic: 'MON+', action: 'Build monitor worksheet', why: 'Create streaming table with custom columns' },
-      { id: '7', step: '7', mnemonic: 'ALRT+', action: 'Create field alerts', why: 'Route alert rules and evidence trails' },
-      { id: '8', step: '8', mnemonic: 'WS', action: 'Save workspace', why: 'Persist full dock layout and pane state' },
-    ];
-    const map = [
-      { id: 'm1', step: '1', mnemonic: 'GEO', action: 'Open global intelligence map', why: 'Primary world map drill entrypoint' },
-      { id: 'm2', step: '2', mnemonic: 'GEO.N', action: 'Open geo news heat', why: 'See region-tagged headline intensity' },
-      { id: 'm3', step: '3', mnemonic: 'GEO.C', action: 'Open company footprint map', why: 'Explore facilities and exposure' },
-      { id: 'm4', step: '4', mnemonic: 'RGN', action: 'Open region dossier', why: 'Region-centric macro/news/risk pack' },
-      { id: 'm5', step: '5', mnemonic: 'NMAP', action: 'Open news map overlay', why: 'Cross-check map + narrative signals' },
-      { id: 'm6', step: '6', mnemonic: 'RELG', action: 'Open relationship graph', why: 'Expand peer/ownership/correlation links' },
-      { id: 'm7', step: '7', mnemonic: 'SCN', action: 'Open supply chain network', why: 'Drill supplier/customer stress channels' },
-      { id: 'm8', step: '8', mnemonic: 'SHOCK.G', action: 'Run geo shock simulator', why: 'Test regional disruption scenarios' },
-    ];
-    const platform = [
-      { id: 'p1', step: '1', mnemonic: 'NAVTREE', action: 'Browse full function catalog', why: 'View taxonomy-scale mnemonic library' },
-      { id: 'p2', step: '2', mnemonic: 'DOCK', action: 'Manage pane engine', why: 'Split/tab/focus and 2-up workspace modes' },
-      { id: 'p3', step: '3', mnemonic: 'FLOAT', action: 'Use pop-out panes', why: 'Multi-monitor style workflows' },
-      { id: 'p4', step: '4', mnemonic: 'KEYMAP', action: 'Customize keybindings', why: 'Keyboard-first terminal operations' },
-      { id: 'p5', step: '5', mnemonic: 'PINBAR', action: 'Run global pin strip', why: 'Keep heads-up fields always visible' },
-      { id: 'p6', step: '6', mnemonic: 'STATUS', action: 'Check system health', why: 'Feed/runtime state and ops confidence' },
-      { id: 'p7', step: '7', mnemonic: 'DIAG', action: 'Open diagnostics', why: 'Validate FPS/render and memory' },
-      { id: 'p8', step: '8', mnemonic: 'OFFLINE', action: 'Toggle offline mode', why: 'Test stale/cached behavior safely' },
-    ];
-    return track === 'MAP' ? map : track === 'PLATFORM' ? platform : core;
-  }, [track]);
+  const steps = TUTOR_TRACKS[track];
 
-  const cols: DenseColumn[] = [
-    { key: 'step', header: '#', width: '38px', align: 'right' },
-    { key: 'mnemonic', header: 'Function', width: '100px' },
-    { key: 'action', header: 'Action', width: '1fr' },
-    { key: 'why', header: 'Why', width: '1.1fr' },
-  ];
+  const openStep = React.useCallback((mnemonic: string, security: string) => {
+    setLastOpened(mnemonic);
+    if (targetPane === 'new') {
+      // Find a pane that isn't TUTOR to load into, or create a new one
+      const otherIdx = panels.findIndex((p, i) => i !== panelIdx);
+      if (otherIdx !== -1) {
+        navigatePanel(otherIdx, mnemonic, security || panels[otherIdx]!.activeSecurity);
+        setFocusedPanel(otherIdx);
+      } else {
+        // No other pane — create one
+        const next = addPanel(panelIdx);
+        navigatePanel(next, mnemonic, security || panels[0]!.activeSecurity);
+        setFocusedPanel(next);
+      }
+    } else {
+      // Open in current panel — replaces TUTOR
+      navigatePanel(panelIdx, mnemonic, security || panels[panelIdx]!.activeSecurity);
+    }
+  }, [panelIdx, panels, navigatePanel, addPanel, setFocusedPanel, targetPane]);
+
+  const D = DENSITY;
+  const TRACK_LABELS: Record<TutorTrack, string> = { CORE: 'Core Workflow', MAP: 'Global Map Stack', PLATFORM: 'Platform & Admin' };
+
+  const btnStyle = (active: boolean): React.CSSProperties => ({
+    background: active ? D.accentAmber : D.bgSurfaceAlt,
+    color: active ? '#000' : D.textSecondary,
+    border: `1px solid ${active ? D.accentAmber : D.borderColor}`,
+    padding: '3px 10px',
+    cursor: 'pointer',
+    fontFamily: D.fontFamily,
+    fontSize: D.fontSizeTiny,
+    fontWeight: active ? 700 : 400,
+  });
+
+  const MAP_SHORTCUT_CODES = ['GEO', 'GEO.N', 'GEO.C', 'GEO.R', 'GEO.M', 'RGN', 'NMAP', 'RELG', 'SCN'];
 
   return (
-    <div className="flex flex-col h-full min-h-0">
-      <PanelSubHeader title="TUTOR • Guided Walkthrough" right={<StatusBadge label={`${track} TRACK`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
-        <button type="button" onClick={() => setTrack('CORE')}>CORE</button>
-        <button type="button" onClick={() => setTrack('MAP')}>GLOBAL MAP</button>
-        <button type="button" onClick={() => setTrack('PLATFORM')}>PLATFORM</button>
-        <span style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>Click any row to open that function in the focused pane.</span>
+    <div className="flex flex-col h-full min-h-0" style={{ fontFamily: D.fontFamily }}>
+      {/* Header */}
+      <div style={{ padding: '8px 12px', background: D.bgSurface, borderBottom: `1px solid ${D.borderColor}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <span style={{ color: D.accentAmber, fontSize: '13px', fontWeight: 700 }}>TUTOR</span>
+            <span style={{ color: D.textSecondary, fontSize: D.fontSizeDefault, marginLeft: 8 }}>Guided Walkthrough</span>
+          </div>
+          <StatusBadge label={`${steps.length} STEPS`} variant="sim" />
+        </div>
+        <div style={{ color: D.textDim, fontSize: D.fontSizeTiny, marginTop: 3 }}>
+          Click any row to open that function. Use the guide below to understand the terminal step-by-step.
+        </div>
       </div>
-      <DenseTable
-        columns={cols}
-        rows={steps as unknown as Record<string, unknown>[]}
-        rowKey="id"
-        panelIdx={panelIdx}
-        className="h-[58%]"
-        onRowClick={(r) => navigatePanel(focusedPanel, String(r.mnemonic))}
-      />
-      <div style={{ borderTop: '1px solid #111', padding: '4px' }}>
-        <div style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, marginBottom: 2 }}>Where is the global map stack?</div>
-        <div className="flex flex-wrap gap-1">
-          {['GEO', 'GEO.N', 'GEO.C', 'GEO.R', 'GEO.M', 'RGN', 'NMAP', 'RELG', 'SCN'].map((m) => (
-            <button key={m} type="button" onClick={() => navigatePanel(focusedPanel, m)} style={{ border: '1px solid #222', background: '#000', color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }}>
+
+      {/* Track selector + target pane selector */}
+      <div className="flex items-center gap-2 flex-wrap"
+        style={{ padding: '6px 12px', background: D.bgSurfaceAlt, borderBottom: `1px solid ${D.borderColor}` }}>
+        <span style={{ color: D.textDim, fontSize: D.fontSizeTiny }}>Track:</span>
+        {(Object.keys(TUTOR_TRACKS) as TutorTrack[]).map((t) => (
+          <button key={t} type="button" style={btnStyle(track === t)} onClick={() => { setTrack(t); setLastOpened(null); }}>
+            {TRACK_LABELS[t]}
+          </button>
+        ))}
+        <span style={{ marginLeft: 'auto', color: D.textDim, fontSize: D.fontSizeTiny }}>Open in:</span>
+        <button type="button" style={btnStyle(targetPane === 'new')} onClick={() => setTargetPane('new')}>Other Pane</button>
+        <button type="button" style={btnStyle(targetPane === 'current')} onClick={() => setTargetPane('current')}>This Pane</button>
+      </div>
+
+      {/* Step table */}
+      <div className="flex-1 min-h-0 overflow-auto">
+        {(steps as readonly { id: string; step: string; mnemonic: string; security: string; action: string; why: string }[]).map((s, i) => {
+          const isLast = lastOpened === s.mnemonic;
+          return (
+            <div
+              key={s.id}
+              onClick={() => openStep(s.mnemonic, s.security)}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '32px 90px 1fr 1.1fr',
+                height: D.rowHeightPx + 4,
+                alignItems: 'center',
+                padding: '0 12px',
+                borderBottom: `1px solid ${D.gridlineColor}`,
+                background: isLast ? D.rowSelectedBg : i % 2 === 1 ? D.rowZebra : D.panelBg,
+                cursor: 'pointer',
+                gap: 8,
+              }}
+              onMouseEnter={(e) => { if (!isLast) e.currentTarget.style.background = D.rowHover; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = isLast ? D.rowSelectedBg : i % 2 === 1 ? D.rowZebra : D.panelBg; }}
+            >
+              <span style={{ color: D.textDim, fontSize: D.fontSizeTiny, textAlign: 'right' }}>{s.step}</span>
+              <span style={{ color: isLast ? D.accentGreen : D.accentAmber, fontSize: D.fontSizeDefault, fontWeight: 700 }}>
+                {isLast ? '✓ ' : ''}{s.mnemonic}
+              </span>
+              <span style={{ color: D.textPrimary, fontSize: D.fontSizeDefault, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.action}</span>
+              <span style={{ color: D.textDim, fontSize: D.fontSizeTiny, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.why}</span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Footer: map shortcuts + guide download */}
+      <div style={{ borderTop: `1px solid ${D.borderColor}`, padding: '6px 12px', background: D.bgSurface }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ color: D.textDim, fontSize: D.fontSizeTiny }}>Map quick-launch:</span>
+          {MAP_SHORTCUT_CODES.map((m) => (
+            <button key={m} type="button"
+              onClick={() => openStep(m, '')}
+              style={{ border: `1px solid ${D.borderColor}`, background: D.bgSurfaceAlt, color: D.accentCyan, fontSize: D.fontSizeTiny, padding: '1px 6px', cursor: 'pointer', fontFamily: D.fontFamily }}>
               {m}
             </button>
           ))}
+          <span style={{ marginLeft: 'auto' }}>
+            <button type="button"
+              onClick={() => {
+                // Open the user guide HTML in a new tab
+                const guideUrl = '/user-guide/';
+                window.open(guideUrl, '_blank', 'noopener');
+              }}
+              style={{ border: `1px solid ${D.accentCyan}`, background: D.bgSurfaceAlt, color: D.accentCyan, fontSize: D.fontSizeTiny, padding: '2px 10px', cursor: 'pointer', fontFamily: D.fontFamily, fontWeight: 600 }}>
+              📖 Open Full User Guide
+            </button>
+          </span>
         </div>
-        <div style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, marginTop: 4 }}>
-          Tip: Use <code>NAVTREE GO</code> and filter NEWS_DOCS to browse the full map family.
+        <div style={{ color: D.textDim, fontSize: D.fontSizeTiny, marginTop: 4 }}>
+          Tip: Press <strong style={{ color: D.textSecondary }}>F2</strong> for context-aware MENU · <strong style={{ color: D.textSecondary }}>Ctrl+K</strong> to search 2,900+ functions · <strong style={{ color: D.textSecondary }}>F1</strong> for help on the current panel
         </div>
       </div>
     </div>
