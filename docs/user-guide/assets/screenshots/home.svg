@@ -1,0 +1,6 @@
+<svg width="1440" height="900" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1440" height="900" fill="#080e14"/>
+  <text x="720" y="430" text-anchor="middle" fill="#f5a623" font-size="24" font-family="monospace">Home Screen — Panel Ready</text>
+  <text x="720" y="470" text-anchor="middle" fill="#5a7691" font-size="16" font-family="monospace">Screenshot: home</text>
+  <text x="720" y="510" text-anchor="middle" fill="#2a3e52" font-size="14" font-family="monospace">Run npm run docs:screenshots with dev server running</text>
+</svg>

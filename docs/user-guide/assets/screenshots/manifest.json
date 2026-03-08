@@ -1,0 +1,93 @@
+[
+  {
+    "id": "home",
+    "title": "Home Screen — Panel Ready",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  },
+  {
+    "id": "wakeup-quickstart",
+    "title": "WakeUp Screen — Quick Start tab",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  },
+  {
+    "id": "wei-world-indices",
+    "title": "WEI — World Equity Indices",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  },
+  {
+    "id": "des-description",
+    "title": "DES — Security Description (AAPL)",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  },
+  {
+    "id": "gp-price-chart",
+    "title": "GP — Price Chart (AAPL)",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  },
+  {
+    "id": "top-news",
+    "title": "TOP — Top News",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  },
+  {
+    "id": "eco-calendar",
+    "title": "ECO — Economic Calendar",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  },
+  {
+    "id": "mon-monitor",
+    "title": "MON — Monitor / Watchlist",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  },
+  {
+    "id": "hl-search-overlay",
+    "title": "HL — Search Overlay (Ctrl+K)",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  },
+  {
+    "id": "navtree-function-catalog",
+    "title": "NAVTREE — Function Catalog",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  },
+  {
+    "id": "pref-settings",
+    "title": "PREF — Preferences & Settings",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  },
+  {
+    "id": "tutor-walkthrough",
+    "title": "TUTOR — Guided Walkthrough",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  },
+  {
+    "id": "multi-pane-workspace",
+    "title": "Multi-Pane Workspace",
+    "file": null,
+    "status": "failed",
+    "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/\nCall log:\n  - navigating to \"http://localhost:3000/\", waiting until \"load\"\n"
+  }
+]
