@@ -7,6 +7,8 @@ import { useTerminalOS } from '../TerminalOSContext';
 import { makeSecurity, makeField, makeFunction, makeIndex, makeETF, makeSector, makeCountry } from '../entities/types';
 import type { EntityRef } from '../entities/types';
 import { MNEMONIC_DEFS } from '../MnemonicRegistry';
+import { getFieldDef } from '../../services/fieldCatalog';
+import { StatusBadge } from '../primitives';
 
 function h(s: string) { return Array.from(s).reduce((a, c) => a + c.charCodeAt(0), 0); }
 
@@ -185,13 +187,16 @@ function buildEntityFields(entity: EntityRef): Array<{ label: string; value: str
     }
     case 'FIELD': {
       const fp = entity.payload as { fieldName: string; value?: unknown };
+      const def = getFieldDef(fp.fieldName);
       return [
         { label: 'FIELD', value: fp.fieldName },
+        { label: 'LABEL', value: def?.label ?? fp.fieldName },
         { label: 'VALUE', value: String(fp.value ?? '—'), entity: fp.value !== undefined ? makeField(fp.fieldName, fp.value) : undefined },
-        { label: 'TYPE', value: 'NUMERIC' },
-        { label: 'UNIT', value: fp.fieldName.includes('YIELD') || fp.fieldName.includes('PCT') ? '%' : fp.fieldName.includes('CAP') ? 'USD' : fp.fieldName === 'BETA' ? 'ratio' : 'USD' },
-        { label: 'UPDATE FREQ', value: fp.fieldName.includes('PX') ? 'TICK' : 'DAILY' },
-        { label: 'PROVENANCE', value: 'SIM (B-PIPE)' },
+        { label: 'TYPE', value: (def?.dataType ?? 'number').toUpperCase() },
+        { label: 'UNIT', value: def?.unit || '—' },
+        { label: 'UPDATE FREQ', value: (def?.updateFreq ?? 'daily').toUpperCase() },
+        { label: 'CHARTABLE', value: def?.chartable ? 'YES' : 'NO' },
+        { label: 'PROVENANCE', value: def?.provenance ?? 'SIM' },
         { label: 'RELATED', value: 'DES', entity: makeFunction('DES', 'Description') },
         { label: 'RELATED', value: 'FA', entity: makeFunction('FA', 'Financials') },
       ];
@@ -225,27 +230,49 @@ function buildEntityFields(entity: EntityRef): Array<{ label: string; value: str
 
 function relatedFunctions(entity: EntityRef): string[] {
   switch (entity.kind) {
-    case 'SECURITY': case 'COMPANY': return ['DES', 'HP', 'GP', 'GIP', 'FA', 'CN', 'OWN', 'RELS', 'MGMT', 'DVD', 'ALRT'];
+    case 'SECURITY': case 'COMPANY': return ['DES', 'HP', 'GP', 'FA', 'CN', 'OWN', 'RELG', 'RELT', 'IMP', 'OUT', 'PATH', 'NEX', 'XDRV', 'SCN', 'SCN.R', 'FAC', 'CUST', 'SUPP', 'BETA.X', 'REGI', 'HEDGE', 'SHOCK.G', 'CMPY', 'SECT', 'INDY', 'CTY', 'CITY', 'BKMK', 'TRAIL', 'RELATE', 'FOCUS', 'NOTES', 'ALRT'];
     case 'INDEX': case 'ETF': return ['DES', 'GP', 'HP', 'WEI', 'IMAP'];
-    case 'FX': return ['DES', 'GP', 'FXC', 'GIP'];
+    case 'FX': return ['DES', 'GP', 'FXC', 'XDRV', 'BETA.X'];
     case 'FUTURE': return ['DES', 'GP', 'HP'];
     case 'OPTION': return ['DES', 'GP', 'HP'];
     case 'HOLDER': return ['OWN', 'MGMT', 'DES'];
     case 'PERSON': return ['MGMT', 'OWN', 'DES'];
-    case 'FIELD': return ['DES', 'FA'];
-    case 'NEWS': return ['TOP', 'CN', 'N'];
+    case 'FIELD': return ['DES', 'FA', 'LINE', 'FLD'];
+    case 'NEWS': return ['TOP', 'CN', 'NMAP', 'NREL', 'NEX', 'NTIM', 'NQ'];
     case 'EVENT': return ['EVT', 'DES', 'DVD'];
-    case 'SECTOR': case 'INDUSTRY': return ['IMAP', 'RELS', 'WEI'];
-    case 'COUNTRY': return ['WEI', 'ECO', 'FXC'];
-    case 'FUNCTION': return ['MENU', 'HL'];
-    case 'ORDER': case 'TRADE': return ['BLTR', 'ORD'];
+    case 'SECTOR': return ['IMAP', 'RELS', 'SECT', 'REGI', 'XDRV'];
+    case 'INDUSTRY': return ['RELS', 'IMAP', 'INDY', 'SCN', 'SUPP'];
+    case 'COUNTRY': return ['WEI', 'ECO', 'FXC', 'RGN', 'RGN.N', 'RGN.M', 'RGN.R', 'GEO', 'GEO.R', 'GEO.M', 'CTY', 'CITY'];
+    case 'FUNCTION': return ['MENU', 'HL', 'AUD', 'NAV', 'NX'];
+    case 'ORDER': case 'TRADE': return ['BLTR', 'ORD', 'AUD'];
     default: return ['DES', 'TOP'];
   }
 }
 
 export function TerminalInspector() {
   const { inspector, closeInspector, pinInspector, drill } = useDrill();
-  const { focusedPanel } = useTerminalOS();
+  const { focusedPanel, navigatePanel, panels } = useTerminalOS();
+  const [anchor, setAnchor] = React.useState<{ right: number; top: number; bottom: number } | null>(null);
+
+  React.useEffect(() => {
+    if (!inspector.open) return;
+    const update = () => {
+      const el = document.querySelector(`[data-panel-idx="${inspector.panelIdx}"]`) as HTMLElement | null;
+      if (!el) {
+        setAnchor(null);
+        return;
+      }
+      const r = el.getBoundingClientRect();
+      setAnchor({
+        right: Math.max(0, window.innerWidth - r.right),
+        top: Math.max(0, r.top),
+        bottom: Math.max(16, window.innerHeight - r.bottom + 16),
+      });
+    };
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [inspector.panelIdx, inspector.open]);
 
   if (!inspector.open || !inspector.entity) return null;
 
@@ -255,7 +282,7 @@ export function TerminalInspector() {
 
   // Get the security symbol from entity payload for passing to function drills
   const getEntitySym = (): string | undefined => {
-    const p = entity.payload as Record<string, unknown>;
+    const p = entity.payload as unknown as Record<string, unknown>;
     if (typeof p['sym'] === 'string') return p['sym'];
     if (typeof p['pair'] === 'string') return p['pair'];
     return undefined;
@@ -265,7 +292,7 @@ export function TerminalInspector() {
     <div
       className="fixed z-50"
       style={{
-        right: 0, top: 0, bottom: 16, width: 280,
+        right: anchor?.right ?? 0, top: anchor?.top ?? 0, bottom: anchor?.bottom ?? 16, width: 280,
         background: '#050505',
         border: `1px solid ${DENSITY.borderColor}`,
         borderRight: 'none',
@@ -325,7 +352,16 @@ export function TerminalInspector() {
                 }}
               >{f.value}</button>
             ) : (
-              <span className="truncate tabular-nums" style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault, flex: 1 }}>{f.value}</span>
+              f.label === 'PROVENANCE' ? (
+                <span style={{ flex: 1 }}>
+                  <StatusBadge
+                    label={f.value}
+                    variant={String(f.value).includes('LIVE') ? 'live' : String(f.value).includes('STALE') ? 'stale' : 'sim'}
+                  />
+                </span>
+              ) : (
+                <span className="truncate tabular-nums" style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault, flex: 1 }}>{f.value}</span>
+              )
             )}
           </div>
         ))}
@@ -341,17 +377,9 @@ export function TerminalInspector() {
               type="button"
               style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, border: `1px solid ${DENSITY.borderColor}`, padding: '0 3px', background: '#111', cursor: 'pointer' }}
               onClick={() => {
-                // Drill the entity itself (preserves security context) rather than a bare function
-                const sym = getEntitySym();
-                if (sym && entity.kind !== 'FUNCTION' && entity.kind !== 'NEWS' && entity.kind !== 'FIELD') {
-                  drill({ kind: entity.kind as 'SECURITY', id: sym, display: sym, payload: (entity.payload as { sym: string }) }, 'OPEN_IN_PLACE', focusedPanel);
-                }
-                // Then navigate to the function
-                import('../TerminalOSContext').then(({ useTerminalOS: _unused }) => {
-                  // We use navigatePanel directly via the OS context
-                }).catch(() => {});
-                // Simplified: drill a function entity with the current entity's sym context
-                drill(makeFunction(fn, MNEMONIC_DEFS[fn]?.title), 'OPEN_IN_PLACE', focusedPanel);
+                const sym = getEntitySym() ?? panels[focusedPanel]?.activeSecurity;
+                const sector = panels[focusedPanel]?.marketSector;
+                navigatePanel(focusedPanel, fn, sym, sector);
               }}
             >{fn}</button>
           ))}

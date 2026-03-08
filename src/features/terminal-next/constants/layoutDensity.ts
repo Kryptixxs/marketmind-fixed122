@@ -37,3 +37,12 @@ export const DENSITY = {
 } as const;
 
 export type DensityTokens = typeof DENSITY;
+
+export const TERMINAL_STRUCTURE_POLICY = {
+  bandRows: 'grid-rows-[2fr_1fr_1fr]',
+  maxPanels: {
+    primary: 4,
+    secondary: 4,
+    tertiary: 4,
+  },
+} as const;

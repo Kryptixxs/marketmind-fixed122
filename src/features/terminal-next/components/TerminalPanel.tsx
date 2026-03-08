@@ -27,6 +27,11 @@ const FN_LABELS: Record<PanelFunction, string> = {
   CAL: 'CAL',
   SEC: 'SEC',
   INTEL: 'INTEL',
+  ECO: 'ECO',
+  IMAP: 'IMAP',
+  FXC: 'FXC',
+  GC: 'GC',
+  IB: 'IB',
 };
 
 export function TerminalPanel({

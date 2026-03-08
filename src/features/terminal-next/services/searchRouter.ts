@@ -64,7 +64,10 @@ export function routeSearch(input: string): SearchIntent {
 
   // Standard command format: <TICKER> [MARKET] <FUNCTION> GO
   if (STANDARD_CMD_REGEX.test(upper)) {
-    return { type: 'TICKER' };
+    const parts = upper.split(' ');
+    const ticker = parts[0] ?? '';
+    const market = parts.length >= 4 ? parts[1] : undefined;
+    return { type: 'TICKER', ticker, market };
   }
 
   // Natural language / entity-style queries

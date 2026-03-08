@@ -35,7 +35,7 @@ function formatCellValue(row: TerminalTableRow, col: TerminalTableColumn): strin
         : String(row.volume);
   }
   if (col.key === 'sparkline') return '';
-  return String((row as Record<string, unknown>)[col.key] ?? '');
+  return String((row as unknown as Record<string, unknown>)[col.key] ?? '');
 }
 
 function getCellColor(
@@ -252,7 +252,7 @@ export function TerminalTable({
         ctx.fillText(text, textX, rowY + rowHeight / 2);
       }
     }
-  }, [sortedRows, columns, computeColumnWidths, rowHeight, compact, flashMap, hoverRowIndex]);
+  }, [sortedRows, columns, computeColumnWidths, rowHeight, compact, flashMap, hoverRowIndex, sort]);
 
   useLayoutEffect(() => {
     paint();

@@ -20,6 +20,7 @@ import { buildExecutionContextFromMarket, toMacroExecutionState } from '../modul
 import { selectExecutionPolicy } from '../selectors/executionContextSelectors';
 import { loadPersistedState, savePersistedState } from '../services/terminalPersistence';
 import { generateFakeHeadline } from '../services/fakeNewsGenerator';
+import { appendErrorEntry } from '../runtime/errorConsoleStore';
 
 type TerminalAction =
   | { type: 'TICK_QUOTES' }
@@ -695,6 +696,12 @@ export function TerminalProvider({ children }: { children: React.ReactNode }) {
     };
     worker.onerror = () => {
       streamTickRef.current = 0;
+      appendErrorEntry({
+        panelIdx: 0,
+        kind: 'FEED',
+        message: 'Worker feed interrupted.',
+        recovery: 'Worker auto-restarts on next START cycle.',
+      });
     };
 
     const seed = 31051990;

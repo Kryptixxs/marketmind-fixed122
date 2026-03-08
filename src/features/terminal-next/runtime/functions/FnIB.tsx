@@ -3,6 +3,11 @@
 import React, { useState } from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
 import { PanelSubHeader } from '../primitives';
+import { useTerminalOS } from '../TerminalOSContext';
+import { appendAuditEvent } from '../commandAuditStore';
+import { checkPolicy, loadPolicyState } from '../policyStore';
+import { isAllowedByRole } from '../entitlementsStore';
+import { appendErrorEntry } from '../errorConsoleStore';
 
 const MESSAGES = [
   { from: 'DESK', time: '14:32', text: 'Heads up — large block crossing in NVDA' },
@@ -13,15 +18,39 @@ const MESSAGES = [
   { from: 'SYS', time: '13:30', text: 'B-PIPE reconnected. Latency normalized.' },
 ];
 
-export function FnIB() {
+export function FnIB({ panelIdx = 0 }: { panelIdx?: number }) {
+  const { panels } = useTerminalOS();
+  const p = panels[panelIdx]!;
   const [input, setInput] = useState('');
   const [msgs, setMsgs] = useState(MESSAGES);
+  const [withContext, setWithContext] = useState(true);
 
   const send = () => {
     if (!input.trim()) return;
+    const policy = loadPolicyState();
+    if (!isAllowedByRole(policy.activeRole, 'MESSAGE')) {
+      appendAuditEvent({ panelIdx, type: 'POLICY_BLOCK', actor: policy.activeRole, detail: 'Blocked message send: role denied', mnemonic: 'IB', security: p.activeSecurity, policyReason: 'Role denied MESSAGE' });
+      appendErrorEntry({ panelIdx, kind: 'PERMISSION', message: 'Role cannot send messages.', recovery: 'Switch role in ENT or disable restriction.' });
+      return;
+    }
+    const gate = checkPolicy('MESSAGE', policy.activeRole);
+    if (!gate.allowed) {
+      appendAuditEvent({ panelIdx, type: 'POLICY_BLOCK', actor: policy.activeRole, detail: `Blocked message send: ${gate.reason ?? 'Policy denied'}`, mnemonic: 'IB', security: p.activeSecurity, policyReason: gate.reason });
+      appendErrorEntry({ panelIdx, kind: 'POLICY', message: 'Messaging blocked by compliance lock.', recovery: 'Open COMP/POL and allow messaging.' });
+      return;
+    }
     const now = new Date();
     const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-    setMsgs([{ from: 'YOU', time, text: input.trim() }, ...msgs]);
+    const context = withContext ? ` [${p.activeSecurity} ${p.activeMnemonic}]` : '';
+    setMsgs([{ from: 'YOU', time, text: `${input.trim()}${context}` }, ...msgs]);
+    appendAuditEvent({
+      panelIdx,
+      type: 'MESSAGE',
+      actor: policy.activeRole,
+      detail: `IB message${withContext ? ` with context ${p.activeSecurity} ${p.activeMnemonic}` : ''}`,
+      mnemonic: 'IB',
+      security: p.activeSecurity,
+    });
     setInput('');
   };
 
@@ -38,6 +67,11 @@ export function FnIB() {
         ))}
       </div>
       <div className="flex items-center flex-none" style={{ height: DENSITY.commandBarHeightPx, background: '#111', borderTop: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 4 }}>
+        <button type="button" onClick={() => setWithContext((v) => !v)}
+          style={{ color: withContext ? DENSITY.accentCyan : DENSITY.textMuted, border: `1px solid ${withContext ? DENSITY.accentCyan : DENSITY.borderColor}`, background: 'none', fontSize: DENSITY.fontSizeTiny, padding: '0 4px', cursor: 'pointer' }}
+          title="Attach current security/function context">
+          CTX {withContext ? 'ON' : 'OFF'}
+        </button>
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
           placeholder="Type message..." className="flex-1 bg-transparent outline-none" style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault, fontFamily: DENSITY.fontFamily }} />
         <button type="button" onClick={send} style={{ color: DENSITY.accentGreen, fontSize: DENSITY.fontSizeTiny }}>SEND</button>

@@ -235,7 +235,7 @@ export const TechnicalChart = memo(function TechnicalChart({
     const tooltip = tooltipRef.current;
     if (!chart || !candle || !tooltip) return;
 
-    const unsub = chart.subscribeCrosshairMove((param) => {
+    const handler = (param: { point?: { x: number; y: number }; time?: unknown; seriesData: Map<unknown, unknown> }) => {
       if (
         param.point === undefined ||
         !param.time ||
@@ -269,9 +269,9 @@ export const TechnicalChart = memo(function TechnicalChart({
         `C: ${data.close.toFixed(2)}`,
         `Vol: ${formatVol(vol)}`,
       ].join(' ');
-    });
-
-    return () => unsub();
+    };
+    chart.subscribeCrosshairMove(handler);
+    return () => chart.unsubscribeCrosshairMove(handler);
   }, [setCrosshair]);
 
   useEffect(() => {

@@ -24,7 +24,6 @@ const SYMBOL_DB: Record<string, SymbolMapping> = {
   PYPL: { yahoo: 'PYPL', finnhub: 'PYPL', assetClass: 'equity', label: 'PayPal' },
   INTC: { yahoo: 'INTC', finnhub: 'INTC', assetClass: 'equity', label: 'Intel' },
   UBER: { yahoo: 'UBER', finnhub: 'UBER', assetClass: 'equity', label: 'Uber' },
-  CRM: { yahoo: 'CRM', finnhub: 'CRM', assetClass: 'equity', label: 'Salesforce' },
   ORCL: { yahoo: 'ORCL', finnhub: 'ORCL', assetClass: 'equity', label: 'Oracle' },
   ADBE: { yahoo: 'ADBE', finnhub: 'ADBE', assetClass: 'equity', label: 'Adobe' },
   CSCO: { yahoo: 'CSCO', finnhub: 'CSCO', assetClass: 'equity', label: 'Cisco' },

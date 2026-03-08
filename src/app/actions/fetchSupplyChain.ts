@@ -31,7 +31,8 @@ export async function fetchSupplyChain(symbol: string): Promise<SupplyChainData 
   const partners: SupplyChainEntry[] = [];
 
   for (const r of rels ?? []) {
-    const target = r.target as { name: string } | null;
+    const targetRel = r.target as { name?: string } | Array<{ name?: string }> | null;
+    const target = Array.isArray(targetRel) ? targetRel[0] : targetRel;
     const entry: SupplyChainEntry = {
       name: target?.name ?? 'Unknown',
       type: r.relationship_type as 'customer' | 'supplier' | 'partner',

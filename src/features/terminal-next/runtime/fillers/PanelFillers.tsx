@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
 import { useTerminalOS } from '../TerminalOSContext';
 import { useDrill } from '../entities/DrillContext';
@@ -8,6 +8,7 @@ import { makeSecurity, makeField, makeNews, makeFunction } from '../entities/typ
 import { openContextMenu } from '../ui/ContextMenu';
 import { useTerminalStore } from '../../store/TerminalStore';
 import { loadAlertRules, evaluateTriggeredRules } from '../../services/alertMonitor';
+import { intentFromMouseEvent, INTERACTION_HINT } from '../interaction';
 
 function hash(s: string) { return Array.from(s).reduce((a, c) => a + c.charCodeAt(0), 0); }
 
@@ -43,9 +44,9 @@ export function MiniQuoteBlock({ panelIdx }: { panelIdx: number }) {
               <span
                 className="tabular-nums cursor-pointer hover:underline"
                 style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault }}
-                onClick={(e) => drill(entity, e.altKey ? 'INSPECT_OVERLAY' : 'OPEN_IN_PLACE', panelIdx)}
+                onClick={(e) => drill(entity, intentFromMouseEvent(e), panelIdx)}
                 onContextMenu={(e) => openContextMenu(e, entity, panelIdx)}
-                title="Alt+Click: inspect  •  Right-click: actions"
+                title={INTERACTION_HINT}
               >{f.value}</span>
             </React.Fragment>
           );
@@ -85,7 +86,7 @@ export function MiniRelsBlock({ panelIdx }: { panelIdx: number }) {
         return (
           <div key={p.sym} className="flex items-center cursor-pointer hover:bg-[#0a1520]"
             style={{ height: DENSITY.rowHeightPx, padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: i % 2 === 1 ? '#060606' : DENSITY.bgBase }}
-            onClick={(e) => drill(entity, e.shiftKey ? 'OPEN_IN_NEW_PANEL' : 'OPEN_IN_PLACE', panelIdx)}
+            onClick={(e) => drill(entity, intentFromMouseEvent(e), panelIdx)}
             onContextMenu={(e) => openContextMenu(e, entity, panelIdx)}>
             <span style={{ color: DENSITY.accentAmber, width: 50, fontSize: DENSITY.fontSizeDefault, fontWeight: 700 }}>{p.sym.split(' ')[0]}</span>
             <span className="flex-1 truncate" style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>{p.name}</span>
@@ -129,9 +130,9 @@ export function MiniKeyFields({ panelIdx }: { panelIdx: number }) {
               <span style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny }}>{f.label}</span>
               <span className="tabular-nums cursor-pointer hover:underline"
                 style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault }}
-                onClick={(e) => drill(entity, 'INSPECT_OVERLAY', panelIdx)}
+                onClick={(e) => drill(entity, intentFromMouseEvent(e), panelIdx)}
                 onContextMenu={(e) => openContextMenu(e, entity, panelIdx)}
-                title="Alt+Click: inspect field">{f.value}</span>
+                title={INTERACTION_HINT}>{f.value}</span>
             </React.Fragment>
           );
         })}
@@ -166,7 +167,7 @@ export function MiniNewsBlock({ panelIdx }: { panelIdx: number }) {
         return (
           <div key={i} className="flex items-start cursor-pointer hover:bg-[#0a1520]"
             style={{ padding: `${DENSITY.pad2}px ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: i % 2 === 1 ? '#060606' : DENSITY.bgBase, minHeight: DENSITY.rowHeightPx }}
-            onClick={(e) => drill(entity, e.shiftKey ? 'OPEN_IN_NEW_PANEL' : 'OPEN_IN_PLACE', panelIdx)}
+            onClick={(e) => drill(entity, intentFromMouseEvent(e), panelIdx)}
             onContextMenu={(e) => openContextMenu(e, entity, panelIdx)}>
             <span style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault, lineHeight: 1.1 }}>{headline}</span>
           </div>
@@ -180,7 +181,7 @@ export function MiniNewsBlock({ panelIdx }: { panelIdx: number }) {
 export function MiniAlertsBlock({ panelIdx }: { panelIdx: number }) {
   const { state } = useTerminalStore();
   const { drill } = useDrill();
-  const rules = useMemo(() => loadAlertRules(), [state.tickMs]);
+  const rules = loadAlertRules();
   const triggered = evaluateTriggeredRules(rules, state.quotes);
   if (rules.length === 0) return null;
 
@@ -217,20 +218,31 @@ export function HintStrip() {
 
 // ── PanelFiller — appended after short-content functions ──────────────────────
 const FILLER_SKIP = new Set(['GP', 'GIP', 'WEI', 'FXC', 'IMAP', 'HP', 'TOP', 'N', 'NEWS', 'FA', 'OWN', 'MGMT', 'RELS', 'DVD', 'CN', 'MON']);
+const DENSITY_THRESHOLD: Record<string, number> = {
+  DES: 6,
+  WS: 6,
+  NAVTREE: 6,
+  DOCK: 6,
+  ALRT: 6,
+};
 
 export function PanelFiller({ panelIdx }: { panelIdx: number }) {
   const { panels } = useTerminalOS();
   const p = panels[panelIdx]!;
   if (FILLER_SKIP.has(p.activeMnemonic)) return null;
 
-  return (
-    <div className="flex flex-col">
-      <MiniQuoteBlock panelIdx={panelIdx} />
-      <MiniKeyFields panelIdx={panelIdx} />
-      <MiniRelsBlock panelIdx={panelIdx} />
-      <MiniNewsBlock panelIdx={panelIdx} />
-      <MiniAlertsBlock panelIdx={panelIdx} />
-      <HintStrip />
-    </div>
-  );
+  const threshold = DENSITY_THRESHOLD[p.activeMnemonic] ?? 5;
+  const blockFactories: Array<() => React.ReactNode> = [
+    () => <MiniQuoteBlock panelIdx={panelIdx} />,
+    () => <MiniKeyFields panelIdx={panelIdx} />,
+    () => <MiniRelsBlock panelIdx={panelIdx} />,
+    () => <MiniNewsBlock panelIdx={panelIdx} />,
+    () => <MiniAlertsBlock panelIdx={panelIdx} />,
+  ];
+  const repeated: React.ReactNode[] = [];
+  for (let i = 0; i < threshold; i += 1) {
+    const mk = blockFactories[i % blockFactories.length]!;
+    repeated.push(<React.Fragment key={`fill-${panelIdx}-${p.activeMnemonic}-${i}`}>{mk()}</React.Fragment>);
+  }
+  return <div className="flex flex-col">{repeated}<HintStrip /></div>;
 }

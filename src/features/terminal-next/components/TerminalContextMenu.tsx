@@ -11,7 +11,8 @@ const MENU_OPTIONS = [
 ] as const;
 
 export function TerminalContextMenu() {
-  const { executeCommand } = useTerminalContextMenu();
+  const menuCtx = useTerminalContextMenu();
+  const executeCommand = menuCtx?.executeCommand ?? (() => undefined);
   const [state, setState] = useState<{ x: number; y: number; ticker: string } | null>(null);
 
   useEffect(() => {

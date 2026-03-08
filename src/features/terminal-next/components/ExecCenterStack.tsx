@@ -321,8 +321,8 @@ export function ExecCenterStack({
   const eventVisualSecondary = impacts.map((e) => Math.abs(e.volShiftPct));
   const docsVisualSeries = newsArchive.map((d) => d.relevanceWeight * 100);
   const docsVisualSecondary = newsArchive.map((_, idx) => Math.sin((synthetic.seed + idx) * 0.23) * 30 + 50);
-  const relVisualSeries = relationshipEdges.flatMap((e) => [e.weight * 100, e.weightedStrength]);
-  const relVisualSecondary = relationshipEdges.map((e) => e.weightedStrength);
+  const relVisualSeries = relationshipEdges.flatMap((e) => [e.weight * 100, e.weight * 120]);
+  const relVisualSecondary = relationshipEdges.map((e) => e.weight * 120);
   const historicalVisualSeries = [
     ...historicalSeries.map((h) => h.yoy),
     ...historicalCrises.map((c) => c.drawdownPct),

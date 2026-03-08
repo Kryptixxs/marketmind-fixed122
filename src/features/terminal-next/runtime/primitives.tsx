@@ -6,6 +6,7 @@ import type { EntityRef } from './entities/types';
 import { useDrill } from './entities/DrillContext';
 import { openContextMenu } from './ui/ContextMenu';
 import type { DrillIntent } from './entities/linkResolver';
+import { intentFromMouseEvent, INTERACTION_HINT } from './interaction';
 
 /* ────── DenseTable — with EntityRefs + keyboard nav ────── */
 
@@ -27,6 +28,8 @@ export interface DenseTableProps {
   rowEntity?: (row: Record<string, unknown>) => EntityRef | undefined;
   flashMap?: Record<string, 'up' | 'down'>;
   onRowClick?: (row: Record<string, unknown>) => void;
+  invokeRowClickWithEntity?: boolean;
+  onRowDoubleClick?: (row: Record<string, unknown>) => void;
   selectedRow?: number;
   compact?: boolean;
   className?: string;
@@ -38,7 +41,7 @@ export interface DenseTableProps {
 
 export function DenseTable({
   columns, rows, rowKey = 'id', rowEntity, flashMap = {},
-  onRowClick, selectedRow: externalSelected, compact, className = '',
+  onRowClick, invokeRowClickWithEntity = false, onRowDoubleClick, selectedRow: externalSelected, compact, className = '',
   stickyHeader = true, boldEveryNth, panelIdx = 0, keyboardNav = true,
 }: DenseTableProps) {
   const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: '', dir: 'asc' });
@@ -67,10 +70,11 @@ export function DenseTable({
     const entity = rowEntity?.(row);
     if (entity && drill) {
       drill(entity, intent, panelIdx);
+      if (invokeRowClickWithEntity) onRowClick?.(row);
     } else {
       onRowClick?.(row);
     }
-  }, [rowEntity, drill, onRowClick, panelIdx]);
+  }, [rowEntity, drill, onRowClick, panelIdx, invokeRowClickWithEntity]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -149,19 +153,27 @@ export function DenseTable({
                 ${flash === 'up' ? 'cell-flash-up' : flash === 'down' ? 'cell-flash-down' : ''}
                 hover:bg-[#0a1520]`}
               style={{ gridTemplateColumns: gridCols, height: rh, borderBottom: `1px solid ${DENSITY.gridlineColor}`, fontWeight: isBold ? 700 : 400 }}
-              onClick={(e) => { setInternalSelected(ri); containerRef.current?.focus(); handleRowAction(row, e.shiftKey ? 'OPEN_IN_NEW_PANEL' : 'OPEN_IN_PLACE', e); }}
+              onClick={(e) => {
+                setInternalSelected(ri);
+                containerRef.current?.focus();
+                handleRowAction(row, intentFromMouseEvent(e), e);
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                onRowDoubleClick?.(row);
+              }}
               onAuxClick={(e) => { if (e.button === 1) { setInternalSelected(ri); handleRowAction(row, 'INSPECT_OVERLAY', e); } }}
               onContextMenu={(e) => {
                 const entity = rowEntity?.(row);
                 if (entity) openContextMenu(e, entity, panelIdx);
                 else e.preventDefault();
               }}
-              title="Click: drill  •  Shift+Click: send to panel  •  Alt+Click: inspect  •  Right-Click: actions"
+              title={INTERACTION_HINT}
             >
               {columns.map((col) => {
                 const val = row[col.key];
                 const num = typeof val === 'number' ? val : null;
-                let color = DENSITY.textPrimary;
+                let color: string = DENSITY.textPrimary;
                 if (col.tone && num != null) color = num > 0 ? DENSITY.accentGreen : num < 0 ? DENSITY.accentRed : DENSITY.textPrimary;
                 const formatted = col.format ? col.format(val) : val == null ? '—' : typeof val === 'number' ? val.toFixed(2) : String(val);
                 const cellEntity = col.entity?.(row);
@@ -172,10 +184,10 @@ export function DenseTable({
                     style={{ color: DENSITY.accentCyan, textAlign: col.align ?? 'left' }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      const intent: DrillIntent = e.shiftKey ? 'OPEN_IN_NEW_PANEL' : e.altKey ? 'INSPECT_OVERLAY' : 'OPEN_IN_PLACE';
+                      const intent: DrillIntent = intentFromMouseEvent(e);
                       drill?.(cellEntity, intent, panelIdx);
                     }}
-                    title={`${cellEntity.display} — Click: drill  •  Shift+Click: send  •  Alt+Click: inspect`}
+                    title={`${cellEntity.display} — ${INTERACTION_HINT}`}
                   >{formatted}</span>
                 ) : (
                   <span
@@ -214,14 +226,14 @@ export function KeyValueGrid({ pairs, columns = 2, className = '', panelIdx = 0 
               className="tabular-nums cursor-pointer hover:underline"
               style={{ color: DENSITY.accentCyan }}
               onClick={(e) => {
-                const intent: DrillIntent = e.shiftKey ? 'OPEN_IN_NEW_PANEL' : e.altKey ? 'INSPECT_OVERLAY' : 'OPEN_IN_PLACE';
+                const intent: DrillIntent = intentFromMouseEvent(e);
                 drill?.(p.entity!, intent, panelIdx);
               }}
               onContextMenu={(e) => {
                 e.preventDefault();
                 if (p.entity) openContextMenu(e, p.entity, panelIdx);
               }}
-              title="Click: drill  •  Shift+Click: send  •  Alt+Click: inspect  •  Right-click: actions"
+              title={INTERACTION_HINT}
             >
               {typeof p.value === 'number' ? p.value.toLocaleString() : p.value}
             </span>
@@ -287,14 +299,14 @@ export function NewsListItem({ item, panelIdx = 0, idx = 0 }: { item: NewsItem; 
       style={{ padding: `${DENSITY.pad2}px ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: idx % 2 === 1 ? '#060606' : DENSITY.bgBase, minHeight: DENSITY.rowHeightPx }}
       onClick={(e) => {
         if (!item.entity && !drill) return;
-        const intent: DrillIntent = e.shiftKey ? 'OPEN_IN_NEW_PANEL' : e.altKey ? 'INSPECT_OVERLAY' : 'OPEN_IN_PLACE';
+        const intent: DrillIntent = intentFromMouseEvent(e);
         if (item.entity && drill) drill(item.entity, intent, panelIdx);
       }}
       onContextMenu={(e) => {
         e.preventDefault();
         if (item.entity) openContextMenu(e, item.entity, panelIdx);
       }}
-      title="Click: drill  •  Shift+Click: send  •  Alt+Click: inspect  •  Right-click: actions"
+      title={INTERACTION_HINT}
     >
       <span className="shrink-0 tabular-nums" style={{ color: DENSITY.accentAmber, width: 75, fontSize: DENSITY.fontSizeTiny }}>{item.time}</span>
       <span className="shrink-0" style={{ color: DENSITY.accentCyan, width: 28, fontSize: DENSITY.fontSizeTiny }}>{item.src}</span>

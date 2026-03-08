@@ -1,3 +1,5 @@
+import type { PanelSnapshot } from '../runtime/panelState';
+
 const DB_NAME = 'vantage-terminal-db';
 const STORE_NAME = 'recovery';
 const KEY = 'latest';
@@ -9,6 +11,9 @@ export interface RecoverySnapshot {
   panelSizes: number[];
   zoomedQuadrant: number | null;
   lastCommands: string[];
+  osPanels?: PanelSnapshot[];
+  focusedPanel?: number;
+  commandHistories?: string[][];
 }
 
 function openDb(): Promise<IDBDatabase> {

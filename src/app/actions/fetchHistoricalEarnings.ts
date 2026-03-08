@@ -24,8 +24,8 @@ export async function fetchHistoricalEarnings(symbol: string): Promise<Historica
   }
 
   try {
-    const mod = await import('yahoo-finance2').then((m) => m.default ?? m);
-    const yf = mod.default ? new mod.default() : mod;
+    const mod = await import('yahoo-finance2');
+    const yf = mod.default;
     const summary = await yf.quoteSummary?.(yahooSym, {
       modules: ['earningsHistory', 'earnings'],
     });

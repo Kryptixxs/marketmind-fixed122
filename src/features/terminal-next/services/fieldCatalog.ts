@@ -4,7 +4,7 @@ export interface FieldDef {
   unit: string;
   dataType: 'number' | 'string' | 'date' | 'enum';
   chartable: boolean;
-  updateFreq: 'tick' | 'daily' | 'quarterly' | 'static';
+  updateFreq: 'tick' | 'daily' | 'monthly' | 'quarterly' | 'static';
   provenance: 'SIM' | 'LIVE' | 'CALC';
   description: string;
 }

@@ -129,7 +129,7 @@ export function resolveLink(
     case 'EVENT':
       return { panelIdx: targetPanel, mnemonic: 'EVT', intent };
     case 'FIELD':
-      return { panelIdx: targetPanel, mnemonic: 'DES', intent, inspectorEntity: intent === 'INSPECT_OVERLAY' ? entity : undefined };
+      return { panelIdx: targetPanel, mnemonic: 'DES', intent };
     case 'FUNCTION': {
       const fn = entity.payload as { code: string };
       return { panelIdx: targetPanel, mnemonic: fn.code, intent };

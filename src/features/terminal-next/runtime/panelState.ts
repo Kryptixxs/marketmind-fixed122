@@ -32,6 +32,10 @@ export interface PanelState {
   helpPressCount: number;
 }
 
+export interface PanelSnapshot extends Omit<PanelState, 'id'> {
+  id?: number;
+}
+
 export function createDefaultPanel(id: number, mnemonic: string, security = 'AAPL US Equity'): PanelState {
   const entry: HistoryEntry = { security, mnemonic, sector: 'EQUITY', timeframe: '1Y', scrollPosition: 0, selectionIndex: 0, ts: Date.now() };
   return {
@@ -56,6 +60,7 @@ export function createDefaultPanel(id: number, mnemonic: string, security = 'AAP
 
 export type PanelAction =
   | { type: 'NAVIGATE'; mnemonic: string; security?: string; sector?: MarketSector; timeframe?: string }
+  | { type: 'HYDRATE'; snapshot: PanelSnapshot }
   | { type: 'GO_BACK' }
   | { type: 'GO_FORWARD' }
   | { type: 'SET_SECURITY'; security: string; sector?: MarketSector }
@@ -71,6 +76,18 @@ export type PanelAction =
 
 export function panelReducer(state: PanelState, action: PanelAction): PanelState {
   switch (action.type) {
+    case 'HYDRATE': {
+      const s = action.snapshot;
+      return {
+        ...state,
+        ...s,
+        id: state.id,
+        history: Array.isArray(s.history) && s.history.length > 0 ? s.history : state.history,
+        historyIdx: typeof s.historyIdx === 'number' ? Math.max(0, Math.min(s.historyIdx, (s.history?.length ?? state.history.length) - 1)) : state.historyIdx,
+        overlayMode: s.overlayMode ?? 'none',
+        helpPressCount: s.helpPressCount ?? 0,
+      };
+    }
     case 'NAVIGATE': {
       const sec = action.security ?? state.activeSecurity;
       const sector = action.sector ?? state.marketSector;

@@ -77,8 +77,18 @@ export class PolygonProvider extends BaseProvider {
       const results = await fetchMarketDataBatch(symbols, this.currentInterval || '15m');
       results.forEach(res => {
         if (res) {
-          this.state[res.symbol] = res;
-          this.emitTick(res); 
+          const tick: Tick = {
+            symbol: res.symbol,
+            name: res.name,
+            price: res.price,
+            change: res.change,
+            changePercent: res.changePercent,
+            marketState: res.marketState,
+            history: res.history,
+            timestamp: Date.now(),
+          };
+          this.state[res.symbol] = tick;
+          this.emitTick(tick); 
         }
       });
     } catch (e) {

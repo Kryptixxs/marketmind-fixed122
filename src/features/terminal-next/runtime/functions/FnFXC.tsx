@@ -23,11 +23,12 @@ export function FnFXC({ panelIdx = 0 }: { panelIdx?: number }) {
   const { state } = useTerminalStore();
   const { drill } = useDrill();
 
-  const matrix = useMemo(() => {
+  type FxRow = { ccy: string } & Record<string, number>;
+  const matrix = useMemo<FxRow[]>(() => {
     return CCYS.map((from) => ({
       ccy: from,
       ...Object.fromEntries(CCYS.map((to) => [to, getRate(from, to, state.tick)])),
-    }));
+    })) as FxRow[];
   }, [state.tick]);
 
   return (

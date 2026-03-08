@@ -7,6 +7,8 @@ import { useTerminalOS } from '../TerminalOSContext';
 import { useDrill } from '../entities/DrillContext';
 import { makeSecurity, makeSector, makeField } from '../entities/types';
 import { openContextMenu } from '../ui/ContextMenu';
+import { addSecurityNote, deleteSecurityNote, listSecurityNotes } from '../securityNotesStore';
+import { appendAuditEvent } from '../commandAuditStore';
 
 function h(s: string) { return Array.from(s).reduce((a, c) => a + c.charCodeAt(0), 0); }
 function fmtB(n: number) { return n >= 1e12 ? (n / 1e12).toFixed(2) + 'T' : n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n.toLocaleString(); }
@@ -20,9 +22,12 @@ const SUMMARIES = [
 
 export function FnDES({ panelIdx }: { panelIdx: number }) {
   const { panels } = useTerminalOS();
+  const { drill } = useDrill();
   const p = panels[panelIdx]!;
   const sec = p.activeSecurity;
   const ticker = sec.split(' ')[0] ?? 'AAPL';
+  const [noteInput, setNoteInput] = React.useState('');
+  const [noteTick, setNoteTick] = React.useState(0);
 
   const data = useMemo(() => {
     const seed = h(ticker);
@@ -104,6 +109,33 @@ export function FnDES({ panelIdx }: { panelIdx: number }) {
               >{t}</button>
             ))}
           </div>
+        </div>
+        <div style={{ padding: DENSITY.pad4, borderTop: `1px solid ${DENSITY.borderColor}` }}>
+          <div style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, textTransform: 'uppercase', marginBottom: 2 }}>Notes</div>
+          <div className="flex items-center gap-1" style={{ marginBottom: 4 }}>
+            <input
+              value={noteInput}
+              onChange={(e) => setNoteInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return;
+                const note = addSecurityNote(sec, noteInput);
+                if (!note) return;
+                appendAuditEvent({ panelIdx, type: 'NOTE_ADD', actor: 'USER', detail: `DES note ${sec}` });
+                setNoteInput('');
+                setNoteTick((v) => v + 1);
+              }}
+              placeholder="Add note and press Enter"
+              className="flex-1 bg-transparent outline-none"
+              style={{ color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, padding: '1px 4px', fontSize: DENSITY.fontSizeTiny, fontFamily: DENSITY.fontFamily }}
+            />
+          </div>
+          {(listSecurityNotes(sec) && noteTick >= 0) ? listSecurityNotes(sec).slice(0, 5).map((n) => (
+            <div key={n.id} className="flex items-center gap-1" style={{ borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: '1px 0' }}>
+              <span className="flex-1 truncate" style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny }}>{n.text}</span>
+              <button type="button" onClick={() => { deleteSecurityNote(sec, n.id); setNoteTick((v) => v + 1); }}
+                style={{ color: DENSITY.accentRed, background: 'none', border: 'none', fontSize: DENSITY.fontSizeTiny, cursor: 'pointer' }}>DEL</button>
+            </div>
+          )) : null}
         </div>
       </div>
     </div>

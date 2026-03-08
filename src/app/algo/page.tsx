@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Play, Loader2, Sparkles, Cpu, BarChart3, TrendingUp, AlertTriangle, Target } from 'lucide-react';
 import { runBacktest, StrategyResult, StrategyParams } from '@/lib/backtest';
 import { Widget } from '@/components/ui/Widget';
@@ -18,7 +18,7 @@ export default function AlgoPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<StrategyResult | null>(null);
 
-  const fetchRealHistory = async () => {
+  const fetchRealHistory = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await fetchMarketData(targetSymbol, '1d');
@@ -35,9 +35,9 @@ export default function AlgoPage() {
       }
     } catch (e) { console.error(e); }
     finally { setIsLoading(false); }
-  };
+  }, [params, targetSymbol]);
 
-  useEffect(() => { fetchRealHistory(); }, []);
+  useEffect(() => { fetchRealHistory(); }, [fetchRealHistory]);
 
   const run = () => {
     if (realData.length > 0) setResult(runBacktest(realData, params));

@@ -8,6 +8,14 @@ import { useTerminalOS } from './TerminalOSContext';
 import type { MarketSector } from './panelState';
 import { MNEMONIC_DEFS } from './MnemonicRegistry';
 import { saveWorkspace, loadWorkspace } from './workspaceManager';
+import { addCommandHistory, loadCommandHistory, saveCommandHistory } from './commandHistoryStore';
+import { appendAuditEvent } from './commandAuditStore';
+import { checkPolicy, loadPolicyState } from './policyStore';
+import { isAllowedByRole } from './entitlementsStore';
+import { appendErrorEntry } from './errorConsoleStore';
+import { guardRuntimeAction } from './actionGuard';
+import { loadDockLayout, setDockLayout } from './dockLayoutStore';
+import { listPinItems, replacePinItems } from './pinboardStore';
 
 // ── universe for autocomplete ─────────────────────────────────────────────────
 const SECURITY_UNIVERSE = [
@@ -124,7 +132,7 @@ export function parseGoCommand(input: string, _currentSecurity: string, _current
   return { security, mnemonic, sector, timeframe: tf };
 }
 
-const COMMAND_INPUT_IDS = ['terminal-cmd-0', 'terminal-cmd-1', 'terminal-cmd-2', 'terminal-cmd-3'];
+const commandInputId = (panelIdx: number) => `terminal-cmd-${panelIdx}`;
 
 export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; isFocused: boolean }) {
   const { panels, dispatchPanel, navigatePanel, setFocusedPanel } = useTerminalOS();
@@ -132,6 +140,8 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
   const inputRef = useRef<HTMLInputElement>(null);
   const [suggestOpen, setSuggestOpen] = useState(false);
   const [suggestIdx, setSuggestIdx] = useState(0);
+  const [suggestFlipUp, setSuggestFlipUp] = useState(false);
+  const [policyMode, setPolicyMode] = useState<'normal' | 'restricted' | 'frozen'>(() => loadPolicyState().mode);
   const suggestRef = useRef<HTMLDivElement>(null);
   const f1TimerRef = useRef<number>(0);
   // Command input history (separate from panel nav history)
@@ -140,10 +150,7 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
 
   // Load command history from localStorage on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(`vantage-cmd-history-${panelIdx}`);
-      if (stored) cmdHistoryRef.current = JSON.parse(stored) as string[];
-    } catch { /* ignore */ }
+    cmdHistoryRef.current = loadCommandHistory(panelIdx);
   }, [panelIdx]);
 
   const suggestions = useMemo(
@@ -151,10 +158,31 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
     [p.commandInput, suggestOpen],
   );
 
+  useEffect(() => {
+    if (!suggestOpen) return;
+    const updateFlip = () => {
+      const input = inputRef.current;
+      if (!input) return;
+      setSuggestFlipUp(input.getBoundingClientRect().bottom + 200 > window.innerHeight);
+    };
+    updateFlip();
+    window.addEventListener('resize', updateFlip);
+    return () => window.removeEventListener('resize', updateFlip);
+  }, [suggestOpen, p.commandInput]);
+
   // Focus command line when panel gains focus
   useEffect(() => {
     if (isFocused) inputRef.current?.focus();
   }, [isFocused]);
+
+  useEffect(() => {
+    const onPolicyChanged = (e: Event) => {
+      const mode = (e as CustomEvent<'normal' | 'restricted' | 'frozen'>).detail;
+      if (mode) setPolicyMode(mode);
+    };
+    window.addEventListener('vantage-policy-changed', onPolicyChanged as EventListener);
+    return () => window.removeEventListener('vantage-policy-changed', onPolicyChanged as EventListener);
+  }, []);
 
   // Global Ctrl+L = focus command line of focused panel
   useEffect(() => {
@@ -172,6 +200,7 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
 
   const executeGo = useCallback(() => {
     const raw = p.commandInput.trim().toUpperCase();
+    const policy = loadPolicyState();
     setSuggestOpen(false);
 
     if (raw === 'MENU' || raw === 'MENU GO') {
@@ -190,6 +219,19 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
       return;
     }
     if (raw === 'GRAB' || raw === 'GRAB GO') {
+      if (!guardRuntimeAction({
+        panelIdx,
+        permission: 'EXPORT',
+        detail: 'Blocked export GRAB command',
+        mnemonic: p.activeMnemonic,
+        security: p.activeSecurity,
+        deniedMessage: 'Export blocked by policy/entitlement.',
+        deniedRecovery: 'Open COMP/POL/ENT and adjust permissions.',
+        actorOverride: policy.activeRole,
+      })) {
+        dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+        return;
+      }
       // Export: open panel HTML to new tab (stub)
       const json = JSON.stringify({
         panel: panelIdx + 1,
@@ -203,39 +245,70 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
         w.document.write(`<pre style="background:#000;color:#e6e6e6;font:11px monospace;padding:8px">${json}</pre>`);
         w.document.title = `GRAB P${panelIdx + 1}`;
       }
+      appendAuditEvent({ panelIdx, type: 'EXPORT', actor: 'USER', detail: `GRAB ${p.activeSecurity} ${p.activeMnemonic}`, mnemonic: p.activeMnemonic, security: p.activeSecurity });
+      dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+      return;
+    }
+    if (raw === 'WS' || raw === 'WS GO') {
+      navigatePanel(panelIdx, 'WS', p.activeSecurity, p.marketSector);
       dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
       return;
     }
     if (raw.startsWith('WS ')) {
-      const wsName = raw.replace(/\s+GO$/, '').slice(3).trim();
-      if (wsName) {
-        try {
+      const payload = raw.replace(/\s+GO$/, '').slice(3).trim();
+      try {
+        if (payload.startsWith('DEL ')) {
+          const delName = payload.slice(4).trim();
+          if (delName) {
+            localStorage.removeItem(`vantage-ws2-${delName}`);
+            appendAuditEvent({ panelIdx, type: 'WORKSPACE_DELETE', actor: 'USER', detail: `WS DEL ${delName}`, mnemonic: 'WS', security: p.activeSecurity });
+          }
+          dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+          return;
+        }
+        const wsName = payload;
+        if (wsName) {
           const existing = loadWorkspace(wsName);
           if (existing) {
             existing.panels.forEach((panelSnap, idx) => {
-              if (idx < 4) navigatePanel(idx, panelSnap.activeMnemonic, panelSnap.activeSecurity, panelSnap.marketSector as MarketSector);
+              if (idx < panels.length) {
+                dispatchPanel(idx, { type: 'HYDRATE', snapshot: panelSnap });
+                if (existing.commandHistories?.[idx]) saveCommandHistory(idx, existing.commandHistories[idx]!);
+                if (idx === panelIdx && existing.commandHistories?.[idx]) cmdHistoryRef.current = existing.commandHistories[idx]!;
+              }
             });
+            if (existing.dockLayout) setDockLayout(existing.dockLayout);
+            if (existing.pins) replacePinItems(existing.pins);
+            appendAuditEvent({ panelIdx, type: 'WORKSPACE_LOAD', actor: 'USER', detail: `WS ${wsName}`, mnemonic: 'WS', security: p.activeSecurity });
           } else {
             saveWorkspace(wsName, {
-              panels: panels.map((pp) => ({
-                activeSecurity: pp.activeSecurity,
-                activeMnemonic: pp.activeMnemonic,
-                marketSector: pp.marketSector,
-                timeframe: pp.timeframe,
-                scrollPosition: pp.scrollPosition,
-                selectionCursor: pp.selectionCursor,
-                historyLength: pp.history.length,
-              })),
+              version: 3,
+              focusedPanel: panelIdx,
+              commandHistories: panels.map((_, idx) => loadCommandHistory(idx)),
+              panels: panels.map((pp) => ({ ...pp })),
+              dockLayout: loadDockLayout(),
+              pins: listPinItems(500),
             });
+            appendAuditEvent({ panelIdx, type: 'WORKSPACE_SAVE', actor: 'USER', detail: `WS ${wsName}`, mnemonic: 'WS', security: p.activeSecurity });
           }
-        } catch { /* ignore */ }
+        }
+      } catch {
+        appendErrorEntry({
+          panelIdx,
+          kind: 'STORAGE',
+          message: `Workspace command failed: ${payload}`,
+          recovery: 'Retry WS command or inspect CACH/ERR for state.',
+        });
       }
       dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
       return;
     }
 
     const parsed = parseGoCommand(p.commandInput, p.activeSecurity, p.activeMnemonic);
-    if (!parsed.mnemonic && !parsed.security && !parsed.timeframe) return;
+    if (!parsed.mnemonic && !parsed.security && !parsed.timeframe) {
+      appendErrorEntry({ panelIdx, kind: 'PARSER', message: `Could not parse command: ${p.commandInput}`, recovery: 'Use format <SECURITY> <MNEMONIC> GO.' });
+      return;
+    }
 
     if (parsed.timeframe && !parsed.mnemonic && !parsed.security) {
       dispatchPanel(panelIdx, { type: 'SET_TIMEFRAME', tf: parsed.timeframe });
@@ -246,16 +319,26 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
     const mn = parsed.mnemonic ?? p.activeMnemonic;
     const sec = parsed.security ?? p.activeSecurity;
     const sector = parsed.sector ?? p.marketSector;
+    if ((mn === 'ORD' || mn === 'BLTR') && !guardRuntimeAction({
+      panelIdx,
+      permission: 'SEND_TO_PANEL',
+      detail: `Blocked command ${mn}`,
+      mnemonic: mn,
+      security: sec,
+      deniedMessage: `Blocked command ${mn}`,
+      deniedRecovery: 'Use ENT/COMP/POL to inspect and retry.',
+      actorOverride: policy.activeRole,
+    })) {
+      dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+      return;
+    }
     // Save to command history
     const hist = cmdHistoryRef.current;
     const cmd = p.commandInput.trim();
-    if (cmd && hist[hist.length - 1] !== cmd) {
-      hist.push(cmd);
-      if (hist.length > 20) hist.shift();
-      cmdHistoryIdxRef.current = -1;
-      try { localStorage.setItem(`vantage-cmd-history-${panelIdx}`, JSON.stringify(hist)); } catch { /* ignore */ }
-    }
+    if (cmd && hist[hist.length - 1] !== cmd) cmdHistoryRef.current = addCommandHistory(panelIdx, cmd);
+    cmdHistoryIdxRef.current = -1;
     navigatePanel(panelIdx, mn, sec, sector);
+    appendAuditEvent({ panelIdx, type: 'GO', actor: 'USER', detail: `${cmd || p.commandInput} -> ${mn} ${sec}`.trim(), mnemonic: mn, security: sec });
     if (parsed.timeframe) dispatchPanel(panelIdx, { type: 'SET_TIMEFRAME', tf: parsed.timeframe });
   }, [p.commandInput, p.activeSecurity, p.activeMnemonic, p.marketSector, p.timeframe, panelIdx, panels, dispatchPanel, navigatePanel]);
 
@@ -394,7 +477,7 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
           {panelIdx + 1}&gt;
         </span>
         <input
-          id={COMMAND_INPUT_IDS[panelIdx]}
+          id={commandInputId(panelIdx)}
           ref={inputRef}
           value={p.commandInput}
           onChange={onChange}
@@ -415,6 +498,11 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
         <span style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny, marginLeft: 4, flexShrink: 0 }}>
           {p.timeframe} {p.linkGroup ? `[${p.linkGroup.toUpperCase()}]` : ''}
         </span>
+        {policyMode !== 'normal' && (
+          <span style={{ color: DENSITY.accentRed, fontSize: '8px', marginLeft: 4, border: `1px solid ${DENSITY.accentRed}`, padding: '0 2px' }}>
+            COMP {policyMode.toUpperCase()}
+          </span>
+        )}
       </div>
 
       {/* Autocomplete dropdown — flips upward if near bottom of viewport */}
@@ -423,11 +511,7 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
           ref={suggestRef}
           className="absolute left-0 right-0"
           style={{
-            ...(
-              inputRef.current && inputRef.current.getBoundingClientRect().bottom + 200 > window.innerHeight
-                ? { bottom: DENSITY.commandBarHeightPx }
-                : { top: DENSITY.commandBarHeightPx }
-            ),
+            ...(suggestFlipUp ? { bottom: DENSITY.commandBarHeightPx } : { top: DENSITY.commandBarHeightPx }),
             background: '#0a0a0a', border: `1px solid ${DENSITY.borderColor}`, borderTop: 'none', zIndex: 50, maxHeight: 200, overflowY: 'auto'
           }}
         >

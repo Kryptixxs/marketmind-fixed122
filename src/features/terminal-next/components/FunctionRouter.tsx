@@ -37,6 +37,7 @@ const MODULE_TITLES: Record<TerminalFunction, string> = {
   SEC: 'SEC FILINGS INTELLIGENCE',
   MKT: 'MARKET CONTEXT',
   INTEL: 'RELATIONSHIP INTEL',
+  IMAP: 'INDUSTRY MAP',
   ECO: 'ECONOMIC CALENDAR',
   FXC: 'FX CROSS MATRIX',
   GC: 'YIELD CURVE',
@@ -57,6 +58,7 @@ const MODULE_DECISION_PROMPTS: Record<TerminalFunction, string> = {
   SEC: 'What filings and ownership matter?',
   MKT: 'What is the current macro regime and symbol impact?',
   INTEL: 'What relationships and entities matter?',
+  IMAP: 'What sectors and industries are driving breadth?',
   ECO: 'What macroeconomic events are upcoming?',
   FXC: 'What are the FX cross rates?',
   GC: 'What is the yield curve shape?',
@@ -80,6 +82,7 @@ export function FunctionRouter({
   const activeSymbol = symbol ?? state.activeSymbol;
   const activeMnemonic = quadrantState?.activeMnemonic ?? panelFunction ?? activeFunction;
   const dispatchEntry = resolveDispatch(activeMnemonic);
+  const componentKey = String(dispatchEntry.componentKey);
   const available = getAvailableFieldSet(activeSymbol);
   const hasRequiredFields = dispatchEntry.requiredFields.every((f) => available.has(f));
 
@@ -95,40 +98,40 @@ export function FunctionRouter({
     );
   }
 
-  if (dispatchEntry.componentKey === 'WEI') {
+  if (componentKey === 'WEI') {
     return <WorldEquityIndices />;
   }
-  if (dispatchEntry.componentKey === 'NEWS') {
+  if (componentKey === 'NEWS') {
     return <NewsWire maxHeight="100%" className="flex-1 min-h-0" />;
   }
-  if (dispatchEntry.componentKey === 'DES') {
+  if (componentKey === 'DES') {
     return <SecurityDescription symbol={activeSymbol} />;
   }
-  if (dispatchEntry.componentKey === 'GP') {
+  if (componentKey === 'GP') {
     return <PriceChart ticker={activeSymbol} className="flex-1 min-h-0 w-full" />;
   }
-  if (dispatchEntry.componentKey === 'IMAP') {
+  if (componentKey === 'IMAP') {
     return <SectorHeatmap />;
   }
-  if (dispatchEntry.componentKey === 'MKT') {
+  if (componentKey === 'MKT') {
     return <MarketTerminalModule className="flex-1 min-w-0 min-h-0" />;
   }
-  if (dispatchEntry.componentKey === 'ECO') {
+  if (componentKey === 'ECO') {
     return <EconomicCalendar maxHeight="100%" className="flex-1 min-h-0" />;
   }
-  if (dispatchEntry.componentKey === 'FXC') {
+  if (componentKey === 'FXC') {
     return <FXCrossMatrix className="flex-1 min-h-0 w-full" />;
   }
-  if (dispatchEntry.componentKey === 'GC') {
+  if (componentKey === 'GC') {
     return <YieldCurve height={220} className="flex-1 min-h-0 w-full" />;
   }
-  if (dispatchEntry.componentKey === 'FA') {
+  if (componentKey === 'FA') {
     return <FinancialAnalysisTable className="flex-1 min-h-0 w-full" symbol={activeSymbol} />;
   }
-  if (dispatchEntry.componentKey === 'IB') {
+  if (componentKey === 'IB') {
     return <IBChat className="flex-1 min-h-0 w-full" />;
   }
-  if (dispatchEntry.componentKey === 'ANR') {
+  if (componentKey === 'ANR') {
     return <AnalyticsMonitor />;
   }
 

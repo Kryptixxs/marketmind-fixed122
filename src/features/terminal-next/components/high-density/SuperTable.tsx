@@ -70,7 +70,7 @@ const SuperTableInner = <T,>({
               <tr key={rowId} className="border-b border-[#0d0d0d] hover:bg-[#0a0a0a]">
                 {columns.map((col) => {
                   const flash = col.flashKey && rowFlash?.[col.flashKey];
-                  const value = col.render ? col.render(row) : (row as Record<string, unknown>)[col.key];
+                  const value = col.render ? col.render(row) : String((row as Record<string, unknown>)[col.key] ?? '');
                   const isUp = flash === 'up';
                   const isDown = flash === 'down';
                   const raw = col.toneKey ? (row as Record<string, unknown>)[col.toneKey] : null;

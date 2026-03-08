@@ -29,7 +29,7 @@ const EXTRA = [
 
 function buildUniverse500() {
   const out: Array<{ symbol: string; name: string; base: number }> = [];
-  for (const b of BASE) out.push(b);
+  for (const b of BASE) out.push({ symbol: b.s, name: b.n, base: b.b });
   let idx = 0;
   while (out.length < 500) {
     const t = EXTRA[idx % EXTRA.length]!;

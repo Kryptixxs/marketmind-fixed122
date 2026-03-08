@@ -8,6 +8,7 @@ import { PanelMenuOverlay, PanelHelpOverlay } from './PanelOverlays';
 import { HLSearchOverlay } from './HLSearchOverlay';
 import { NextActionsStrip } from './ui/NextActionsStrip';
 import { PanelFiller } from './fillers/PanelFillers';
+import { getDockLayout, setDockLayout, setPanelFloating, subscribeDockLayout } from './dockLayoutStore';
 
 const LINK_COLORS: Record<string, string> = { red: '#f00', green: '#0f0', blue: '#08f', yellow: '#ff0' };
 const LINK_CYCLE = [null, 'red', 'green', 'blue', 'yellow'] as const;
@@ -15,9 +16,11 @@ const LINK_CYCLE = [null, 'red', 'green', 'blue', 'yellow'] as const;
 // Dynamic hints computed at render time, not a static constant
 
 function PanelHeader({ panelIdx }: { panelIdx: number }) {
-  const { panels, focusedPanel, dispatchPanel } = useTerminalOS();
+  const { panels, focusedPanel, dispatchPanel, addPanel, closePanel } = useTerminalOS();
   const p = panels[panelIdx]!;
   const isFocused = focusedPanel === panelIdx;
+  const [dock, setDock] = React.useState(() => getDockLayout());
+  React.useEffect(() => subscribeDockLayout(() => setDock(getDockLayout())), []);
 
   const linkIdx = LINK_CYCLE.indexOf(p.linkGroup as typeof LINK_CYCLE[number]);
   const toggleLink = (e: React.MouseEvent) => {
@@ -41,6 +44,12 @@ function PanelHeader({ panelIdx }: { panelIdx: number }) {
         <span style={{ color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeTiny, border: `1px solid ${DENSITY.accentCyan}`, padding: '0 2px' }}>SIM</span>
         {isFocused && <span style={{ color: DENSITY.accentGreen, fontSize: DENSITY.fontSizeTiny }}>FOCUS</span>}
         <span className="tabular-nums" style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>{p.timeframe}</span>
+        <button type="button" title="Toggle float" onClick={(e) => { e.stopPropagation(); setPanelFloating(panelIdx, !dock.floatingPanels.includes(panelIdx)); }}
+          style={{ background: 'none', border: 'none', color: DENSITY.textMuted, cursor: 'pointer', fontSize: DENSITY.fontSizeTiny }}>◱</button>
+        <button type="button" title="Add pane from this state" onClick={(e) => { e.stopPropagation(); addPanel(panelIdx); }}
+          style={{ background: 'none', border: 'none', color: DENSITY.textMuted, cursor: 'pointer', fontSize: DENSITY.fontSizeTiny }}>＋</button>
+        <button type="button" title="Close pane" onClick={(e) => { e.stopPropagation(); closePanel(panelIdx); }}
+          style={{ background: 'none', border: 'none', color: DENSITY.textMuted, cursor: 'pointer', fontSize: DENSITY.fontSizeTiny }}>✕</button>
         <button
           type="button"
           onClick={toggleLink}
@@ -72,8 +81,12 @@ function PanelToolbar({ panelIdx }: { panelIdx: number }) {
       <span style={{ width: 1, height: 10, background: DENSITY.gridlineColor, margin: '0 2px' }} />
       <button type="button" onClick={() => dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: p.overlayMode === 'menu' ? 'none' : 'menu' })}
         className="px-1 hover:text-white" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>MENU</button>
+      <button type="button" onClick={() => dispatchPanel(panelIdx, { type: 'PRESS_HELP' })}
+        className="px-1 hover:text-white" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>HELP</button>
       <button type="button" onClick={() => dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'search' })}
         className="px-1 hover:text-white" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>HL</button>
+      <button type="button" onClick={() => dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: 'GRAB' })}
+        className="px-1 hover:text-white" style={{ background: 'none', border: 'none', cursor: 'pointer' }}>GRAB</button>
       <span style={{ width: 1, height: 10, background: DENSITY.gridlineColor, margin: '0 2px' }} />
       <div className="relative">
         <button type="button" onClick={() => setShowRecents(!showRecents)}
@@ -102,6 +115,8 @@ function PanelToolbar({ panelIdx }: { panelIdx: number }) {
       <span style={{ marginLeft: 'auto', color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>
         {p.historyIdx + 1}/{p.history.length}
       </span>
+      <button type="button" onClick={() => setDockLayout({ focusFullscreen: !getDockLayout().focusFullscreen })}
+        className="px-1 hover:text-white" style={{ background: 'none', border: 'none', cursor: 'pointer', color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>FOCUS+</button>
     </div>
   );
 }
@@ -110,8 +125,10 @@ function BreadcrumbStrip({ panelIdx }: { panelIdx: number }) {
   const { panels, navigatePanel, dispatchPanel } = useTerminalOS();
   const p = panels[panelIdx]!;
   const ticker = p.activeSecurity.split(' ').slice(0, 2).join(' ');
+  const region = p.activeSecurity.includes(' US ') ? 'US' : p.activeSecurity.includes(' JP ') ? 'JP' : p.activeSecurity.includes(' LN ') ? 'UK' : 'GLB';
   const crumbs = [
     { label: p.marketSector, action: () => navigatePanel(panelIdx, 'IMAP') },
+    { label: region, action: () => navigatePanel(panelIdx, 'RGN') },
     { label: ticker, action: () => navigatePanel(panelIdx, 'DES') },
     { label: p.activeMnemonic, action: () => dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'menu' }) },
   ];
@@ -147,7 +164,7 @@ const DEFAULT_HINT = 'ENTER=Drill  SHIFT+ENTER=SendPanel  ALT+ENTER=Inspect  ↑
 function KeyboardHintStrip({ panelIdx }: { panelIdx: number }) {
   const { panels } = useTerminalOS();
   const mn = panels[panelIdx]!.activeMnemonic;
-  const hint = MNEMONIC_HINTS[mn] ?? DEFAULT_HINT;
+  const hint = MNEMONIC_HINTS[mn] ?? 'ENTER Drill | SHIFT+ENTER Send | ALT+ENTER Inspect | F2 MENU | F1 HELP | Ctrl+K HL';
   return (
     <div style={{ height: 12, background: '#020202', borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: DENSITY.fontFamily, fontSize: '8px', color: DENSITY.textMuted, overflow: 'hidden' }}>
       {hint}
@@ -156,12 +173,35 @@ function KeyboardHintStrip({ panelIdx }: { panelIdx: number }) {
 }
 
 export function NewPanelFrame({ panelIdx, children }: { panelIdx: number; children: React.ReactNode }) {
-  const { panels, focusedPanel, setFocusedPanel } = useTerminalOS();
+  const { panels, focusedPanel, setFocusedPanel, dispatchPanel } = useTerminalOS();
   const p = panels[panelIdx]!;
   const isFocused = focusedPanel === panelIdx;
 
+  React.useEffect(() => {
+    if (!isFocused) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        if (p.overlayMode !== 'none') dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'none' });
+        else dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+      } else if (e.key === 'F1') {
+        e.preventDefault();
+        dispatchPanel(panelIdx, { type: 'PRESS_HELP' });
+      } else if (e.key === 'F2') {
+        e.preventDefault();
+        dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: p.overlayMode === 'menu' ? 'none' : 'menu' });
+      } else if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'search' });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isFocused, panelIdx, p.overlayMode, dispatchPanel]);
+
   return (
     <div
+      data-panel-idx={panelIdx}
       className="flex flex-col min-h-0 min-w-0 overflow-hidden relative"
       style={{ background: DENSITY.bgBase, border: `1px solid ${isFocused ? DENSITY.focusBorderColor : DENSITY.gridlineColor}` }}
       onClick={() => setFocusedPanel(panelIdx)}

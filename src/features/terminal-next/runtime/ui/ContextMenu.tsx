@@ -9,21 +9,26 @@ import type { EntityRef } from '../entities/types';
 import { makeFunction } from '../entities/types';
 import { MNEMONIC_DEFS } from '../MnemonicRegistry';
 import type { EntityKind } from '../entities/types';
+import { addToMonitorList } from '../monitorListStore';
+import { addSecurityNote } from '../securityNotesStore';
+import { appendAuditEvent } from '../commandAuditStore';
+import { loadPolicyState } from '../policyStore';
+import { guardRuntimeAction } from '../actionGuard';
 
 // ── Actions per entity kind ─────────────────────────────────────────────────
 const KIND_ACTIONS: Partial<Record<EntityKind, string[]>> = {
-  SECURITY: ['DES', 'GP', 'CN', 'HP', 'OWN', 'RELS', 'MGMT', 'DVD', 'FA', 'ALRT'],
+  SECURITY: ['DES', 'GP', 'CN', 'HP', 'OWN', 'RELG', 'RELT', 'IMP', 'OUT', 'PATH', 'NEX', 'XDRV', 'SCN', 'SCN.R', 'FAC', 'CUST', 'SUPP', 'BETA.X', 'REGI', 'HEDGE', 'SHOCK.G', 'CMPY', 'SECT', 'INDY', 'CTY', 'CITY', 'ALRT'],
   INDEX:    ['DES', 'GP', 'WEI', 'IMAP'],
   ETF:      ['DES', 'GP', 'HP', 'OWN'],
-  FX:       ['DES', 'GP', 'FXC'],
-  SECTOR:   ['IMAP', 'RELS', 'WEI'],
-  INDUSTRY: ['RELS', 'IMAP'],
-  COUNTRY:  ['WEI', 'ECO'],
+  FX:       ['DES', 'GP', 'FXC', 'XDRV', 'BETA.X'],
+  SECTOR:   ['IMAP', 'RELS', 'SECT', 'REGI', 'XDRV'],
+  INDUSTRY: ['RELS', 'IMAP', 'INDY', 'SCN', 'SUPP'],
+  COUNTRY:  ['WEI', 'ECO', 'RGN', 'RGN.N', 'RGN.M', 'RGN.R', 'GEO', 'GEO.R', 'GEO.M', 'GEO.A', 'CTY', 'CITY'],
   PERSON:   ['MGMT', 'OWN'],
   HOLDER:   ['OWN', 'DES'],
-  NEWS:     ['TOP', 'CN', 'N'],
-  FIELD:    ['DES', 'FA'],
-  FUNCTION: ['DES'],
+  NEWS:     ['TOP', 'CN', 'NMAP', 'NREL', 'NEX', 'NTIM', 'NQ'],
+  FIELD:    ['DES', 'FA', 'LINE', 'FLD'],
+  FUNCTION: ['DES', 'AUD', 'NAV', 'NX'],
   ORDER:    ['BLTR', 'ORD'],
   TRADE:    ['BLTR'],
   EVENT:    ['EVT', 'DES'],
@@ -57,6 +62,11 @@ export function openContextMenu(e: React.MouseEvent, entity: EntityRef, panelIdx
   e.stopPropagation();
   if (!setGlobalMenu) return;
   setGlobalMenu({ open: true, x: e.clientX, y: e.clientY, entity, panelIdx });
+}
+
+export function openContextMenuAt(x: number, y: number, entity: EntityRef, panelIdx: number) {
+  if (!setGlobalMenu) return;
+  setGlobalMenu({ open: true, x, y, entity, panelIdx });
 }
 
 // ── ContextMenu component ─────────────────────────────────────────────────────
@@ -102,7 +112,7 @@ export function TerminalContextMenu() {
     { label: '🔍  Inspect (overlay)', action: () => { close(); drill(entity, 'INSPECT_OVERLAY', state.panelIdx); } },
     { label: '─────────────────', action: () => {}, disabled: true },
     // Kind-specific mnemonics
-    ...kindActions.slice(0, 6).map((code) => ({
+    ...kindActions.map((code) => ({
       label: `   ${code} — ${MNEMONIC_DEFS[code]?.title ?? code}`,
       action: () => {
         close();
@@ -115,6 +125,19 @@ export function TerminalContextMenu() {
       label: '📋  Copy symbol',
       action: () => {
         close();
+        const policy = loadPolicyState();
+        if (!guardRuntimeAction({
+          panelIdx: state.panelIdx,
+          permission: 'COPY',
+          detail: 'Blocked copy symbol from context menu',
+          mnemonic: panels[state.panelIdx]?.activeMnemonic,
+          security: sym,
+          deniedMessage: 'Copy blocked by compliance lock.',
+          deniedRecovery: 'Disable no-copy mode in COMP or adjust ENT/POL.',
+          actorOverride: policy.activeRole,
+        })) {
+          return;
+        }
         void navigator.clipboard?.writeText(sym).catch(() => {});
       },
     },
@@ -122,15 +145,25 @@ export function TerminalContextMenu() {
       label: '★  Add to monitor',
       action: () => {
         close();
-        try {
-          const existing = JSON.parse(localStorage.getItem('vantage-monitor-list') ?? '[]') as string[];
-          if (!existing.includes(sym)) {
-            localStorage.setItem('vantage-monitor-list', JSON.stringify([sym, ...existing].slice(0, 50)));
-          }
-        } catch {}
+        addToMonitorList(sym);
+        appendAuditEvent({ panelIdx: state.panelIdx, type: 'DRILL', actor: 'USER', detail: `Add monitor ${sym}`, mnemonic: 'MON', security: sym });
       },
     },
   ];
+
+  if (entity.kind === 'SECURITY' || entity.kind === 'COMPANY') {
+    items.push({
+      label: '📝  Add note',
+      action: () => {
+        close();
+        const text = window.prompt(`Add note for ${sym}`);
+        if (!text) return;
+        const note = addSecurityNote(sym, text);
+        if (!note) return;
+        appendAuditEvent({ panelIdx: state.panelIdx, type: 'NOTE_ADD', actor: 'USER', detail: `Note on ${sym}`, mnemonic: 'NOTES', security: sym });
+      },
+    });
+  }
 
   // If numeric field, add alert action
   if (entity.kind === 'FIELD') {
@@ -140,8 +173,22 @@ export function TerminalContextMenu() {
         label: `🔔  Alert on ${fp.fieldName}`,
         action: () => {
           close();
+          const policy = loadPolicyState();
+          if (!guardRuntimeAction({
+            panelIdx: state.panelIdx,
+            permission: 'ALERT_CREATE',
+            detail: `Blocked alert create for ${sym}`,
+            mnemonic: 'ALRT',
+            security: sym,
+            deniedMessage: 'Alert creation blocked by policy/entitlement.',
+            deniedRecovery: 'Review ENT/COMP/POL and retry under an allowed role.',
+            actorOverride: policy.activeRole,
+          })) {
+            return;
+          }
           const val = Number(fp.value);
           addAlertRule(`ALERT IF ${sym} > ${(val * 1.02).toFixed(2)}`);
+          appendAuditEvent({ panelIdx: state.panelIdx, type: 'ALERT_CREATE', actor: 'USER', detail: `Alert ${sym} > ${(val * 1.02).toFixed(2)}`, mnemonic: 'ALRT', security: sym });
         },
       });
     }

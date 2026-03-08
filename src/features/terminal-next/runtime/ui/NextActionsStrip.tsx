@@ -7,6 +7,8 @@ import { useDrill } from '../entities/DrillContext';
 import { makeFunction } from '../entities/types';
 import { MNEMONIC_DEFS } from '../MnemonicRegistry';
 import type { MarketSector } from '../panelState';
+import { intentFromMouseEvent } from '../interaction';
+import { openContextMenu } from './ContextMenu';
 
 // Context-aware next actions based on current mnemonic + sector
 function getNextActions(mnemonic: string, sector: MarketSector): Array<{ code: string; tip: string }> {
@@ -34,29 +36,62 @@ export function NextActionsStrip({ panelIdx }: { panelIdx: number }) {
   const { drill } = useDrill();
   const p = panels[panelIdx]!;
   const actions = getNextActions(p.activeMnemonic, p.marketSector);
+  const [selectedIdx, setSelectedIdx] = React.useState(0);
+  const ref = React.useRef<HTMLDivElement>(null);
 
   const handleAction = useCallback((code: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const fn = makeFunction(code, MNEMONIC_DEFS[code]?.title);
-    drill(fn, e.shiftKey ? 'OPEN_IN_NEW_PANEL' : 'OPEN_IN_PLACE', panelIdx);
+    drill(fn, intentFromMouseEvent(e), panelIdx);
   }, [drill, panelIdx]);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onKey = (e: KeyboardEvent) => {
+      const focused = document.activeElement;
+      if (focused !== el && !el.contains(focused)) return;
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        setSelectedIdx((v) => Math.min(actions.length - 1, v + 1));
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        setSelectedIdx((v) => Math.max(0, v - 1));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const code = actions[selectedIdx]?.code;
+        if (!code) return;
+        drill(makeFunction(code, MNEMONIC_DEFS[code]?.title), e.shiftKey ? 'OPEN_IN_NEW_PANEL' : e.altKey ? 'INSPECT_OVERLAY' : 'OPEN_IN_PLACE', panelIdx);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [actions, selectedIdx, drill, panelIdx]);
 
   return (
     <div
+      ref={ref}
+      tabIndex={0}
       className="flex items-center flex-none overflow-x-auto select-none"
       style={{ height: 15, background: '#080808', borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 1, fontFamily: DENSITY.fontFamily, fontSize: '8px' }}
     >
       <span style={{ color: DENSITY.textMuted, marginRight: 3, flexShrink: 0 }}>NEXT:</span>
-      {actions.map((a) => (
+      {actions.map((a, i) => (
         <button
           key={a.code}
           type="button"
           onClick={(e) => handleAction(a.code, e)}
+          onFocus={() => setSelectedIdx(i)}
+          onMouseEnter={() => setSelectedIdx(i)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            openContextMenu(e, makeFunction(a.code, a.tip), panelIdx);
+          }}
           title={`${a.tip} — Click: open here  •  Shift+Click: send to panel`}
           className="hover:bg-[#1a2a3a]"
           style={{
             color: DENSITY.accentAmber, fontSize: '8px', border: `1px solid ${DENSITY.gridlineColor}`,
-            padding: '0 3px', background: 'none', cursor: 'pointer', flexShrink: 0, height: 12,
+            padding: '0 3px', background: i === selectedIdx ? '#0f2133' : 'none', cursor: 'pointer', flexShrink: 0, height: 12,
           }}
         >
           {a.code}

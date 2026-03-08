@@ -23,6 +23,7 @@ export type WorkspaceLayout = {
 };
 
 type Settings = {
+  strategy: 'Scalper' | 'Swing' | 'Macro';
   theme: Theme;
   density: Density;
   fontSize: FontSize;
@@ -51,6 +52,7 @@ const DEFAULT_WORKSPACE_LAYOUTS: Record<WorkspacePreset, WorkspaceLayout> = {
 };
 
 const DEFAULT: Settings = {
+  strategy: 'Swing',
   theme: 'dark',
   density: 'compact',
   fontSize: 'sm',
@@ -113,8 +115,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
         if (data?.default_filters) {
           const serverSettings = data.default_filters as Partial<Settings>;
-          setSettings(prev => ({ ...prev, ...serverSettings }));
-          localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...settings, ...serverSettings }));
+          const merged = { ...DEFAULT, ...serverSettings };
+          setSettings((prev) => ({ ...prev, ...serverSettings }));
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
         }
         setIsSyncing(false);
       }

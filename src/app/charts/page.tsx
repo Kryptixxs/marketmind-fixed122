@@ -36,7 +36,15 @@ export default function ChartsPage() {
   const { push } = useTunnel();
   const [activeSymbol, setActiveSymbol] = useState('NAS100');
   const [timeframe, setTimeframe] = useState(TIMEFRAMES[2]);
-  const [watchlist, setWatchlist] = useState<string[]>(DEFAULT_WATCHLIST);
+  const [watchlist, setWatchlist] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return DEFAULT_WATCHLIST;
+    try {
+      const saved = localStorage.getItem('vantage_charts_watchlist_v4');
+      return saved ? JSON.parse(saved) : DEFAULT_WATCHLIST;
+    } catch {
+      return DEFAULT_WATCHLIST;
+    }
+  });
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -45,7 +53,7 @@ export default function ChartsPage() {
 
   useEffect(() => {
     const q = searchQuery.trim();
-    if (q.length < 2) { setSearchResults([]); return; }
+    if (q.length < 2) return;
     const timer = setTimeout(async () => {
       setIsSearching(true);
       const res = await searchSymbols(q);
@@ -56,16 +64,20 @@ export default function ChartsPage() {
   }, [searchQuery]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('vantage_charts_watchlist_v4');
-    if (saved) try { setWatchlist(JSON.parse(saved)); } catch {}
-  }, []);
-
-  useEffect(() => {
     localStorage.setItem('vantage_charts_watchlist_v4', JSON.stringify(watchlist));
   }, [watchlist]);
 
   const { data: marketData, error: streamError } = useMarketData(watchlist, timeframe.yf);
   const activeQuote = marketData[activeSymbol];
+  const sessionStats = useMemo(() => {
+    const bars = activeQuote?.history ?? [];
+    if (!bars.length) return { high: null as number | null, low: null as number | null, volume: null as number | null };
+    return {
+      high: Math.max(...bars.map((b) => b.high)),
+      low: Math.min(...bars.map((b) => b.low)),
+      volume: bars.reduce((sum, b) => sum + (b.volume ?? 0), 0),
+    };
+  }, [activeQuote]);
   const loading = Object.keys(marketData).length === 0 && !streamError;
 
   useEffect(() => {
@@ -117,7 +129,7 @@ export default function ChartsPage() {
       time: Math.floor(h.timestamp / 1000),
       open: h.open, high: h.high, low: h.low, close: h.close,
     }));
-  }, [activeQuote?.history]);
+  }, [activeQuote]);
 
   return (
     <div className="h-full flex flex-col bg-background overflow-hidden">
@@ -302,13 +314,13 @@ export default function ChartsPage() {
                 <div className="bg-surface border border-border rounded px-3 py-2">
                   <div className="text-[8px] uppercase font-bold tracking-widest text-text-tertiary mb-0.5">High</div>
                   <div className="text-xs font-mono font-bold text-positive">
-                    {activeQuote.high != null ? activeQuote.high.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
+                    {sessionStats.high != null ? sessionStats.high.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
                   </div>
                 </div>
                 <div className="bg-surface border border-border rounded px-3 py-2">
                   <div className="text-[8px] uppercase font-bold tracking-widest text-text-tertiary mb-0.5">Low</div>
                   <div className="text-xs font-mono font-bold text-negative">
-                    {activeQuote.low != null ? activeQuote.low.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
+                    {sessionStats.low != null ? sessionStats.low.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 }) : '—'}
                   </div>
                 </div>
                 <div className="bg-surface border border-border rounded px-3 py-2">
@@ -327,7 +339,7 @@ export default function ChartsPage() {
                 <div className="bg-surface border border-border rounded px-3 py-2">
                   <div className="text-[8px] uppercase font-bold tracking-widest text-text-tertiary mb-0.5">Volume</div>
                   <div className="text-xs font-mono font-bold text-text-primary">
-                    {activeQuote.volume != null ? `${(activeQuote.volume / 1e6).toFixed(2)}M` : '—'}
+                    {sessionStats.volume != null ? `${(sessionStats.volume / 1e6).toFixed(2)}M` : '—'}
                   </div>
                 </div>
               </div>

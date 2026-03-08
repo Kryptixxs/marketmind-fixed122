@@ -454,17 +454,15 @@ export const PriceChart = memo(function PriceChart({
     const macdSignalData: LineData[] = candleData
       .map((c, i) => (Number.isFinite(signalLine[i]) ? { time: c.time, value: signalLine[i]! } : null))
       .filter((x): x is LineData => x !== null);
-    const macdHistData: HistogramData[] = candleData
-      .map((c, i) =>
-        Number.isFinite(histogram[i])
-          ? {
-              time: c.time,
-              value: histogram[i]!,
-              color: histogram[i]! >= 0 ? 'rgba(0,104,255,0.5)' : 'rgba(255,23,68,0.5)',
-            }
-          : null
-      )
-      .filter((x): x is HistogramData => x !== null);
+    const macdHistData: HistogramData[] = [];
+    candleData.forEach((c, i) => {
+      if (!Number.isFinite(histogram[i])) return;
+      macdHistData.push({
+        time: c.time,
+        value: histogram[i]!,
+        color: histogram[i]! >= 0 ? 'rgba(0,104,255,0.5)' : 'rgba(255,23,68,0.5)',
+      });
+    });
 
     if (rsiRef.current) rsiRef.current.setData(rsiData);
     if (macdRef.current && macdData.length) macdRef.current.setData(macdData);
@@ -558,17 +556,16 @@ export const PriceChart = memo(function PriceChart({
     const tooltip = tooltipRef.current;
     if (!chart || !candle || !tooltip) return;
 
-    const unsub = chart.subscribeCrosshairMove(handleMainCrosshairMove);
-
-    return () => unsub();
+    chart.subscribeCrosshairMove(handleMainCrosshairMove);
+    return () => chart.unsubscribeCrosshairMove(handleMainCrosshairMove);
   }, [handleMainCrosshairMove]);
 
   useEffect(() => {
     const oscChart = oscillatorChartRef.current;
     if (!oscChart) return;
 
-    const unsub = oscChart.subscribeCrosshairMove(handleOscCrosshairMove);
-    return () => unsub();
+    oscChart.subscribeCrosshairMove(handleOscCrosshairMove);
+    return () => oscChart.unsubscribeCrosshairMove(handleOscCrosshairMove);
   }, [handleOscCrosshairMove]);
 
   useEffect(() => {

@@ -6,6 +6,11 @@ import { DenseTable, PanelSubHeader, type DenseColumn } from '../primitives';
 import { loadAlertRules, addAlertRule } from '../../services/alertMonitor';
 import { useTerminalStore } from '../../store/TerminalStore';
 import { makeSecurity } from '../entities/types';
+import { appendAuditEvent } from '../commandAuditStore';
+import { checkPolicy, loadPolicyState } from '../policyStore';
+import { isAllowedByRole } from '../entitlementsStore';
+import { appendErrorEntry } from '../errorConsoleStore';
+import { useTerminalOS } from '../TerminalOSContext';
 
 const COLS: DenseColumn[] = [
   { key: 'symbol', header: 'Symbol', width: '90px' },
@@ -16,8 +21,10 @@ const COLS: DenseColumn[] = [
 
 export function FnALRT({ panelIdx = 0 }: { panelIdx?: number }) {
   const { state } = useTerminalStore();
+  const { panels } = useTerminalOS();
+  const p = panels[panelIdx]!;
   const [input, setInput] = useState('');
-  const rules = useMemo(() => loadAlertRules(), [state.tickMs]);
+  const rules = loadAlertRules();
   const quoteMap = useMemo(() => new Map(state.quotes.map((q) => [q.symbol, q.last])), [state.quotes]);
 
   const rows = rules.map((r) => {
@@ -27,7 +34,23 @@ export function FnALRT({ panelIdx = 0 }: { panelIdx?: number }) {
   });
 
   const handleAdd = () => {
-    if (input.trim()) { addAlertRule(input); setInput(''); }
+    if (input.trim()) {
+      const policy = loadPolicyState();
+      if (!isAllowedByRole(policy.activeRole, 'ALERT_CREATE')) {
+        appendAuditEvent({ panelIdx, type: 'POLICY_BLOCK', actor: policy.activeRole, detail: 'Blocked alert create: role denied', mnemonic: 'ALRT', security: p.activeSecurity, policyReason: 'Role denied ALERT_CREATE' });
+        appendErrorEntry({ panelIdx, kind: 'PERMISSION', message: 'Role cannot create alerts.', recovery: 'Switch role in ENT.' });
+        return;
+      }
+      const gate = checkPolicy('ALERT_CREATE', policy.activeRole);
+      if (!gate.allowed) {
+        appendAuditEvent({ panelIdx, type: 'POLICY_BLOCK', actor: policy.activeRole, detail: `Blocked alert create: ${gate.reason ?? 'Policy denied'}`, mnemonic: 'ALRT', security: p.activeSecurity, policyReason: gate.reason });
+        appendErrorEntry({ panelIdx, kind: 'POLICY', message: 'Alert creation blocked.', recovery: 'Check POL for ALERT_CREATE rules.' });
+        return;
+      }
+      addAlertRule(input);
+      appendAuditEvent({ panelIdx, type: 'ALERT_CREATE', actor: 'USER', detail: input.trim(), mnemonic: 'ALRT', security: p.activeSecurity });
+      setInput('');
+    }
   };
 
   return (
