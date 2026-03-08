@@ -2,12 +2,13 @@
 
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
-import { PanelSubHeader, StatusBadge } from '../primitives';
+import { DenseTable, PanelSubHeader, StatusBadge, type DenseColumn } from '../primitives';
 import { useTerminalStore } from '../../store/TerminalStore';
-import { useTerminalOS } from '../TerminalOSContext';
 import { useDrill } from '../entities/DrillContext';
 import { makeSecurity, makeIndex, makeETF, makeCountry } from '../entities/types';
-import type { DrillIntent } from '../entities/linkResolver';
+import { openContextMenuAt } from '../ui/ContextMenu';
+import { TileLayoutRoot, TileGrid, TileCell, TerminalTile } from '../ui/TileLayout';
+import { makeFieldValueEntity } from '../../services/fieldRuntime';
 
 function fmtN(n: number, dec = 2): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec });
@@ -139,58 +140,224 @@ export function FnWEI({ panelIdx }: { panelIdx: number }) {
     if (row.type === 'ETF') return makeETF(row.symbol, row.name);
     return makeSecurity(row.symbol, row.name);
   };
+  const [mainSel, setMainSel] = useState(0);
+  const [moverSel, setMoverSel] = useState(0);
+  const [dispSel, setDispSel] = useState(0);
 
-  const gridCols = COLS.map((c) => c.w).join(' ');
-  const RH = DENSITY.rowHeightPx;
+  const movers = useMemo(() => [...rows].sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct)).slice(0, 12), [rows]);
+  const dispersion = useMemo(() => {
+    const byRegion = new Map<string, { region: string; count: number; sum: number; abs: number }>();
+    rows.forEach((r) => {
+      const v = byRegion.get(r.region) ?? { region: r.region, count: 0, sum: 0, abs: 0 };
+      v.count += 1;
+      v.sum += r.pct;
+      v.abs += Math.abs(r.pct);
+      byRegion.set(r.region, v);
+    });
+    return Array.from(byRegion.values()).map((v) => ({
+      id: v.region,
+      region: v.region,
+      avgPct: v.sum / Math.max(1, v.count),
+      disp: v.abs / Math.max(1, v.count),
+      breadth: `${Math.max(1, Math.floor(v.count * 0.6))}/${v.count}`,
+    })).sort((a, b) => b.disp - a.disp);
+  }, [rows]);
+
+  const corr = useMemo(() => {
+    const pairs = [
+      ['SPX', 'NDX'], ['SPX', 'RTY'], ['DAX', 'SX5E'], ['NKY', 'HSI'],
+      ['SPX', 'UKX'], ['SHCOMP', 'HSI'], ['SPX', 'VIX proxy'], ['NKY', 'USDJPY proxy'],
+    ];
+    return pairs.map((p, i) => {
+      const seed = hash(`${p[0]}-${p[1]}`);
+      const val = Math.max(-1, Math.min(1, ((seed + tick * 9) % 200) / 100 - 1));
+      return { id: `${p[0]}-${p[1]}`, pair: `${p[0]}/${p[1]}`, corr: val, regime: Math.abs(val) > 0.75 ? 'TIGHT' : Math.abs(val) > 0.45 ? 'MID' : 'LOOSE' };
+    });
+  }, [tick]);
+
+  const stripRows = useMemo(() => {
+    const top = movers[0];
+    const worst = movers[movers.length - 1];
+    return [
+      { id: 'a1', item: `ALRT ${top?.symbol ?? 'SPX'} momentum`, type: 'ALRT', value: top ? fmtPct(top.pct) : '+0.00%' },
+      { id: 'a2', item: `NOTE dispersion ${dispersion[0]?.region ?? 'US'}`, type: 'NOTE', value: dispersion[0] ? dispersion[0].disp.toFixed(2) : '0.00' },
+      { id: 'a3', item: `ALRT risk-off basket`, type: 'ALRT', value: worst ? fmtPct(worst.pct) : '-0.00%' },
+      { id: 'a4', item: `NOTE corr regime`, type: 'NOTE', value: corr[0]?.regime ?? 'MID' },
+      { id: 'a5', item: `ALRT cross-asset stress`, type: 'ALRT', value: `${(Math.abs(corr[0]?.corr ?? 0) * 100).toFixed(0)}%` },
+      { id: 'a6', item: `NOTE close watchlist`, type: 'NOTE', value: `${rows.slice(0, 3).map((r) => r.symbol.split(' ')[0]).join(', ')}` },
+    ];
+  }, [movers, dispersion, corr, rows]);
+
+  const mainCols: DenseColumn[] = [
+    { key: 'name', header: 'Index / ETF', width: '2fr' },
+    { key: 'symbol', header: 'Ticker', width: '92px', entity: (r) => makeRowEntity(r as typeof rows[number]) },
+    { key: 'region', header: 'Rgn', width: '38px', entity: (r) => makeCountry(String(r.region), String(r.region)) },
+    { key: 'type', header: 'Type', width: '44px' },
+    { key: 'last', header: 'Last', width: '86px', align: 'right', format: (v) => fmtN(Number(v), Number(v) < 100 ? 3 : 2), entity: (r) => makeFieldValueEntity('PX_LAST', r.last, { source: 'SIM' }) },
+    { key: 'chg', header: 'Chg', width: '72px', align: 'right', tone: true, format: (v) => (Number(v) >= 0 ? '+' : '') + fmtN(Number(v), 2), entity: (r) => makeFieldValueEntity('PX_CHG', r.chg, { source: 'CALC' }) },
+    { key: 'pct', header: '%Chg', width: '66px', align: 'right', tone: true, format: (v) => fmtPct(Number(v)), entity: (r) => makeFieldValueEntity('PCT_CHG', r.pct, { source: 'CALC' }) },
+    { key: 'time', header: 'Time', width: '50px', align: 'right' },
+  ];
+  const moverCols: DenseColumn[] = [
+    { key: 'symbol', header: 'Ticker', width: '90px', entity: (r) => makeRowEntity(r as typeof rows[number]) },
+    { key: 'name', header: 'Name', width: '1fr' },
+    { key: 'pct', header: '%Chg', width: '68px', align: 'right', tone: true, format: (v) => fmtPct(Number(v)), entity: (r) => makeFieldValueEntity('PCT_CHG', r.pct, { source: 'CALC' }) },
+  ];
+  const dispCols: DenseColumn[] = [
+    { key: 'region', header: 'Region', width: '60px', entity: (r) => makeCountry(String(r.region), String(r.region)) },
+    { key: 'avgPct', header: 'Avg%', width: '66px', align: 'right', tone: true, format: (v) => fmtPct(Number(v)), entity: (r) => makeFieldValueEntity('PCT_CHG', r.avgPct, { source: 'CALC' }) },
+    { key: 'disp', header: 'Disp', width: '62px', align: 'right', format: (v) => Number(v).toFixed(2), entity: (r) => makeFieldValueEntity('PX_CHG', r.disp, { source: 'CALC' }) },
+    { key: 'breadth', header: 'Br', width: '50px', align: 'right' },
+  ];
+  const corrCols: DenseColumn[] = [
+    { key: 'pair', header: 'Pair', width: '1fr' },
+    { key: 'corr', header: 'Corr', width: '70px', align: 'right', tone: true, format: (v) => Number(v).toFixed(2), entity: (r) => makeFieldValueEntity('BETA', r.corr, { source: 'CALC' }) },
+    { key: 'regime', header: 'Regime', width: '58px' },
+  ];
+  const stripCols: DenseColumn[] = [
+    { key: 'type', header: 'Type', width: '42px' },
+    { key: 'item', header: 'Item', width: '1fr' },
+    { key: 'value', header: 'Value', width: '120px', align: 'right', entity: (r) => makeFieldValueEntity('PCT_CHG', parseFloat(String(r.value)), { source: 'SIM' }) },
+  ];
 
   return (
     <div className="flex flex-col h-full min-h-0" style={{ fontFamily: DENSITY.fontFamily }}>
       <PanelSubHeader title={`WEI • World Equity Indices — ${sorted.length} rows`} right={<StatusBadge label="SIM" variant="sim" />} />
-      {/* Header row */}
-      <div className="flex-none grid select-none" style={{ gridTemplateColumns: gridCols, height: RH, background: DENSITY.bgSurfaceAlt, borderBottom: `1px solid ${DENSITY.borderColor}` }}>
-        {COLS.map((col) => (
-          <button key={col.key} type="button"
-            onClick={() => setSort((s) => ({ key: col.key as SortKey, dir: s.key === col.key && s.dir === 'asc' ? 'desc' : 'asc' }))}
-            className="truncate hover:text-white"
-            style={{ padding: `0 2px`, textAlign: col.align as 'left' | 'right', color: sort.key === col.key ? DENSITY.accentAmber : DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny, fontWeight: 700, textTransform: 'uppercase', background: 'none', border: 'none', cursor: 'pointer' }}>
-            {col.label}{sort.key === col.key ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}
-          </button>
-        ))}
-      </div>
-      {/* Data rows */}
-      <div className="flex-1 min-h-0 overflow-auto terminal-scrollbar">
-        {sorted.map((row, ri) => {
-          const flash = flashMap[row.id];
-          const entity = makeRowEntity(row);
-          return (
-            <div key={row.id}
-              className={`grid items-center cursor-pointer hover:bg-[#0a1520] ${flash === 'up' ? 'cell-flash-up' : flash === 'down' ? 'cell-flash-down' : ''}`}
-              style={{ gridTemplateColumns: gridCols, height: RH, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: ri % 2 === 1 ? '#060606' : DENSITY.bgBase }}
-              onClick={(e) => drill(entity, e.shiftKey ? 'OPEN_IN_NEW_PANEL' : 'OPEN_IN_PLACE', panelIdx)}
-              onAuxClick={(e) => { if (e.button === 1) drill(entity, 'INSPECT_OVERLAY', panelIdx); }}
-              title="Click: DES  •  Shift+Click: send to panel  •  Alt+Click: inspect"
-            >
-              <span className="px-[2px] truncate" style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault }}>{row.name}</span>
-              <span className="px-[2px] truncate cursor-pointer hover:underline" style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny }}
-                onClick={(e) => { e.stopPropagation(); drill(entity, e.altKey ? 'INSPECT_OVERLAY' : 'OPEN_IN_PLACE', panelIdx); }}>
-                {row.symbol.split(' ').slice(0, 2).join(' ')}
-              </span>
-              <span className="px-[2px] cursor-pointer hover:underline" style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}
-                onClick={(e) => { e.stopPropagation(); const ce = makeCountry(row.region, row.region); drill(ce, e.shiftKey ? 'OPEN_IN_NEW_PANEL' : 'OPEN_IN_PLACE', panelIdx); }}>
-                {row.region}
-              </span>
-              <span className="px-[2px]" style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>{row.ccy}</span>
-              <span className="px-[2px]" style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>{row.type}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault }}>{fmtN(row.last, row.last < 100 ? 3 : 2)}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: clrPct(row.chg), fontSize: DENSITY.fontSizeDefault }}>{(row.chg >= 0 ? '+' : '') + fmtN(row.chg, 2)}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: clrPct(row.pct), fontSize: DENSITY.fontSizeDefault }}>{fmtPct(row.pct)}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>{fmtN(row.open, 2)}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.accentGreen, fontSize: DENSITY.fontSizeTiny }}>{fmtN(row.high, 2)}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.accentRed, fontSize: DENSITY.fontSizeTiny }}>{fmtN(row.low, 2)}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>{row.time}</span>
-            </div>
-          );
-        })}
+      <div className="flex-1 min-h-0">
+        <TileLayoutRoot panelIdx={panelIdx}>
+          <TileGrid
+            spec={{
+              columns: '2.2fr 1fr',
+              rows: '1.2fr 0.9fr 0.9fr 0.5fr',
+              areas: ['main movers', 'main disp', 'main corr', 'strip strip'],
+            }}
+          >
+            <TileCell area="main">
+              <TerminalTile
+                id="wei-main"
+                title="World Index Grid"
+                status={`SIM • ${sorted.length} rows`}
+                shortcuts="Ctrl+; cycle"
+                onEnter={() => {
+                  const row = sorted[mainSel];
+                  if (!row) return;
+                  drill(makeRowEntity(row), 'OPEN_IN_PLACE', panelIdx);
+                }}
+                onEnterNewPane={() => {
+                  const row = sorted[mainSel];
+                  if (!row) return;
+                  drill(makeRowEntity(row), 'OPEN_IN_NEW_PANE', panelIdx);
+                }}
+                onInspect={() => {
+                  const row = sorted[mainSel];
+                  if (!row) return;
+                  drill(makeRowEntity(row), 'INSPECT_OVERLAY', panelIdx);
+                }}
+                onMenu={(x, y) => {
+                  const row = sorted[mainSel];
+                  if (!row) return;
+                  openContextMenuAt(x, y, makeRowEntity(row), panelIdx);
+                }}
+                footer={`Breadth ${dispersion[0]?.region ?? 'US'} • Disp ${dispersion[0]?.disp.toFixed(2) ?? '0.00'}`}
+              >
+                <DenseTable
+                  columns={mainCols}
+                  rows={sorted}
+                  rowKey="id"
+                  selectedRow={mainSel}
+                  flashMap={flashMap}
+                  rowEntity={(r) => makeRowEntity(r as typeof rows[number])}
+                  onRowClick={(r) => setMainSel(sorted.findIndex((x) => x.id === String(r.id)))}
+                  panelIdx={panelIdx}
+                  className="h-full"
+                />
+              </TerminalTile>
+            </TileCell>
+            <TileCell area="movers">
+              <TerminalTile
+                id="wei-movers"
+                title="Top Movers"
+                status="Abs move ranking"
+                onEnter={() => {
+                  const row = movers[moverSel];
+                  if (!row) return;
+                  drill(makeRowEntity(row), 'OPEN_IN_PLACE', panelIdx);
+                }}
+                onEnterNewPane={() => {
+                  const row = movers[moverSel];
+                  if (!row) return;
+                  drill(makeRowEntity(row), 'OPEN_IN_NEW_PANE', panelIdx);
+                }}
+                onInspect={() => {
+                  const row = movers[moverSel];
+                  if (!row) return;
+                  drill(makeRowEntity(row), 'INSPECT_OVERLAY', panelIdx);
+                }}
+                onMenu={(x, y) => {
+                  const row = movers[moverSel];
+                  if (!row) return;
+                  openContextMenuAt(x, y, makeRowEntity(row), panelIdx);
+                }}
+              >
+                <DenseTable
+                  columns={moverCols}
+                  rows={movers}
+                  rowKey="id"
+                  selectedRow={moverSel}
+                  rowEntity={(r) => makeRowEntity(r as typeof rows[number])}
+                  onRowClick={(r) => setMoverSel(movers.findIndex((x) => x.id === String(r.id)))}
+                  panelIdx={panelIdx}
+                  className="h-full"
+                  compact
+                />
+              </TerminalTile>
+            </TileCell>
+            <TileCell area="disp">
+              <TerminalTile
+                id="wei-disp"
+                title="Sector Dispersion"
+                status="Region heat proxy"
+                onEnter={() => {
+                  const row = dispersion[dispSel];
+                  if (!row) return;
+                  drill(makeCountry(row.region, row.region), 'OPEN_IN_PLACE', panelIdx);
+                }}
+                onEnterNewPane={() => {
+                  const row = dispersion[dispSel];
+                  if (!row) return;
+                  drill(makeCountry(row.region, row.region), 'OPEN_IN_NEW_PANE', panelIdx);
+                }}
+                onInspect={() => {
+                  const row = dispersion[dispSel];
+                  if (!row) return;
+                  drill(makeCountry(row.region, row.region), 'INSPECT_OVERLAY', panelIdx);
+                }}
+              >
+                <DenseTable
+                  columns={dispCols}
+                  rows={dispersion}
+                  rowKey="id"
+                  selectedRow={dispSel}
+                  rowEntity={(r) => makeCountry(String(r.region), String(r.region))}
+                  onRowClick={(r) => setDispSel(dispersion.findIndex((x) => x.id === String(r.id)))}
+                  panelIdx={panelIdx}
+                  className="h-full"
+                  compact
+                />
+              </TerminalTile>
+            </TileCell>
+            <TileCell area="corr">
+              <TerminalTile id="wei-corr" title="Correlation Matrix Mini" status="Cross-market">
+                <DenseTable columns={corrCols} rows={corr} rowKey="id" panelIdx={panelIdx} className="h-full" compact />
+              </TerminalTile>
+            </TileCell>
+            <TileCell area="strip">
+              <TerminalTile id="wei-strip" title="Desk Strip: Alerts / Notes" status="Ops">
+                <DenseTable columns={stripCols} rows={stripRows} rowKey="id" panelIdx={panelIdx} className="h-full" compact />
+              </TerminalTile>
+            </TileCell>
+          </TileGrid>
+        </TileLayoutRoot>
       </div>
     </div>
   );

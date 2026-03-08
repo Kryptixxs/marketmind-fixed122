@@ -2,10 +2,13 @@
 
 import React, { useMemo, useState } from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
-import { PanelSubHeader, StatusBadge, NewsListItem } from '../primitives';
+import { DenseTable, PanelSubHeader, StatusBadge, NewsListItem, type DenseColumn } from '../primitives';
 import { useTerminalStore } from '../../store/TerminalStore';
 import { useTerminalOS } from '../TerminalOSContext';
-import { makeNews } from '../entities/types';
+import { makeNews, makeSecurity, makeFunction } from '../entities/types';
+import { openContextMenuAt } from '../ui/ContextMenu';
+import { useDrill } from '../entities/DrillContext';
+import { TileLayoutRoot, TileGrid, TileCell, TerminalTile } from '../ui/TileLayout';
 
 const SOURCES = ['BBG', 'RTRS', 'DJ', 'AP', 'FT', 'WSJ', 'CNBC', 'NHK', 'AFP', 'BLO', 'PAD', 'SPX', 'EVS', 'FLR', 'MNI'];
 const TAGS = ['RATES', 'FX', 'EQUITIES', 'MACRO', 'ENERGY', 'TECH', 'BANKS', 'EMERGING', 'CREDIT', 'POLICY'];
@@ -89,8 +92,11 @@ function hash(s: string, i: number) { return Array.from(s).reduce((a, c) => a + 
 
 export function FnTOP({ panelIdx, companyFilter }: { panelIdx: number; companyFilter?: string }) {
   const { state } = useTerminalStore();
+  const { drill } = useDrill();
   const [filter, setFilter] = useState<string>('ALL');
   const [sourceFilter, setSourceFilter] = useState<string>('ALL');
+  const [headlineSel, setHeadlineSel] = useState(0);
+  const [impactSel, setImpactSel] = useState(0);
 
   const headlines = useMemo(() => {
     const live = state.headlines ?? [];
@@ -117,48 +123,152 @@ export function FnTOP({ panelIdx, companyFilter }: { panelIdx: number; companyFi
     (!companyFilter || h.title.toUpperCase().includes(companyFilter.toUpperCase()))
   );
 
+  const themeRows = useMemo(() => {
+    const byTag = new Map<string, number>();
+    filtered.forEach((h) => byTag.set(h.tag, (byTag.get(h.tag) ?? 0) + 1));
+    const rows = Array.from(byTag.entries()).map(([tag, count]) => ({ id: tag, tag, count }));
+    const padded = rows.length >= 8 ? rows : [...rows, ...['POLICY', 'RISK', 'AI', 'ENERGY', 'EARNINGS'].map((t, i) => ({ id: `${t}-${i}`, tag: t, count: 1 + (i % 4) }))];
+    return padded.slice(0, 10);
+  }, [filtered]);
+
+  const impactedRows = useMemo(() => {
+    const tickers = ['AAPL', 'MSFT', 'NVDA', 'META', 'AMZN', 'GOOGL', 'JPM', 'XOM', 'TSLA', 'SPY'];
+    return tickers.map((t, i) => ({
+      id: t,
+      ticker: t,
+      mentions: 2 + ((i * 3 + filtered.length) % 11),
+      pct: ((i % 2 === 0 ? 1 : -1) * (0.3 + ((filtered.length + i) % 18) / 10)).toFixed(2),
+      score: (55 + ((filtered.length + i * 7) % 45)),
+    })).slice(0, 10);
+  }, [filtered.length]);
+
+  const snapshotRows = useMemo(() => [
+    { id: 's1', metric: 'SPX', value: (5200 + filtered.length).toFixed(2), chg: '+' + (0.2 + (filtered.length % 20) / 10).toFixed(2) + '%' },
+    { id: 's2', metric: 'US10Y', value: (4.15 + (filtered.length % 14) / 100).toFixed(2) + '%', chg: '+' + (filtered.length % 5) + 'bp' },
+    { id: 's3', metric: 'VIX', value: (13 + (filtered.length % 9)).toFixed(2), chg: '-' + (0.1 + (filtered.length % 7) / 10).toFixed(2) },
+    { id: 's4', metric: 'DXY', value: (103 + (filtered.length % 8) / 10).toFixed(2), chg: '+' + (0.02 + (filtered.length % 5) / 100).toFixed(2) + '%' },
+    { id: 's5', metric: 'WTI', value: (78 + (filtered.length % 12)).toFixed(2), chg: '+' + (0.3 + (filtered.length % 10) / 10).toFixed(2) + '%' },
+    { id: 's6', metric: 'GOLD', value: (2180 + filtered.length).toFixed(0), chg: '+' + (0.4 + (filtered.length % 13) / 10).toFixed(2) + '%' },
+  ], [filtered.length]);
+
+  const themeCols: DenseColumn[] = [
+    { key: 'tag', header: 'Theme', width: '1fr', entity: (r) => makeFunction('NREL', `Theme ${String(r.tag)}`) },
+    { key: 'count', header: 'Hits', width: '55px', align: 'right' },
+  ];
+  const impactCols: DenseColumn[] = [
+    { key: 'ticker', header: 'Ticker', width: '70px', entity: (r) => makeSecurity(`${String(r.ticker)} US Equity`, String(r.ticker)) },
+    { key: 'mentions', header: 'Ment', width: '48px', align: 'right' },
+    { key: 'pct', header: '%Chg', width: '58px', align: 'right', tone: true, format: (v) => `${Number(v) >= 0 ? '+' : ''}${v}%` },
+    { key: 'score', header: 'Score', width: '52px', align: 'right' },
+  ];
+  const snapCols: DenseColumn[] = [
+    { key: 'metric', header: 'Metric', width: '60px' },
+    { key: 'value', header: 'Value', width: '1fr', align: 'right' },
+    { key: 'chg', header: 'Chg', width: '70px', align: 'right' },
+  ];
+
   return (
     <div className="flex flex-col h-full min-h-0" style={{ fontFamily: DENSITY.fontFamily }}>
       <PanelSubHeader title={`${companyFilter ? 'CN • ' + companyFilter : 'TOP • Top News'} — ${filtered.length} headlines`} right={<StatusBadge label="LIVE" variant="live" />} />
-      {/* Filter bar */}
-      <div className="flex items-center flex-none overflow-x-auto" style={{ height: 16, background: DENSITY.bgSurface, borderBottom: `1px solid ${DENSITY.gridlineColor}`, gap: 0 }}>
-        {uniqueTags.slice(0, 8).map((t) => (
-          <button key={t} type="button" onClick={() => setFilter(t)}
-            style={{ padding: `0 4px`, height: '100%', background: filter === t ? '#1a2a3a' : 'none', color: filter === t ? DENSITY.accentAmber : DENSITY.textMuted, fontSize: '8px', border: 'none', borderRight: `1px solid ${DENSITY.gridlineColor}`, cursor: 'pointer', flexShrink: 0 }}>
-            {t}
-          </button>
-        ))}
-        <div style={{ width: 1, background: DENSITY.borderColor, height: 10, margin: '0 2px' }} />
-        {uniqueSources.slice(0, 6).map((s) => (
-          <button key={s} type="button" onClick={() => setSourceFilter(s)}
-            style={{ padding: `0 4px`, height: '100%', background: sourceFilter === s ? '#1a2a3a' : 'none', color: sourceFilter === s ? DENSITY.accentCyan : DENSITY.textMuted, fontSize: '8px', border: 'none', borderRight: `1px solid ${DENSITY.gridlineColor}`, cursor: 'pointer', flexShrink: 0 }}>
-            {s}
-          </button>
-        ))}
-      </div>
-      {/* Headlines — using NewsListItem for entity drill */}
-      <div className="flex-1 min-h-0 overflow-auto terminal-scrollbar">
-        {filtered.length === 0 && (
-          <div style={{ padding: DENSITY.pad4, color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>
-            NO HEADLINES MATCH CURRENT FILTERS — TRY ALL / CLEAR FILTER
-          </div>
-        )}
-        {filtered.map((h, i) => (
-          <NewsListItem
-            key={h.id}
-            idx={i}
-            panelIdx={panelIdx}
-            item={{
-              id: h.id,
-              headline: h.title,
-              time: h.time,
-              src: h.src,
-              tag: h.tag,
-              urgency: h.urgency,
-              entity: makeNews(h.title, h.src, h.time),
+      <div className="flex-1 min-h-0">
+        <TileLayoutRoot panelIdx={panelIdx}>
+          <TileGrid
+            spec={{
+              columns: '1.8fr 1fr',
+              rows: '1.15fr 0.95fr 0.9fr',
+              areas: ['head themes', 'head impact', 'head snap'],
             }}
-          />
-        ))}
+          >
+            <TileCell area="head">
+              <TerminalTile
+                id="top-headline"
+                title={companyFilter ? `Headlines: ${companyFilter}` : 'Headline Tape'}
+                status={`${filtered.length} stories`}
+                onEnter={() => {
+                  const h = filtered[headlineSel];
+                  if (!h) return;
+                  drill(makeNews(h.title, h.src, h.time), 'OPEN_IN_PLACE', panelIdx);
+                }}
+                onEnterNewPane={() => {
+                  const h = filtered[headlineSel];
+                  if (!h) return;
+                  drill(makeNews(h.title, h.src, h.time), 'OPEN_IN_NEW_PANE', panelIdx);
+                }}
+                onInspect={() => {
+                  const h = filtered[headlineSel];
+                  if (!h) return;
+                  drill(makeNews(h.title, h.src, h.time), 'INSPECT_OVERLAY', panelIdx);
+                }}
+                onMenu={(x, y) => {
+                  const h = filtered[headlineSel];
+                  if (!h) return;
+                  openContextMenuAt(x, y, makeNews(h.title, h.src, h.time), panelIdx);
+                }}
+              >
+                <div className="flex items-center flex-none overflow-x-auto" style={{ height: 16, background: DENSITY.panelBgAlt, borderBottom: `1px solid ${DENSITY.gridlineColor}`, gap: 0 }}>
+                  {uniqueTags.slice(0, 8).map((t) => (
+                    <button key={t} type="button" onClick={() => setFilter(t)}
+                      style={{ padding: `0 4px`, height: '100%', background: filter === t ? DENSITY.rowSelectedBg : 'none', color: filter === t ? DENSITY.accentAmber : DENSITY.textDim, fontSize: '8px', border: 'none', borderRight: `1px solid ${DENSITY.gridlineColor}`, cursor: 'pointer', flexShrink: 0 }}>
+                      {t}
+                    </button>
+                  ))}
+                  <div style={{ width: 1, background: DENSITY.borderColor, height: 10, margin: '0 2px' }} />
+                  {uniqueSources.slice(0, 6).map((s) => (
+                    <button key={s} type="button" onClick={() => setSourceFilter(s)}
+                      style={{ padding: `0 4px`, height: '100%', background: sourceFilter === s ? DENSITY.rowSelectedBg : 'none', color: sourceFilter === s ? DENSITY.accentCyan : DENSITY.textDim, fontSize: '8px', border: 'none', borderRight: `1px solid ${DENSITY.gridlineColor}`, cursor: 'pointer', flexShrink: 0 }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+                <div className="h-[calc(100%-16px)] min-h-0 overflow-auto terminal-scrollbar">
+                  {(filtered.length > 0 ? filtered : headlines.slice(0, 20)).map((h, i) => (
+                    <div key={h.id} onClick={() => setHeadlineSel(i)} style={{ boxShadow: i === headlineSel ? `inset 2px 0 0 ${DENSITY.rowSelectedMarker}` : undefined }}>
+                      <NewsListItem
+                        idx={i}
+                        panelIdx={panelIdx}
+                        item={{ id: h.id, headline: h.title, time: h.time, src: h.src, tag: h.tag, urgency: h.urgency, entity: makeNews(h.title, h.src, h.time) }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </TerminalTile>
+            </TileCell>
+            <TileCell area="themes">
+              <TerminalTile id="top-themes" title="Themes" status="Tag clusters">
+                <DenseTable columns={themeCols} rows={themeRows} rowKey="id" panelIdx={panelIdx} className="h-full" compact />
+              </TerminalTile>
+            </TileCell>
+            <TileCell area="impact">
+              <TerminalTile
+                id="top-impact"
+                title="Impacted Tickers"
+                status="News impact map"
+                onEnter={() => {
+                  const r = impactedRows[impactSel];
+                  if (!r) return;
+                  drill(makeSecurity(`${r.ticker} US Equity`, r.ticker), 'OPEN_IN_PLACE', panelIdx);
+                }}
+                onEnterNewPane={() => {
+                  const r = impactedRows[impactSel];
+                  if (!r) return;
+                  drill(makeSecurity(`${r.ticker} US Equity`, r.ticker), 'OPEN_IN_NEW_PANE', panelIdx);
+                }}
+                onInspect={() => {
+                  const r = impactedRows[impactSel];
+                  if (!r) return;
+                  drill(makeSecurity(`${r.ticker} US Equity`, r.ticker), 'INSPECT_OVERLAY', panelIdx);
+                }}
+              >
+                <DenseTable columns={impactCols} rows={impactedRows} rowKey="id" panelIdx={panelIdx} className="h-full" compact selectedRow={impactSel} onRowClick={(r) => setImpactSel(impactedRows.findIndex((x) => x.id === String(r.id)))} />
+              </TerminalTile>
+            </TileCell>
+            <TileCell area="snap">
+              <TerminalTile id="top-snap" title="Market Snapshot" status="Cross-asset mini">
+                <DenseTable columns={snapCols} rows={snapshotRows} rowKey="id" panelIdx={panelIdx} className="h-full" compact />
+              </TerminalTile>
+            </TileCell>
+          </TileGrid>
+        </TileLayoutRoot>
       </div>
     </div>
   );

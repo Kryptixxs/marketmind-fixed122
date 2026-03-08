@@ -37,14 +37,14 @@ function normalize(values: number[]): number[] {
   return values.map((v) => clamp01((v - min) / (max - min)));
 }
 
-const GRID = '#16304e';
-const AXIS = '#2d465f';
-const TICK = '#8ea4bf';
+const GRID = '#243549';
+const AXIS = '#3a4e64';
+const TICK = '#a7b7cc';
 const POS = '#4ce0a5';
-const NEG = '#ff7ca3';
-const CYAN = '#63c8ff';
+const NEG = '#ff5b8a';
+const CYAN = '#66c2ff';
 const YEL = '#f4cf76';
-const BG = '#081321';
+const BG = '#050608';
 
 export const TerminalChart = memo(function TerminalChart({
   type,
@@ -145,7 +145,7 @@ export const TerminalChart = memo(function TerminalChart({
             {(type === 'line' || type === 'area' || type === 'depth' || type === 'ladder') && points.length > 1 ? (
               <>
                 {type === 'area' ? <polygon points={`0,100 ${points.join(' ')} 100,100`} fill="rgba(99,200,255,0.18)" /> : null}
-                <polyline fill="none" stroke={type === 'depth' ? POS : CYAN} strokeWidth="1.6" points={points.join(' ')} />
+                <polyline fill="none" stroke={type === 'depth' ? POS : CYAN} strokeWidth="1.8" shapeRendering="crispEdges" points={points.join(' ')} />
                 {secondPoints.length > 1 ? <polyline fill="none" stroke={YEL} strokeWidth="1.1" opacity="0.85" points={secondPoints.join(' ')} /> : null}
                 {(type === 'depth' || type === 'ladder') && primaryNorm.length ? (
                   primaryNorm.map((v, i) => {
@@ -180,7 +180,8 @@ export const TerminalChart = memo(function TerminalChart({
                 );
               })
             ) : null}
-            <text x="98" y="10" textAnchor="end" fill={TICK} fontSize="4.5" className="font-mono">{labels.at(-1)?.slice(0, 8) ?? 'T'}</text>
+            <rect x="84" y="2" width="14" height="8" rx="0" ry="0" fill="#0b1017" stroke="#1a1f27" />
+            <text x="97" y="8" textAnchor="end" fill={TICK} fontSize="4.5" className="font-mono">{labels.at(-1)?.slice(0, 8) ?? 'T'}</text>
           </svg>
         )}
       </div>

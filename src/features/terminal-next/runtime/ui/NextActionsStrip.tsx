@@ -73,9 +73,9 @@ export function NextActionsStrip({ panelIdx }: { panelIdx: number }) {
       ref={ref}
       tabIndex={0}
       className="flex items-center flex-none overflow-x-auto select-none"
-      style={{ height: 15, background: '#080808', borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 1, fontFamily: DENSITY.fontFamily, fontSize: '8px' }}
+      style={{ height: 15, background: DENSITY.panelBgAlt, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 1, fontFamily: DENSITY.fontFamily, fontSize: '8px' }}
     >
-      <span style={{ color: DENSITY.textMuted, marginRight: 3, flexShrink: 0 }}>NEXT:</span>
+      <span style={{ color: DENSITY.textDim, marginRight: 3, flexShrink: 0 }}>NEXT:</span>
       {actions.map((a, i) => (
         <button
           key={a.code}
@@ -90,14 +90,14 @@ export function NextActionsStrip({ panelIdx }: { panelIdx: number }) {
           title={`${a.tip} — Click: open here  •  Shift+Click: send to panel`}
           className="hover:bg-[#1a2a3a]"
           style={{
-            color: DENSITY.accentAmber, fontSize: '8px', border: `1px solid ${DENSITY.gridlineColor}`,
-            padding: '0 3px', background: i === selectedIdx ? '#0f2133' : 'none', cursor: 'pointer', flexShrink: 0, height: 12,
+            color: DENSITY.accentAmber, fontSize: '8px', border: `1px solid ${DENSITY.groupSeparator}`,
+            padding: '0 3px', background: i === selectedIdx ? DENSITY.rowSelectedBg : 'none', cursor: 'pointer', flexShrink: 0, height: 12,
           }}
         >
           {a.code}
         </button>
       ))}
-      <span style={{ color: DENSITY.textMuted, marginLeft: 'auto', flexShrink: 0, fontSize: '8px' }}>F2=MENU Shift+Click→Panel</span>
+      <span style={{ color: DENSITY.textDim, marginLeft: 'auto', flexShrink: 0, fontSize: '8px' }}>F2=MENU Shift+Click→Panel</span>
     </div>
   );
 }

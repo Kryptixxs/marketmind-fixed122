@@ -4,6 +4,7 @@ import React, { createContext, useContext, useReducer, useCallback, useMemo, use
 import { PanelState, PanelAction, panelReducer, createDefaultPanel, LinkColor, MarketSector } from './panelState';
 import { saveRecoverySnapshot, loadRecoverySnapshot } from '../services/recoveryStore';
 import { loadAllCommandHistories } from './commandHistoryStore';
+import { getDockPaneOrder, getDockLayout, setActiveWorkspace } from './dockLayoutStore';
 
 interface TerminalOSContextValue {
   panels: PanelState[];
@@ -116,7 +117,17 @@ export function TerminalOSProvider({ children }: { children: React.ReactNode }) 
   }, [panels.length]);
 
   const cycleFocus = useCallback(() => {
-    setFocusedPanelRaw((prev) => (prev + 1) % Math.max(1, panels.length));
+    const workspace = getDockLayout().activeWorkspace;
+    const order = getDockPaneOrder(workspace);
+    if (order.length === 0) {
+      setFocusedPanelRaw((prev) => (prev + 1) % Math.max(1, panels.length));
+      return;
+    }
+    setFocusedPanelRaw((prev) => {
+      const at = order.indexOf(prev);
+      if (at < 0) return order[0] ?? prev;
+      return order[(at + 1) % order.length] ?? prev;
+    });
   }, [panels.length]);
 
   const dispatchPanel = useCallback((panelIdx: number, action: PanelAction) => {
@@ -186,7 +197,25 @@ export function TerminalOSProvider({ children }: { children: React.ReactNode }) 
     const handler = (e: KeyboardEvent) => {
       if (e.altKey && !e.ctrlKey && !e.metaKey) {
         const n = parseInt(e.key, 10);
-        if (n >= 1 && n <= Math.min(9, panels.length)) { e.preventDefault(); setFocusedPanel(n - 1); return; }
+        if (n >= 1 && n <= 9) {
+          const workspace = getDockLayout().activeWorkspace;
+          const order = getDockPaneOrder(workspace);
+          const target = order[n - 1];
+          if (target != null) {
+            e.preventDefault();
+            setFocusedPanel(target);
+            return;
+          }
+        }
+      }
+      if (e.ctrlKey && e.shiftKey && e.key === '`') {
+        e.preventDefault();
+        const current = getDockLayout().activeWorkspace;
+        const next = current === 'left' ? 'right' : 'left';
+        setActiveWorkspace(next);
+        const order = getDockPaneOrder(next);
+        if (order.length > 0) setFocusedPanel(order[0]!);
+        return;
       }
       if (e.ctrlKey && e.key === 'Tab') { e.preventDefault(); cycleFocus(); return; }
       if (e.ctrlKey && e.key === '`') { e.preventDefault(); cycleFocus(); return; }

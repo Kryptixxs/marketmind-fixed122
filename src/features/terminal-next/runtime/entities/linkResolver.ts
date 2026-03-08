@@ -5,6 +5,7 @@ import type { MarketSector } from '../panelState';
 export type DrillIntent =
   | 'OPEN_IN_PLACE'     // default left-click: navigate current panel
   | 'OPEN_IN_NEW_PANEL' // Shift+click: send to next available panel
+  | 'OPEN_IN_NEW_PANE'  // alias for OPEN_IN_NEW_PANEL
   | 'INSPECT_OVERLAY'   // Alt+click: open inspector without leaving
   | 'APPEND_TO_STACK';  // internal: push to history without visual change
 
@@ -34,8 +35,12 @@ const KIND_TO_MNEMONIC: Partial<Record<EntityKind, string>> = {
   HOLDER:   'OWN',
   NEWS:     'TOP',
   EVENT:    'EVT',
-  FIELD:    'DES',
+  FIELD:    'LINE',
+  RATE:     'DES',
   FUNCTION: 'DES',
+  MONITOR:  'MON+',
+  WORKSPACE:'WS',
+  ALERT:    'ALRT+',
   ORDER:    'BLTR',
   TRADE:    'BLTR',
 };
@@ -61,8 +66,12 @@ function inferSector(sym: string): MarketSector {
 }
 
 // ── Find best free or fallback panel ─────────────────────────────────────────
-export function findTargetPanel(currentPanel: number, totalPanels = 4): number {
-  // Next panel clockwise
+export function findTargetPanel(currentPanel: number, totalPanels = 4, orderedPanels?: number[]): number {
+  if (orderedPanels && orderedPanels.length > 0) {
+    const at = orderedPanels.indexOf(currentPanel);
+    if (at >= 0 && at < orderedPanels.length - 1) return orderedPanels[at + 1]!;
+    return orderedPanels[0]!;
+  }
   return (currentPanel + 1) % totalPanels;
 }
 
@@ -72,19 +81,21 @@ export function resolveLink(
   intent: DrillIntent,
   currentPanelIdx: number,
   currentMnemonic: string,
+  options?: { totalPanels?: number; orderedPanels?: number[]; targetPanelIdx?: number },
 ): DrillAction {
+  const normalizedIntent: DrillIntent = intent === 'OPEN_IN_NEW_PANE' ? 'OPEN_IN_NEW_PANEL' : intent;
   // INSPECT_OVERLAY doesn't navigate, just opens inspector
-  if (intent === 'INSPECT_OVERLAY') {
+  if (normalizedIntent === 'INSPECT_OVERLAY') {
     return {
       panelIdx: currentPanelIdx,
       mnemonic: currentMnemonic,
-      intent,
+      intent: normalizedIntent,
       inspectorEntity: entity,
     };
   }
 
-  const targetPanel = intent === 'OPEN_IN_NEW_PANEL'
-    ? findTargetPanel(currentPanelIdx)
+  const targetPanel = normalizedIntent === 'OPEN_IN_NEW_PANEL'
+    ? (options?.targetPanelIdx ?? findTargetPanel(currentPanelIdx, options?.totalPanels ?? 4, options?.orderedPanels))
     : currentPanelIdx;
 
   switch (entity.kind) {
@@ -96,7 +107,7 @@ export function resolveLink(
     case 'ETF':
     case 'COMPANY': {
       const sym = (entity.payload as { sym: string }).sym;
-      const mnemonic = intent === 'OPEN_IN_NEW_PANEL'
+      const mnemonic = normalizedIntent === 'OPEN_IN_NEW_PANEL'
         ? 'DES'
         : getLastMnemonic(currentPanelIdx, sym, KIND_TO_MNEMONIC[entity.kind] ?? 'DES');
       return {
@@ -104,40 +115,48 @@ export function resolveLink(
         mnemonic,
         security: sym,
         sector: inferSector(sym),
-        intent,
+        intent: normalizedIntent,
       };
     }
 
     case 'SECTOR': {
       const s = entity.payload as { name: string };
-      return { panelIdx: targetPanel, mnemonic: 'IMAP', security: s.name, sector: 'EQUITY', intent };
+      return { panelIdx: targetPanel, mnemonic: 'IMAP', security: s.name, sector: 'EQUITY', intent: normalizedIntent };
     }
     case 'INDUSTRY': {
       const s = entity.payload as { name: string };
-      return { panelIdx: targetPanel, mnemonic: 'RELS', security: s.name, sector: 'EQUITY', intent };
+      return { panelIdx: targetPanel, mnemonic: 'RELS', security: s.name, sector: 'EQUITY', intent: normalizedIntent };
     }
     case 'COUNTRY': {
       const c = entity.payload as { iso2: string; name: string };
-      return { panelIdx: targetPanel, mnemonic: 'WEI', security: c.name, sector: 'INDEX', intent };
+      return { panelIdx: targetPanel, mnemonic: 'WEI', security: c.name, sector: 'INDEX', intent: normalizedIntent };
     }
     case 'PERSON':
-      return { panelIdx: targetPanel, mnemonic: 'MGMT', intent };
+      return { panelIdx: targetPanel, mnemonic: 'MGMT', intent: normalizedIntent };
     case 'HOLDER':
-      return { panelIdx: targetPanel, mnemonic: 'OWN', intent };
+      return { panelIdx: targetPanel, mnemonic: 'OWN', intent: normalizedIntent };
     case 'NEWS':
-      return { panelIdx: targetPanel, mnemonic: 'TOP', intent };
+      return { panelIdx: targetPanel, mnemonic: 'TOP', intent: normalizedIntent };
     case 'EVENT':
-      return { panelIdx: targetPanel, mnemonic: 'EVT', intent };
+      return { panelIdx: targetPanel, mnemonic: 'EVT', intent: normalizedIntent };
     case 'FIELD':
-      return { panelIdx: targetPanel, mnemonic: 'DES', intent };
+      return { panelIdx: targetPanel, mnemonic: 'LINE', security: (entity.payload as { fieldName: string }).fieldName, intent: normalizedIntent };
+    case 'RATE':
+      return { panelIdx: targetPanel, mnemonic: 'LINE', security: (entity.payload as { fieldName: string }).fieldName, intent: normalizedIntent };
     case 'FUNCTION': {
       const fn = entity.payload as { code: string };
-      return { panelIdx: targetPanel, mnemonic: fn.code, intent };
+      return { panelIdx: targetPanel, mnemonic: fn.code, intent: normalizedIntent };
     }
+    case 'MONITOR':
+      return { panelIdx: targetPanel, mnemonic: 'MON+', intent: normalizedIntent };
+    case 'WORKSPACE':
+      return { panelIdx: targetPanel, mnemonic: 'WS', intent: normalizedIntent };
+    case 'ALERT':
+      return { panelIdx: targetPanel, mnemonic: 'ALRT+', intent: normalizedIntent };
     case 'ORDER':
     case 'TRADE':
-      return { panelIdx: targetPanel, mnemonic: 'BLTR', intent };
+      return { panelIdx: targetPanel, mnemonic: 'BLTR', intent: normalizedIntent };
     default:
-      return { panelIdx: targetPanel, mnemonic: currentMnemonic, intent };
+      return { panelIdx: targetPanel, mnemonic: currentMnemonic, intent: normalizedIntent };
   }
 }

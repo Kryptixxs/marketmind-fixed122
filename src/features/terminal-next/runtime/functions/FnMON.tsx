@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
 import { PanelSubHeader } from '../primitives';
 import { useTerminalOS } from '../TerminalOSContext';
@@ -13,8 +13,11 @@ import { addToMonitorList, loadMonitorList, saveMonitorList } from '../monitorLi
 import { intentFromMouseEvent, INTERACTION_HINT } from '../interaction';
 import { addCommandHistory, loadAllCommandHistories } from '../commandHistoryStore';
 import { appendAuditEvent } from '../commandAuditStore';
-import { loadDockLayout, setDockLayout } from '../dockLayoutStore';
+import { getDockLayout, loadDockLayout, setDockLayout } from '../dockLayoutStore';
 import { listPinItems, replacePinItems } from '../pinboardStore';
+import { loadMonitorFields, removeMonitorField } from '../monitorFieldStore';
+import { getFieldDef } from '../../services/fieldCatalog';
+import { makeFieldValueEntity } from '../../services/fieldRuntime';
 
 function hash(s: string) { return Array.from(s).reduce((a, c) => a + c.charCodeAt(0), 0); }
 
@@ -51,10 +54,23 @@ export function FnMON({ panelIdx }: { panelIdx: number }) {
   const [filter, setFilter] = useState('');
   const [sortBy, setSortBy] = useState<'symbol' | 'last' | 'pct' | 'vol'>('symbol');
   const [selectedIdx, setSelectedIdx] = useState(0);
+  const [monitorFields, setMonitorFields] = useState<string[]>(() => loadMonitorFields());
+  const liveMode = getDockLayout().highDensityLiveMode;
+  useEffect(() => {
+    const sync = () => setMonitorFields(loadMonitorFields());
+    window.addEventListener('focus', sync);
+    return () => window.removeEventListener('focus', sync);
+  }, []);
 
   const list = useMemo(() => lists[activeList] ?? [], [lists, activeList]);
 
-  const rows = useMemo(() => list.map((sym) => {
+  const effectiveList = useMemo(() => {
+    if (!liveMode) return list;
+    const seedUniverse = state.quotes.slice(0, 140).map((q) => q.symbol);
+    return Array.from(new Set([...list, ...seedUniverse])).slice(0, 160);
+  }, [list, liveMode, state.quotes]);
+
+  const rows = useMemo(() => effectiveList.map((sym) => {
     const ticker = sym.split(' ')[0] ?? sym;
     const h = hash(sym);
     const lq = state.quotes.find((q) => q.symbol.startsWith(ticker));
@@ -62,8 +78,19 @@ export function FnMON({ panelIdx }: { panelIdx: number }) {
     const pct = lq?.pct ?? ((h % 200) - 100) / 100;
     const vol = lq?.volumeM ?? 20 + h % 80;
     const vwap = state.workerAnalytics?.vwapBySymbol[ticker + ' US'] ?? last - 0.12;
-    return { sym, ticker, last, pct, vol, vwap };
-  }), [list, state.quotes, state.workerAnalytics?.vwapBySymbol]);
+    const dynamic = monitorFields.reduce<Record<string, string | number>>((acc, fid) => {
+      const field = fid.toUpperCase();
+      if (field === 'PX_LAST') acc[field] = last;
+      else if (field === 'PCT_CHG') acc[field] = pct;
+      else if (field === 'VOLUME') acc[field] = vol;
+      else if (field === 'VWAP') acc[field] = vwap;
+      else if (field === 'BETA') acc[field] = 0.6 + ((h % 14) / 10);
+      else if (field === 'MARKET_CAP') acc[field] = 200 + (h % 2000);
+      else acc[field] = ((h % 400) - 200) / 10;
+      return acc;
+    }, {});
+    return { sym, ticker, last, pct, vol, vwap, ...dynamic };
+  }), [effectiveList, state.quotes, state.workerAnalytics?.vwapBySymbol, monitorFields]);
 
   const filteredRows = useMemo(() => {
     const q = filter.trim().toUpperCase();
@@ -82,7 +109,7 @@ export function FnMON({ panelIdx }: { panelIdx: number }) {
     if (!s) return;
     const full = s.includes(' ') ? s : s + ' US Equity';
     addToMonitorList(full);
-    const next = [full, ...list.filter((x) => x !== full)].slice(0, 80);
+    const next = [full, ...list.filter((x) => x !== full)].slice(0, liveMode ? 180 : 80);
     const updated = { ...lists, [activeList]: next };
     setLists(updated);
     saveLists(updated);
@@ -153,9 +180,28 @@ export function FnMON({ panelIdx }: { panelIdx: number }) {
         <button type="button" onClick={() => setSortBy('pct')} style={{ color: sortBy === 'pct' ? DENSITY.accentAmber : DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>%CHG</button>
         <button type="button" onClick={() => setSortBy('vol')} style={{ color: sortBy === 'vol' ? DENSITY.accentAmber : DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>VOL</button>
       </div>
+      <div className="flex items-center gap-1 flex-none" style={{ minHeight: DENSITY.rowHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px` }}>
+        <span style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>FIELDS</span>
+        {monitorFields.map((fid) => (
+          <button
+            key={fid}
+            type="button"
+            style={{ color: DENSITY.accentCyan, border: `1px solid ${DENSITY.borderColor}`, background: DENSITY.bgSurfaceAlt, fontSize: DENSITY.fontSizeTiny, padding: '0 3px' }}
+            onClick={() => {
+              removeMonitorField(fid);
+              const next = loadMonitorFields();
+              setMonitorFields(next);
+              appendAuditEvent({ panelIdx, type: 'DRILL', actor: 'USER', detail: `MON remove field ${fid}` });
+            }}
+            title={`Remove ${fid} column`}
+          >
+            {fid} ✕
+          </button>
+        ))}
+      </div>
       {/* Column headers */}
-      <div className="flex-none grid select-none" style={{ gridTemplateColumns: '1fr 80px 60px 60px 70px 16px', height: DENSITY.rowHeightPx, background: DENSITY.bgSurfaceAlt, borderBottom: `1px solid ${DENSITY.borderColor}` }}>
-        {['Security', 'Last', '%Chg', 'Vol(M)', 'VWAP', ''].map((h, i) => (
+      <div className="flex-none grid select-none" style={{ gridTemplateColumns: `1fr ${monitorFields.map(() => '80px').join(' ')} 16px`, height: DENSITY.rowHeightPx, background: DENSITY.bgSurfaceAlt, borderBottom: `1px solid ${DENSITY.borderColor}` }}>
+        {['Security', ...monitorFields.map((f) => getFieldDef(f)?.label ?? f), ''].map((h, i) => (
           <span key={i} className="px-[2px]" style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny, fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center' }}>{h}</span>
         ))}
       </div>
@@ -174,17 +220,33 @@ export function FnMON({ panelIdx }: { panelIdx: number }) {
           const entity = makeSecurity(row.sym, row.ticker);
           return (
             <div key={row.sym} className="grid items-center cursor-pointer hover:bg-[#0a1520]"
-              style={{ gridTemplateColumns: '1fr 80px 60px 60px 70px 16px', height: DENSITY.rowHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: ri === selectedIdx ? '#1a2a3a' : ri % 2 === 1 ? '#060606' : DENSITY.bgBase }}
+              style={{ gridTemplateColumns: `1fr ${monitorFields.map(() => '80px').join(' ')} 16px`, height: DENSITY.rowHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: ri === selectedIdx ? '#1a2a3a' : ri % 2 === 1 ? '#060606' : DENSITY.bgBase }}
               onClick={(e) => { setSelectedIdx(ri); drill(entity, intentFromMouseEvent(e), panelIdx); }}
               onContextMenu={(e) => openContextMenu(e, entity, panelIdx)}
               title={INTERACTION_HINT}>
               <span className="px-[2px] truncate" style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeDefault }}>{row.ticker}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault }}>{row.last.toFixed(2)}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: row.pct >= 0 ? DENSITY.accentGreen : DENSITY.accentRed, fontSize: DENSITY.fontSizeDefault }}>
-                {(row.pct >= 0 ? '+' : '') + row.pct.toFixed(2) + '%'}
-              </span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>{row.vol.toFixed(1)}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>{row.vwap.toFixed(2)}</span>
+              {monitorFields.map((fieldId) => {
+                const raw = (row as Record<string, unknown>)[fieldId] as number | string;
+                const num = typeof raw === 'number' ? raw : parseFloat(String(raw));
+                const text = Number.isFinite(num)
+                  ? fieldId === 'PCT_CHG'
+                    ? `${num >= 0 ? '+' : ''}${num.toFixed(2)}%`
+                    : fieldId === 'VOLUME'
+                      ? `${num.toFixed(1)}M`
+                      : num.toFixed(2)
+                  : String(raw ?? '—');
+                const fEntity = makeFieldValueEntity(fieldId, raw, { source: 'SIM' });
+                return (
+                  <span
+                    key={`${row.sym}-${fieldId}`}
+                    className="px-[2px] tabular-nums text-right cursor-pointer hover:underline"
+                    style={{ color: fieldId === 'PCT_CHG' && Number.isFinite(num) ? (num >= 0 ? DENSITY.accentGreen : DENSITY.accentRed) : DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault }}
+                    onClick={(e) => { e.stopPropagation(); drill(fEntity, intentFromMouseEvent(e), panelIdx); }}
+                  >
+                    {text}
+                  </span>
+                );
+              })}
               <button type="button" onClick={(e) => { e.stopPropagation(); removeSym(row.sym); }}
                 style={{ color: DENSITY.textMuted, fontSize: '8px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>✕</button>
             </div>

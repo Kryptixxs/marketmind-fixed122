@@ -1,10 +1,9 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import React from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
 import { useDrill } from '../entities/DrillContext';
-import { useTerminalOS } from '../TerminalOSContext';
-import { makeSecurity, makeField, makeFunction, makeIndex, makeETF, makeSector, makeCountry } from '../entities/types';
+import { makeSecurity, makeField, makeFunction, makeIndex, makeETF, makeSector, makeCountry, makeNews, makeHolder } from '../entities/types';
 import type { EntityRef } from '../entities/types';
 import { MNEMONIC_DEFS } from '../MnemonicRegistry';
 import { getFieldDef } from '../../services/fieldCatalog';
@@ -186,17 +185,33 @@ function buildEntityFields(entity: EntityRef): Array<{ label: string; value: str
       ];
     }
     case 'FIELD': {
-      const fp = entity.payload as { fieldName: string; value?: unknown };
+      const fp = entity.payload as {
+        fieldName: string;
+        value?: unknown;
+        source?: 'SIM' | 'LIVE' | 'CALC';
+        asOf?: string;
+        freshness?: 'FRESH' | 'STALE';
+        stale?: boolean;
+        transforms?: string[];
+      };
       const def = getFieldDef(fp.fieldName);
+      const asOf = fp.asOf ?? new Date().toISOString();
+      const freshness = fp.stale || fp.freshness === 'STALE' ? 'STALE' : fp.freshness ?? 'FRESH';
+      const source = fp.source ?? def?.provenance ?? 'SIM';
+      const tx = fp.transforms ?? [`normalize.${fp.fieldName.toLowerCase()}`, `guard.${fp.fieldName.toLowerCase()}`];
       return [
         { label: 'FIELD', value: fp.fieldName },
         { label: 'LABEL', value: def?.label ?? fp.fieldName },
         { label: 'VALUE', value: String(fp.value ?? '—'), entity: fp.value !== undefined ? makeField(fp.fieldName, fp.value) : undefined },
-        { label: 'TYPE', value: (def?.dataType ?? 'number').toUpperCase() },
+        { label: 'TYPE', value: `${(def?.valueType ?? 'scalar').toUpperCase()}/${(def?.dataType ?? 'number').toUpperCase()}` },
         { label: 'UNIT', value: def?.unit || '—' },
-        { label: 'UPDATE FREQ', value: (def?.updateFreq ?? 'daily').toUpperCase() },
+        { label: 'UPDATE FREQ', value: (def?.cadence ?? def?.updateFreq ?? 'daily').toUpperCase() },
+        { label: 'AS OF', value: asOf },
+        { label: 'FRESHNESS', value: freshness },
+        { label: 'SOURCE', value: source },
+        { label: 'LINEAGE', value: `SOURCE -> ${tx[0]} -> ${tx[1]} -> DISPLAY`, entity: makeFunction('LINE', 'Lineage') },
         { label: 'CHARTABLE', value: def?.chartable ? 'YES' : 'NO' },
-        { label: 'PROVENANCE', value: def?.provenance ?? 'SIM' },
+        { label: 'PROVENANCE', value: freshness === 'STALE' ? 'STALE' : source },
         { label: 'RELATED', value: 'DES', entity: makeFunction('DES', 'Description') },
         { label: 'RELATED', value: 'FA', entity: makeFunction('FA', 'Financials') },
       ];
@@ -249,9 +264,49 @@ function relatedFunctions(entity: EntityRef): string[] {
   }
 }
 
+function relatedEntities(entity: EntityRef): EntityRef[] {
+  const seed = h(entity.id + entity.kind);
+  if (entity.kind === 'SECURITY' || entity.kind === 'COMPANY') {
+    const base = (entity.payload as { sym: string }).sym.split(' ')[0] ?? entity.display;
+    return [
+      makeSecurity(`${base} US Equity`, `${base} Corp`),
+      makeSecurity('MSFT US Equity', 'Microsoft'),
+      makeSecurity('NVDA US Equity', 'NVIDIA'),
+      makeSector('Technology'),
+      makeHolder('Vanguard', 8.4),
+      makeNews(`${base} supply chain update`, 'BBG'),
+    ];
+  }
+  if (entity.kind === 'FIELD') {
+    const f = (entity.payload as { fieldName: string }).fieldName;
+    return [makeField(f), makeFunction('FLD', 'Field Catalog'), makeFunction('LINE', 'Lineage'), makeFunction('MAP', 'Mapping')];
+  }
+  if (entity.kind === 'NEWS') {
+    return [makeFunction('TOP', 'Top News'), makeFunction('NREL', 'Narrative Graph'), makeSecurity('SPY US Equity', 'SPDR S&P 500')];
+  }
+  if (entity.kind === 'HOLDER') {
+    return [makeFunction('OWN', 'Ownership'), makeSecurity('AAPL US Equity', 'Apple'), makeSecurity('MSFT US Equity', 'Microsoft')];
+  }
+  if (entity.kind === 'SECTOR' || entity.kind === 'INDUSTRY') {
+    const name = (entity.payload as { name: string }).name;
+    return [makeSector(name), makeFunction('IMAP', 'Heatmap'), makeFunction('RELS', 'Relationships'), makeSecurity('XLK US Equity', 'Technology ETF')];
+  }
+  return [makeFunction('DES', 'Description'), makeFunction('TOP', 'Top News'), makeSecurity('SPX Index', 'S&P 500')];
+}
+
+function evidenceRows(entity: EntityRef): Array<{ id: string; summary: string; score: string; source: string; entity: EntityRef }> {
+  const seed = h(entity.id + entity.kind);
+  const rows = [
+    { id: 'ev1', summary: 'Ownership concentration shift vs 13F trend', score: `${65 + (seed % 30)}`, source: 'SIMULATED', entity: makeFunction('OWN', 'Ownership') },
+    { id: 'ev2', summary: 'News-topic cluster intensity over 5 sessions', score: `${55 + (seed % 35)}`, source: 'SIMULATED', entity: makeFunction('NINT', 'News Intensity') },
+    { id: 'ev3', summary: 'Cross-asset beta linkage confidence', score: `${50 + (seed % 40)}`, source: 'SIMULATED', entity: makeFunction('BETA.X', 'Cross Asset Beta') },
+    { id: 'ev4', summary: 'Peer dispersion regime agreement', score: `${52 + (seed % 37)}`, source: 'SIMULATED', entity: makeFunction('RELG', 'Relationship Graph') },
+  ];
+  return rows;
+}
+
 export function TerminalInspector() {
-  const { inspector, closeInspector, pinInspector, drill } = useDrill();
-  const { focusedPanel, navigatePanel, panels } = useTerminalOS();
+  const { inspector, closeInspector, pinInspector, drill, inspectorBack, inspectorForward } = useDrill();
   const [anchor, setAnchor] = React.useState<{ right: number; top: number; bottom: number } | null>(null);
 
   React.useEffect(() => {
@@ -278,7 +333,14 @@ export function TerminalInspector() {
 
   const entity = inspector.entity;
   const fields = buildEntityFields(entity);
+  const safeFields = fields.length > 0 ? fields : [
+    { label: 'DISPLAY', value: entity.display, entity: makeField('DISPLAY') },
+    { label: 'TYPE', value: entity.kind, entity: makeField('TYPE') },
+    { label: 'PROVENANCE', value: 'SIMULATED', entity: makeField('PROVENANCE') },
+  ];
   const relFns = relatedFunctions(entity);
+  const relEntities = relatedEntities(entity);
+  const evidence = evidenceRows(entity);
 
   // Get the security symbol from entity payload for passing to function drills
   const getEntitySym = (): string | undefined => {
@@ -287,6 +349,9 @@ export function TerminalInspector() {
     if (typeof p['pair'] === 'string') return p['pair'];
     return undefined;
   };
+
+  const provenance = safeFields.find((f) => f.label === 'PROVENANCE')?.value ?? (entity.kind === 'NEWS' ? 'LIVE' : 'SIM');
+  const nowTime = new Date().toISOString().slice(11, 19) + ' UTC';
 
   return (
     <div
@@ -301,11 +366,13 @@ export function TerminalInspector() {
       }}
     >
       {/* Header */}
-      <div style={{ height: DENSITY.panelHeaderHeightPx, background: DENSITY.bgHeader, padding: `0 ${DENSITY.pad4}px`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+      <div style={{ minHeight: DENSITY.panelHeaderHeightPx, background: DENSITY.bgHeader, padding: `0 ${DENSITY.pad4}px`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <span style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, fontWeight: 700, textTransform: 'uppercase' }}>
-          INSPECT — {entity.kind}
+          INSPECT — {entity.kind} [{inspector.historyIdx + 1}/{Math.max(1, inspector.history.length)}]
         </span>
         <div className="flex items-center gap-2">
+          <button type="button" onClick={inspectorBack} style={{ color: DENSITY.textSecondary, fontSize: DENSITY.fontSizeTiny, background: 'none', border: 'none', cursor: 'pointer' }} title="Back">◀</button>
+          <button type="button" onClick={inspectorForward} style={{ color: DENSITY.textSecondary, fontSize: DENSITY.fontSizeTiny, background: 'none', border: 'none', cursor: 'pointer' }} title="Forward">▶</button>
           <button
             type="button"
             onClick={() => pinInspector(!inspector.pinned)}
@@ -325,18 +392,42 @@ export function TerminalInspector() {
       {/* Entity display */}
       <div style={{ padding: `${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.borderColor}`, flexShrink: 0 }}>
         <div style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault, fontWeight: 700, marginBottom: 1 }}>{entity.display}</div>
-        <div style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>
-          {entity.kind} • SIM • {new Date().toISOString().slice(11, 19)} UTC
+        <div style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, display: 'flex', alignItems: 'center', gap: 4 }}>
+          <span>{entity.kind}</span> <span>•</span> <StatusBadge label={String(provenance).toUpperCase()} variant={String(provenance).includes('LIVE') ? 'live' : String(provenance).includes('STALE') ? 'stale' : 'sim'} />
+          <span>•</span>
+          <span>{nowTime}</span>
+        </div>
+        <div className="flex gap-1 mt-1">
+          <button
+            type="button"
+            style={{ flex: 1, background: '#0a1a2a', color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeTiny, border: `1px solid ${DENSITY.accentCyan}`, padding: '1px 4px', cursor: 'pointer' }}
+            onClick={() => drill(entity, 'OPEN_IN_PLACE', inspector.panelIdx)}
+          >OPEN HERE</button>
+          <button
+            type="button"
+            style={{ flex: 1, background: '#0a1a2a', color: DENSITY.accentGreen, fontSize: DENSITY.fontSizeTiny, border: `1px solid ${DENSITY.accentGreen}`, padding: '1px 4px', cursor: 'pointer' }}
+            onClick={() => drill(entity, 'OPEN_IN_NEW_PANE', inspector.panelIdx)}
+          >SEND TO PANE</button>
         </div>
       </div>
 
       {/* Fields */}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }} className="terminal-scrollbar">
-        {fields.map((f, i) => (
+        <div style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, padding: `2px ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>FIELDS</div>
+        {safeFields.map((f, i) => (
           <div
             key={`${f.label}-${i}`}
-            className="flex items-center"
+            className="flex items-center cursor-pointer hover:bg-[#0a1520]"
             style={{ height: DENSITY.rowHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, background: i % 2 === 1 ? '#060606' : DENSITY.bgBase }}
+            onClick={() => {
+              const target = f.entity ?? makeField(f.label, f.value);
+              drill(target, 'OPEN_IN_PLACE', inspector.panelIdx);
+            }}
+            onContextMenu={(e) => {
+              if (!f.entity) return;
+              e.preventDefault();
+              drill(f.entity, 'INSPECT_OVERLAY', inspector.panelIdx);
+            }}
           >
             <span style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, width: 90, flexShrink: 0, textTransform: 'uppercase' }}>{f.label}</span>
             {f.entity ? (
@@ -344,11 +435,11 @@ export function TerminalInspector() {
                 type="button"
                 className="truncate text-left hover:underline"
                 style={{ color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeDefault, background: 'none', border: 'none', cursor: 'pointer', flex: 1, padding: 0 }}
-                title="Click: open | Shift+Click: send to panel | Alt+Click: inspect"
+                title="Click: open | Shift+Click: send to pane | Alt+Click: inspect"
                 onClick={(e) => {
                   e.stopPropagation();
-                  const intent = e.shiftKey ? 'OPEN_IN_NEW_PANEL' as const : e.altKey ? 'INSPECT_OVERLAY' as const : 'OPEN_IN_PLACE' as const;
-                  drill(f.entity!, intent, focusedPanel);
+                  const intent = e.shiftKey ? 'OPEN_IN_NEW_PANE' as const : e.altKey ? 'INSPECT_OVERLAY' as const : 'OPEN_IN_PLACE' as const;
+                  drill(f.entity!, intent, inspector.panelIdx);
                 }}
               >{f.value}</button>
             ) : (
@@ -365,6 +456,32 @@ export function TerminalInspector() {
             )}
           </div>
         ))}
+
+        <div style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, padding: `2px ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>RELATED ENTITIES</div>
+        {relEntities.map((re, i) => (
+          <div
+            key={`${re.kind}-${re.id}-${i}`}
+            className="flex items-center cursor-pointer hover:bg-[#0a1520]"
+            style={{ height: DENSITY.rowHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, background: i % 2 === 1 ? '#060606' : DENSITY.bgBase }}
+            onClick={(e) => drill(re, e.shiftKey ? 'OPEN_IN_NEW_PANE' : e.altKey ? 'INSPECT_OVERLAY' : 'OPEN_IN_PLACE', inspector.panelIdx)}
+          >
+            <span style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, width: 72, textTransform: 'uppercase' }}>{re.kind}</span>
+            <span className="truncate" style={{ color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeDefault, flex: 1 }}>{re.display}</span>
+          </div>
+        ))}
+
+        <div style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, padding: `2px ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>EVIDENCE (SIMULATED WHEN MISSING)</div>
+        {evidence.map((ev, i) => (
+          <div
+            key={ev.id}
+            className="cursor-pointer hover:bg-[#0a1520]"
+            style={{ borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `${DENSITY.pad2}px ${DENSITY.pad4}px`, background: i % 2 === 1 ? '#060606' : DENSITY.bgBase }}
+            onClick={(e) => drill(ev.entity, e.shiftKey ? 'OPEN_IN_NEW_PANE' : e.altKey ? 'INSPECT_OVERLAY' : 'OPEN_IN_PLACE', inspector.panelIdx)}
+          >
+            <div style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny }}>{ev.summary}</div>
+            <div style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }} className="tabular-nums">Score {ev.score} • {ev.source}</div>
+          </div>
+        ))}
       </div>
 
       {/* Related functions */}
@@ -377,26 +494,12 @@ export function TerminalInspector() {
               type="button"
               style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, border: `1px solid ${DENSITY.borderColor}`, padding: '0 3px', background: '#111', cursor: 'pointer' }}
               onClick={() => {
-                const sym = getEntitySym() ?? panels[focusedPanel]?.activeSecurity;
-                const sector = panels[focusedPanel]?.marketSector;
-                navigatePanel(focusedPanel, fn, sym, sector);
+                const sym = getEntitySym();
+                if (sym) drill(makeSecurity(sym), 'OPEN_IN_PLACE', inspector.panelIdx);
+                drill(makeFunction(fn, MNEMONIC_DEFS[fn]?.title), 'OPEN_IN_PLACE', inspector.panelIdx);
               }}
             >{fn}</button>
           ))}
-        </div>
-
-        {/* Open / Send buttons */}
-        <div className="flex gap-1 mt-1">
-          <button
-            type="button"
-            style={{ flex: 1, background: '#0a1a2a', color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeTiny, border: `1px solid ${DENSITY.accentCyan}`, padding: '1px 4px', cursor: 'pointer' }}
-            onClick={() => drill(entity, 'OPEN_IN_PLACE', focusedPanel)}
-          >OPEN IN P{focusedPanel + 1}</button>
-          <button
-            type="button"
-            style={{ flex: 1, background: '#0a1a2a', color: DENSITY.accentGreen, fontSize: DENSITY.fontSizeTiny, border: `1px solid ${DENSITY.accentGreen}`, padding: '1px 4px', cursor: 'pointer' }}
-            onClick={() => drill(entity, 'OPEN_IN_NEW_PANEL', focusedPanel)}
-          >SEND TO PANEL</button>
         </div>
       </div>
     </div>

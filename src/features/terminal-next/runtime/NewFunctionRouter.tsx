@@ -2,9 +2,11 @@
 
 import React, { useEffect } from 'react';
 import { useTerminalOS } from './TerminalOSContext';
-import { EmptyFill } from './primitives';
 import { WakeUpScreen } from './WakeUpScreen';
 import { addTrailStep } from './navigationIntelStore';
+import { DENSITY } from '../constants/layoutDensity';
+import { getCatalogMnemonic, searchMnemonicCatalog } from '../mnemonics/catalog';
+import { FnFactoryMnemonic } from './functions/FnFactoryMnemonic';
 
 import { FnWEI } from './functions/FnWEI';
 import { FnTOP, FnCN } from './functions/FnTOP';
@@ -56,6 +58,7 @@ import { FnNEX, FnNMAP, FnNQ, FnNREL, FnNTIM, FnRGN, FnRGNC, FnRGNM, FnRGNN, FnR
 import { FnBETAX, FnCUST, FnFAC, FnHEDGE, FnREGI, FnSCN, FnSCNR, FnSHOCKG, FnSUPPConcentration, FnXDRV } from './functions/FnSupplyDriverIntel';
 import { FnBKMK, FnCITY, FnCMPY, FnCTY, FnFOCUS, FnINDY, FnNAVG, FnRELATE, FnSECT, FnTRAIL } from './functions/FnNavDossierIntel';
 import { FnADMIN, FnALRTPlus, FnAPI, FnAUDITPlus, FnCMDK, FnDIAG, FnDOCK, FnFLOAT, FnFOCUSPlus, FnKEYMAP, FnLAYOUT, FnLINK, FnMONPlus, FnNAVTREE, FnOFFLINE, FnPINBAR, FnPOLICYPlus, FnSRC, FnSTATUS } from './functions/FnPlatformOS';
+import { FnCAL24, FnCRSP, FnGMOV, FnNINT, FnRFCM, FnSECH } from './functions/FnWallBlocks';
 
 type FnC = React.ComponentType<{ panelIdx: number }>;
 
@@ -233,12 +236,18 @@ const FUNCTION_MAP: Record<string, FnC> = {
   SEC: FnEnterpriseStub as FnC,
   NAV: FnNAV as FnC,
   NX: FnNX as FnC,
+  GMOV: FnGMOV as FnC,
+  SECH: FnSECH as FnC,
+  RFCM: FnRFCM as FnC,
+  CRSP: FnCRSP as FnC,
+  NINT: FnNINT as FnC,
+  CAL24: FnCAL24 as FnC,
 };
 
 const WAKE_MNEMONICS = new Set(['WAKE', 'HOME', '']);
 
 export function NewFunctionRouter({ panelIdx }: { panelIdx: number }) {
-  const { panels } = useTerminalOS();
+  const { panels, dispatchPanel, navigatePanel } = useTerminalOS();
   const p = panels[panelIdx]!;
   const code = p.activeMnemonic.toUpperCase();
 
@@ -260,14 +269,42 @@ export function NewFunctionRouter({ panelIdx }: { panelIdx: number }) {
   }
 
   const Fn = FUNCTION_MAP[code];
+  const catalogDef = getCatalogMnemonic(code);
 
-  if (!Fn) {
+  if (!Fn && !catalogDef) {
+    const suggestions = searchMnemonicCatalog(code).slice(0, 16);
     return (
-      <div className="flex flex-col h-full min-h-0">
-        <WakeUpScreen panelIdx={panelIdx} />
+      <div className="flex flex-col h-full min-h-0 p-2" style={{ fontFamily: DENSITY.fontFamily }}>
+        <div style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeDefault, marginBottom: 4 }}>
+          UNKNOWN MNEMONIC: {code}
+        </div>
+        <div style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, marginBottom: 6 }}>
+          Open HL for suggestions or choose one below.
+        </div>
+        <div className="grid" style={{ gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 4 }}>
+          {suggestions.map((s) => (
+            <button
+              key={s.code}
+              type="button"
+              onClick={() => navigatePanel(panelIdx, s.code, p.activeSecurity, p.marketSector)}
+              style={{ textAlign: 'left', border: `1px solid ${DENSITY.borderColor}`, background: DENSITY.panelBgAlt, color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny, padding: '2px 4px', cursor: 'pointer' }}
+            >
+              <span style={{ color: DENSITY.accentAmber }}>{s.code}</span> — {s.title}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          onClick={() => dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'search' })}
+          style={{ marginTop: 8, border: `1px solid ${DENSITY.accentCyan}`, color: DENSITY.accentCyan, background: 'none', padding: '2px 6px', fontSize: DENSITY.fontSizeTiny, width: 120 }}
+        >
+          OPEN HL
+        </button>
       </div>
     );
   }
+
+  if (!Fn && catalogDef) return <FnFactoryMnemonic panelIdx={panelIdx} code={code} />;
 
   return <Fn panelIdx={panelIdx} />;
 }

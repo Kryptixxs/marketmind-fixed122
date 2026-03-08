@@ -9,6 +9,7 @@ import { openContextMenu } from '../ui/ContextMenu';
 import { useTerminalStore } from '../../store/TerminalStore';
 import { loadAlertRules, evaluateTriggeredRules } from '../../services/alertMonitor';
 import { intentFromMouseEvent, INTERACTION_HINT } from '../interaction';
+import { getDockLayout } from '../dockLayoutStore';
 
 function hash(s: string) { return Array.from(s).reduce((a, c) => a + c.charCodeAt(0), 0); }
 
@@ -32,7 +33,7 @@ export function MiniQuoteBlock({ panelIdx }: { panelIdx: number }) {
 
   return (
     <div style={{ borderTop: `1px solid ${DENSITY.borderColor}`, fontFamily: DENSITY.fontFamily }}>
-      <div style={{ padding: `1px ${DENSITY.pad4}px`, fontSize: DENSITY.fontSizeTiny, color: DENSITY.textMuted, background: DENSITY.bgSurface, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+      <div style={{ padding: `1px ${DENSITY.pad4}px`, fontSize: DENSITY.fontSizeTiny, color: DENSITY.textSecondary, background: DENSITY.panelBgAlt, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         BQ — Live Quote: {ticker}
       </div>
       <div className="grid" style={{ gridTemplateColumns: 'auto 1fr auto 1fr auto 1fr', gap: `0 6px`, padding: `${DENSITY.pad2}px ${DENSITY.pad4}px` }}>
@@ -40,7 +41,7 @@ export function MiniQuoteBlock({ panelIdx }: { panelIdx: number }) {
           const entity = makeField(f.fieldName, f.numVal);
           return (
             <React.Fragment key={f.label}>
-              <span style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny }}>{f.label}</span>
+              <span style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>{f.label}</span>
               <span
                 className="tabular-nums cursor-pointer hover:underline"
                 style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault }}
@@ -73,7 +74,7 @@ export function MiniRelsBlock({ panelIdx }: { panelIdx: number }) {
 
   return (
     <div style={{ borderTop: `1px solid ${DENSITY.borderColor}`, fontFamily: DENSITY.fontFamily }}>
-      <div style={{ padding: `1px ${DENSITY.pad4}px`, fontSize: DENSITY.fontSizeTiny, color: DENSITY.textMuted, background: DENSITY.bgSurface, borderBottom: `1px solid ${DENSITY.gridlineColor}`, display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ padding: `1px ${DENSITY.pad4}px`, fontSize: DENSITY.fontSizeTiny, color: DENSITY.textSecondary, background: DENSITY.panelBgAlt, borderBottom: `1px solid ${DENSITY.gridlineColor}`, display: 'flex', justifyContent: 'space-between' }}>
         <span>RELS — Peer Group</span>
         <button type="button" style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, background: 'none', border: 'none', cursor: 'pointer' }}
           onClick={() => drill(makeFunction('RELS'), 'OPEN_IN_PLACE', panelIdx)}>MORE ▶</button>
@@ -84,12 +85,20 @@ export function MiniRelsBlock({ panelIdx }: { panelIdx: number }) {
         const pct = lq ? lq.pct : ((h % 200) - 100) / 100;
         const entity = makeSecurity(p.sym, p.name);
         return (
-          <div key={p.sym} className="flex items-center cursor-pointer hover:bg-[#0a1520]"
-            style={{ height: DENSITY.rowHeightPx, padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: i % 2 === 1 ? '#060606' : DENSITY.bgBase }}
+          <div key={p.sym} className="flex items-center cursor-pointer"
+            style={{
+              height: DENSITY.rowHeightPx,
+              padding: `0 ${DENSITY.pad4}px`,
+              borderBottom: `1px solid ${DENSITY.gridlineColor}`,
+              borderTop: i > 0 && i % 5 === 0 ? `1px solid ${DENSITY.groupSeparator}` : undefined,
+              background: i % 2 === 1 ? DENSITY.rowZebra : DENSITY.panelBg,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = DENSITY.rowHover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = i % 2 === 1 ? DENSITY.rowZebra : DENSITY.panelBg; }}
             onClick={(e) => drill(entity, intentFromMouseEvent(e), panelIdx)}
             onContextMenu={(e) => openContextMenu(e, entity, panelIdx)}>
             <span style={{ color: DENSITY.accentAmber, width: 50, fontSize: DENSITY.fontSizeDefault, fontWeight: 700 }}>{p.sym.split(' ')[0]}</span>
-            <span className="flex-1 truncate" style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>{p.name}</span>
+            <span className="flex-1 truncate" style={{ color: DENSITY.textSecondary, fontSize: DENSITY.fontSizeTiny }}>{p.name}</span>
             <span className="tabular-nums" style={{ color: pct >= 0 ? DENSITY.accentGreen : DENSITY.accentRed, fontSize: DENSITY.fontSizeDefault }}>
               {(pct >= 0 ? '+' : '') + pct.toFixed(2) + '%'}
             </span>
@@ -118,7 +127,7 @@ export function MiniKeyFields({ panelIdx }: { panelIdx: number }) {
 
   return (
     <div style={{ borderTop: `1px solid ${DENSITY.borderColor}`, fontFamily: DENSITY.fontFamily }}>
-      <div style={{ padding: `1px ${DENSITY.pad4}px`, fontSize: DENSITY.fontSizeTiny, color: DENSITY.textMuted, background: DENSITY.bgSurface, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+      <div style={{ padding: `1px ${DENSITY.pad4}px`, fontSize: DENSITY.fontSizeTiny, color: DENSITY.textSecondary, background: DENSITY.panelBgAlt, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         KEY FIELDS — {ticker}
       </div>
       <div className="grid" style={{ gridTemplateColumns: 'auto 1fr auto 1fr auto 1fr', gap: `0 6px`, padding: `${DENSITY.pad2}px ${DENSITY.pad4}px` }}>
@@ -127,7 +136,7 @@ export function MiniKeyFields({ panelIdx }: { panelIdx: number }) {
           const entity = makeField(f.fieldName, isNaN(numVal) ? undefined : numVal);
           return (
             <React.Fragment key={f.label}>
-              <span style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny }}>{f.label}</span>
+              <span style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>{f.label}</span>
               <span className="tabular-nums cursor-pointer hover:underline"
                 style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault }}
                 onClick={(e) => drill(entity, intentFromMouseEvent(e), panelIdx)}
@@ -156,7 +165,7 @@ export function MiniNewsBlock({ panelIdx }: { panelIdx: number }) {
 
   return (
     <div style={{ borderTop: `1px solid ${DENSITY.borderColor}`, fontFamily: DENSITY.fontFamily }}>
-      <div style={{ padding: `1px ${DENSITY.pad4}px`, fontSize: DENSITY.fontSizeTiny, color: DENSITY.textMuted, background: DENSITY.bgSurface, borderBottom: `1px solid ${DENSITY.gridlineColor}`, display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ padding: `1px ${DENSITY.pad4}px`, fontSize: DENSITY.fontSizeTiny, color: DENSITY.textSecondary, background: DENSITY.panelBgAlt, borderBottom: `1px solid ${DENSITY.gridlineColor}`, display: 'flex', justifyContent: 'space-between' }}>
         <span>CN — Recent Headlines</span>
         <button type="button" style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, background: 'none', border: 'none', cursor: 'pointer' }}
           onClick={() => drill(makeFunction('CN'), 'OPEN_IN_PLACE', panelIdx)}>MORE ▶</button>
@@ -165,8 +174,16 @@ export function MiniNewsBlock({ panelIdx }: { panelIdx: number }) {
         const headline = tpl.replace(/\{T\}/g, ticker);
         const entity = makeNews(headline, 'BBG');
         return (
-          <div key={i} className="flex items-start cursor-pointer hover:bg-[#0a1520]"
-            style={{ padding: `${DENSITY.pad2}px ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: i % 2 === 1 ? '#060606' : DENSITY.bgBase, minHeight: DENSITY.rowHeightPx }}
+          <div key={i} className="flex items-start cursor-pointer"
+            style={{
+              padding: `${DENSITY.pad2}px ${DENSITY.pad4}px`,
+              borderBottom: `1px solid ${DENSITY.gridlineColor}`,
+              borderTop: i > 0 && i % 5 === 0 ? `1px solid ${DENSITY.groupSeparator}` : undefined,
+              background: i % 2 === 1 ? DENSITY.rowZebra : DENSITY.panelBg,
+              minHeight: DENSITY.rowHeightPx,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = DENSITY.rowHover; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = i % 2 === 1 ? DENSITY.rowZebra : DENSITY.panelBg; }}
             onClick={(e) => drill(entity, intentFromMouseEvent(e), panelIdx)}
             onContextMenu={(e) => openContextMenu(e, entity, panelIdx)}>
             <span style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault, lineHeight: 1.1 }}>{headline}</span>
@@ -187,7 +204,7 @@ export function MiniAlertsBlock({ panelIdx }: { panelIdx: number }) {
 
   return (
     <div style={{ borderTop: `1px solid ${DENSITY.borderColor}`, fontFamily: DENSITY.fontFamily }}>
-      <div style={{ padding: `1px ${DENSITY.pad4}px`, fontSize: DENSITY.fontSizeTiny, color: triggered.length > 0 ? DENSITY.accentRed : DENSITY.textMuted, background: DENSITY.bgSurface, borderBottom: `1px solid ${DENSITY.gridlineColor}`, display: 'flex', justifyContent: 'space-between' }}>
+      <div style={{ padding: `1px ${DENSITY.pad4}px`, fontSize: DENSITY.fontSizeTiny, color: triggered.length > 0 ? DENSITY.accentRed : DENSITY.textSecondary, background: DENSITY.panelBgAlt, borderBottom: `1px solid ${DENSITY.gridlineColor}`, display: 'flex', justifyContent: 'space-between' }}>
         <span>ALRT — Alerts {triggered.length > 0 ? `[${triggered.length} TRIGGERED]` : `[${rules.length}]`}</span>
         <button type="button" style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, background: 'none', border: 'none', cursor: 'pointer' }}
           onClick={() => drill(makeFunction('ALRT'), 'OPEN_IN_PLACE', panelIdx)}>ALL ▶</button>
@@ -196,9 +213,9 @@ export function MiniAlertsBlock({ panelIdx }: { panelIdx: number }) {
         const isTriggered = triggered.some((t) => t.id === r.id);
         return (
           <div key={r.id} className="flex items-center"
-            style={{ height: DENSITY.rowHeightPx, padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: isTriggered ? '#1a0000' : DENSITY.bgBase }}>
-            <span style={{ color: isTriggered ? DENSITY.accentRed : DENSITY.textDim, fontSize: DENSITY.fontSizeDefault, flex: 1 }}>{r.symbol}</span>
-            <span style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>{r.op} {r.value}</span>
+            style={{ height: DENSITY.rowHeightPx, padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: isTriggered ? '#2a0e1a' : DENSITY.panelBg }}>
+            <span style={{ color: isTriggered ? DENSITY.accentRed : DENSITY.textSecondary, fontSize: DENSITY.fontSizeDefault, flex: 1 }}>{r.symbol}</span>
+            <span className="tabular-nums" style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>{r.op} {r.value}</span>
             {isTriggered && <span style={{ color: DENSITY.accentRed, fontSize: DENSITY.fontSizeTiny, marginLeft: 4 }}>● TRIGGERED</span>}
           </div>
         );
@@ -210,7 +227,7 @@ export function MiniAlertsBlock({ panelIdx }: { panelIdx: number }) {
 // ── Hint Strip ────────────────────────────────────────────────────────────────
 export function HintStrip() {
   return (
-    <div style={{ borderTop: `1px solid ${DENSITY.borderColor}`, padding: `2px ${DENSITY.pad4}px`, background: '#030303', display: 'flex', flexWrap: 'wrap', gap: 8, fontFamily: DENSITY.fontFamily, fontSize: '8px', color: DENSITY.textMuted }}>
+    <div style={{ borderTop: `1px solid ${DENSITY.borderColor}`, padding: `2px ${DENSITY.pad4}px`, background: DENSITY.panelBgAlt, display: 'flex', flexWrap: 'wrap', gap: 8, fontFamily: DENSITY.fontFamily, fontSize: '8px', color: DENSITY.textDim }}>
       {['ENTER=Drill', 'SHIFT+ENTER=NewPanel', 'ALT+ENTER=Inspect', '↑↓=Navigate', 'F2=MENU', 'F1=HELP', 'Ctrl+K=Search', 'Right-click=Actions'].map((h) => <span key={h}>{h}</span>)}
     </div>
   );
@@ -229,9 +246,11 @@ const DENSITY_THRESHOLD: Record<string, number> = {
 export function PanelFiller({ panelIdx }: { panelIdx: number }) {
   const { panels } = useTerminalOS();
   const p = panels[panelIdx]!;
-  if (FILLER_SKIP.has(p.activeMnemonic)) return null;
+  const layout = getDockLayout();
+  const highDensity = layout.highDensityMode || layout.highDensityLiveMode;
+  if (!highDensity && FILLER_SKIP.has(p.activeMnemonic)) return null;
 
-  const threshold = DENSITY_THRESHOLD[p.activeMnemonic] ?? 5;
+  const threshold = (DENSITY_THRESHOLD[p.activeMnemonic] ?? 5) + (highDensity ? 3 : 0) + (layout.highDensityLiveMode ? 4 : 0);
   const blockFactories: Array<() => React.ReactNode> = [
     () => <MiniQuoteBlock panelIdx={panelIdx} />,
     () => <MiniKeyFields panelIdx={panelIdx} />,

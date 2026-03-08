@@ -36,6 +36,10 @@ export function FnDOCK({ panelIdx = 0 }: { panelIdx?: number }) {
     { key: 'Floating panes', value: String(dock.floatingPanels.length) },
     { key: 'Navtree', value: dock.navtreeVisible ? 'ON' : 'OFF' },
     { key: 'Pinbar', value: dock.pinbarVisible ? `ON (${dock.pinbarDock})` : 'OFF' },
+    { key: 'Monitor mode', value: dock.twoUpMode ? '2-UP' : 'SINGLE' },
+    { key: 'Density mode', value: dock.highDensityMode ? 'HIGH' : 'NORMAL' },
+    { key: 'Live mode', value: dock.highDensityLiveMode ? 'ON' : 'OFF' },
+    { key: 'Active workspace', value: dock.activeWorkspace.toUpperCase() },
   ];
   const cols: DenseColumn[] = [{ key: 'key', header: 'Setting', width: '160px' }, { key: 'value', header: 'Value', width: '1fr' }];
   return (
@@ -49,6 +53,9 @@ export function FnDOCK({ panelIdx = 0 }: { panelIdx?: number }) {
         <button type="button" onClick={() => closePanel(panelIdx)}>CLOSE PANE</button>
         <button type="button" onClick={() => setDockLayout({ columns: Math.min(4, dock.columns + 1) })}>COL+</button>
         <button type="button" onClick={() => setDockLayout({ columns: Math.max(1, dock.columns - 1) })}>COL-</button>
+        <button type="button" onClick={() => setDockLayout({ twoUpMode: !dock.twoUpMode })}>{dock.twoUpMode ? '1-UP' : '2-UP'}</button>
+        <button type="button" onClick={() => setDockLayout({ highDensityMode: !dock.highDensityMode })}>{dock.highDensityMode ? 'DENSITY:NORMAL' : 'DENSITY:HIGH'}</button>
+        <button type="button" onClick={() => setDockLayout({ highDensityLiveMode: !dock.highDensityLiveMode })}>{dock.highDensityLiveMode ? 'LIVE:OFF' : 'LIVE:ON'}</button>
       </div>
       <DenseTable columns={cols} rows={rows} rowKey="key" panelIdx={panelIdx} className="h-[170px]" />
       <EmptyFill hint="UNLIMITED PANE ENGINE ACTIVE: TILE/TAB/STACK + FLOAT + NAVTREE + PINBAR" />

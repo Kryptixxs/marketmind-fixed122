@@ -1,4 +1,5 @@
 import type { MarketSector } from './panelState';
+import { catalogToMnemonicRegistryDef, listCatalogMnemonics, searchMnemonicCatalog } from '../mnemonics/catalog';
 
 export interface MnemonicDef {
   code: string;
@@ -182,7 +183,19 @@ export const MNEMONIC_DEFS: Record<string, MnemonicDef> = {
   CONSENT:{ code: 'CONSENT', title: 'Data Usage Compliance Notices', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'table', relatedCodes: ['PRIV', 'SRC', 'POLICY'] },
   GRIDCFG:{ code: 'GRIDCFG', title: 'Density + Grid Calibration', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'form', relatedCodes: ['GRID', 'PREF', 'THEMEPRO'] },
   THEMEPRO:{ code: 'THEMEPRO', title: 'Terminal Palette Contrast Tests', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'form', relatedCodes: ['THEME', 'GRIDCFG', 'PREF'] },
+  GMOV:   { code: 'GMOV', title: 'Global Movers Always-on Table', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'table', relatedCodes: ['WEI', 'SECH', 'RFCM'] },
+  SECH:   { code: 'SECH', title: 'Sector Heat Dense Block', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'table', relatedCodes: ['WEI', 'GMOV', 'NINT'] },
+  RFCM:   { code: 'RFCM', title: 'Rates Fx Commod Snapshot', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'table', relatedCodes: ['CRSP', 'XAS', 'ECO'] },
+  CRSP:   { code: 'CRSP', title: 'Credit Spreads Snapshot', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'table', relatedCodes: ['RFCM', 'STATUS', 'RISK'] },
+  NINT:   { code: 'NINT', title: 'News Intensity and Impacted Tickers', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'table', relatedCodes: ['TOP', 'CN', 'NREL'] },
+  CAL24:  { code: 'CAL24', title: 'Calendar Next 24h', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'table', relatedCodes: ['ECO', 'NTIM', 'ALRT'] },
 };
+
+for (const c of listCatalogMnemonics()) {
+  if (!MNEMONIC_DEFS[c.code]) {
+    MNEMONIC_DEFS[c.code] = catalogToMnemonicRegistryDef(c);
+  }
+}
 
 export function getMnemonicDef(code: string): MnemonicDef | undefined {
   return MNEMONIC_DEFS[code.toUpperCase()];
@@ -192,4 +205,14 @@ export function getRelatedMnemonics(code: string): MnemonicDef[] {
   const def = getMnemonicDef(code);
   if (!def) return [];
   return def.relatedCodes.map((c) => MNEMONIC_DEFS[c]).filter(Boolean) as MnemonicDef[];
+}
+
+export function searchMnemonics(query: string): MnemonicDef[] {
+  const q = query.trim();
+  if (!q) return Object.values(MNEMONIC_DEFS);
+  const primary = Object.values(MNEMONIC_DEFS).filter((m) =>
+    `${m.code} ${m.title} ${m.relatedCodes.join(' ')}`.toUpperCase().includes(q.toUpperCase()),
+  );
+  const catalog = searchMnemonicCatalog(q).map((m) => MNEMONIC_DEFS[m.code]).filter(Boolean) as MnemonicDef[];
+  return Array.from(new Set([...primary, ...catalog]));
 }

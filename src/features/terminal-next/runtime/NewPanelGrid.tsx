@@ -5,9 +5,125 @@ import { DENSITY } from '../constants/layoutDensity';
 import { NewPanelFrame } from './NewPanelFrame';
 import { NewFunctionRouter } from './NewFunctionRouter';
 import { useTerminalOS } from './TerminalOSContext';
-import { getDockLayout, loadDockLayout, setDockLayout, subscribeDockLayout } from './dockLayoutStore';
+import {
+  getDockLayout,
+  loadDockLayout,
+  setDockLayout,
+  subscribeDockLayout,
+  type DockNode,
+  setActiveDockTab,
+  ensurePaneInDock,
+  getDockPaneOrder,
+} from './dockLayoutStore';
 import { listPinItems } from './pinboardStore';
 import { MNEMONIC_DEFS } from './MnemonicRegistry';
+import { Panel, Group, Separator } from 'react-resizable-panels';
+
+function ResizeHandle() {
+  return (
+    <Separator
+      style={{
+        background: DENSITY.groupSeparator,
+        width: 2,
+        height: 2,
+      }}
+    />
+  );
+}
+
+function DockTree({
+  node,
+  panels,
+  focusedPanel,
+  setFocusedPanel,
+  workspace,
+}: {
+  node: DockNode;
+  panels: ReturnType<typeof useTerminalOS>['panels'];
+  focusedPanel: number;
+  setFocusedPanel: (idx: number) => void;
+  workspace: 'left' | 'right';
+}) {
+  if (node.type === 'tabs') {
+    const tabs = node.tabs.filter((idx) => panels[idx] != null);
+    if (tabs.length === 0) {
+      return <div className="flex-1 min-h-0" style={{ background: DENSITY.panelBg }} />;
+    }
+    const active = tabs.includes(node.activeTab) ? node.activeTab : tabs[0]!;
+    const panel = panels[active]!;
+    return (
+      <div className="flex flex-col min-h-0 h-full overflow-hidden" style={{ background: DENSITY.panelBg }}>
+        <div
+          className="flex items-center gap-1 overflow-x-auto terminal-scrollbar flex-none"
+          style={{ height: 16, background: DENSITY.panelBgAlt, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad2}px` }}
+        >
+          {tabs.map((idx) => {
+            const p = panels[idx]!;
+            const isActive = idx === active;
+            const isFocused = idx === focusedPanel;
+            return (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => {
+                  setActiveDockTab(idx, workspace);
+                  setFocusedPanel(idx);
+                }}
+                style={{
+                  height: 13,
+                  border: `1px solid ${isActive ? DENSITY.rowSelectedMarker : DENSITY.borderColor}`,
+                  background: isActive ? DENSITY.rowSelectedBg : DENSITY.panelBg,
+                  color: isFocused ? DENSITY.textPrimary : DENSITY.textSecondary,
+                  fontSize: DENSITY.fontSizeTiny,
+                  padding: '0 4px',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                }}
+              >
+                P{idx + 1} {p.activeMnemonic}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex-1 min-h-0">
+          <NewPanelFrame panelIdx={active}>
+            <NewFunctionRouter panelIdx={active} />
+          </NewPanelFrame>
+        </div>
+        <div
+          className="flex items-center justify-between flex-none"
+          style={{
+            height: 12,
+            borderTop: `1px solid ${DENSITY.gridlineColor}`,
+            background: DENSITY.panelBgAlt,
+            fontSize: DENSITY.fontSizeTiny,
+            color: DENSITY.textDim,
+            padding: `0 ${DENSITY.pad4}px`,
+          }}
+        >
+          <span>{panel.activeMnemonic} • {panel.activeSecurity}</span>
+          <span>TABS {tabs.length}</span>
+        </div>
+      </div>
+    );
+  }
+
+  const orientation = node.direction === 'horizontal' ? 'horizontal' : 'vertical';
+  return (
+    <Group
+      orientation={orientation}
+      className="h-full min-h-0"
+    >
+      <Panel minSize={12} defaultSize={node.sizes[0]}>
+        <DockTree node={node.children[0]} panels={panels} focusedPanel={focusedPanel} setFocusedPanel={setFocusedPanel} workspace={workspace} />
+      </Panel>
+      <ResizeHandle />
+      <Panel minSize={12} defaultSize={node.sizes[1]}>
+        <DockTree node={node.children[1]} panels={panels} focusedPanel={focusedPanel} setFocusedPanel={setFocusedPanel} workspace={workspace} />
+      </Panel>
+    </Group>
+  );
+}
 
 export function NewPanelGrid() {
   const { panels, focusedPanel, navigatePanel, setFocusedPanel } = useTerminalOS();
@@ -21,14 +137,16 @@ export function NewPanelGrid() {
   }, []);
 
   const panelIndices = React.useMemo(() => panels.map((_, idx) => idx), [panels]);
-  const nonFloating = panelIndices.filter((idx) => !dockState.floatingPanels.includes(idx));
-  const visible = dockState.focusFullscreen ? [focusedPanel] : nonFloating;
-  const columns = Math.max(1, Math.min(4, dockState.columns));
-  const gridColumns = dockState.mode === 'stack'
-    ? '1fr'
-    : dockState.mode === 'tab'
-      ? '1fr'
-      : `repeat(${columns}, minmax(0, 1fr))`;
+  React.useEffect(() => {
+    const allAssigned = new Set(getDockPaneOrder('all'));
+    panelIndices.forEach((idx) => {
+      if (!dockState.floatingPanels.includes(idx) && !allAssigned.has(idx)) ensurePaneInDock(idx, dockState.activeWorkspace);
+    });
+  }, [panelIndices, dockState.floatingPanels, dockState.activeWorkspace, dockState.root, dockState.secondaryRoot]);
+  const leftOrder = React.useMemo(() => getDockPaneOrder('left'), [dockState]);
+  const rightOrder = React.useMemo(() => getDockPaneOrder('right'), [dockState]);
+  const leftFocus = leftOrder.includes(focusedPanel);
+  const rightFocus = rightOrder.includes(focusedPanel);
   const categories = React.useMemo(() => {
     const groups = new Map<string, string[]>();
     Object.values(MNEMONIC_DEFS).forEach((d) => {
@@ -72,12 +190,23 @@ export function NewPanelGrid() {
             ))}
           </div>
         )}
-        <div className="grid flex-1 min-h-0 overflow-hidden" style={{ gridTemplateColumns: gridColumns, gridAutoRows: 'minmax(0, 1fr)', gap: 0, background: DENSITY.gridlineColor }}>
-          {visible.map((idx) => (
-            <NewPanelFrame key={idx} panelIdx={idx}>
-              <NewFunctionRouter panelIdx={idx} />
+        <div className="flex-1 min-h-0 overflow-hidden" style={{ background: DENSITY.gridlineColor }}>
+          {dockState.focusFullscreen ? (
+            <NewPanelFrame panelIdx={focusedPanel}>
+              <NewFunctionRouter panelIdx={focusedPanel} />
             </NewPanelFrame>
-          ))}
+          ) : dockState.twoUpMode && dockState.secondaryRoot ? (
+            <div className="grid h-full min-h-0" style={{ gridTemplateColumns: '1fr 1fr', gap: 1, background: DENSITY.gridlineColor }}>
+              <div style={{ minHeight: 0, border: `1px solid ${dockState.activeWorkspace === 'left' || leftFocus ? DENSITY.rowSelectedMarker : DENSITY.borderColor}` }}>
+                <DockTree node={dockState.root} panels={panels} focusedPanel={focusedPanel} setFocusedPanel={setFocusedPanel} workspace="left" />
+              </div>
+              <div style={{ minHeight: 0, border: `1px solid ${dockState.activeWorkspace === 'right' || rightFocus ? DENSITY.rowSelectedMarker : DENSITY.borderColor}` }}>
+                <DockTree node={dockState.secondaryRoot} panels={panels} focusedPanel={focusedPanel} setFocusedPanel={setFocusedPanel} workspace="right" />
+              </div>
+            </div>
+          ) : (
+            <DockTree node={dockState.root} panels={panels} focusedPanel={focusedPanel} setFocusedPanel={setFocusedPanel} workspace="left" />
+          )}
         </div>
       </div>
       {dockState.floatingPanels.length > 0 && (

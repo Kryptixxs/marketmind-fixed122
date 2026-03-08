@@ -5,6 +5,12 @@ import { DENSITY } from '../constants/layoutDensity';
 import { useTerminalOS } from './TerminalOSContext';
 import { MNEMONIC_DEFS } from './MnemonicRegistry';
 import type { MarketSector } from './panelState';
+import { useDrill } from './entities/DrillContext';
+import { makeField, makeFunction, makeNews, makeSecurity } from './entities/types';
+import { addToMonitorList } from './monitorListStore';
+import { addAlertRule } from '../services/alertMonitor';
+import { appendAuditEvent } from './commandAuditStore';
+import { getCatalogMnemonic } from '../mnemonics/catalog';
 
 const SECTOR_MENUS: Record<MarketSector, Array<{ code: string; label: string }>> = {
   EQUITY: [
@@ -75,6 +81,12 @@ const SECTOR_MENUS: Record<MarketSector, Array<{ code: string; label: string }>>
 
 const GLOBAL_MNEMONICS = [
   { code: 'WEI', label: 'World Equity Indices' },
+  { code: 'GMOV', label: 'Global Movers Block' },
+  { code: 'SECH', label: 'Sector Heat Block' },
+  { code: 'RFCM', label: 'Rates/FX/Commod Block' },
+  { code: 'CRSP', label: 'Credit Spreads Block' },
+  { code: 'NINT', label: 'News Intensity Block' },
+  { code: 'CAL24', label: 'Calendar 24h Block' },
   { code: 'TOP', label: 'Top News' },
   { code: 'ECO', label: 'Economic Calendar' },
   { code: 'FXC', label: 'FX Cross Matrix' },
@@ -219,11 +231,87 @@ const GLOBAL_MNEMONICS = [
 
 export function PanelMenuOverlay({ panelIdx }: { panelIdx: number }) {
   const { panels, navigatePanel, dispatchPanel } = useTerminalOS();
+  const { drill } = useDrill();
   const p = panels[panelIdx]!;
-  const sectorItems = SECTOR_MENUS[p.marketSector] ?? SECTOR_MENUS.EQUITY;
-  const [tab, setTab] = useState<'security' | 'global'>('security');
+  const sec = p.activeSecurity;
+  const ticker = sec.split(' ')[0] ?? sec;
+  const related = (getCatalogMnemonic(p.activeMnemonic)?.relatedCodes ?? MNEMONIC_DEFS[p.activeMnemonic]?.relatedCodes ?? []);
+  const graphCodes = [p.activeMnemonic, ...related.slice(0, 12)];
+  const primaryFlow = ['DES', 'CN', 'HP', 'OWN', 'RELS', 'GP'].filter((c) => c !== p.activeMnemonic);
+  const primaryActions = primaryFlow
+    .map((code) => ({ code, label: MNEMONIC_DEFS[code]?.title ?? code }))
+    .filter((x) => x.code in MNEMONIC_DEFS);
+  const fallbackActions = (SECTOR_MENUS[p.marketSector] ?? SECTOR_MENUS.EQUITY).slice(0, 8);
+  const nextActions = primaryActions.length > 0 ? primaryActions : fallbackActions;
+  const [cursor, setCursor] = useState(0);
 
-  const items = tab === 'security' ? sectorItems : GLOBAL_MNEMONICS;
+  const relatedEntities = [
+    { label: sec, entity: makeSecurity(sec, ticker) },
+    { label: `${ticker} peers`, entity: makeFunction('RELS', 'Related Securities') },
+    { label: `${ticker} ownership`, entity: makeFunction('OWN', 'Ownership') },
+    { label: `${ticker} dividend`, entity: makeFunction('DVD', 'Dividend History') },
+    { label: `${ticker} headline`, entity: makeNews(`${ticker} flow + ownership update`, 'BBG') },
+    { label: `PX_LAST`, entity: makeField('PX_LAST') },
+  ];
+
+  type MenuRow =
+    | { kind: 'header'; title: string }
+    | { kind: 'action'; label: string; run: (intent: 'OPEN_IN_PLACE' | 'OPEN_IN_NEW_PANE' | 'INSPECT_OVERLAY') => void }
+    | { kind: 'tool'; label: string; run: (intent: 'OPEN_IN_PLACE' | 'OPEN_IN_NEW_PANE' | 'INSPECT_OVERLAY') => void }
+    | { kind: 'entity'; label: string; run: (intent: 'OPEN_IN_PLACE' | 'OPEN_IN_NEW_PANE' | 'INSPECT_OVERLAY') => void };
+
+  const rows: MenuRow[] = [
+    { kind: 'header', title: 'PRIMARY NEXT ACTIONS' },
+    ...nextActions.map((item) => ({
+      kind: 'action' as const,
+      label: `${item.code} — ${item.label}`,
+      run: (intent: 'OPEN_IN_PLACE' | 'OPEN_IN_NEW_PANE' | 'INSPECT_OVERLAY') => {
+        const entity = makeFunction(item.code, item.label);
+        drill(entity, intent, panelIdx);
+      },
+    })),
+    { kind: 'header', title: 'SECONDARY TOOLS' },
+    {
+      kind: 'tool',
+      label: 'Add alert',
+      run: () => {
+        addAlertRule(`ALERT IF ${ticker} PX_LAST > 200`);
+        appendAuditEvent({ panelIdx, type: 'ALERT_CREATE', actor: 'USER', detail: `MENU alert ${ticker}`, mnemonic: p.activeMnemonic, security: sec });
+      },
+    },
+    {
+      kind: 'tool',
+      label: 'Add to monitor',
+      run: () => {
+        addToMonitorList(sec);
+        appendAuditEvent({ panelIdx, type: 'DRILL', actor: 'USER', detail: `MENU add monitor ${sec}`, mnemonic: p.activeMnemonic, security: sec });
+      },
+    },
+    {
+      kind: 'tool',
+      label: 'Export panel snapshot',
+      run: () => {
+        appendAuditEvent({ panelIdx, type: 'EXPORT', actor: 'USER', detail: `MENU export ${p.activeMnemonic} ${sec}`, mnemonic: p.activeMnemonic, security: sec });
+        const payload = JSON.stringify({ mnemonic: p.activeMnemonic, security: sec, ts: new Date().toISOString() }, null, 2);
+        const w = window.open('', '_blank');
+        if (w) w.document.write(`<pre style="background:#000;color:#ddd;font:11px monospace;padding:8px">${payload}</pre>`);
+      },
+    },
+    {
+      kind: 'tool',
+      label: 'Inspect active security',
+      run: (intent) => {
+        drill(makeSecurity(sec, ticker), intent === 'OPEN_IN_NEW_PANE' ? 'OPEN_IN_PLACE' : 'INSPECT_OVERLAY', panelIdx);
+      },
+    },
+    { kind: 'header', title: 'RELATED ENTITIES' },
+    ...relatedEntities.map((re) => ({
+      kind: 'entity' as const,
+      label: re.label,
+      run: (intent: 'OPEN_IN_PLACE' | 'OPEN_IN_NEW_PANE' | 'INSPECT_OVERLAY') => drill(re.entity, intent, panelIdx),
+    })),
+  ];
+  const selectable = rows.filter((r): r is Exclude<MenuRow, { kind: 'header' }> => r.kind !== 'header');
 
   return (
     <div className="absolute inset-0 z-30" style={{ background: '#000000f0', fontFamily: DENSITY.fontFamily }}>
@@ -232,33 +320,64 @@ export function PanelMenuOverlay({ panelIdx }: { panelIdx: number }) {
         <div style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, fontWeight: 700 }}>
           MENU — {p.activeSecurity} [{p.marketSector}]
         </div>
-        <div className="flex gap-2 mt-1">
-          {(['security', 'global'] as const).map((t) => (
-            <button key={t} type="button" onClick={() => setTab(t)}
-              style={{ fontSize: DENSITY.fontSizeTiny, color: tab === t ? DENSITY.accentAmber : DENSITY.textMuted, background: 'none', border: `1px solid ${tab === t ? DENSITY.accentAmber : DENSITY.gridlineColor}`, padding: '0 4px', cursor: 'pointer' }}>
-              {t === 'security' ? 'SECURITY FUNCTIONS' : 'GLOBAL FUNCTIONS'}
-            </button>
+        <div className="flex gap-1 mt-1 items-center">
+          <span style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>GRAPH</span>
+          {graphCodes.map((c, i) => (
+            <React.Fragment key={c}>
+              {i > 0 && <span style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>→</span>}
+              <button
+                type="button"
+                onClick={() => { navigatePanel(panelIdx, c, p.activeSecurity, p.marketSector); dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'none' }); }}
+                style={{ color: c === p.activeMnemonic ? DENSITY.accentCyan : DENSITY.accentAmber, border: `1px solid ${DENSITY.gridlineColor}`, background: DENSITY.bgSurfaceAlt, fontSize: DENSITY.fontSizeTiny, padding: '0 3px', cursor: 'pointer' }}
+              >
+                {c}
+              </button>
+            </React.Fragment>
           ))}
         </div>
       </div>
       {/* Items */}
-      <div style={{ overflowY: 'auto', maxHeight: 'calc(100% - 60px)' }}>
-        {items.map((item, i) => (
-          <button
-            key={item.code}
-            type="button"
-            className="w-full text-left flex items-center hover:bg-[#1a2a3a]"
-            style={{ height: DENSITY.rowHeightPx + 3, padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: 'none', cursor: 'pointer' }}
-            onClick={() => { navigatePanel(panelIdx, item.code); dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'none' }); }}
-          >
-            <span style={{ color: DENSITY.textMuted, width: 20, fontSize: DENSITY.fontSizeTiny }}>{i + 1}</span>
-            <span style={{ color: DENSITY.accentAmber, width: 52, fontSize: DENSITY.fontSizeDefault, fontWeight: 700 }}>{item.code}</span>
-            <span style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault }}>{item.label}</span>
-          </button>
-        ))}
+      <div
+        style={{ overflowY: 'auto', maxHeight: 'calc(100% - 70px)' }}
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') { e.preventDefault(); setCursor((c) => Math.min(c + 1, selectable.length - 1)); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setCursor((c) => Math.max(c - 1, 0)); }
+          else if (e.key === 'Enter' && e.altKey) { e.preventDefault(); selectable[cursor]?.run('INSPECT_OVERLAY'); }
+          else if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); selectable[cursor]?.run('OPEN_IN_NEW_PANE'); dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'none' }); }
+          else if (e.key === 'Enter') { e.preventDefault(); selectable[cursor]?.run('OPEN_IN_PLACE'); dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'none' }); }
+          else if (e.key === 'Escape') { e.preventDefault(); dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'none' }); }
+        }}
+      >
+        {rows.map((row, i) => {
+          if (row.kind === 'header') {
+            return (
+              <div key={`h-${row.title}-${i}`} style={{ height: 14, display: 'flex', alignItems: 'center', padding: `0 ${DENSITY.pad4}px`, color: DENSITY.textSecondary, fontSize: DENSITY.fontSizeTiny, background: DENSITY.bgSurfaceAlt, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+                {row.title}
+              </div>
+            );
+          }
+          const idx = selectable.findIndex((x) => x.label === row.label);
+          const active = idx === cursor;
+          return (
+            <button
+              key={`${row.kind}-${row.label}`}
+              type="button"
+              className="w-full text-left flex items-center hover:bg-[#1a2a3a]"
+              style={{ height: DENSITY.rowHeightPx + 2, padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: active ? '#1a2a3a' : 'none', cursor: 'pointer' }}
+              onMouseEnter={() => setCursor(idx)}
+              onClick={() => { row.run('OPEN_IN_PLACE'); dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'none' }); }}
+            >
+              <span style={{ color: DENSITY.textMuted, width: 20, fontSize: DENSITY.fontSizeTiny }}>{idx + 1}</span>
+              <span style={{ color: row.kind === 'action' ? DENSITY.accentAmber : row.kind === 'tool' ? DENSITY.accentGreen : DENSITY.accentCyan, fontSize: DENSITY.fontSizeDefault }}>
+                {row.label}
+              </span>
+            </button>
+          );
+        })}
       </div>
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: `1px ${DENSITY.pad4}px`, fontSize: '8px', color: DENSITY.textMuted, borderTop: `1px solid ${DENSITY.gridlineColor}`, background: DENSITY.bgSurface }}>
-        Click or type number + GO to navigate  •  F2/Esc to close
+        ↑↓ select • Enter run • Shift+Enter new pane • Alt+Enter inspect • Esc close
       </div>
     </div>
   );
@@ -269,6 +388,7 @@ export function PanelHelpOverlay({ panelIdx }: { panelIdx: number }) {
   const p = panels[panelIdx]!;
   const isDeskMode = p.overlayMode === 'help-desk';
   const mnDef = MNEMONIC_DEFS[p.activeMnemonic];
+  const catDef = getCatalogMnemonic(p.activeMnemonic);
 
   return (
     <div className="absolute inset-0 z-30 overflow-auto" style={{ background: '#000000f0', fontFamily: DENSITY.fontFamily, padding: DENSITY.pad4 }}>
@@ -286,6 +406,11 @@ export function PanelHelpOverlay({ panelIdx }: { panelIdx: number }) {
       ) : (
         <div style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeDefault }}>
           <div style={{ color: DENSITY.textPrimary, fontWeight: 700, marginBottom: 4 }}>{mnDef?.title ?? p.activeMnemonic}</div>
+          {catDef?.helpMarkdown && (
+            <div style={{ marginBottom: 6, color: DENSITY.textSecondary, fontSize: DENSITY.fontSizeTiny }}>
+              {catDef.helpMarkdown.split('\n').slice(0, 6).map((line, i) => <div key={i}>{line.replace(/^#\s*/, '')}</div>)}
+            </div>
+          )}
           <div style={{ marginBottom: 6 }}>Active security: {p.activeSecurity}</div>
           <div style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, marginBottom: 2 }}>KEYBOARD SHORTCUTS</div>
           <div style={{ marginBottom: 1 }}>Enter = GO execute command</div>

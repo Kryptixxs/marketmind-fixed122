@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { DenseTable, PanelSubHeader, StatusBadge, type DenseColumn } from '../primitives';
 import { FIELD_CATALOG } from '../../services/fieldCatalog';
 import { makeField, makeFunction } from '../entities/types';
+import { computeFieldMeta } from '../../services/fieldRuntime';
+import { useTerminalOS } from '../TerminalOSContext';
 
 const COLS: DenseColumn[] = [
   { key: 'step', header: 'Step', width: '50px', align: 'right' },
@@ -14,18 +16,25 @@ const COLS: DenseColumn[] = [
 
 function lineageRows(fieldId: string) {
   const def = FIELD_CATALOG[fieldId];
-  const prov = def?.provenance ?? 'SIM';
-  const freq = (def?.updateFreq ?? 'daily').toUpperCase();
+  const meta = computeFieldMeta(fieldId, { source: def?.provenance ?? 'SIM' });
+  const prov = meta.source;
+  const freq = (def?.cadence ?? def?.updateFreq ?? 'daily').toUpperCase();
   return [
-    { id: '1', step: 1, node: `SOURCE: feed.${fieldId}`, freshness: freq, provenance: prov, entity: makeField(fieldId) },
-    { id: '2', step: 2, node: `TRANSFORM: normalize_${fieldId.toLowerCase()}`, freshness: 'TICK', provenance: 'CALC', entity: makeFunction('MAP', 'Field Mapping') },
-    { id: '3', step: 3, node: `COMPUTE: quality_guard(${fieldId})`, freshness: 'TICK', provenance: 'CALC', entity: makeFunction('QLT', 'Data Quality') },
-    { id: '4', step: 4, node: `DISPLAY: panel.render.${fieldId}`, freshness: 'LIVE', provenance: prov, entity: makeFunction('FLD', 'Field Catalog') },
+    { id: '1', step: 1, node: `SOURCE: feed.${fieldId}`, freshness: meta.freshness, provenance: prov, entity: makeField(fieldId, undefined, undefined, meta) },
+    { id: '2', step: 2, node: `TRANSFORM: ${meta.transforms[0]}`, freshness: 'FRESH', provenance: 'CALC', entity: makeFunction('MAP', 'Field Mapping') },
+    { id: '3', step: 3, node: `TRANSFORM: ${meta.transforms[1]}`, freshness: 'FRESH', provenance: 'CALC', entity: makeFunction('QLT', 'Data Quality') },
+    { id: '4', step: 4, node: `DISPLAY: panel.render.${fieldId} @ ${meta.asOf.slice(11, 19)}Z`, freshness: meta.freshness, provenance: meta.stale ? 'STALE' : prov, entity: makeFunction('FLD', 'Field Catalog') },
   ];
 }
 
 export function FnLINE({ panelIdx = 0 }: { panelIdx?: number }) {
-  const [fieldId, setFieldId] = useState('PX_LAST');
+  const { panels } = useTerminalOS();
+  const suggested = panels[panelIdx]?.activeSecurity?.toUpperCase() ?? 'PX_LAST';
+  const [fieldId, setFieldId] = useState(FIELD_CATALOG[suggested] ? suggested : 'PX_LAST');
+  useEffect(() => {
+    if (!FIELD_CATALOG[suggested]) return;
+    setFieldId(suggested);
+  }, [suggested]);
   const rows = useMemo(() => lineageRows(fieldId), [fieldId]);
 
   return (

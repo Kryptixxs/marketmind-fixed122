@@ -17,6 +17,9 @@ export type EntityKind =
   | 'EVENT'
   | 'FIELD'
   | 'FUNCTION'
+  | 'MONITOR'
+  | 'WORKSPACE'
+  | 'ALERT'
   | 'ORDER'
   | 'TRADE';
 
@@ -41,8 +44,20 @@ export interface PersonPayload   { name: string; title?: string; company?: strin
 export interface HolderPayload   { name: string; pct?: number }
 export interface NewsPayload     { headline: string; src?: string; ts?: string }
 export interface EventPayload    { type: string; date: string; desc: string }
-export interface FieldPayload    { fieldName: string; value?: unknown; desc?: string }
+export interface FieldPayload    {
+  fieldName: string;
+  value?: unknown;
+  desc?: string;
+  source?: 'SIM' | 'LIVE' | 'CALC';
+  asOf?: string;
+  freshness?: 'FRESH' | 'STALE';
+  stale?: boolean;
+  transforms?: string[];
+}
 export interface FunctionPayload { code: string; title?: string }
+export interface MonitorPayload  { id: string; name: string; symbols?: string[] }
+export interface WorkspacePayload{ name: string; paneCount?: number }
+export interface AlertPayload    { id: string; rule: string; symbol?: string; field?: string }
 export interface OrderPayload    { id: string; sym?: string }
 export interface TradePayload    { id: string; sym?: string }
 
@@ -64,6 +79,9 @@ type KindToPayload = {
   EVENT:     EventPayload;
   FIELD:     FieldPayload;
   FUNCTION:  FunctionPayload;
+  MONITOR:   MonitorPayload;
+  WORKSPACE: WorkspacePayload;
+  ALERT:     AlertPayload;
   ORDER:     OrderPayload;
   TRADE:     TradePayload;
 };
@@ -109,11 +127,30 @@ export function makeNews(headline: string, src?: string, ts?: string): EntityRef
 export function makeEvent(type: string, date: string, desc: string): EntityRef<'EVENT'> {
   return { kind: 'EVENT', id: `${type}-${date}`, display: desc, payload: { type, date, desc } };
 }
-export function makeField(fieldName: string, value?: unknown, desc?: string): EntityRef<'FIELD'> {
-  return { kind: 'FIELD', id: fieldName, display: fieldName, payload: { fieldName, value, desc } };
+export function makeField(
+  fieldName: string,
+  value?: unknown,
+  desc?: string,
+  meta?: Partial<Omit<FieldPayload, 'fieldName' | 'value' | 'desc'>>,
+): EntityRef<'FIELD'> {
+  return {
+    kind: 'FIELD',
+    id: fieldName,
+    display: fieldName,
+    payload: { fieldName, value, desc, ...meta },
+  };
 }
 export function makeFunction(code: string, title?: string): EntityRef<'FUNCTION'> {
   return { kind: 'FUNCTION', id: code, display: code, payload: { code, title } };
+}
+export function makeMonitor(id: string, name: string, symbols?: string[]): EntityRef<'MONITOR'> {
+  return { kind: 'MONITOR', id, display: name, payload: { id, name, symbols } };
+}
+export function makeWorkspace(name: string, paneCount?: number): EntityRef<'WORKSPACE'> {
+  return { kind: 'WORKSPACE', id: name, display: name, payload: { name, paneCount } };
+}
+export function makeAlert(id: string, rule: string, symbol?: string, field?: string): EntityRef<'ALERT'> {
+  return { kind: 'ALERT', id, display: rule, payload: { id, rule, symbol, field } };
 }
 export function makeETF(sym: string, name?: string): EntityRef<'ETF'> {
   return { kind: 'ETF', id: sym, display: sym, payload: { sym, name } };

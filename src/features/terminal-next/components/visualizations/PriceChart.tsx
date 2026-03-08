@@ -18,9 +18,9 @@ import { useTerminalStore } from '../../store/TerminalStore';
 import { useCrosshairSync } from '../../context/CrosshairSyncContext';
 import type { IntradayBar } from '../../types';
 
-const BLOOMBERG_BLUE = '#0068FF';
-const GRID_FAINT = 'rgba(51, 51, 51, 0.4)';
-const AMBER = '#FFB000';
+const BLOOMBERG_BLUE = '#66c2ff';
+const GRID_FAINT = 'rgba(42, 57, 74, 0.72)';
+const AMBER = '#ffb000';
 
 function sma(values: number[], period: number): number[] {
   const out: number[] = [];
@@ -192,7 +192,7 @@ export const PriceChart = memo(function PriceChart({
     const chart = createChart(el, {
       layout: {
         background: { color: '#000000' },
-        textColor: '#999',
+        textColor: '#a7b7cc',
         fontFamily: '"JetBrains Mono", "Roboto Mono", monospace',
         fontSize: 11,
       },
@@ -200,12 +200,12 @@ export const PriceChart = memo(function PriceChart({
       width: w,
       height: h,
       rightPriceScale: {
-        borderColor: '#333',
+        borderColor: '#2d3b4d',
         scaleMargins: { top: 0.08, bottom: 0.32 },
         visible: true,
       },
       timeScale: {
-        borderColor: '#333',
+        borderColor: '#2d3b4d',
         timeVisible: true,
         secondsVisible: false,
       },
@@ -216,10 +216,10 @@ export const PriceChart = memo(function PriceChart({
     });
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
-      upColor: '#00C853',
-      downColor: '#FF1744',
-      borderUpColor: '#00C853',
-      borderDownColor: '#FF1744',
+      upColor: '#4ce0a5',
+      downColor: '#ff5b8a',
+      borderUpColor: '#4ce0a5',
+      borderDownColor: '#ff5b8a',
     });
     candleRef.current = candleSeries;
 
@@ -298,7 +298,7 @@ export const PriceChart = memo(function PriceChart({
     const chart = createChart(el, {
       layout: {
         background: { color: '#000000' },
-        textColor: '#888',
+        textColor: '#a7b7cc',
         fontFamily: '"JetBrains Mono", "Roboto Mono", monospace',
         fontSize: 10,
       },
@@ -306,12 +306,12 @@ export const PriceChart = memo(function PriceChart({
       width: w,
       height: h,
       rightPriceScale: {
-        borderColor: '#333',
+        borderColor: '#2d3b4d',
         scaleMargins: { top: 0.1, bottom: 0.5 },
         visible: true,
       },
       timeScale: {
-        borderColor: '#333',
+        borderColor: '#2d3b4d',
         timeVisible: true,
         secondsVisible: false,
         visible: true,

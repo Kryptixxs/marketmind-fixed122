@@ -9,37 +9,54 @@ import { appendAuditEvent } from '../commandAuditStore';
 import { intentFromMouseEvent } from '../interaction';
 import { loadPolicyState } from '../policyStore';
 import { guardRuntimeAction } from '../actionGuard';
+import { getDockLayout, getDockPaneOrder, getNextDockPane, insertPaneRelative } from '../dockLayoutStore';
 
 interface InspectorState {
   open: boolean;
   entity: EntityRef | null;
   panelIdx: number;
   pinned: boolean;
+  history: EntityRef[];
+  historyIdx: number;
 }
 
 interface DrillContextValue {
-  drill: (entity: EntityRef, intent: DrillIntent, fromPanelIdx: number) => void;
+  drill: (entity: EntityRef, intent: DrillIntent, fromPanelIdx?: number) => void;
   inspector: InspectorState;
   openInspector: (entity: EntityRef, panelIdx: number) => void;
   closeInspector: () => void;
   pinInspector: (v: boolean) => void;
+  inspectorBack: () => void;
+  inspectorForward: () => void;
 }
 
 const DrillCtx = createContext<DrillContextValue | null>(null);
 
 export function DrillProvider({ children }: { children: React.ReactNode }) {
-  const { navigatePanel, setFocusedPanel, panels } = useTerminalOS();
+  const { navigatePanel, panels, addPanel, focusedPanel } = useTerminalOS();
   const [inspector, setInspector] = useState<InspectorState>({
-    open: false, entity: null, panelIdx: 0, pinned: false,
+    open: false, entity: null, panelIdx: 0, pinned: false, history: [], historyIdx: -1,
   });
 
-  const drill = useCallback((entity: EntityRef, intent: DrillIntent, fromPanelIdx: number) => {
+  const pushInspector = useCallback((entity: EntityRef, panelIdx: number) => {
+    setInspector((s) => {
+      const base = s.historyIdx >= 0 ? s.history.slice(0, s.historyIdx + 1) : s.history;
+      const last = base[base.length - 1];
+      const nextHistory = last?.id === entity.id && last?.kind === entity.kind ? base : [...base, entity].slice(-30);
+      const nextIdx = nextHistory.length - 1;
+      return { ...s, open: true, entity, panelIdx, history: nextHistory, historyIdx: nextIdx };
+    });
+  }, []);
+
+  const drill = useCallback((entity: EntityRef, intent: DrillIntent, fromPanelIdx?: number) => {
+    const srcPanelIdx = typeof fromPanelIdx === 'number' ? fromPanelIdx : focusedPanel;
+    const normalizedIntent: DrillIntent = intent === 'OPEN_IN_NEW_PANE' ? 'OPEN_IN_NEW_PANEL' : intent;
     const policy = loadPolicyState();
-    const currentPanel = panels[fromPanelIdx];
+    const currentPanel = panels[srcPanelIdx];
     const currentMnemonic = currentPanel?.activeMnemonic ?? 'DES';
-    if (intent === 'OPEN_IN_NEW_PANEL') {
+    if (normalizedIntent === 'OPEN_IN_NEW_PANEL') {
       if (!guardRuntimeAction({
-        panelIdx: fromPanelIdx,
+        panelIdx: srcPanelIdx,
         permission: 'SEND_TO_PANEL',
         detail: 'Blocked send-to-panel drill',
         mnemonic: currentPanel?.activeMnemonic,
@@ -52,18 +69,33 @@ export function DrillProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const action = resolveLink(entity, intent, fromPanelIdx, currentMnemonic);
+    const workspace = getDockLayout().activeWorkspace;
+    const orderedPanels = getDockPaneOrder(workspace);
+    let targetPanelOverride: number | undefined;
+    if (normalizedIntent === 'OPEN_IN_NEW_PANEL') {
+      targetPanelOverride = getNextDockPane(srcPanelIdx, workspace) ?? undefined;
+      if (targetPanelOverride === undefined || targetPanelOverride === srcPanelIdx) {
+        const next = addPanel(srcPanelIdx);
+        insertPaneRelative(srcPanelIdx, next, 'tab', workspace);
+        targetPanelOverride = next;
+      }
+    }
+    const action = resolveLink(entity, normalizedIntent, srcPanelIdx, currentMnemonic, {
+      orderedPanels,
+      totalPanels: panels.length,
+      targetPanelIdx: targetPanelOverride,
+    });
 
     if (action.intent === 'INSPECT_OVERLAY' && action.inspectorEntity) {
       appendAuditEvent({
-        panelIdx: fromPanelIdx,
+        panelIdx: srcPanelIdx,
         type: 'DRILL',
         actor: 'USER',
         detail: `${entity.kind} ${entity.display} -> INSPECT`,
         mnemonic: currentMnemonic,
         security: currentPanel?.activeSecurity,
       });
-      setInspector((s) => ({ ...s, open: true, entity: action.inspectorEntity!, panelIdx: fromPanelIdx }));
+      pushInspector(action.inspectorEntity!, srcPanelIdx);
       return;
     }
 
@@ -79,7 +111,7 @@ export function DrillProvider({ children }: { children: React.ReactNode }) {
       action.sector as MarketSector | undefined,
     );
     appendAuditEvent({
-      panelIdx: fromPanelIdx,
+      panelIdx: srcPanelIdx,
       type: 'DRILL',
       actor: 'USER',
       detail: `${entity.kind} ${entity.display} -> ${action.mnemonic} ${action.security ?? ''}`.trim(),
@@ -87,25 +119,38 @@ export function DrillProvider({ children }: { children: React.ReactNode }) {
       security: action.security ?? currentPanel?.activeSecurity,
     });
 
-    if (action.intent === 'OPEN_IN_NEW_PANEL') {
-      setFocusedPanel(action.panelIdx);
-    }
-  }, [panels, navigatePanel, setFocusedPanel]);
+  }, [panels, navigatePanel, addPanel, focusedPanel, pushInspector]);
 
   const openInspector = useCallback((entity: EntityRef, panelIdx: number) => {
-    setInspector((s) => ({ ...s, open: true, entity, panelIdx }));
-  }, []);
+    pushInspector(entity, panelIdx);
+  }, [pushInspector]);
 
   const closeInspector = useCallback(() => {
-    setInspector((s) => (s.pinned ? s : { ...s, open: false, entity: null }));
+    setInspector((s) => ({ ...s, open: false, entity: null }));
   }, []);
 
   const pinInspector = useCallback((v: boolean) => {
     setInspector((s) => ({ ...s, pinned: v }));
   }, []);
 
+  const inspectorBack = useCallback(() => {
+    setInspector((s) => {
+      if (s.historyIdx <= 0) return s;
+      const idx = s.historyIdx - 1;
+      return { ...s, historyIdx: idx, entity: s.history[idx] ?? s.entity };
+    });
+  }, []);
+
+  const inspectorForward = useCallback(() => {
+    setInspector((s) => {
+      if (s.historyIdx >= s.history.length - 1) return s;
+      const idx = s.historyIdx + 1;
+      return { ...s, historyIdx: idx, entity: s.history[idx] ?? s.entity };
+    });
+  }, []);
+
   return (
-    <DrillCtx.Provider value={{ drill, inspector, openInspector, closeInspector, pinInspector }}>
+    <DrillCtx.Provider value={{ drill, inspector, openInspector, closeInspector, pinInspector, inspectorBack, inspectorForward }}>
       {children}
     </DrillCtx.Provider>
   );

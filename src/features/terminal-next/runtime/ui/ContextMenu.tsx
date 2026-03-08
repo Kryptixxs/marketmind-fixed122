@@ -29,6 +29,9 @@ const KIND_ACTIONS: Partial<Record<EntityKind, string[]>> = {
   NEWS:     ['TOP', 'CN', 'NMAP', 'NREL', 'NEX', 'NTIM', 'NQ'],
   FIELD:    ['DES', 'FA', 'LINE', 'FLD'],
   FUNCTION: ['DES', 'AUD', 'NAV', 'NX'],
+  MONITOR:  ['MON', 'MON+', 'ALRT+'],
+  WORKSPACE:['WS', 'DOCK', 'LAYOUT'],
+  ALERT:    ['ALRT', 'ALRT+', 'MON+'],
   ORDER:    ['BLTR', 'ORD'],
   TRADE:    ['BLTR'],
   EVENT:    ['EVT', 'DES'],
@@ -108,7 +111,7 @@ export function TerminalContextMenu() {
     { label: '─────────────────', action: () => {}, disabled: true },
     // Open
     { label: '▶  Open (DES)', icon: '▶', action: () => { close(); drill(entity, 'OPEN_IN_PLACE', state.panelIdx); } },
-    { label: '↗  Open in new panel', icon: '↗', action: () => { close(); drill(entity, 'OPEN_IN_NEW_PANEL', state.panelIdx); } },
+    { label: '↗  Open in new pane', icon: '↗', action: () => { close(); drill(entity, 'OPEN_IN_NEW_PANE', state.panelIdx); } },
     { label: '🔍  Inspect (overlay)', action: () => { close(); drill(entity, 'INSPECT_OVERLAY', state.panelIdx); } },
     { label: '─────────────────', action: () => {}, disabled: true },
     // Kind-specific mnemonics
@@ -122,7 +125,7 @@ export function TerminalContextMenu() {
     { label: '─────────────────', action: () => {}, disabled: true },
     // Utilities
     {
-      label: '📋  Copy symbol',
+      label: '📋  Copy ID',
       action: () => {
         close();
         const policy = loadPolicyState();
@@ -138,7 +141,7 @@ export function TerminalContextMenu() {
         })) {
           return;
         }
-        void navigator.clipboard?.writeText(sym).catch(() => {});
+        void navigator.clipboard?.writeText(entity.id || sym).catch(() => {});
       },
     },
     {

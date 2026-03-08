@@ -429,12 +429,15 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
     const streamTick = state.streamClock.feed + 1;
     const batch = buildFeedStream(streamTick, state.microstructure.sweep.active);
     const expiry = expireOverrides(state, state.tickMs);
+    const cpu = 28 + ((streamTick * 7) % 43);
+    const mem = 41 + ((streamTick * 11) % 37);
+    const healthLine = `HEALTH CPU ${cpu}% MEM ${mem}% LAT ${state.workerAnalytics?.workerLatencyMs ?? 0}ms`;
     return deriveNext(state, {
       headlines: batch.headlines,
       alerts: batch.alerts,
       executionControls: { ...state.executionControls, symbolOverrides: expiry.symbolOverrides },
       overrideAuditTrail: [...expiry.events, ...state.overrideAuditTrail],
-      systemFeed: [`FEED ROTATE -> H${streamTick}`, ...expiry.feedLines, ...state.systemFeed],
+      systemFeed: [healthLine, `FEED ROTATE -> H${streamTick}`, ...expiry.feedLines, ...state.systemFeed],
       streamClock: { ...state.streamClock, feed: streamTick },
       staged: nextStaged(state, 'feedReadyAt', state.tickMs),
     });

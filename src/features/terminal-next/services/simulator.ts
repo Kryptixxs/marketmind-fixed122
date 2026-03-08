@@ -74,8 +74,8 @@ const FULL_UNIVERSE: Array<{ symbol: string; name: string; base: number; sector:
   ...GENERATED_UNIVERSE.filter((g) => !CORE_UNIVERSE.some((c) => c.symbol === g.symbol)),
 ];
 
-/** Golden Source: 50 tickers for useMarketData / 500ms random walk */
-const UNIVERSE = FULL_UNIVERSE.slice(0, 50);
+/** Golden Source: 140 tickers for dense terminal flow */
+const UNIVERSE = FULL_UNIVERSE.slice(0, 140);
 
 const HEADLINES = [
   'ECB SPEAKERS MAINTAIN DATA-DEPENDENT GUIDANCE INTO CPI WINDOW',

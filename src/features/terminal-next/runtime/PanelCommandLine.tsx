@@ -14,8 +14,9 @@ import { checkPolicy, loadPolicyState } from './policyStore';
 import { isAllowedByRole } from './entitlementsStore';
 import { appendErrorEntry } from './errorConsoleStore';
 import { guardRuntimeAction } from './actionGuard';
-import { loadDockLayout, setDockLayout } from './dockLayoutStore';
+import { loadDockLayout, setDockLayout, insertPaneRelative, setActiveDockTab } from './dockLayoutStore';
 import { listPinItems, replacePinItems } from './pinboardStore';
+import { applyWorkstationPreset, type WorkstationPreset } from './workstationPresets';
 
 // ── universe for autocomplete ─────────────────────────────────────────────────
 const SECURITY_UNIVERSE = [
@@ -135,7 +136,7 @@ export function parseGoCommand(input: string, _currentSecurity: string, _current
 const commandInputId = (panelIdx: number) => `terminal-cmd-${panelIdx}`;
 
 export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; isFocused: boolean }) {
-  const { panels, dispatchPanel, navigatePanel, setFocusedPanel } = useTerminalOS();
+  const { panels, dispatchPanel, navigatePanel, setFocusedPanel, addPanel } = useTerminalOS();
   const p = panels[panelIdx]!;
   const inputRef = useRef<HTMLInputElement>(null);
   const [suggestOpen, setSuggestOpen] = useState(false);
@@ -254,6 +255,63 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
       dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
       return;
     }
+    if (raw.startsWith('WS:')) {
+      const tag = raw.replace(/\s+GO$/, '').slice(3).trim() as WorkstationPreset;
+      if (tag === 'MARKET-WALL' || tag === 'NEWSROOM' || tag === 'RESEARCH' || tag === 'TRADING') {
+        applyWorkstationPreset({
+          panels,
+          focusedPanel: panelIdx,
+          addPanel,
+          navigatePanel,
+          setFocusedPanel,
+          setDockLayout,
+        }, tag);
+        appendAuditEvent({ panelIdx, type: 'GO', actor: 'USER', detail: `WS:${tag}`, mnemonic: 'WS', security: p.activeSecurity });
+        dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+        return;
+      }
+    }
+    if (raw === 'HD ON' || raw === 'HD ON GO') {
+      setDockLayout({ highDensityMode: true });
+      dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+      return;
+    }
+    if (raw === 'HD OFF' || raw === 'HD OFF GO') {
+      setDockLayout({ highDensityMode: false });
+      dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+      return;
+    }
+    if (raw === 'HDL ON' || raw === 'HDL ON GO' || raw === 'LIVE ON' || raw === 'LIVE ON GO') {
+      setDockLayout({ highDensityLiveMode: true });
+      dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+      return;
+    }
+    if (raw === 'HDL OFF' || raw === 'HDL OFF GO' || raw === 'LIVE OFF' || raw === 'LIVE OFF GO') {
+      setDockLayout({ highDensityLiveMode: false });
+      dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+      return;
+    }
+    if (raw === 'NP' || raw === 'NP GO' || raw === 'NP TAB' || raw === 'NP TAB GO') {
+      const next = addPanel(panelIdx);
+      insertPaneRelative(panelIdx, next, 'tab');
+      setActiveDockTab(next);
+      dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+      return;
+    }
+    if (raw === 'NP H' || raw === 'NP H GO') {
+      const next = addPanel(panelIdx);
+      insertPaneRelative(panelIdx, next, 'split-horizontal');
+      setActiveDockTab(next);
+      dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+      return;
+    }
+    if (raw === 'NP V' || raw === 'NP V GO') {
+      const next = addPanel(panelIdx);
+      insertPaneRelative(panelIdx, next, 'split-vertical');
+      setActiveDockTab(next);
+      dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+      return;
+    }
     if (raw.startsWith('WS ')) {
       const payload = raw.replace(/\s+GO$/, '').slice(3).trim();
       try {
@@ -271,14 +329,13 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
           const existing = loadWorkspace(wsName);
           if (existing) {
             existing.panels.forEach((panelSnap, idx) => {
-              if (idx < panels.length) {
-                dispatchPanel(idx, { type: 'HYDRATE', snapshot: panelSnap });
-                if (existing.commandHistories?.[idx]) saveCommandHistory(idx, existing.commandHistories[idx]!);
-                if (idx === panelIdx && existing.commandHistories?.[idx]) cmdHistoryRef.current = existing.commandHistories[idx]!;
-              }
+              dispatchPanel(idx, { type: 'HYDRATE', snapshot: panelSnap });
+              if (existing.commandHistories?.[idx]) saveCommandHistory(idx, existing.commandHistories[idx]!);
+              if (idx === panelIdx && existing.commandHistories?.[idx]) cmdHistoryRef.current = existing.commandHistories[idx]!;
             });
             if (existing.dockLayout) setDockLayout(existing.dockLayout);
             if (existing.pins) replacePinItems(existing.pins);
+            if (typeof existing.focusedPanel === 'number') setFocusedPanel(existing.focusedPanel);
             appendAuditEvent({ panelIdx, type: 'WORKSPACE_LOAD', actor: 'USER', detail: `WS ${wsName}`, mnemonic: 'WS', security: p.activeSecurity });
           } else {
             saveWorkspace(wsName, {
@@ -340,7 +397,7 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
     navigatePanel(panelIdx, mn, sec, sector);
     appendAuditEvent({ panelIdx, type: 'GO', actor: 'USER', detail: `${cmd || p.commandInput} -> ${mn} ${sec}`.trim(), mnemonic: mn, security: sec });
     if (parsed.timeframe) dispatchPanel(panelIdx, { type: 'SET_TIMEFRAME', tf: parsed.timeframe });
-  }, [p.commandInput, p.activeSecurity, p.activeMnemonic, p.marketSector, p.timeframe, panelIdx, panels, dispatchPanel, navigatePanel]);
+  }, [p.commandInput, p.activeSecurity, p.activeMnemonic, p.marketSector, p.timeframe, panelIdx, panels, dispatchPanel, navigatePanel, addPanel, setFocusedPanel, setDockLayout]);
 
   const selectSuggestion = useCallback((item: SuggestItem) => {
     if (item.kind === 'mnemonic') {

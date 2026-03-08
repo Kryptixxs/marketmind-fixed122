@@ -2,18 +2,23 @@
 
 import React, { useMemo, useState } from 'react';
 import { DenseTable, EmptyFill, PanelSubHeader, StatusBadge, type DenseColumn } from '../primitives';
-import { FIELD_CATALOG } from '../../services/fieldCatalog';
-import { makeField } from '../entities/types';
+import { searchFieldDefs } from '../../services/fieldCatalog';
+import { makeField, makeFunction } from '../entities/types';
 import { appendAuditEvent } from '../commandAuditStore';
 import { DENSITY } from '../../constants/layoutDensity';
+import { addMonitorField } from '../monitorFieldStore';
+import { useDrill } from '../entities/DrillContext';
 
 const COLS: DenseColumn[] = [
-  { key: 'id', header: 'Field', width: '100px' },
-  { key: 'label', header: 'Definition', width: '1fr' },
-  { key: 'unit', header: 'Unit', width: '70px' },
-  { key: 'freq', header: 'Freq', width: '80px' },
-  { key: 'chart', header: 'Chart', width: '60px' },
-  { key: 'prov', header: 'Prov', width: '70px' },
+  { key: 'id', header: 'Field', width: '98px', entity: (r) => makeField(String(r.id)) },
+  { key: 'label', header: 'Label/Definition', width: '1.5fr' },
+  { key: 'unit', header: 'Unit', width: '64px' },
+  { key: 'type', header: 'Type', width: '58px' },
+  { key: 'cadence', header: 'Cadence', width: '76px' },
+  { key: 'chart', header: 'Chart', width: '52px' },
+  { key: 'assets', header: 'Assets', width: '120px' },
+  { key: 'prov', header: 'Prov', width: '56px' },
+  { key: 'usage', header: 'Used In', width: '120px' },
 ];
 
 function usageHints(fieldId: string): string {
@@ -24,39 +29,59 @@ function usageHints(fieldId: string): string {
 }
 
 export function FnFLD({ panelIdx = 0 }: { panelIdx?: number }) {
+  const { drill } = useDrill();
   const [query, setQuery] = useState('');
+  const [selectedIdx, setSelectedIdx] = useState(0);
   const rows = useMemo(() => {
-    const q = query.trim().toUpperCase();
-    return Object.values(FIELD_CATALOG)
-      .filter((f) => !q || `${f.id} ${f.label} ${f.description}`.toUpperCase().includes(q))
+    return searchFieldDefs(query)
       .map((f) => ({
         id: f.id,
-        label: `${f.label} — ${f.description}`,
+        label: `${f.label} — ${f.definition}`,
         unit: f.unit || '—',
-        freq: f.updateFreq.toUpperCase(),
+        type: f.valueType.toUpperCase(),
+        cadence: f.cadence.toUpperCase(),
         chart: f.chartable ? 'YES' : 'NO',
+        assets: f.availability.join(','),
         prov: f.provenance,
         usage: usageHints(f.id),
       }));
   }, [query]);
-
-  const usageCols: DenseColumn[] = [...COLS, { key: 'usage', header: 'Used In', width: '150px' }];
+  const selected = rows[selectedIdx] ?? rows[0];
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      <PanelSubHeader title="FLD • Field Catalog (Full)" right={<StatusBadge label="SIM/LIVE/STALE" variant="sim" />} />
+      <PanelSubHeader title="FLD • Field Finder + Catalog" right={<StatusBadge label="SIM/LIVE/STALE" variant="sim" />} />
       <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
-        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search field: beta, vwap, pe..."
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search field id, label, definition, asset..."
           className="flex-1 bg-transparent outline-none" />
-        <button type="button" onClick={() => appendAuditEvent({ panelIdx, type: 'DRILL', actor: 'USER', detail: 'FLD apply field to screener (sim)' })}>Apply→SCRN</button>
-        <button type="button" onClick={() => appendAuditEvent({ panelIdx, type: 'DRILL', actor: 'USER', detail: 'FLD add field to monitor (sim)' })}>Add→MON</button>
+        <button type="button" onClick={() => {
+          if (!selected) return;
+          addMonitorField(String(selected.id));
+          appendAuditEvent({ panelIdx, type: 'DRILL', actor: 'USER', detail: `FLD add ${selected.id} to monitor columns` });
+        }}>Add→MON</button>
+        <button type="button" onClick={() => {
+          if (!selected) return;
+          appendAuditEvent({ panelIdx, type: 'DRILL', actor: 'USER', detail: `FLD add ${selected.id} to screener` });
+        }}>Add→SCRN</button>
+        <button type="button" onClick={() => {
+          if (!selected) return;
+          appendAuditEvent({ panelIdx, type: 'DRILL', actor: 'USER', detail: `FLD chart ${selected.id}` });
+          drill(makeField(String(selected.id), 0), 'OPEN_IN_NEW_PANE', panelIdx);
+        }}>Chart</button>
+        <button type="button" onClick={() => {
+          if (!selected) return;
+          appendAuditEvent({ panelIdx, type: 'DRILL', actor: 'USER', detail: `FLD show where-used ${selected.id}` });
+          drill(makeFunction('LINE', 'Lineage'), 'OPEN_IN_NEW_PANE', panelIdx);
+        }}>Where Used</button>
       </div>
       {rows.length > 0 ? (
         <DenseTable
-          columns={usageCols}
+          columns={COLS}
           rows={rows}
           rowKey="id"
           panelIdx={panelIdx}
+          selectedRow={selectedIdx}
+          onRowClick={(row) => setSelectedIdx(rows.findIndex((r) => r.id === row.id))}
           className="flex-1 min-h-0"
           rowEntity={(r) => makeField(String(r.id), 0)}
         />

@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useMemo, useState, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
-import { PanelSubHeader } from '../primitives';
+import { DenseTable, PanelSubHeader, type DenseColumn } from '../primitives';
 import { useTerminalOS } from '../TerminalOSContext';
 import { makeSecurity } from '../entities/types';
-import { openContextMenu } from '../ui/ContextMenu';
+import { makeFieldValueEntity } from '../../services/fieldRuntime';
 
 function hash(s: string) { return Array.from(s).reduce((a, c) => a + c.charCodeAt(0), 0); }
 function seededRandom(seed: number): number {
@@ -58,79 +58,37 @@ export function FnHP({ panelIdx }: { panelIdx: number }) {
   const { panels } = useTerminalOS();
   const ticker = panels[panelIdx]!.activeSecurity.split(' ')[0] ?? 'AAPL';
   const [page, setPage] = useState(0);
-  const [sort, setSort] = useState<{ key: string; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
 
   const allRows = useMemo(() => generateHistory(ticker, 500), [ticker]);
 
-  const sorted = useMemo(() => {
-    return [...allRows].sort((a, b) => {
-      const va = a[sort.key as keyof typeof a]; const vb = b[sort.key as keyof typeof b];
-      const cmp = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb));
-      return sort.dir === 'asc' ? cmp : -cmp;
-    });
-  }, [allRows, sort]);
+  const sorted = useMemo(() => [...allRows].sort((a, b) => b.date.localeCompare(a.date)), [allRows]);
 
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
   const pageRows = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-  const toggleSort = useCallback((key: string) => {
-    setSort((s) => ({ key, dir: s.key === key && s.dir === 'asc' ? 'desc' : 'asc' }));
-    setPage(0);
-  }, []);
-
-  const COLS = [
-    { key: 'date', label: 'Date', w: '80px', align: 'left' },
-    { key: 'open', label: 'Open', w: '70px', align: 'right' },
-    { key: 'high', label: 'High', w: '70px', align: 'right' },
-    { key: 'low', label: 'Low', w: '70px', align: 'right' },
-    { key: 'close', label: 'Close', w: '70px', align: 'right' },
-    { key: 'chg', label: 'Chg', w: '60px', align: 'right' },
-    { key: 'pctChg', label: '%Chg', w: '60px', align: 'right' },
-    { key: 'vol', label: 'Volume', w: '80px', align: 'right' },
+  const cols: DenseColumn[] = [
+    { key: 'date', header: 'Date', width: '88px' },
+    { key: 'open', header: 'Open', width: '74px', align: 'right', format: (v) => Number(v).toFixed(2), entity: (r) => makeFieldValueEntity('PX_BID', r.open, { source: 'SIM' }) },
+    { key: 'high', header: 'High', width: '74px', align: 'right', format: (v) => Number(v).toFixed(2), entity: (r) => makeFieldValueEntity('52W_HIGH', r.high, { source: 'SIM' }) },
+    { key: 'low', header: 'Low', width: '74px', align: 'right', format: (v) => Number(v).toFixed(2), entity: (r) => makeFieldValueEntity('52W_LOW', r.low, { source: 'SIM' }) },
+    { key: 'close', header: 'Close', width: '74px', align: 'right', format: (v) => Number(v).toFixed(2), entity: (r) => makeFieldValueEntity('PX_LAST', r.close, { source: 'SIM', asOf: new Date(Date.now() - 2 * 60 * 1000).toISOString() }) },
+    { key: 'chg', header: 'Chg', width: '66px', align: 'right', tone: true, format: (v) => `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}`, entity: (r) => makeFieldValueEntity('PX_CHG', r.chg, { source: 'CALC' }) },
+    { key: 'pctChg', header: '%Chg', width: '70px', align: 'right', tone: true, format: (v) => `${Number(v) >= 0 ? '+' : ''}${Number(v).toFixed(2)}%`, entity: (r) => makeFieldValueEntity('PCT_CHG', r.pctChg, { source: 'CALC' }) },
+    { key: 'vol', header: 'Volume', width: '86px', align: 'right', format: (v) => Number(v) >= 1e6 ? `${(Number(v) / 1e6).toFixed(1)}M` : `${(Number(v) / 1e3).toFixed(0)}K`, entity: (r) => makeFieldValueEntity('VOLUME', r.vol, { source: 'SIM', asOf: new Date(Date.now() - 65 * 1000).toISOString() }) },
   ];
-
-  const gridCols = COLS.map((c) => c.w).join(' ');
-  const RH = DENSITY.rowHeightPx;
 
   return (
     <div className="flex flex-col h-full min-h-0" style={{ fontFamily: DENSITY.fontFamily }}>
       <PanelSubHeader title={`HP • Historical Pricing — ${ticker} — ${allRows.length} trading days`} />
-      {/* Sort header */}
-      <div className="flex-none grid select-none" style={{ gridTemplateColumns: gridCols, height: RH, background: DENSITY.bgSurfaceAlt, borderBottom: `1px solid ${DENSITY.borderColor}` }}>
-        {COLS.map((col) => (
-          <button key={col.key} type="button" onClick={() => toggleSort(col.key)}
-            style={{ padding: '0 2px', textAlign: col.align as 'left' | 'right', color: sort.key === col.key ? DENSITY.accentAmber : DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny, fontWeight: 700, textTransform: 'uppercase', background: 'none', border: 'none', cursor: 'pointer' }}>
-            {col.label}{sort.key === col.key ? (sort.dir === 'asc' ? ' ▲' : ' ▼') : ''}
-          </button>
-        ))}
-      </div>
-      {/* Data rows */}
-      <div className="flex-1 min-h-0 overflow-auto terminal-scrollbar">
-        {pageRows.map((row, ri) => {
-          const isBold = (ri + 1) % 5 === 0;
-          const entity = makeSecurity(panels[panelIdx]!.activeSecurity);
-          return (
-            <div key={row.id} className="grid items-center cursor-pointer hover:bg-[#0a1520]"
-              style={{ gridTemplateColumns: gridCols, height: RH, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: ri % 2 === 1 ? '#060606' : DENSITY.bgBase, fontWeight: isBold ? 700 : 400 }}
-              onContextMenu={(e) => openContextMenu(e, entity, panelIdx)}>
-              <span className="px-[2px]" style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny }}>{row.date}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeDefault }}>{row.open.toFixed(2)}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.accentGreen, fontSize: DENSITY.fontSizeDefault }}>{row.high.toFixed(2)}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.accentRed, fontSize: DENSITY.fontSizeDefault }}>{row.low.toFixed(2)}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault }}>{row.close.toFixed(2)}</span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: row.chg >= 0 ? DENSITY.accentGreen : DENSITY.accentRed, fontSize: DENSITY.fontSizeDefault }}>
-                {(row.chg >= 0 ? '+' : '') + row.chg.toFixed(2)}
-              </span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: row.pctChg >= 0 ? DENSITY.accentGreen : DENSITY.accentRed, fontSize: DENSITY.fontSizeDefault }}>
-                {(row.pctChg >= 0 ? '+' : '') + row.pctChg.toFixed(2) + '%'}
-              </span>
-              <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>
-                {row.vol >= 1e6 ? (row.vol / 1e6).toFixed(1) + 'M' : (row.vol / 1e3).toFixed(0) + 'K'}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+      <DenseTable
+        columns={cols}
+        rows={pageRows}
+        rowKey="id"
+        className="flex-1 min-h-0"
+        boldEveryNth={5}
+        panelIdx={panelIdx}
+        rowEntity={() => makeSecurity(panels[panelIdx]!.activeSecurity)}
+      />
       {/* Pagination */}
       <div className="flex items-center justify-between flex-none" style={{ height: 16, background: DENSITY.bgSurface, borderTop: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px` }}>
         <button type="button" disabled={page === 0} onClick={() => setPage(p => Math.max(0, p - 1))}
