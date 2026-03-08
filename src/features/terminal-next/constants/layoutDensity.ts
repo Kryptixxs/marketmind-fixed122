@@ -1,33 +1,39 @@
-export const TERMINAL_DENSITY = {
-  header: {
-    xl: 'h-[16px]',
-    lg: 'h-[14px]',
-    md: 'h-[12px]',
-    sm: 'h-[10px]',
+export const LayoutDensity = {
+  headerHeightPx: 32,
+  rowHeightPx: 24,
+  padding: {
+    xs: 4,
+    sm: 8,
+    md: 12,
+    lg: 16,
   },
-  row: {
-    lg: 'py-[2px]',
-    md: 'py-[1px]',
-    sm: 'py-[0px]',
+  typography: {
+    scale: {
+      tiny: '0.65rem',
+      small: '0.75rem',
+      base: '0.875rem',
+      large: '1rem',
+      h1: '1.25rem',
+    },
+    lineHeight: {
+      tight: 1.2,
+      normal: 1.5,
+    },
   },
-  text: {
-    xs: 'text-[7px]',
-    sm: 'text-[8px]',
-    md: 'text-[9px]',
+  colors: {
+    border: 'border-slate-800',
+    borderFocus: 'border-slate-600',
+    bgPrimary: 'bg-slate-950',
+    bgSecondary: 'bg-slate-900',
+    textPrimary: 'text-slate-200',
+    textSecondary: 'text-slate-400',
+    textMuted: 'text-slate-500',
   },
-  gap: {
-    px: 'gap-px',
-    xxs: 'gap-[1px]',
-    xs: 'gap-[2px]',
+  spacing: {
+    unit: 4,
+    gap: 8,
   },
-  paddingX: {
-    tight: 'px-[2px]',
-    compact: 'px-[3px]',
-  },
-  border: {
-    tone: 'border-[#111]',
-  },
-} as const;
+};
 
 export const TERMINAL_STRUCTURE_POLICY = {
   bandRows: 'grid-rows-[0.25fr_0.45fr_0.30fr]',

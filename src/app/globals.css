@@ -96,14 +96,27 @@
   border-bottom-color: rgba(64, 92, 140, 0.35);
 }
 
+/* ── Global reset: no letterbox ── */
 html, body {
-  height: 100dvh;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  height: 100%;
+  min-height: 100dvh;
+}
+
+body {
+  height: 100%;
+  min-height: 100dvh;
   width: 100%;
   background-color: var(--color-background);
   color: var(--color-text-primary);
   font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.15;
+  font-size: clamp(11px, 1.2vw, 13px);
+  line-height: 1.25;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow: hidden;
@@ -250,6 +263,25 @@ html, body {
   background: var(--color-text-tertiary);
 }
 
+/* ── Terminal: ultra-thin 4px scrollbars ── */
+.terminal-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.terminal-scrollbar::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+.terminal-scrollbar::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 0;
+}
+
+.terminal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
 /* ── Resize Handles ── */
 [data-panel-group-direction="horizontal"] > [data-resize-handle] {
   width: 1px !important;
@@ -330,6 +362,16 @@ html, body {
 @keyframes ticker-scroll {
   0% { transform: translateX(0); }
   100% { transform: translateX(-50%); }
+}
+
+@keyframes ticker-scroll-h {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes ticker-scroll-v {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
 }
 
 .animate-slide-up {
@@ -425,4 +467,67 @@ html, body {
 
 .flash-negative {
   animation: flash-red 0.6s ease-out;
+}
+
+/* ── SuperTable high-density: neon flash ── */
+@keyframes super-flash-up {
+  0% { background-color: rgba(0, 255, 0, 0.4); }
+  100% { background-color: rgba(0, 255, 0, 0.07); }
+}
+
+@keyframes super-flash-down {
+  0% { background-color: rgba(255, 0, 0, 0.4); }
+  100% { background-color: rgba(255, 0, 0, 0.07); }
+}
+
+.super-table-flash-up {
+  animation: super-flash-up 0.4s ease-out;
+}
+
+.super-table-flash-down {
+  animation: super-flash-down 0.4s ease-out;
+}
+
+/* ── High-Density (Bloomberg-style) Palette ── */
+.hd-panel,
+.super-table,
+.ticker-strip,
+.macro-panel {
+  --hd-bg: #000000;
+  --hd-positive: #00FF00;
+  --hd-negative: #FF0000;
+  --hd-label: #5a6b7a;
+  --hd-value: #b0b8c4;
+  --hd-border: #1a1a1a;
+}
+
+/* ── CRT / Scanline overlay (Alt+S to toggle) ── */
+.crt-overlay::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.12) 2px,
+    rgba(0, 0, 0, 0.12) 4px
+  );
+  opacity: 0.6;
+}
+
+.crt-overlay::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 80% 50% at 50% 50%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.15) 100%
+  );
+  opacity: 0.5;
 }

@@ -18,6 +18,7 @@ import { deriveRiskSnapshot } from '../selectors/riskSelectors';
 import { buildMarketDataModel } from '../modules/market/buildMarketDataModel';
 import { buildExecutionContextFromMarket, toMacroExecutionState } from '../modules/market/buildExecutionContextFromMarket';
 import { selectExecutionPolicy } from '../selectors/executionContextSelectors';
+import { loadPersistedState, savePersistedState } from '../services/terminalPersistence';
 
 type TerminalAction =
   | { type: 'TICK_QUOTES' }
@@ -566,8 +567,27 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
   return state;
 }
 
+function mergeInitialState(base: TerminalState): TerminalState {
+  const persisted = loadPersistedState();
+  if (!persisted.activeSymbol && !persisted.functionCode && !persisted.activeFunction) return base;
+  const [ticker, market = ''] = (persisted.activeSymbol ?? base.activeSymbol).split(' ');
+  const assetClass = market === 'Index' ? 'EQUITY' : market === 'Curncy' ? 'CURNCY' : market === 'Govt' ? 'GOVT' : 'EQUITY';
+  const functionCode = (persisted.functionCode ?? base.functionCode) as FunctionCode;
+  const activeFunction = (persisted.activeFunction ?? toActiveFunction(functionCode)) as TerminalFunction;
+  const activeSymbol = persisted.activeSymbol ?? base.activeSymbol;
+  const commandInput = `${activeSymbol} ${activeFunction} GO`;
+  return {
+    ...base,
+    activeSymbol,
+    commandInput,
+    functionCode,
+    activeFunction,
+    security: { ticker: ticker || base.security.ticker, market: market || base.security.market, assetClass },
+  };
+}
+
 export function TerminalProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(terminalReducer, initialState);
+  const [state, dispatch] = useReducer(terminalReducer, undefined, () => mergeInitialState(initialState));
 
   useEffect(() => {
     dispatch({ type: 'TICK_QUOTES' });
@@ -604,6 +624,19 @@ export function TerminalProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [dispatch, state.activeFunction]);
+
+  useEffect(() => {
+    savePersistedState({ activeSymbol: state.activeSymbol, functionCode: state.functionCode, activeFunction: state.activeFunction });
+  }, [state.activeSymbol, state.functionCode, state.activeFunction]);
+
+  useEffect(() => {
+    const onSymbolChange = (e: Event) => {
+      const sym = (e as CustomEvent<string>).detail;
+      if (sym) dispatch({ type: 'SET_SYMBOL', payload: sym.includes(' ') ? sym : `${sym} US` });
+    };
+    window.addEventListener('vantage-symbol-change', onSymbolChange);
+    return () => window.removeEventListener('vantage-symbol-change', onSymbolChange);
+  }, [dispatch]);
 
   const value = useMemo<TerminalContextType>(() => {
     const adv = state.quotes.filter((q) => q.pct > 0).length;

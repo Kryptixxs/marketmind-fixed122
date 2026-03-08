@@ -1,62 +1,60 @@
 'use client';
 
 import React from 'react';
-import { TerminalModuleFrame } from './structure/TerminalModuleFrame';
-import { TerminalModuleDefinition, TerminalFunction } from '../types';
+import { TerminalFunction } from '../types';
 import { useTerminalStore } from '../store/TerminalStore';
-import { BondAnalyticsModule } from './modules/BondAnalyticsModule';
-import { CalendarModule } from './modules/CalendarModule';
-import { DescriptionModule } from './modules/DescriptionModule';
-import { EarningsModule } from './modules/EarningsModule';
-import { ExecutionCockpitModule } from './modules/ExecutionCockpitModule';
-import { FinancialAnalysisModule } from './modules/FinancialAnalysisModule';
-import { HistoricalPricingModule } from './modules/HistoricalPricingModule';
-import { IntelModule } from './modules/IntelModule';
-import { MarketModule } from './modules/MarketModule';
-import { NewsModule } from './modules/NewsModule';
-import { OptionsAnalyticsModule } from './modules/OptionsAnalyticsModule';
-import { PortfolioModule } from './modules/PortfolioModule';
-import { SecFilingsModule } from './modules/SecFilingsModule';
+import { TerminalRuntimeSkeleton } from '../runtime/TerminalRuntimeSkeleton';
+import { MarketTerminalModule } from '../modules/market/MarketModule';
+
+const MODULE_TITLES: Record<TerminalFunction, string> = {
+  EXEC: 'EXECUTION COCKPIT',
+  DES: 'DESCRIPTION',
+  FA: 'FINANCIAL ANALYSIS',
+  HP: 'HISTORICAL PRICING',
+  WEI: 'EARNINGS INTELLIGENCE',
+  YAS: 'YIELD & SPREAD ANALYTICS',
+  OVME: 'OPTIONS VOLATILITY',
+  PORT: 'PORTFOLIO INTELLIGENCE',
+  NEWS: 'NEWS & EVENT INTELLIGENCE',
+  CAL: 'CALENDAR CATALYST',
+  SEC: 'SEC FILINGS INTELLIGENCE',
+  MKT: 'MARKET CONTEXT',
+  INTEL: 'RELATIONSHIP INTEL',
+};
+
+const MODULE_DECISION_PROMPTS: Record<TerminalFunction, string> = {
+  EXEC: 'What is the execution strategy for the active symbol?',
+  DES: 'What are the key attributes of the security?',
+  FA: 'What fundamental factors drive valuation?',
+  HP: 'What is the historical price context?',
+  WEI: 'What earnings catalysts matter?',
+  YAS: 'What yield and spread dynamics apply?',
+  OVME: 'What volatility regime and Greeks matter?',
+  PORT: 'What is the exposure and risk profile?',
+  NEWS: 'What events affect the symbol?',
+  CAL: 'What catalysts are upcoming?',
+  SEC: 'What filings and ownership matter?',
+  MKT: 'What is the current macro regime and symbol impact?',
+  INTEL: 'What relationships and entities matter?',
+};
 
 export function FunctionRouter({ activeFunction }: { activeFunction: TerminalFunction }) {
   const { state } = useTerminalStore();
-  const componentByFunction: Record<TerminalFunction, React.ComponentType> = {
-    EXEC: ExecutionCockpitModule,
-    DES: DescriptionModule,
-    FA: FinancialAnalysisModule,
-    INTEL: IntelModule,
-    HP: HistoricalPricingModule,
-    WEI: EarningsModule,
-    YAS: BondAnalyticsModule,
-    OVME: OptionsAnalyticsModule,
-    PORT: PortfolioModule,
-    NEWS: NewsModule,
-    CAL: CalendarModule,
-    SEC: SecFilingsModule,
-    MKT: MarketModule,
-  };
-  const Active = componentByFunction[activeFunction] ?? ExecutionCockpitModule;
-  if (activeFunction === 'MKT') return <Active key={`module-${activeFunction}`} />;
 
-  const definition: TerminalModuleDefinition = {
-    code: activeFunction,
-    primaryDecision: `${activeFunction} CONTEXT ACTIVE FOR ${state.activeSymbol}`,
-    bands: {
-      primary: {
-        key: 'primary',
-        panels: [
-          {
-            id: `${activeFunction}-workspace`,
-            type: 'SNAPSHOT',
-            question: `What is primary objective of ${activeFunction}?`,
-            priority: 100,
-            content: <Active key={`module-${activeFunction}`} />,
-          },
-        ],
-      },
-      secondary: { key: 'secondary', panels: [] },
-      tertiary: { key: 'tertiary', panels: [] },
-    },
-  };
-  return <TerminalModuleFrame definition={definition} />;
+  // MKT is migrated; use the real module (which uses TerminalRuntime internally)
+  if (activeFunction === 'MKT') {
+    return <MarketTerminalModule className="flex-1 min-w-0 min-h-0" />;
+  }
+
+  // All other modules: runtime skeleton with "Module not migrated yet"
+  // Runtime controls size, scroll, collapse, and block limits — no black void
+  return (
+    <TerminalRuntimeSkeleton
+      moduleCode={activeFunction}
+      moduleTitle={MODULE_TITLES[activeFunction]}
+      decisionPrompt={MODULE_DECISION_PROMPTS[activeFunction]}
+      notMigrated
+      className="flex-1 min-w-0 min-h-0"
+    />
+  );
 }
