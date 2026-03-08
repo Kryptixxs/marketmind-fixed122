@@ -263,5 +263,5 @@ export function PanelFiller({ panelIdx }: { panelIdx: number }) {
     const mk = blockFactories[i % blockFactories.length]!;
     repeated.push(<React.Fragment key={`fill-${panelIdx}-${p.activeMnemonic}-${i}`}>{mk()}</React.Fragment>);
   }
-  return <div className="flex flex-col">{repeated}<HintStrip /></div>;
+  return <div className="flex flex-col min-h-0">{repeated}</div>;
 }

@@ -72,9 +72,9 @@ export function FnRELG({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="RELG • Relationship Graph" right={<StatusBadge label="SIM GRAPH" variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input className="flex-1 bg-transparent outline-none" value={center} onChange={(e) => setCenter(e.target.value.toUpperCase())} />
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as 'ALL' | RelEdgeType)} style={{ background: '#000', border: '1px solid #222' }}>
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as 'ALL' | RelEdgeType)} style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}` }}>
           <option value="ALL">ALL</option>
           <option value="supplier-of">supplier-of</option>
           <option value="customer-of">customer-of</option>
@@ -148,8 +148,8 @@ export function FnEVID({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="EVID • Evidence Panel" right={<StatusBadge label={edgeId} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
-        <select value={edgeId} onChange={(e) => setEdgeId(e.target.value)} style={{ background: '#000', border: '1px solid #222' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+        <select value={edgeId} onChange={(e) => setEdgeId(e.target.value)} style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}` }}>
           {listRelEdges().map((e) => <option key={e.id} value={e.id}>{e.id} {e.type}</option>)}
         </select>
       </div>
@@ -186,7 +186,7 @@ export function FnPATH({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="PATH • Causal Path Explorer" right={<StatusBadge label="SIM PATH" variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input className="flex-1 bg-transparent outline-none" value={from} onChange={(e) => setFrom(e.target.value.toUpperCase())} />
         <span style={{ color: DENSITY.textMuted }}>→</span>
         <input className="flex-1 bg-transparent outline-none" value={to} onChange={(e) => setTo(e.target.value.toUpperCase())} />
@@ -220,7 +220,7 @@ export function FnBASK({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="BASK • Basket Builder" right={<StatusBadge label={mode} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <button type="button" onClick={() => setMode('SUPPLIERS')}>SUPPLIERS</button>
         <button type="button" onClick={() => setMode('PEERS')}>PEERS</button>
         <button type="button" onClick={() => setMode('OIL')}>OIL-SENSITIVE</button>

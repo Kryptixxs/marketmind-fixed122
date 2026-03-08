@@ -14,7 +14,7 @@ export function FnORD({ panelIdx }: { panelIdx: number }) {
   const [orderType, setOrderType] = useState<'MKT' | 'LMT'>('MKT');
   const [submitted, setSubmitted] = useState(false);
 
-  const fieldStyle: React.CSSProperties = { background: '#111', border: `1px solid ${DENSITY.borderColor}`, color: DENSITY.accentAmber, padding: '1px 4px', fontSize: DENSITY.fontSizeDefault, fontFamily: DENSITY.fontFamily, width: '100%', outline: 'none' };
+  const fieldStyle: React.CSSProperties = { background: DENSITY.bgSurface, border: `1px solid ${DENSITY.borderColor}`, color: DENSITY.accentAmber, padding: '1px 4px', fontSize: DENSITY.fontSizeDefault, fontFamily: DENSITY.fontFamily, width: '100%', outline: 'none' };
 
   return (
     <div className="flex flex-col h-full min-h-0">

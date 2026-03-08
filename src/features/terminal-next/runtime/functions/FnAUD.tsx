@@ -50,7 +50,7 @@ export function FnAUD({ panelIdx = 0 }: { panelIdx?: number }) {
       <PanelSubHeader title="AUD • Command / Action Log" right={<StatusBadge label="LOCAL" variant="sim" />} />
       <div className="flex items-center flex-none" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px` }}>
         <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as typeof typeFilter)}
-          style={{ marginRight: 6, background: '#000', color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}>
+          style={{ marginRight: 6, background: DENSITY.bgBase, color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}>
           <option value="ALL">ALL</option>
           <option value="GO">GO</option>
           <option value="DRILL">DRILL</option>
@@ -66,7 +66,7 @@ export function FnAUD({ panelIdx = 0 }: { panelIdx?: number }) {
           <option value="NAV_JUMP">NAV_JUMP</option>
         </select>
         <select value={panelFilter} onChange={(e) => setPanelFilter(e.target.value as typeof panelFilter)}
-          style={{ marginRight: 6, background: '#000', color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}>
+          style={{ marginRight: 6, background: DENSITY.bgBase, color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}>
           <option value="ALL">P:ALL</option>
           <option value="1">P1</option>
           <option value="2">P2</option>
@@ -74,7 +74,7 @@ export function FnAUD({ panelIdx = 0 }: { panelIdx?: number }) {
           <option value="4">P4</option>
         </select>
         <select value={sinceMins} onChange={(e) => setSinceMins(e.target.value as typeof sinceMins)}
-          style={{ marginRight: 6, background: '#000', color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}>
+          style={{ marginRight: 6, background: DENSITY.bgBase, color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}>
           <option value="15">15m</option>
           <option value="60">1h</option>
           <option value="240">4h</option>

@@ -314,7 +314,7 @@ export function PanelMenuOverlay({ panelIdx }: { panelIdx: number }) {
   const selectable = rows.filter((r): r is Exclude<MenuRow, { kind: 'header' }> => r.kind !== 'header');
 
   return (
-    <div className="absolute inset-0 z-30" style={{ background: '#000000f0', fontFamily: DENSITY.fontFamily }}>
+    <div className="absolute inset-0 z-30" style={{ background: `${DENSITY.bgBase}f0`, fontFamily: DENSITY.fontFamily }}>
       {/* Header */}
       <div style={{ padding: `${DENSITY.pad2}px ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.borderColor}` }}>
         <div style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, fontWeight: 700 }}>
@@ -364,7 +364,7 @@ export function PanelMenuOverlay({ panelIdx }: { panelIdx: number }) {
               key={`${row.kind}-${row.label}`}
               type="button"
               className="w-full text-left flex items-center hover:bg-[#1a2a3a]"
-              style={{ height: DENSITY.rowHeightPx + 2, padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: active ? '#1a2a3a' : 'none', cursor: 'pointer' }}
+              style={{ height: DENSITY.rowHeightPx + 2, padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: active ? DENSITY.rowSelectedBg : 'none', cursor: 'pointer' }}
               onMouseEnter={() => setCursor(idx)}
               onClick={() => { row.run('OPEN_IN_PLACE'); dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'none' }); }}
             >
@@ -391,7 +391,7 @@ export function PanelHelpOverlay({ panelIdx }: { panelIdx: number }) {
   const catDef = getCatalogMnemonic(p.activeMnemonic);
 
   return (
-    <div className="absolute inset-0 z-30 overflow-auto" style={{ background: '#000000f0', fontFamily: DENSITY.fontFamily, padding: DENSITY.pad4 }}>
+    <div className="absolute inset-0 z-30 overflow-auto" style={{ background: `${DENSITY.bgBase}f0`, fontFamily: DENSITY.fontFamily, padding: DENSITY.pad4 }}>
       <div style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeHeader, borderBottom: `1px solid ${DENSITY.borderColor}`, paddingBottom: 2, marginBottom: 4 }}>
         {isDeskMode ? 'HELP DESK' : `HELP — ${p.activeMnemonic}`}
       </div>

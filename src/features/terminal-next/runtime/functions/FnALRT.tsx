@@ -56,7 +56,7 @@ export function FnALRT({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="ALRT • Alerts Monitor" />
-      <div className="flex items-center flex-none" style={{ height: DENSITY.commandBarHeightPx, background: '#111', borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 4 }}>
+      <div className="flex items-center flex-none" style={{ height: DENSITY.commandBarHeightPx, background: DENSITY.bgSurface, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 4 }}>
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); }}
           placeholder="ALERT IF SPY > 510" className="flex-1 bg-transparent outline-none" style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeDefault, fontFamily: DENSITY.fontFamily }} />
         <button type="button" onClick={handleAdd} style={{ color: DENSITY.accentGreen, fontSize: DENSITY.fontSizeTiny }}>ADD</button>

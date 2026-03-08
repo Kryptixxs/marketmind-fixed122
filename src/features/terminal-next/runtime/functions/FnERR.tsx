@@ -1,5 +1,6 @@
 'use client';
 
+import { DENSITY } from '../../constants/layoutDensity';
 import React, { useMemo, useState } from 'react';
 import { DenseTable, EmptyFill, PanelSubHeader, StatusBadge, type DenseColumn } from '../primitives';
 import { listErrorEntries } from '../errorConsoleStore';
@@ -33,7 +34,7 @@ export function FnERR({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="ERR • Error Console" right={<StatusBadge label={rows.length ? `${rows.length}` : '0'} variant={rows.length ? 'stale' : 'live'} />} />
-      <div className="flex items-center flex-none" style={{ height: 18, borderBottom: '1px solid #111', padding: '0 4px' }}>
+      <div className="flex items-center flex-none" style={{ height: 18, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: '0 4px' }}>
         <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by kind, message, recovery..."
           className="flex-1 bg-transparent outline-none" />
       </div>

@@ -83,7 +83,7 @@ export function FnMAC({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="MAC • Macro Recorder" right={<StatusBadge label={`${rows.length} MACROS`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Macro name" className="flex-1 bg-transparent outline-none" />
         <input value={steps} onChange={(e) => setSteps(e.target.value)} placeholder="AAPL DES GO; CN GO; GP 1Y GO" className="flex-[2] bg-transparent outline-none" />
         <button type="button" onClick={captureRecent}>CAPTURE</button>
@@ -91,9 +91,9 @@ export function FnMAC({ panelIdx = 0 }: { panelIdx?: number }) {
       </div>
       {rows.length ? <DenseTable columns={cols} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" onRowClick={(r) => run(String(r.id))} rowEntity={() => makeFunction('JOB', 'Schedule macro')} /> : <EmptyFill hint="NO MACROS — SAVE A COMMAND CHAIN" />}
       {rows.length > 0 && (
-        <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderTop: '1px solid #111' }}>
+        <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderTop: `1px solid ${DENSITY.gridlineColor}` }}>
           <span style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>Select macro ID to schedule hourly:</span>
-          <select defaultValue="" onChange={(e) => { if (e.target.value) schedule(e.target.value); e.target.value = ''; }} style={{ background: '#000', border: '1px solid #222' }}>
+          <select defaultValue="" onChange={(e) => { if (e.target.value) schedule(e.target.value); e.target.value = ''; }} style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}` }}>
             <option value="">Choose...</option>
             {rows.map((r) => <option key={String(r.id)} value={String(r.id)}>{String(r.name)}</option>)}
           </select>
@@ -143,9 +143,9 @@ export function FnJOB({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="JOB • Scheduled Jobs (Sim)" right={<StatusBadge label={`${rows.length} JOBS`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Job name" className="flex-1 bg-transparent outline-none" />
-        <select value={schedule} onChange={(e) => setSchedule(e.target.value)} style={{ background: '#000', border: '1px solid #222' }}>
+        <select value={schedule} onChange={(e) => setSchedule(e.target.value)} style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}` }}>
           <option>HOURLY</option><option>EOD</option><option>OPEN</option>
         </select>
         <button type="button" onClick={add}>ADD</button>
@@ -186,7 +186,7 @@ export function FnHOT({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="HOT • Hotkey Editor" right={<StatusBadge label="KEYBOARD-FIRST" variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input value={keybind} onChange={(e) => setKeybind(e.target.value)} placeholder="Ctrl+Shift+1" className="flex-1 bg-transparent outline-none" />
         <input value={target} onChange={(e) => setTarget(e.target.value.toUpperCase())} placeholder="Mnemonic" className="w-24 bg-transparent outline-none" />
         <button type="button" onClick={add}>BIND</button>
@@ -223,7 +223,7 @@ export function FnTPL({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="TPL • Layout Templates" right={<StatusBadge label={`${rows.length} TEMPLATES`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Template name" className="flex-1 bg-transparent outline-none" />
         <button type="button" onClick={saveCurrent}>SAVE CURRENT</button>
       </div>
@@ -267,7 +267,7 @@ export function FnRPT({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="RPT • Report Builder" right={<StatusBadge label={`${rows.length} REPORTS`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Report title" className="flex-1 bg-transparent outline-none" />
         <input value={sections} onChange={(e) => setSections(e.target.value)} placeholder="DES,HP,CN,OWN" className="flex-[2] bg-transparent outline-none" />
         <button type="button" onClick={build}>BUILD</button>
@@ -305,8 +305,8 @@ export function FnEXP({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="EXP • Export Center" right={<StatusBadge label={`${rows.length} EXPORTS`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
-        <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)} style={{ background: '#000', border: '1px solid #222' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+        <select value={kindFilter} onChange={(e) => setKindFilter(e.target.value)} style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}` }}>
           <option value="ALL">ALL</option>
           <option value="REPORT">REPORT</option>
           <option value="GRAB+">GRAB+</option>
@@ -339,7 +339,7 @@ export function FnGRABPlus({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="GRAB+ • Screenshot + Annotation" right={<StatusBadge label="SIM CLIPS" variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="tags csv" className="w-36 bg-transparent outline-none" />
         <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="Annotation note..." className="flex-1 bg-transparent outline-none" />
         <button type="button" onClick={grab}>SAVE CLIP</button>
@@ -360,7 +360,7 @@ export function FnCLIP({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="CLIP • Clip Library" right={<StatusBadge label={`${rows.length} CLIPS`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} placeholder="Filter by tag..." className="flex-1 bg-transparent outline-none" />
       </div>
       {rows.length ? (

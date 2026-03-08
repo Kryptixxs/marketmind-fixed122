@@ -159,9 +159,9 @@ export function FnMON({ panelIdx }: { panelIdx: number }) {
     <div className="flex flex-col h-full min-h-0" style={{ fontFamily: DENSITY.fontFamily }}>
       <PanelSubHeader title="MON • Monitor / Watchlist" />
       <div className="flex items-center flex-none"
-        style={{ height: DENSITY.commandBarHeightPx, background: '#111', borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 4 }}>
+        style={{ height: DENSITY.commandBarHeightPx, background: DENSITY.bgSurface, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 4 }}>
         <select value={activeList} onChange={(e) => setActiveList(e.target.value)}
-          style={{ background: '#000', border: `1px solid ${DENSITY.borderColor}`, color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny, height: DENSITY.rowHeightPx }}>
+          style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}`, color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny, height: DENSITY.rowHeightPx }}>
           {Object.keys(lists).sort().map((name) => <option key={name} value={name}>{name}</option>)}
         </select>
         <input value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') addSym(); }}
@@ -171,7 +171,7 @@ export function FnMON({ panelIdx }: { panelIdx: number }) {
         <button type="button" onClick={createList} style={{ color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeTiny, background: 'none', border: `1px solid ${DENSITY.accentCyan}`, padding: '0 4px', cursor: 'pointer' }}>NEW LIST</button>
         <button type="button" onClick={exportList} style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny, background: 'none', border: `1px solid ${DENSITY.borderColor}`, padding: '0 4px', cursor: 'pointer' }}>EXPORT</button>
       </div>
-      <div className="flex items-center flex-none" style={{ height: DENSITY.rowHeightPx + 2, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 4, background: '#090909' }}>
+      <div className="flex items-center flex-none" style={{ height: DENSITY.rowHeightPx + 2, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 4, background: DENSITY.bgBase }}>
         <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter..."
           className="flex-1 bg-transparent outline-none"
           style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny, fontFamily: DENSITY.fontFamily }} />
@@ -220,7 +220,7 @@ export function FnMON({ panelIdx }: { panelIdx: number }) {
           const entity = makeSecurity(row.sym, row.ticker);
           return (
             <div key={row.sym} className="grid items-center cursor-pointer hover:bg-[#0a1520]"
-              style={{ gridTemplateColumns: `1fr ${monitorFields.map(() => '80px').join(' ')} 16px`, height: DENSITY.rowHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: ri === selectedIdx ? '#1a2a3a' : ri % 2 === 1 ? '#060606' : DENSITY.bgBase }}
+              style={{ gridTemplateColumns: `1fr ${monitorFields.map(() => '80px').join(' ')} 16px`, height: DENSITY.rowHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: ri === selectedIdx ? DENSITY.rowSelectedBg : ri % 2 === 1 ? DENSITY.rowZebra : DENSITY.bgBase }}
               onClick={(e) => { setSelectedIdx(ri); drill(entity, intentFromMouseEvent(e), panelIdx); }}
               onContextMenu={(e) => openContextMenu(e, entity, panelIdx)}
               title={INTERACTION_HINT}>
@@ -300,7 +300,7 @@ export function FnWS({ panelIdx }: { panelIdx: number }) {
     <div className="flex flex-col h-full min-h-0" style={{ fontFamily: DENSITY.fontFamily }}>
       <PanelSubHeader title="WS • Workspaces" />
       <div className="flex items-center flex-none"
-        style={{ height: DENSITY.commandBarHeightPx, background: '#111', borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 4 }}>
+        style={{ height: DENSITY.commandBarHeightPx, background: DENSITY.bgSurface, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 4 }}>
         <input value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') doSave(); }}
           placeholder="Workspace name (Enter to save current layout)"
           className="flex-1 bg-transparent outline-none" style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeDefault, fontFamily: DENSITY.fontFamily }} />

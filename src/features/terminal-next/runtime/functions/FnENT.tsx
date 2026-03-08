@@ -39,8 +39,8 @@ export function FnENT({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="ENT • Entitlements Matrix" right={<StatusBadge label={policy.activeRole} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: 17, borderBottom: '1px solid #111' }}>
-        <span style={{ color: '#93a9c6', fontSize: 9 }}>Active role:</span>
+      <div className="flex items-center gap-2 px-1" style={{ height: 17, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+        <span style={{ color: DENSITY.textSecondary, fontSize: 9 }}>Active role:</span>
         <select
           value={policy.activeRole}
           onChange={(e) => {
@@ -48,7 +48,7 @@ export function FnENT({ panelIdx = 0 }: { panelIdx?: number }) {
             appendAuditEvent({ panelIdx, type: 'POLICY_CHANGE', actor: 'USER', detail: `ENT active role ${e.target.value}`, mnemonic: 'ENT' });
             setRefresh((v) => v + 1);
           }}
-          style={{ background: '#000', border: '1px solid #222', color: '#e6e6e6', fontSize: 9 }}
+          style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}`, color: DENSITY.textPrimary, fontSize: 9 }}
         >
           {roles.map((r) => <option key={r.id} value={r.id}>{r.id}</option>)}
         </select>

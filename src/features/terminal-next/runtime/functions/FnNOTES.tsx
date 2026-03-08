@@ -37,7 +37,7 @@ export function FnNOTES({ panelIdx }: { panelIdx: number }) {
           <EmptyFill hint="NO NOTES FOR THIS SECURITY" />
         ) : notes.map((n, i) => (
           <div key={n.id} className="flex items-center gap-1"
-            style={{ minHeight: DENSITY.rowHeightPx + 2, padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: i % 2 ? '#060606' : DENSITY.bgBase }}>
+            style={{ minHeight: DENSITY.rowHeightPx + 2, padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: i % 2 ? DENSITY.rowZebra : DENSITY.bgBase }}>
             <span className="flex-1" style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault }}>{n.text}</span>
             <span style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>{new Date(n.updatedAt).toLocaleDateString()}</span>
             <button type="button" onClick={() => { deleteSecurityNote(security, n.id); setRefreshTick((v) => v + 1); }}

@@ -66,7 +66,7 @@ export function FnIB({ panelIdx = 0 }: { panelIdx?: number }) {
           </div>
         ))}
       </div>
-      <div className="flex items-center flex-none" style={{ height: DENSITY.commandBarHeightPx, background: '#111', borderTop: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 4 }}>
+      <div className="flex items-center flex-none" style={{ height: DENSITY.commandBarHeightPx, background: DENSITY.bgSurface, borderTop: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, gap: 4 }}>
         <button type="button" onClick={() => setWithContext((v) => !v)}
           style={{ color: withContext ? DENSITY.accentCyan : DENSITY.textMuted, border: `1px solid ${withContext ? DENSITY.accentCyan : DENSITY.borderColor}`, background: 'none', fontSize: DENSITY.fontSizeTiny, padding: '0 4px', cursor: 'pointer' }}
           title="Attach current security/function context">

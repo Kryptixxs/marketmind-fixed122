@@ -58,6 +58,28 @@ export const DENSITY = {
 
 export type DensityTokens = typeof DENSITY;
 
+/** Canonical style for <input> and <select> elements — use instead of hardcoded #000/#222 */
+export const inputStyle = {
+  background: DENSITY.bgBase,
+  border: `1px solid ${DENSITY.borderColor}`,
+  color: DENSITY.textPrimary,
+  fontSize: DENSITY.fontSizeTiny,
+  fontFamily: DENSITY.fontFamily,
+  outline: 'none',
+} as const satisfies React.CSSProperties;
+
+/** Style for interactive toolbar/filter buttons */
+export const toolbarBtnStyle = (active = false): React.CSSProperties => ({
+  background: active ? DENSITY.accentAmber : DENSITY.bgSurfaceAlt,
+  color: active ? '#000' : DENSITY.textSecondary,
+  border: `1px solid ${active ? DENSITY.accentAmber : DENSITY.borderColor}`,
+  fontSize: DENSITY.fontSizeTiny,
+  fontFamily: DENSITY.fontFamily,
+  padding: '2px 8px',
+  cursor: 'pointer',
+  fontWeight: active ? 700 : 400,
+});
+
 export const TERMINAL_STRUCTURE_POLICY = {
   bandRows: 'grid-rows-[2fr_1fr_1fr]',
   maxPanels: {

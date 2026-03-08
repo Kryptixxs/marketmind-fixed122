@@ -128,7 +128,7 @@ export function FnCOLS({ panelIdx = 0 }: { panelIdx?: number }) {
             setActiveSet(getActiveColumnSet(next));
             setRefresh((v) => v + 1);
           }}
-          style={{ background: '#000', color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}
+          style={{ background: DENSITY.bgBase, color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}
         >
           {Object.values(MNEMONIC_DEFS).slice(0, 60).map((m) => <option key={m.code} value={m.code}>{m.code}</option>)}
         </select>

@@ -98,7 +98,7 @@ export function FnPOL({ panelIdx = 0 }: { panelIdx?: number }) {
         <select
           value={actionFilter}
           onChange={(e) => setActionFilter(e.target.value as typeof actionFilter)}
-          style={{ background: '#000', color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}
+          style={{ background: DENSITY.bgBase, color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}
         >
           <option value="ALL">ALL ACTIONS</option>
           <option value="EXPORT">EXPORT</option>

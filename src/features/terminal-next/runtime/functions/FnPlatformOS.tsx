@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { DENSITY } from '../../constants/layoutDensity';
+import { DENSITY, inputStyle } from '../../constants/layoutDensity';
 import { useTerminalOS } from '../TerminalOSContext';
 import { DenseTable, EmptyFill, PanelSubHeader, StatusBadge, type DenseColumn } from '../primitives';
 import { getDockLayout, loadDockLayout, setDockLayout, setPanelFloating, subscribeDockLayout, type DockMode } from '../dockLayoutStore';
@@ -46,7 +46,7 @@ export function FnDOCK({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="DOCK • Dockable Workspace Layout Engine" right={<StatusBadge label={`${panelCount} PANES`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <button type="button" onClick={() => setDockLayout({ mode: 'tile' })}>TILE</button>
         <button type="button" onClick={() => setDockLayout({ mode: 'tab' })}>TAB</button>
         <button type="button" onClick={() => setDockLayout({ mode: 'stack' })}>STACK</button>
@@ -84,7 +84,7 @@ export function FnFLOAT({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="FLOAT • Pop-out / Floating Pane Manager" right={<StatusBadge label={`${dock.floatingPanels.length} FLOAT`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <button type="button" onClick={() => setPanelFloating(focusedPanel, true)}>FLOAT ACTIVE</button>
         <button type="button" onClick={() => setPanelFloating(focusedPanel, false)}>ATTACH ACTIVE</button>
         <button type="button" onClick={() => {
@@ -171,7 +171,7 @@ export function FnPINBAR({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="PINBAR • Global Heads-up Strip" right={<StatusBadge label={`${rows.length} PINS`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <button type="button" onClick={() => setDockLayout({ pinbarVisible: !dock.pinbarVisible })}>{dock.pinbarVisible ? 'HIDE' : 'SHOW'} PINBAR</button>
         <button type="button" onClick={() => setDockLayout({ pinbarDock: 'top' })}>TOP</button>
         <button type="button" onClick={() => setDockLayout({ pinbarDock: 'bottom' })}>BOTTOM</button>
@@ -254,14 +254,14 @@ export function FnNAVTREE({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="NAVTREE • Global Function Navigator" right={<StatusBadge label={`${defs.length} MATCH / ${taxonomyGroups} GROUPS`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search function catalog" style={{ flex: 1, height: 16, background: '#000', border: '1px solid #222', color: '#e6e6e6', fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
-        <select value={category} onChange={(e) => setCategory(e.target.value as 'ALL' | MnemonicCategory)} style={{ height: 16, background: '#000', color: '#e6e6e6', border: '1px solid #222', fontSize: DENSITY.fontSizeTiny }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search function catalog" style={{ flex: 1, height: 16, background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}`, color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
+        <select value={category} onChange={(e) => setCategory(e.target.value as 'ALL' | MnemonicCategory)} style={{ height: 16, background: DENSITY.bgBase, color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}>
           {(['ALL', 'EQUITY', 'FX', 'RATES', 'CREDIT', 'DERIVS', 'MACRO', 'PORTFOLIO', 'NEWS_DOCS', 'OPS_ADMIN'] as const).map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
         </select>
-        <select value={focusSet} onChange={(e) => setFocusSet(e.target.value as 'ALL' | 'FAV' | 'RECENT' | 'PINNED')} style={{ height: 16, background: '#000', color: '#e6e6e6', border: '1px solid #222', fontSize: DENSITY.fontSizeTiny }}>
+        <select value={focusSet} onChange={(e) => setFocusSet(e.target.value as 'ALL' | 'FAV' | 'RECENT' | 'PINNED')} style={{ height: 16, background: DENSITY.bgBase, color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}>
           {(['ALL', 'FAV', 'RECENT', 'PINNED'] as const).map((c) => (
             <option key={c} value={c}>{c}</option>
           ))}
@@ -280,7 +280,7 @@ export function FnKEYMAP({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="KEYMAP • Full Hotkey Editor + Profiles" right={<StatusBadge label={profile.name} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <button type="button" onClick={() => { saveKeymapProfile(profile); appendAuditEvent({ panelIdx, type: 'GO', actor: 'USER', detail: 'KEYMAP save profile', mnemonic: 'KEYMAP' }); }}>SAVE</button>
         <button type="button" onClick={() => setProfile(loadKeymapProfile())}>RESET</button>
       </div>
@@ -309,8 +309,8 @@ export function FnCMDK({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="CMDK • Global Command Palette" right={<StatusBadge label={`${rows.length} RESULT`} variant="sim" />} />
-      <div className="px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111', display: 'flex', alignItems: 'center' }}>
-        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find securities, functions, fields, workspaces..." style={{ flex: 1, height: 16, background: '#000', border: '1px solid #222', color: '#e6e6e6', fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
+      <div className="px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}`, display: 'flex', alignItems: 'center' }}>
+        <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find securities, functions, fields, workspaces..." style={{ flex: 1, height: 16, background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}`, color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
       </div>
       <DenseTable
         columns={cols}
@@ -385,9 +385,9 @@ export function FnMONPlus({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="MON+ • Monitor Builder Worksheets" right={<StatusBadge label={`${fields.length} FIELDS`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
-        <input value={symbolsText} onChange={(e) => setSymbolsText(e.target.value)} placeholder="AAPL US Equity,MSFT US Equity" style={{ flex: 1, height: 16, background: '#000', border: '1px solid #222', color: '#e6e6e6', fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
-        <input value={fieldFilter} onChange={(e) => setFieldFilter(e.target.value)} placeholder="Field filter" style={{ width: 120, height: 16, background: '#000', border: '1px solid #222', color: '#e6e6e6', fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+        <input value={symbolsText} onChange={(e) => setSymbolsText(e.target.value)} placeholder="AAPL US Equity,MSFT US Equity" style={{ flex: 1, height: 16, background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}`, color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
+        <input value={fieldFilter} onChange={(e) => setFieldFilter(e.target.value)} placeholder="Field filter" style={{ width: 120, height: 16, background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}`, color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
         <button type="button" onClick={() => { saveMonitorList(symbols); appendAuditEvent({ panelIdx, type: 'GO', actor: 'USER', detail: `MON+ save ${symbols.length} symbols`, mnemonic: 'MON+' }); }}>SAVE</button>
       </div>
       <DenseTable columns={cols as DenseColumn[]} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" onRowClick={(r) => navigatePanel(focusedPanel, 'DES', String(r.symbol))} />
@@ -423,11 +423,11 @@ export function FnALRTPlus({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="ALRT+ • Advanced Alerts (Field-based)" right={<StatusBadge label={`${rows.length} RULES`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
-        <input value={symbol} onChange={(e) => setSymbol(e.target.value)} style={{ width: 170, height: 16, background: '#000', border: '1px solid #222', color: '#e6e6e6', fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+        <input value={symbol} onChange={(e) => setSymbol(e.target.value)} style={{ width: 170, height: 16, background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}`, color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
         <select value={fieldId} onChange={(e) => setFieldId(e.target.value)}>{Object.values(FIELD_CATALOG).slice(0, 20).map((f) => <option key={f.id} value={f.id}>{f.id}</option>)}</select>
         <select value={op} onChange={(e) => setOp(e.target.value)}><option value=">">{'>'}</option><option value="<">{'<'}</option></select>
-        <input value={value} onChange={(e) => setValue(e.target.value)} style={{ width: 90, height: 16, background: '#000', border: '1px solid #222', color: '#e6e6e6', fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
+        <input value={value} onChange={(e) => setValue(e.target.value)} style={{ width: 90, height: 16, background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}`, color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny, padding: '0 4px' }} />
         <button type="button" onClick={create}>CREATE</button>
       </div>
       <DenseTable columns={cols} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" />
@@ -473,7 +473,7 @@ export function FnAPI({ panelIdx = 0 }: { panelIdx?: number }) {
     appendAuditEvent({ panelIdx, type: 'GO', actor: 'USER', detail: `API key create ${next.id}`, mnemonic: 'API' });
   };
   const cols: DenseColumn[] = [{ key: 'id', header: 'Key', width: '180px' }, { key: 'scope', header: 'Scopes', width: '1fr' }, { key: 'rate', header: 'Rate', width: '90px' }, { key: 'created', header: 'Created', width: '90px' }];
-  return <div className="flex flex-col h-full min-h-0"><PanelSubHeader title="API • API Keys + Developer Portal" right={<StatusBadge label={`${keys.length} KEYS`} variant="sim" />} /><div className="px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}><button type="button" onClick={create}>CREATE KEY</button></div><DenseTable columns={cols} rows={keys as unknown as Record<string, unknown>[]} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" /></div>;
+  return <div className="flex flex-col h-full min-h-0"><PanelSubHeader title="API • API Keys + Developer Portal" right={<StatusBadge label={`${keys.length} KEYS`} variant="sim" />} /><div className="px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}><button type="button" onClick={create}>CREATE KEY</button></div><DenseTable columns={cols} rows={keys as unknown as Record<string, unknown>[]} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" /></div>;
 }
 
 export function FnSTATUS({ panelIdx = 0 }: { panelIdx?: number }) {
@@ -507,7 +507,7 @@ export function FnOFFLINE({ panelIdx = 0 }: { panelIdx?: number }) {
     { id: 'notes', key: 'Offline notes/docs', value: 'AVAILABLE', stale: 'NO' },
   ];
   const cols: DenseColumn[] = [{ key: 'key', header: 'Cache Area', width: '1fr' }, { key: 'value', header: 'Value', width: '120px' }, { key: 'stale', header: 'STALE', width: '80px' }];
-  return <div className="flex flex-col h-full min-h-0"><PanelSubHeader title="OFFLINE • Cached Snapshot Mode" right={<StatusBadge label={policy.mode === 'frozen' ? 'STALE' : 'LIVE'} variant={policy.mode === 'frozen' ? 'stale' : 'live'} />} /><div className="px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}><button type="button" onClick={() => savePolicyState({ ...policy, mode: policy.mode === 'frozen' ? 'normal' : 'frozen' })}>{policy.mode === 'frozen' ? 'EXIT OFFLINE' : 'ENTER OFFLINE'}</button></div><DenseTable columns={cols} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" /></div>;
+  return <div className="flex flex-col h-full min-h-0"><PanelSubHeader title="OFFLINE • Cached Snapshot Mode" right={<StatusBadge label={policy.mode === 'frozen' ? 'STALE' : 'LIVE'} variant={policy.mode === 'frozen' ? 'stale' : 'live'} />} /><div className="px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}><button type="button" onClick={() => savePolicyState({ ...policy, mode: policy.mode === 'frozen' ? 'normal' : 'frozen' })}>{policy.mode === 'frozen' ? 'EXIT OFFLINE' : 'ENTER OFFLINE'}</button></div><DenseTable columns={cols} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" /></div>;
 }
 
 const TUTOR_TRACKS = {

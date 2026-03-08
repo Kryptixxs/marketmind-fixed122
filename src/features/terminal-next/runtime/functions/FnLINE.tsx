@@ -1,5 +1,6 @@
 'use client';
 
+import { DENSITY } from '../../constants/layoutDensity';
 import React, { useMemo, useState, useEffect } from 'react';
 import { DenseTable, PanelSubHeader, StatusBadge, type DenseColumn } from '../primitives';
 import { FIELD_CATALOG } from '../../services/fieldCatalog';
@@ -40,8 +41,8 @@ export function FnLINE({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="LINE • Data Lineage Viewer" right={<StatusBadge label="TRACE" variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: 18, borderBottom: '1px solid #111' }}>
-        <span style={{ color: '#93a9c6', fontSize: 9 }}>Field</span>
+      <div className="flex items-center gap-2 px-1" style={{ height: 18, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+        <span style={{ color: DENSITY.textSecondary, fontSize: 9 }}>Field</span>
         <input value={fieldId} onChange={(e) => setFieldId(e.target.value.toUpperCase())} className="flex-1 bg-transparent outline-none" />
       </div>
       <DenseTable

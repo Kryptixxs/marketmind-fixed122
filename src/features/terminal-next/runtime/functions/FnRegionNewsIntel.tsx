@@ -30,8 +30,8 @@ export function FnRGN({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="RGN • Region Dossier" right={<StatusBadge label={region.name} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
-        <select value={regionId} onChange={(e) => setRegionId(e.target.value)} style={{ background: '#000', border: '1px solid #222' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+        <select value={regionId} onChange={(e) => setRegionId(e.target.value)} style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}` }}>
           {state.regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
       </div>
@@ -52,8 +52,8 @@ export function FnRGNC({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="RGN.C • Region Companies" right={<StatusBadge label={region.name} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
-        <select value={regionId} onChange={(e) => setRegionId(e.target.value)} style={{ background: '#000', border: '1px solid #222' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+        <select value={regionId} onChange={(e) => setRegionId(e.target.value)} style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}` }}>
           {regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
       </div>
@@ -76,11 +76,11 @@ export function FnRGNN({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="RGN.N • Region News Center" right={<StatusBadge label={regionId} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
-        <select value={regionId} onChange={(e) => setRegionId(e.target.value)} style={{ background: '#000', border: '1px solid #222' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+        <select value={regionId} onChange={(e) => setRegionId(e.target.value)} style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}` }}>
           {regions.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
         </select>
-        <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} style={{ background: '#000', border: '1px solid #222' }}>
+        <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)} style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}` }}>
           <option>ALL</option><option>POLITICS</option><option>SUPPLY</option><option>EARNINGS</option><option>DISASTER</option><option>TRADE</option><option>ENERGY</option>
         </select>
       </div>
@@ -184,11 +184,11 @@ export function FnNQ({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="NQ • News Query Language" right={<StatusBadge label={`${rows.length} MATCHES`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input className="flex-1 bg-transparent outline-none" value={q} onChange={(e) => setQ(e.target.value)} />
         <button type="button" onClick={() => { appendAuditEvent({ panelIdx, type: 'GO', actor: 'USER', detail: `NQ ${q}`, mnemonic: 'NQ' }); }}>RUN</button>
       </div>
-      <div className="px-1 py-1" style={{ borderBottom: '1px solid #111', color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>
+      <div className="px-1 py-1" style={{ borderBottom: `1px solid ${DENSITY.gridlineColor}`, color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>
         IMPACT LIST: {impactTop || '—'}
       </div>
       {rows.length ? <DenseTable columns={cols} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" rowEntity={(r) => makeNews(String(r.headline), String(r.tag), '')} /> : <EmptyFill hint="NO QUERY MATCHES" />}

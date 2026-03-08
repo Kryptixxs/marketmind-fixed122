@@ -1,5 +1,6 @@
 'use client';
 
+import { DENSITY } from '../../constants/layoutDensity';
 import React, { useMemo, useState } from 'react';
 import { DenseTable, EmptyFill, PanelSubHeader, StatusBadge, type DenseColumn } from '../primitives';
 import { useTerminalStore } from '../../store/TerminalStore';
@@ -66,7 +67,7 @@ export function FnLAT({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="LAT • Latency Monitor" right={<StatusBadge label={`${workerLatency}ms`} variant={workerLatency > 150 ? 'stale' : 'live'} />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: 17, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: 17, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <button type="button" onClick={() => setView('slowPanels')}>Slow Panels</button>
         <button type="button" onClick={() => setView('slowMnemonics')}>Slow Mnemonics</button>
         <button type="button" onClick={() => setView('eventChain')}>Event Chain</button>

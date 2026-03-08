@@ -1,5 +1,6 @@
 'use client';
 
+import { DENSITY } from '../../constants/layoutDensity';
 import React, { useMemo, useState } from 'react';
 import { DenseTable, PanelSubHeader, type DenseColumn } from '../primitives';
 import { useTerminalStore } from '../../store/TerminalStore';
@@ -44,10 +45,10 @@ export function FnBLTR({ panelIdx = 0 }: { panelIdx?: number }) {
         title="BLTR • Blotter"
         right={<div className="flex items-center gap-1"><StatusBadge label="SIM" variant="sim" /></div>}
       />
-      <div className="flex items-center gap-1 px-1" style={{ height: 18, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-1 px-1" style={{ height: 18, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         {(['ALL', 'WORKING', 'PARTIAL', 'FILLED'] as const).map((s) => (
           <button key={s} type="button" onClick={() => setStatusFilter(s)}
-            style={{ color: statusFilter === s ? '#FFB000' : '#93a9c6', fontSize: '9px', border: '1px solid #222', background: '#0a0a0a', padding: '0 4px', cursor: 'pointer' }}>
+            style={{ color: statusFilter === s ? DENSITY.accentAmber : '#93a9c6', fontSize: '9px', border: `1px solid ${DENSITY.borderColor}`, background: DENSITY.bgSurface, padding: '0 4px', cursor: 'pointer' }}>
             {s}
           </button>
         ))}

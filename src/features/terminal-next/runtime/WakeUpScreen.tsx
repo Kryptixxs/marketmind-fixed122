@@ -145,6 +145,7 @@ export function WakeUpScreen({ panelIdx }: { panelIdx: number }) {
             onChange={(e) => dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === 'Enter') { e.preventDefault(); run(p.commandInput || 'WEI GO'); }
+              // Let F1/F2/Ctrl+K bubble to the panel frame's global handler
             }}
             placeholder="AAPL US DES GO   or   WEI GO   or   Ctrl+K to search"
             className="flex-1 bg-transparent outline-none border-none"

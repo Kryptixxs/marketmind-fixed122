@@ -38,7 +38,7 @@ export function FnCHAT({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="CHAT • Panel-linked Chat" right={<StatusBadge label="SIM DESK" variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input value={msg} onChange={(e) => setMsg(e.target.value)} placeholder="Message with context link..." className="flex-1 bg-transparent outline-none" />
         <button type="button" onClick={send}>SEND</button>
       </div>
@@ -94,7 +94,7 @@ export function FnSHAR({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="SHAR • Share Workspace / Panel" right={<StatusBadge label={`${rows.length} LINKS`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <button type="button" onClick={sharePanel}>SHARE CURRENT PANEL</button>
         <button type="button" onClick={shareWorkspace}>SHARE WORKSPACE</button>
       </div>
@@ -129,8 +129,8 @@ export function FnNOTE({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="NOTE • Structured Notes" right={<StatusBadge label={`${rows.length} NOTES`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
-        <select value={scope} onChange={(e) => setScope(e.target.value as typeof scope)} style={{ background: '#000', border: '1px solid #222' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
+        <select value={scope} onChange={(e) => setScope(e.target.value as typeof scope)} style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}` }}>
           <option value="SECURITY">SECURITY</option><option value="FUNCTION">FUNCTION</option><option value="GLOBAL">GLOBAL</option>
         </select>
         <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="tags csv" className="w-32 bg-transparent outline-none" />
@@ -175,7 +175,7 @@ export function FnTASK({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="TASK • Desk Ops Tasks" right={<StatusBadge label={`${rows.filter((r) => r.status === 'OPEN').length} OPEN`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title..." className="flex-1 bg-transparent outline-none" />
         <button type="button" onClick={add}>ADD TASK</button>
         <button type="button" onClick={fromAlerts}>FROM ALERTS</button>
@@ -224,7 +224,7 @@ export function FnIMP({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="IMP • Impact Model (Sim)" right={<StatusBadge label={`${impactBps.toFixed(1)}bps`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <span style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>Order Qty</span>
         <input type="number" value={qty} onChange={(e) => setQty(Number(e.target.value) || 0)} className="w-28 bg-transparent outline-none" />
       </div>

@@ -45,7 +45,7 @@ export function FnMKT({ panelIdx = 0 }: { panelIdx?: number }) {
   }, [state.tick]);
 
   return (
-    <div className="flex flex-col h-full min-h-0 overflow-auto terminal-scrollbar" style={{ fontFamily: DENSITY.fontFamily }}>
+    <div className="flex flex-col h-full min-h-0" style={{ fontFamily: DENSITY.fontFamily }}>
       <PanelSubHeader title="MKT • Market Context" right={<StatusBadge label="LIVE" variant="live" />} />
 
       {/* Regime + breadth strip */}

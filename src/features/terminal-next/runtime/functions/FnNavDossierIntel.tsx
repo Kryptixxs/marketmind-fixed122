@@ -109,7 +109,7 @@ export function FnBKMK({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="BKMK • Bookmarks Stateful" right={<StatusBadge label={`${rows.length} BOOKMARKS`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input className="flex-1 bg-transparent outline-none" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Bookmark label..." />
         <button type="button" onClick={add}>SAVE</button>
       </div>
@@ -125,7 +125,7 @@ export function FnBKMK({ panelIdx = 0 }: { panelIdx?: number }) {
         />
       ) : <EmptyFill hint="NO BOOKMARKS SAVED" />}
       {rows.length > 0 && (
-        <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderTop: '1px solid #111' }}>
+        <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderTop: `1px solid ${DENSITY.gridlineColor}` }}>
           <span style={{ color: DENSITY.textMuted }}>Delete:</span>
           <select defaultValue="" onChange={(e) => {
             if (e.target.value) {
@@ -141,7 +141,7 @@ export function FnBKMK({ panelIdx = 0 }: { panelIdx?: number }) {
               }
             }
             e.target.value = '';
-          }} style={{ background: '#000', border: '1px solid #222' }}>
+          }} style={{ background: DENSITY.bgBase, border: `1px solid ${DENSITY.borderColor}` }}>
             <option value="">Choose...</option>
             {rows.map((r) => <option key={String(r.id)} value={String(r.id)}>{String(r.label)}</option>)}
           </select>
@@ -163,7 +163,7 @@ export function FnTRAIL({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="TRAIL • Session Replay" right={<StatusBadge label={`${rows.length} STEPS`} variant="sim" />} />
-      <div className="flex items-center px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <button type="button" onClick={capture}>CAPTURE STEP</button>
       </div>
       {rows.length ? <DenseTable columns={cols} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" onRowClick={(r) => restorePanelSnapshot(panelIdx, dispatchPanel, r, 'TRAIL')} rowEntity={() => makeFunction('AUD', 'Open audit event')} /> : <EmptyFill hint="NO TRAIL STEPS" />}
@@ -199,7 +199,7 @@ export function FnFOCUS({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="FOCUS • Focus Mode" right={<StatusBadge label={`P${focusedPanel + 1}`} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <button type="button" onClick={() => {
           const gate = checkPolicy('SEND_TO_PANEL', policy.activeRole);
           if (!isAllowedByRole(policy.activeRole, 'SEND_TO_PANEL') || !gate.allowed) {
