@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
-export type FunctionCode = 'EXEC' | 'ESC' | 'DES' | 'FA' | 'WEI' | 'HP' | 'YAS' | 'TOP' | 'ECO' | 'NI' | 'OVME' | 'PORT' | 'NEWS' | 'CAL' | 'SEC' | 'MKT' | 'INTEL';
-export type TerminalFunction = 'EXEC' | 'DES' | 'FA' | 'HP' | 'WEI' | 'YAS' | 'OVME' | 'PORT' | 'NEWS' | 'CAL' | 'SEC' | 'MKT' | 'INTEL';
+export type FunctionCode = 'EXEC' | 'ESC' | 'DES' | 'FA' | 'WEI' | 'HP' | 'YAS' | 'TOP' | 'ECO' | 'NI' | 'OVME' | 'PORT' | 'NEWS' | 'CAL' | 'SEC' | 'MKT' | 'INTEL' | 'IMAP' | 'FXC' | 'GC' | 'CN' | 'OQ' | 'IB';
+export type TerminalFunction = 'EXEC' | 'DES' | 'FA' | 'HP' | 'WEI' | 'YAS' | 'OVME' | 'PORT' | 'NEWS' | 'CAL' | 'SEC' | 'MKT' | 'INTEL' | 'IMAP' | 'ECO' | 'FXC' | 'GC' | 'IB';
 
 export type AssetClass = 'EQUITY' | 'CORP' | 'GOVT' | 'CMDTY' | 'CURNCY';
 
@@ -129,7 +129,7 @@ export type RiskSnapshot = {
   realizedVol: number;
   impliedVolProxy: number;
   regime: VolatilityRegime;
-  exposureBySector: Array<{ sector: string; value: number }>;
+  exposureBySector: Array<{ sector: string; value: number; pctChange?: number }>;
 };
 
 export type DeltaState = {

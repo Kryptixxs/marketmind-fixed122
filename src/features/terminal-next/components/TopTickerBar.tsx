@@ -21,7 +21,7 @@ export function TopTickerBar() {
               onClick={() => dispatch({ type: 'SET_SYMBOL', payload: q.symbol })}
               className="flex items-center justify-between min-w-0 border-r border-[#111] last:border-r-0 pr-[2px]"
             >
-              <span className={`truncate ${idx === 0 ? 'text-[#fbe4aa] font-bold' : 'text-[#a8bad0]'}`}>{q.symbol}</span>
+              <span data-ticker={q.symbol} className={`truncate ${idx === 0 ? 'text-[#fbe4aa] font-bold' : 'text-[#a8bad0]'}`}>{q.symbol}</span>
               <span
                 className={`${
                   q.pct >= 0 ? 'text-green-500' : 'text-red-500'

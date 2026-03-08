@@ -1,6 +1,6 @@
 import { AssetClass, CommandResult, FunctionCode, SecurityContext, TerminalFunction } from '../types';
 
-const FUNCTION_CODES: FunctionCode[] = ['EXEC', 'ESC', 'DES', 'FA', 'WEI', 'HP', 'YAS', 'TOP', 'ECO', 'NI', 'OVME', 'PORT', 'NEWS', 'CAL', 'SEC', 'MKT', 'INTEL'];
+const FUNCTION_CODES: FunctionCode[] = ['EXEC', 'ESC', 'DES', 'FA', 'WEI', 'HP', 'YAS', 'TOP', 'ECO', 'NI', 'OVME', 'PORT', 'NEWS', 'CAL', 'SEC', 'MKT', 'INTEL', 'IMAP', 'FXC', 'GC', 'CN', 'OQ', 'IB'];
 const ASSET_CLASSES: AssetClass[] = ['EQUITY', 'CORP', 'GOVT', 'CMDTY', 'CURNCY'];
 
 const normalize = (value: string) =>
@@ -33,6 +33,13 @@ function mapActiveFunction(functionCode: FunctionCode): TerminalFunction {
   if (functionCode === 'SEC') return 'SEC';
   if (functionCode === 'MKT') return 'MKT';
   if (functionCode === 'INTEL') return 'INTEL';
+  if (functionCode === 'IMAP') return 'IMAP';
+  if (functionCode === 'ECO') return 'ECO';
+  if (functionCode === 'FXC') return 'FXC';
+  if (functionCode === 'GC') return 'GC';
+  if (functionCode === 'CN') return 'NEWS';
+  if (functionCode === 'OQ') return 'OVME';
+  if (functionCode === 'IB') return 'IB';
   return 'EXEC';
 }
 
@@ -71,10 +78,13 @@ export function parseCommand(input: string): CommandResult {
     return { ok: false, normalized, error: 'FORMAT: <TICKER> <FUNCTION> GO OR <TICKER> <MARKET> <ASSET> <FUNCTION> GO' };
   }
 
-  const functionToken = tokens[tokens.length - 2] as FunctionCode;
-  if (!FUNCTION_CODES.includes(functionToken)) {
+  let functionToken = tokens[tokens.length - 2] as string;
+  if (functionToken === 'GP' || functionToken === 'GIP' || functionToken === 'GCDS') functionToken = 'MKT';
+  if (functionToken === 'N') functionToken = 'NEWS';
+  if (!FUNCTION_CODES.includes(functionToken as FunctionCode)) {
     return { ok: false, normalized, error: `UNKNOWN FUNCTION ${tokens[tokens.length - 2]}` };
   }
+  const functionCode = functionToken as FunctionCode;
 
   const securityTokens = tokens.slice(0, -2);
   const security = parseSecurity(securityTokens);
@@ -88,9 +98,9 @@ export function parseCommand(input: string): CommandResult {
 
   return {
     ok: true,
-    normalized: `${security.ticker}${security.market ? ` ${security.market}` : ''} ${functionToken} GO`,
+    normalized: `${security.ticker}${security.market ? ` ${security.market}` : ''} ${functionCode} GO`,
     security,
-    functionCode: functionToken,
-    activeFunction: mapActiveFunction(functionToken),
+    functionCode,
+    activeFunction: mapActiveFunction(functionCode),
   };
 }

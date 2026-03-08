@@ -18,7 +18,7 @@ export function FunctionHierarchyStrip() {
         <span className="text-[#d4efff] font-bold border border-[#274b66] px-[2px]">{state.activeSubTab ?? 'PRIMARY'}</span>
       </div>
       <div className="flex items-center gap-[4px] text-gray-400 overflow-x-auto custom-scrollbar">
-        <span className="text-gray-500">FIND DES|FA|HP|EXEC|WEI|YAS|OVME|PORT|NEWS|CAL|SEC|MKT</span>
+        <span className="text-gray-500">FIND DES|FA|HP|EXEC|WEI|YAS|OVME|PORT|NEWS|CAL|SEC|MKT|ECO|FXC|GC</span>
         <span className={`px-[2px] border font-bold whitespace-nowrap ${state.activeFunction === 'EXEC' ? 'text-green-500 border-green-600 bg-[#0d1f0d]' : 'text-gray-300 border-[#262626] bg-[#1a1a1a]'}`}>MODE {modeLabel}</span>
       </div>
     </div>

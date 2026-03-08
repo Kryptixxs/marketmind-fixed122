@@ -3,8 +3,12 @@
 import React, { Suspense } from 'react';
 import { useTerminalStore } from '../store/TerminalStore';
 import { useTerminalLayout } from '../context/TerminalLayoutContext';
-import { CommandCenterGrid, QuadrantContainer } from './CommandCenterGrid';
-import { SystemShellHeader, SystemShellFooter } from './SystemShell';
+import { PanelFocusProvider } from '../context/PanelFocusContext';
+import { CrosshairSyncProvider } from '../context/CrosshairSyncContext';
+import { TerminalContextMenuProvider } from '../context/TerminalContextMenuContext';
+import { TerminalContextMenu } from '../components/TerminalContextMenu';
+import { usePanelFocus } from '../context/PanelFocusContext';
+import { usePanelKeyboardShortcuts } from '../hooks/usePanelKeyboardShortcuts';
 import { RouteSync } from '../components/RouteSync';
 import { TopTickerBar } from '../components/TopTickerBar';
 import { CommandKeyBar } from '../components/CommandKeyBar';
@@ -12,71 +16,100 @@ import { CommandInputBar } from '../components/CommandInputBar';
 import { DeskStatusStrip } from '../components/DeskStatusStrip';
 import { FunctionHierarchyStrip } from '../components/FunctionHierarchyStrip';
 import { FunctionRouter } from '../components/FunctionRouter';
-import { RightRailPanel } from '../components/RightRailPanel';
-import { FeedPanel } from '../components/FeedPanel';
 import { BlotterPanel } from '../components/BlotterPanel';
-import { MonitorPanel } from '../components/MonitorPanel';
-import { CandlestickMiniChart, SectorAllocationDonut, NewsWire } from '../components/visualizations';
+import { VisualizationDashboard } from '../components/VisualizationDashboard';
+import { NewsWire } from '../components/visualizations';
+import { CommandCenterBar } from '../components/CommandCenterBar';
+import { TerminalShell } from '../components/TerminalShell';
+import { TerminalPanel } from '../components/TerminalPanel';
+import type { PanelFunction } from '../context/PanelFocusContext';
+import type { TerminalFunction } from '../types';
 
-/**
- * 4-monitor Command Center layout.
- * No-void: 100vh/100vw, overflow hidden, internal scroll per panel.
- * Fixed-fluid: rem/px fonts for terminal density.
- */
-export function CommandCenterLayout() {
+/** Map PanelFunction (includes GP, N) to TerminalFunction for FunctionRouter */
+function panelToTerminalFunction(p: PanelFunction): TerminalFunction {
+  if (p === 'GP') return 'MKT';
+  if (p === 'N') return 'NEWS';
+  if (p === 'IMAP') return 'IMAP';
+  if (p === 'ECO' || p === 'FXC' || p === 'GC' || p === 'IB') return p as TerminalFunction;
+  return p as TerminalFunction;
+}
+
+function CommandCenterContent() {
+  usePanelKeyboardShortcuts();
   const { state } = useTerminalStore();
   const { zoomedQuadrant } = useTerminalLayout();
+  const { panelFunctions } = usePanelFocus();
 
-  const quadrants = [
-    <QuadrantContainer key="q1" id="q1-command" label="COMMAND" className="border-[#1a1a1a]">
-      <div className="flex flex-col h-full gap-px">
+  const panels = [
+    <TerminalPanel key="q1" index={0} label="COMMAND">
+      <div className="flex flex-col h-full gap-px p-2">
         <TopTickerBar />
         <CommandKeyBar />
         <CommandInputBar />
         <DeskStatusStrip />
         <FunctionHierarchyStrip />
       </div>
-    </QuadrantContainer>,
-    <QuadrantContainer key="q2" id="q2-primary" label={`${state.activeFunction} • ${state.activeSymbol}`}>
-      <FunctionRouter activeFunction={state.activeFunction} />
-    </QuadrantContainer>,
-    <QuadrantContainer key="q3" id="q3-analytics" label="ANALYTICS" subGrid="2x2">
-      <div className="min-h-[60px]">
-        <CandlestickMiniChart height={56} />
+    </TerminalPanel>,
+    <TerminalPanel key="q2" index={1} label={`${panelFunctions[1] ?? 'MKT'} • ${state.activeSymbol}`}>
+      <div className="h-full p-2">
+        <FunctionRouter
+          activeFunction={panelToTerminalFunction(panelFunctions[1] ?? 'MKT')}
+          panelFunction={panelFunctions[1] ?? 'MKT'}
+        />
       </div>
-      <div className="flex items-center justify-center min-h-[60px]">
-        <SectorAllocationDonut size={100} />
+    </TerminalPanel>,
+    <TerminalPanel key="q3" index={2} label={`${panelFunctions[2] ?? 'NEWS'} • ANALYTICS`}>
+      <div className="min-h-0 p-0 overflow-hidden h-full">
+        <VisualizationDashboard />
       </div>
-      <MonitorPanel />
-      <RightRailPanel execMode={state.activeSubTab === 'ESC' ? 'ESC' : 'PRIMARY'} />
-    </QuadrantContainer>,
-    <QuadrantContainer key="q4" id="q4-feed" label="NEWS WIRE • BLOTTER" subGrid="1x2">
-      <NewsWire />
-      <BlotterPanel />
-    </QuadrantContainer>,
+    </TerminalPanel>,
+    <TerminalPanel key="q4" index={3} label={`${panelFunctions[3] ?? 'MKT'} • NEWS`}>
+      <div className="flex flex-col h-full">
+        <NewsWire />
+        <BlotterPanel />
+      </div>
+    </TerminalPanel>,
   ];
 
   return (
-    <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col bg-black font-mono tracking-tight uppercase tabular-nums">
-      <Suspense fallback={null}>
-        <RouteSync />
-      </Suspense>
-      <SystemShellHeader />
-      <div className="flex-1 min-h-0 min-w-0 overflow-hidden relative">
-        {zoomedQuadrant !== null ? (
-          <div className="absolute inset-0 z-20 flex flex-col bg-[#05080d]">
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {quadrants[zoomedQuadrant]}
-            </div>
-            <div className="absolute top-1 right-1 text-[10px] text-[#5a6b7a]">
-              Alt+1-4 Zoom | Alt+0 Reset | Esc
-            </div>
+    <>
+      <CommandCenterBar />
+      {zoomedQuadrant !== null ? (
+        <div className="absolute inset-0 z-20 flex flex-col bg-[#000000]" style={{ width: '100vw', height: '100dvh' }}>
+          <div className="flex-1 min-h-0 overflow-hidden">{panels[zoomedQuadrant]}</div>
+          <div className="absolute top-1 right-1 text-[10px] text-[#666]">
+            Alt+1-4 Zoom | Alt+0 Reset | Esc
           </div>
-        ) : (
-          <CommandCenterGrid>{quadrants}</CommandCenterGrid>
-        )}
+        </div>
+      ) : (
+        <TerminalShell>{panels}</TerminalShell>
+      )}
+    </>
+  );
+}
+
+/**
+ * 4-panel Command Center layout.
+ * Hardware shell: 2x2 grid, per-panel function, focus system, Bloomberg palette.
+ */
+export function CommandCenterLayout() {
+  return (
+    <PanelFocusProvider>
+      <CrosshairSyncProvider>
+        <TerminalContextMenuProvider>
+          <div
+            className="bbg-terminal-root w-[100vw] h-[100dvh] overflow-hidden flex flex-col bg-[#000000] font-mono tracking-tight tabular-nums"
+            style={{ fontSize: '11px', color: '#FFFFFF' }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+        <Suspense fallback={null}>
+          <RouteSync />
+        </Suspense>
+        <CommandCenterContent />
+          <TerminalContextMenu />
       </div>
-      <SystemShellFooter />
-    </div>
+        </TerminalContextMenuProvider>
+      </CrosshairSyncProvider>
+    </PanelFocusProvider>
   );
 }

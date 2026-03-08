@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useReducer, useRef } from 'react';
 import { parseCommand } from '../services/commandParser';
 import { routeSearch } from '../services/searchRouter';
 import {
@@ -19,9 +19,11 @@ import { buildMarketDataModel } from '../modules/market/buildMarketDataModel';
 import { buildExecutionContextFromMarket, toMacroExecutionState } from '../modules/market/buildExecutionContextFromMarket';
 import { selectExecutionPolicy } from '../selectors/executionContextSelectors';
 import { loadPersistedState, savePersistedState } from '../services/terminalPersistence';
+import { generateFakeHeadline } from '../services/fakeNewsGenerator';
 
 type TerminalAction =
   | { type: 'TICK_QUOTES' }
+  | { type: 'TICK_QUOTES_FROM_WORKER'; payload: { streamTick: number; tickMs: number; quotes: TerminalState['quotes'] } }
   | { type: 'TICK_DEPTH_TAPE' }
   | { type: 'TICK_EXECUTION' }
   | { type: 'TICK_FEED' }
@@ -47,7 +49,9 @@ type TerminalAction =
     }
   | { type: 'CANCEL_SYMBOL_OVERRIDE'; payload: { symbol: string; initiatedBy: string } }
   | { type: 'SET_SYMBOL'; payload: string }
-  | { type: 'SET_INTEL_FILTERS'; payload: { country?: string; date?: string } | undefined };
+  | { type: 'TICKER_SELECTED'; payload: string }
+  | { type: 'SET_INTEL_FILTERS'; payload: { country?: string; date?: string } | undefined }
+  | { type: 'PUSH_HEADLINE'; payload: string };
 
 type TerminalContextType = {
   state: TerminalState;
@@ -64,12 +68,21 @@ type TerminalContextType = {
   clocks: { ny: string; ldn: string; hkg: string; tky: string };
 };
 
+/** 500ms mock tick when no API - UI "breathing" with price updates */
+const MOCK_QUOTES_MS = 500;
+
+function getQuotesCadence() {
+  if (typeof window === 'undefined') return MOCK_QUOTES_MS;
+  if (!process.env.NEXT_PUBLIC_API_URL) return MOCK_QUOTES_MS;
+  return localStorage.getItem('vantage-simulate-500') === 'true' ? MOCK_QUOTES_MS : 240;
+}
+
 const STREAM_CADENCE = {
-  quotes: 240,
+  get quotes() { return getQuotesCadence(); },
   depth: 420,
   execution: 820,
   feed: 1600,
-} as const;
+};
 
 const TerminalContext = createContext<TerminalContextType | null>(null);
 
@@ -308,6 +321,22 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
     });
   }
 
+  if (action.type === 'TICK_QUOTES_FROM_WORKER') {
+    const { streamTick, tickMs, quotes } = action.payload;
+    const expiry = expireOverrides(state, tickMs);
+    return deriveNext(state, {
+      tick: streamTick,
+      tickMs,
+      quotes,
+      activeSymbol: activeSymbolPrefix(state),
+      executionControls: { ...state.executionControls, symbolOverrides: expiry.symbolOverrides },
+      overrideAuditTrail: [...expiry.events, ...state.overrideAuditTrail],
+      systemFeed: [...expiry.feedLines, ...state.systemFeed],
+      streamClock: { ...state.streamClock, quotes: streamTick },
+      staged: nextStaged(state, 'quotesReadyAt', tickMs),
+    });
+  }
+
   if (action.type === 'TICK_DEPTH_TAPE') {
     const streamTick = state.streamClock.depth + 1;
     const quote = activeQuoteFrom(state);
@@ -371,6 +400,10 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
   }
 
   if (action.type === 'SET_COMMAND') return { ...state, commandInput: action.payload };
+
+  if (action.type === 'PUSH_HEADLINE') {
+    return { ...state, headlines: [action.payload, ...state.headlines].slice(0, 72) };
+  }
 
   if (action.type === 'SET_FUNCTION') {
     const activeFunction = toActiveFunction(action.payload);
@@ -475,7 +508,7 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
     };
   }
 
-  if (action.type === 'SET_SYMBOL') {
+  if (action.type === 'SET_SYMBOL' || action.type === 'TICKER_SELECTED') {
     const [ticker, market = ''] = action.payload.split(' ');
     const assetClass = market === 'Index' ? 'EQUITY' : market === 'Curncy' ? 'CURNCY' : market === 'Govt' ? 'GOVT' : 'EQUITY';
     return {
@@ -589,28 +622,56 @@ function mergeInitialState(base: TerminalState): TerminalState {
 export function TerminalProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(terminalReducer, undefined, () => mergeInitialState(initialState));
 
+  const streamTickRef = useRef(0);
+  const workerRef = useRef<Worker | null>(null);
+
   useEffect(() => {
-    dispatch({ type: 'TICK_QUOTES' });
     dispatch({ type: 'TICK_DEPTH_TAPE' });
     dispatch({ type: 'TICK_EXECUTION' });
     dispatch({ type: 'TICK_FEED' });
 
-    const quotesId = window.setInterval(() => dispatch({ type: 'TICK_QUOTES' }), STREAM_CADENCE.quotes);
+    const worker = new Worker(new URL('../workers/bpipe.worker.ts', import.meta.url));
+    workerRef.current = worker;
+    worker.onmessage = (e: MessageEvent) => {
+      if (e.data?.type === 'QUOTES_BATCH') {
+        dispatch({ type: 'TICK_QUOTES_FROM_WORKER', payload: e.data.payload });
+      }
+    };
+    worker.onerror = () => {
+      streamTickRef.current = 0;
+    };
+
+    const seed = 31051990;
+    const requestTick = () => {
+      streamTickRef.current += 1;
+      worker.postMessage({
+        seed,
+        streamTick: streamTickRef.current,
+        intervalMs: STREAM_CADENCE.quotes,
+      });
+    };
+    requestTick();
+    const quotesId = window.setInterval(requestTick, STREAM_CADENCE.quotes);
+
     const depthId = window.setInterval(() => dispatch({ type: 'TICK_DEPTH_TAPE' }), STREAM_CADENCE.depth);
     const executionId = window.setInterval(() => dispatch({ type: 'TICK_EXECUTION' }), STREAM_CADENCE.execution);
     const feedId = window.setInterval(() => dispatch({ type: 'TICK_FEED' }), STREAM_CADENCE.feed);
+    const newsId = window.setInterval(() => dispatch({ type: 'PUSH_HEADLINE', payload: generateFakeHeadline() }), 30_000);
     return () => {
       window.clearInterval(quotesId);
+      workerRef.current?.terminate();
+      workerRef.current = null;
       window.clearInterval(depthId);
       window.clearInterval(executionId);
       window.clearInterval(feedId);
+      window.clearInterval(newsId);
     };
   }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
-        const input = document.getElementById('terminal-command-input') as HTMLInputElement | null;
+        const input = document.getElementById('command-center-input') || document.getElementById('terminal-command-input') as HTMLInputElement | null;
         input?.focus();
         input?.select();
       }

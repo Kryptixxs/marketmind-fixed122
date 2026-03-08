@@ -28,6 +28,7 @@ import {
   TOP_SYMBOLS,
   WORKSPACE_FUNCTIONS,
 } from "@/features/Terminal/services/command-registry"
+import { useSettings, type Theme } from "@/services/context/SettingsContext"
 import { globalSearchV2 } from "@/app/actions/globalSearch"
 import type { IntelligenceResponse, IntelligenceEntity, IntelligenceDocument, IntelligenceSymbol } from "@/lib/intelligence-contract"
 
@@ -50,7 +51,16 @@ const WORKSPACE_ICONS: Record<string, React.ElementType> = {
   RISK: Shield,
 }
 
+const THEMES: { value: Theme; label: string }[] = [
+  { value: 'dark', label: 'Dark' },
+  { value: 'bloomberg', label: 'Bloomberg' },
+  { value: 'terminal-green', label: 'Terminal Green' },
+  { value: 'oled', label: 'OLED' },
+  { value: 'classic-blue', label: 'Classic Blue' },
+];
+
 export function CommandPalette() {
+  const { settings, updateSettings } = useSettings()
   const [open, setOpen] = React.useState(false)
   const [searchValue, setSearchValue] = React.useState('')
   const [searchResults, setSearchResults] = React.useState<IntelligenceResponse | null>(null)
@@ -396,6 +406,23 @@ export function CommandPalette() {
                 <span className="text-[9px] text-text-tertiary">{fn.label}</span>
               </div>
               <CommandShortcut>Function</CommandShortcut>
+            </CommandItem>
+          ))}
+        </CommandGroup>
+
+        <CommandSeparator />
+
+        <CommandGroup heading="Theme">
+          {THEMES.map((t) => (
+            <CommandItem
+              key={t.value}
+              value={`${t.label} theme ${t.value}`}
+              onSelect={() => { updateSettings({ theme: t.value }); setOpen(false); }}
+            >
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${settings.theme === t.value ? 'ring-2 ring-accent' : ''}`} />
+                <span className="text-[11px]">{t.label}</span>
+              </div>
             </CommandItem>
           ))}
         </CommandGroup>

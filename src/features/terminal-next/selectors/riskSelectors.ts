@@ -1,6 +1,7 @@
 import { BlotterRow, IntradayBar, MicrostructureStats, Quote, RiskSnapshot, VolatilityRegime } from '../types';
 
 const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
+const hash = (s: string) => Array.from(s).reduce((a, c) => a + c.charCodeAt(0), 0);
 
 function std(values: number[]) {
   if (values.length <= 1) return 0;
@@ -95,7 +96,12 @@ export function deriveRiskSnapshot(params: {
     const value = blotter
       .filter((b) => symbolSector.get(b.symbol) === sector)
       .reduce((acc, b) => acc + (b.side === 'BUY' ? 1 : -1) * b.last * b.qty, 0);
-    return { sector, value: Number(value.toFixed(0)) };
+    const sectorQuotes = quotes.filter((q) => symbolSector.get(q.symbol) === sector);
+    const pctChange =
+      sectorQuotes.length > 0
+        ? sectorQuotes.reduce((s, q) => s + q.pct, 0) / sectorQuotes.length
+        : (hash(sector) % 61 - 30) / 10;
+    return { sector, value: Number(value.toFixed(0)), pctChange };
   });
 
   return {

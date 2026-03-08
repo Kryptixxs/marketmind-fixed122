@@ -1,37 +1,43 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #000205;
-  --color-surface: #070d17;
-  --color-surface-highlight: #0d1727;
-  --color-surface-elevated: #0a1220;
-  --color-border: #2b3f5f;
-  --color-border-highlight: #44638f;
+  /* Bloomberg Hardware Shell palette */
+  --color-background: #000000;
+  --color-surface: #0a0a0a;
+  --color-surface-highlight: #111111;
+  --color-surface-elevated: #0d0d0d;
+  --color-border: #333333;
+  --color-border-highlight: #444444;
 
-  --color-text-primary: #f2f5ff;
-  --color-text-secondary: #b2c0d7;
-  --color-text-tertiary: #7a90ac;
-  --color-text-muted: #566b86;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #cccccc;
+  --color-text-tertiary: #999999;
+  --color-text-muted: #666666;
 
-  --color-accent: #f4cf76;
-  --color-accent-bright: #ffdf8f;
-  --color-accent-muted: #7a5a21;
-  --color-accent-text: #fff4d6;
+  --color-bbg-amber: #FFB000;
+  --color-bbg-green: #00FF00;
+  --color-bbg-red: #FF0000;
+  --color-bbg-focus: #0068FF;
+
+  --color-accent: #FFB000;
+  --color-accent-bright: #FFC933;
+  --color-accent-muted: #CC8C00;
+  --color-accent-text: #FFF4D6;
   --color-cyan: #63c8ff;
   --color-cyan-muted: #274b66;
 
-  --color-positive: #4ce0a5;
-  --color-positive-bright: #7dffcc;
-  --color-positive-muted: #174432;
-  --color-negative: #ff7ca3;
-  --color-negative-bright: #ffb2c8;
-  --color-negative-muted: #5a1f35;
-  --color-warning: #f4cf76;
-  --color-warning-muted: #4f3a18;
+  --color-positive: #00FF00;
+  --color-positive-bright: #33FF33;
+  --color-positive-muted: #006600;
+  --color-negative: #FF0000;
+  --color-negative-bright: #FF3333;
+  --color-negative-muted: #660000;
+  --color-warning: #FFB000;
+  --color-warning-muted: #664400;
   --color-alert: #e3b4ff;
 
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  --font-mono: "JetBrains Mono", "Roboto Mono", "SF Mono", "Fira Code", monospace;
 
   --radius-sm: 0px;
   --radius-md: 0px;
@@ -96,31 +102,83 @@
   border-bottom-color: rgba(64, 92, 140, 0.35);
 }
 
-/* ── Global reset: no letterbox ── */
-html, body {
+/* ── Global reset: Bloomberg Hardware Shell ── */
+html,
+body {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  height: 100vh;
+  width: 100vw;
+  min-height: 100dvh;
+  overflow: hidden;
 }
 
 html {
-  height: 100%;
-  min-height: 100dvh;
+  background-color: #000000;
 }
 
 body {
-  height: 100%;
-  min-height: 100dvh;
-  width: 100%;
-  background-color: var(--color-background);
-  color: var(--color-text-primary);
-  font-family: var(--font-mono);
-  font-size: clamp(11px, 1.2vw, 13px);
+  background-color: #000000;
+  color: #FFFFFF;
+  font-family: "JetBrains Mono", "Roboto Mono", "SF Mono", monospace;
+  font-size: 11px;
   line-height: 1.25;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow: hidden;
   font-variant-numeric: tabular-nums;
+}
+
+/* Bloomberg panel borders – 1px, 90deg sharp */
+.terminal-panel {
+  border: 1px solid #333;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.terminal-panel.active {
+  border-color: #0068FF;
+  border-width: 1px;
+  box-shadow: none;
+}
+
+/* Final aesthetic: no rounded corners, no shadows, no gradients */
+.bbg-terminal-root,
+.bbg-terminal-root * {
+  border-radius: 0 !important;
+}
+.bbg-terminal-root input,
+.bbg-terminal-root button,
+.bbg-terminal-root select {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Tick Flash: 200ms green/red flash when price or %chg updates */
+.cell-flash-up {
+  animation: tick-flash-up 200ms ease-out forwards;
+}
+.cell-flash-down {
+  animation: tick-flash-down 200ms ease-out forwards;
+}
+@keyframes tick-flash-up {
+  0% { background-color: rgba(0, 255, 0, 0.4); }
+  100% { background-color: transparent; }
+}
+@keyframes tick-flash-down {
+  0% { background-color: rgba(255, 0, 0, 0.4); }
+  100% { background-color: transparent; }
+}
+
+/* Invalid command: shake left-to-right 200ms */
+@keyframes command-invalid-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.command-invalid-shake {
+  animation: command-invalid-shake 200ms ease-in-out;
 }
 
 ::selection {
@@ -263,23 +321,27 @@ body {
   background: var(--color-text-tertiary);
 }
 
-/* ── Terminal: ultra-thin 4px scrollbars ── */
-.terminal-scrollbar::-webkit-scrollbar {
+/* ── Terminal: ultra-thin (4px) dark grey scrollbars ── */
+.terminal-scrollbar::-webkit-scrollbar,
+.bbg-terminal-root .terminal-scrollbar::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
 
-.terminal-scrollbar::-webkit-scrollbar-track {
+.terminal-scrollbar::-webkit-scrollbar-track,
+.bbg-terminal-root .terminal-scrollbar::-webkit-scrollbar-track {
   background: #0a0a0a;
 }
 
-.terminal-scrollbar::-webkit-scrollbar-thumb {
+.terminal-scrollbar::-webkit-scrollbar-thumb,
+.bbg-terminal-root .terminal-scrollbar::-webkit-scrollbar-thumb {
   background: #333;
   border-radius: 0;
 }
 
-.terminal-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #555;
+.terminal-scrollbar::-webkit-scrollbar-thumb:hover,
+.bbg-terminal-root .terminal-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #444;
 }
 
 /* ── Resize Handles ── */
@@ -336,6 +398,63 @@ body {
 
 .glow-cyan {
   box-shadow: none;
+}
+
+/* ── Bloomberg 4-Monitor: Zero-Margin Aesthetic ── */
+.bbg-terminal-root {
+  background: #000000 !important;
+  color: #ccc;
+}
+
+.bbg-master-grid {
+  background: #222 !important;
+}
+
+.bbg-virtual-monitor {
+  background: #000000 !important;
+  border: 1px solid #222 !important;
+}
+
+.bbg-cell,
+.bbg-cell-wrapper > * {
+  background: #000000 !important;
+  border: 1px solid #222 !important;
+  padding: 4px !important;
+}
+
+.bbg-cell-wrapper {
+  padding: 0;
+}
+
+.bbg-subgrid {
+  display: grid;
+  gap: 1px;
+  background: #222;
+}
+
+.bbg-subgrid-2x2 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.bbg-subgrid-3x3 {
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr 1fr;
+}
+
+.bbg-subgrid-1x2 {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.bbg-subgrid-2x1 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr;
+}
+
+.bbg-single {
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Animations ── */
@@ -486,6 +605,25 @@ body {
 
 .super-table-flash-down {
   animation: super-flash-down 0.4s ease-out;
+}
+
+/* ── TerminalTable: 200ms flash on price update ── */
+@keyframes terminal-flash-up {
+  0% { background-color: rgba(0, 255, 0, 0.35); }
+  100% { background-color: transparent; }
+}
+
+@keyframes terminal-flash-down {
+  0% { background-color: rgba(255, 0, 0, 0.35); }
+  100% { background-color: transparent; }
+}
+
+.terminal-table-flash-up {
+  animation: terminal-flash-up 0.2s ease-out;
+}
+
+.terminal-table-flash-down {
+  animation: terminal-flash-down 0.2s ease-out;
 }
 
 /* ── High-Density (Bloomberg-style) Palette ── */

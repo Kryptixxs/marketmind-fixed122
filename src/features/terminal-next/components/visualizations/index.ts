@@ -1,3 +1,14 @@
 export { CandlestickMiniChart } from './CandlestickMiniChart';
+export { WorldEquityIndices } from './WorldEquityIndices';
+export { SecurityDescription } from './SecurityDescription';
+export { PriceChart } from './PriceChart';
+export { SectorHeatmap } from './SectorHeatmap';
 export { SectorAllocationDonut } from './SectorAllocationDonut';
+export { SectorAllocation } from './SectorAllocation';
 export { NewsWire, type NewsHeadline, type HeadlineUrgency } from './NewsWire';
+export { TechnicalChart } from './TechnicalChart';
+export { EconomicCalendar } from './EconomicCalendar';
+export { FXCrossMatrix } from './FXCrossMatrix';
+export { YieldCurve } from './YieldCurve';
+export { FinancialAnalysisTable } from './FinancialAnalysisTable';
+export { IBChat } from './IBChat';
