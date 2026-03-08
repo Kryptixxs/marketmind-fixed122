@@ -6,6 +6,15 @@ import { generateSyntheticIntel } from '@/lib/synthetic/intel-generator';
 import { useTerminalStore } from '../store/TerminalStore';
 import { StackedIntelRenderer, type StackBlock, type StackVisualSpec, type StackedIntelRow } from './StackedIntelRenderer';
 
+type BlockDatum = {
+  label: string;
+  value: string;
+  tone?: StackedIntelRow['tone'];
+  primary: number;
+  secondary?: number;
+  marker?: string;
+};
+
 function compact(text: string): string {
   return text
     .replaceAll('Institutional', 'Inst')
@@ -147,198 +156,6 @@ export function ExecCenterStack({
   }));
   const flowPositioning = depth?.flowPositioning ?? synthetic.flowMetrics;
 
-  const marketOverviewRows = [
-    ...marketIndices.map((r) => ({
-      label: `Index ${r.symbol}`,
-      value: `${r.level.toFixed(2)} (${r.movePct >= 0 ? '+' : ''}${r.movePct.toFixed(2)}%)`,
-      tone: r.movePct >= 0 ? ('positive' as const) : ('negative' as const),
-    })),
-    ...marketSectors.map((s) => ({
-      label: `Sector ${s.sector}`,
-      value: `${s.movePct >= 0 ? '+' : ''}${s.movePct.toFixed(2)}% | Beta ${s.beta.toFixed(2)} | Conc ${s.concentrationPct}%`,
-      tone: s.movePct >= 0 ? ('positive' as const) : ('negative' as const),
-    })),
-    ...marketCorrelations.map((c) => ({
-      label: `Corr ${c.pair}`,
-      value: c.corr.toFixed(2),
-      tone: 'accent' as const,
-    })),
-  ];
-  const volatilityRows = [
-    ...skewHistory.map((r) => ({
-      label: `${r.date} RR/BF`,
-      value: `RR25 ${r.rr25d.toFixed(2)} | BF25 ${r.bf25d.toFixed(2)}`,
-      tone: r.rr25d >= 0 ? ('positive' as const) : ('negative' as const),
-    })),
-    ...optionsSurface.map((r) => ({
-      label: `Surface ${r.delta}`,
-      value: `W1 ${r.w1.toFixed(2)} M1 ${r.m1.toFixed(2)} M3 ${r.m3.toFixed(2)} M6 ${r.m6.toFixed(2)}`,
-      tone: 'accent' as const,
-    })),
-  ];
-  const flowRows = [
-    ...marketFlows.map((r) => ({
-      label: `${r.vehicle} ${r.direction}`,
-      value: `${r.flowUsdM >= 0 ? '+' : ''}${r.flowUsdM.toFixed(0)}M`,
-      tone: r.direction === 'Inflow' ? ('positive' as const) : ('negative' as const),
-    })),
-    ...shortTrend.map((r) => ({
-      label: `Short ${r.date}`,
-      value: `${r.shortPctFloat.toFixed(2)}%`,
-      tone: 'accent' as const,
-    })),
-    ...factors.map((f) => ({
-      label: `Factor ${f.factor}`,
-      value: `Exp ${f.exposure.toFixed(2)} | Ctb ${f.contribution.toFixed(2)}`,
-      tone: f.contribution >= 0 ? ('positive' as const) : ('negative' as const),
-    })),
-  ];
-  const peerRows = peerEntities.map((e) => ({
-    label: `${e.symbol} ${e.country}`,
-    value: `${e.sector} | ${e.name}`,
-    tone: 'neutral' as const,
-  }));
-  const riskRows = [
-    { label: 'Regime', value: state.risk.regime, tone: 'accent' as const },
-    { label: 'RealizedVol', value: `${state.risk.realizedVol}%`, tone: 'accent' as const },
-    { label: 'ImpliedVol', value: `${state.risk.impliedVolProxy}%`, tone: 'accent' as const },
-    { label: 'VaR', value: state.risk.intradayVar.toFixed(0), tone: 'negative' as const },
-    ...riskProfile.debtMaturityLadder.map((d) => ({
-      label: `Debt ${d.bucket}`,
-      value: `${d.amount.toFixed(0)} | ${d.pctOfDebt.toFixed(2)}%`,
-      tone: 'neutral' as const,
-    })),
-    ...riskProfile.interestCoverageTrend.map((r) => ({
-      label: `Coverage ${r.year}`,
-      value: `${r.ratio.toFixed(2)}x`,
-      tone: r.ratio >= 3 ? ('positive' as const) : ('negative' as const),
-    })),
-    ...riskProfile.countryRevenuePct.map((r) => ({
-      label: `Country ${r.country}`,
-      value: `${r.pct.toFixed(2)}%`,
-      tone: 'neutral' as const,
-    })),
-    ...riskProfile.fxExposurePct.map((r) => ({
-      label: `FX ${r.currency}`,
-      value: `${r.pct.toFixed(2)}%`,
-      tone: 'neutral' as const,
-    })),
-  ];
-  const eventRows = impacts.map((e) => ({
-    label: e.date,
-    value: `${e.event} | Px ${e.priceImpactPct >= 0 ? '+' : ''}${e.priceImpactPct}% | Vol ${e.volShiftPct >= 0 ? '+' : ''}${e.volShiftPct}%`,
-    tone: e.priceImpactPct >= 0 ? ('positive' as const) : ('negative' as const),
-  }));
-  const linkedDocsRows = newsArchive.map((d) => ({
-    label: `${d.published_at} ${d.source}`,
-    value: `${d.title} [Relevance ${(d.relevanceWeight * 100).toFixed(0)}]`,
-    tone: 'neutral' as const,
-  }));
-  const relationshipRows = relationshipEdges.map((e) => ({
-    label: `${e.relationshipType} w${e.weight.toFixed(2)}`,
-    value: `${e.fromId.slice(0, 8)} -> ${e.toId.slice(0, 8)}`,
-    tone: 'neutral' as const,
-  }));
-  const historicalRows = [
-    ...historicalSeries.map((h) => ({
-      label: `${h.year} Perf`,
-      value: `${h.value.toFixed(2)} (${h.yoy >= 0 ? '+' : ''}${h.yoy.toFixed(2)}%)`,
-      tone: h.yoy >= 0 ? ('positive' as const) : ('negative' as const),
-    })),
-    ...historicalCrises.map((c) => ({
-      label: c.period,
-      value: `DD ${c.drawdownPct}% | Rec ${c.recoveryMonths}m | Vol ${c.volShiftPct}%`,
-      tone: 'negative' as const,
-    })),
-    ...historicalEvents.map((e) => ({
-      label: e.date,
-      value: `${e.event} | ${e.impactPct >= 0 ? '+' : ''}${e.impactPct}%`,
-      tone: e.impactPct >= 0 ? ('positive' as const) : ('negative' as const),
-    })),
-  ];
-  const ownershipRows = [
-    ...secHolders.map((h) => ({
-      label: `Holder ${h.holder}`,
-      value: `${h.pctOut.toFixed(2)}% | Δ ${h.changePct >= 0 ? '+' : ''}${h.changePct.toFixed(2)}%`,
-      tone: h.changePct >= 0 ? ('positive' as const) : ('negative' as const),
-    })),
-    ...secInsider.map((i) => ({
-      label: `${i.date} ${i.insider}`,
-      value: `${i.side} ${i.shares.toLocaleString()} @ ${i.price.toFixed(2)}`,
-      tone: i.side === 'Buy' ? ('positive' as const) : ('negative' as const),
-    })),
-    ...exposures.map((e) => ({
-      label: `Exposure ${e.bucket}`,
-      value: `G ${e.gross}% | N ${e.net}% | B ${e.betaAdj}%`,
-      tone: 'accent' as const,
-    })),
-    {
-      label: 'ETF Ownership',
-      value: `${flowPositioning.etfOwnershipPct.toFixed(2)}%`,
-      tone: 'neutral' as const,
-    },
-    {
-      label: 'Passive Weight',
-      value: `${flowPositioning.passiveIndexWeightPct.toFixed(2)}%`,
-      tone: 'neutral' as const,
-    },
-    {
-      label: 'Institutional Ownership',
-      value: `${flowPositioning.institutionalOwnershipPct.toFixed(2)}%`,
-      tone: 'neutral' as const,
-    },
-  ];
-
-  const marketVisualSeries = [
-    ...marketIndices.map((r) => r.movePct),
-    ...marketSectors.map((s) => s.movePct),
-    ...marketCorrelations.map((c) => c.corr * 10),
-  ];
-  const marketVisualSecondary = [...marketIndices.map((r) => r.level), ...marketIndices.map((r) => r.volumeM)];
-  const volatilityVisualSeries = [
-    ...skewHistory.map((r) => r.rr25d),
-    ...skewHistory.map((r) => r.bf25d),
-    ...optionsSurface.map((r) => (r.w1 + r.m1 + r.m3 + r.m6) / 4),
-  ];
-  const volatilityVisualSecondary = optionsSurface.flatMap((r) => [r.w1, r.m1, r.m3, r.m6]);
-  const flowVisualSeries = [
-    ...marketFlows.map((r) => r.flowUsdM),
-    ...shortTrend.map((r) => r.shortPctFloat),
-    ...factors.map((f) => f.contribution),
-  ];
-  const flowVisualSecondary = factors.map((f) => f.exposure);
-  const peerVisualSeries = peerEntities.map((_, idx) => Math.sin((synthetic.seed + idx) * 0.37) * 9 + idx * 0.35);
-  const riskVisualSeries = [
-    state.risk.realizedVol,
-    state.risk.impliedVolProxy,
-    state.risk.intradayVar,
-    ...riskProfile.debtMaturityLadder.map((d) => d.pctOfDebt),
-    ...riskProfile.interestCoverageTrend.map((r) => r.ratio),
-    ...riskProfile.fxExposurePct.map((r) => r.pct),
-  ];
-  const riskVisualSecondary = [...riskProfile.countryRevenuePct.map((r) => r.pct), ...riskProfile.fxExposurePct.map((r) => r.pct)];
-  const eventVisualSeries = impacts.flatMap((e) => [e.priceImpactPct, e.volShiftPct]);
-  const eventVisualSecondary = impacts.map((e) => Math.abs(e.volShiftPct));
-  const docsVisualSeries = newsArchive.map((d) => d.relevanceWeight * 100);
-  const docsVisualSecondary = newsArchive.map((_, idx) => Math.sin((synthetic.seed + idx) * 0.23) * 30 + 50);
-  const relVisualSeries = relationshipEdges.flatMap((e) => [e.weight * 100, e.weightedStrength]);
-  const relVisualSecondary = relationshipEdges.map((e) => e.weightedStrength);
-  const historicalVisualSeries = [
-    ...historicalSeries.map((h) => h.yoy),
-    ...historicalCrises.map((c) => c.drawdownPct),
-    ...historicalEvents.map((e) => e.impactPct),
-  ];
-  const historicalVisualSecondary = historicalSeries.map((h) => h.value);
-  const ownershipVisualSeries = [
-    ...secHolders.map((h) => h.changePct),
-    ...secInsider.map((i) => (i.side === 'Buy' ? 1 : -1) * i.shares * 0.001),
-    ...exposures.map((e) => e.net),
-    flowPositioning.etfOwnershipPct,
-    flowPositioning.passiveIndexWeightPct,
-    flowPositioning.institutionalOwnershipPct,
-  ];
-  const ownershipVisualSecondary = [...exposures.map((e) => e.gross), ...secHolders.map((h) => h.pctOut)];
-
   const pickVisualKind = (blockId: string): StackVisualSpec['kind'] => {
     if (activeModule === 'EXEC') {
       if (execMode === 'MICROSTRUCTURE' || blockId === 'flow-positioning' || blockId === 'risk-diagnostics') return 'execution_microstructure';
@@ -366,77 +183,267 @@ export function ExecCenterStack({
     labels,
   });
 
+  const buildBlock = (
+    id: string,
+    title: string,
+    data: BlockDatum[],
+    minimum: number,
+    prefix: string,
+    provenance: StackBlock['provenance'],
+  ): StackBlock => ({
+    id,
+    title,
+    rows: densifyRows(
+      data.map((d) => ({ label: d.label, value: d.value, tone: d.tone })),
+      minimum,
+      prefix,
+    ),
+    visual: mkVisual(
+      id,
+      data.map((d) => d.primary),
+      data.map((d) => d.secondary ?? d.primary),
+      data.map((d) => d.marker ?? d.label),
+    ),
+    provenance,
+  });
+
+  const marketOverviewData: BlockDatum[] = [
+    ...marketIndices.map((r) => ({
+      label: `Index ${r.symbol}`,
+      value: `${r.level.toFixed(2)} (${r.movePct >= 0 ? '+' : ''}${r.movePct.toFixed(2)}%)`,
+      tone: r.movePct >= 0 ? ('positive' as const) : ('negative' as const),
+      primary: r.movePct,
+      secondary: r.level,
+      marker: r.symbol,
+    })),
+    ...marketSectors.map((s) => ({
+      label: `Sector ${s.sector}`,
+      value: `${s.movePct >= 0 ? '+' : ''}${s.movePct.toFixed(2)}% | Beta ${s.beta.toFixed(2)} | Conc ${s.concentrationPct}%`,
+      tone: s.movePct >= 0 ? ('positive' as const) : ('negative' as const),
+      primary: s.movePct,
+      secondary: s.beta,
+      marker: s.sector,
+    })),
+    ...marketCorrelations.map((c) => ({
+      label: `Corr ${c.pair}`,
+      value: c.corr.toFixed(2),
+      tone: 'accent' as const,
+      primary: c.corr,
+      secondary: c.corr * 0.8,
+      marker: c.pair,
+    })),
+  ];
+
+  const volatilityData: BlockDatum[] = [
+    ...skewHistory.map((r) => ({
+      label: `${r.date} RR/BF`,
+      value: `RR25 ${r.rr25d.toFixed(2)} | BF25 ${r.bf25d.toFixed(2)}`,
+      tone: r.rr25d >= 0 ? ('positive' as const) : ('negative' as const),
+      primary: r.rr25d,
+      secondary: r.bf25d,
+      marker: r.date,
+    })),
+    ...optionsSurface.map((r) => ({
+      label: `Surface ${r.delta}`,
+      value: `W1 ${r.w1.toFixed(2)} M1 ${r.m1.toFixed(2)} M3 ${r.m3.toFixed(2)} M6 ${r.m6.toFixed(2)}`,
+      tone: 'accent' as const,
+      primary: (r.w1 + r.m1 + r.m3 + r.m6) / 4,
+      secondary: r.m1 - r.w1,
+      marker: r.delta,
+    })),
+  ];
+
+  const flowData: BlockDatum[] = [
+    ...marketFlows.map((r) => ({
+      label: `${r.vehicle} ${r.direction}`,
+      value: `${r.flowUsdM >= 0 ? '+' : ''}${r.flowUsdM.toFixed(0)}M`,
+      tone: r.direction === 'Inflow' ? ('positive' as const) : ('negative' as const),
+      primary: r.flowUsdM,
+      secondary: r.flowUsdM * 0.6,
+      marker: r.vehicle,
+    })),
+    ...shortTrend.map((r) => ({
+      label: `Short ${r.date}`,
+      value: `${r.shortPctFloat.toFixed(2)}%`,
+      tone: 'accent' as const,
+      primary: r.shortPctFloat,
+      secondary: r.shortPctFloat - 0.4,
+      marker: r.date,
+    })),
+    ...factors.map((f) => ({
+      label: `Factor ${f.factor}`,
+      value: `Exp ${f.exposure.toFixed(2)} | Ctb ${f.contribution.toFixed(2)}`,
+      tone: f.contribution >= 0 ? ('positive' as const) : ('negative' as const),
+      primary: f.contribution,
+      secondary: f.exposure,
+      marker: f.factor,
+    })),
+  ];
+
+  const peerData: BlockDatum[] = peerEntities.map((e, idx) => ({
+    label: `${e.symbol} ${e.country}`,
+    value: `${e.sector} | ${e.name} | Rank ${(idx + 1).toString().padStart(2, '0')}`,
+    tone: 'neutral' as const,
+    primary: idx + 1,
+    secondary: (idx + 1) / Math.max(1, peerEntities.length),
+    marker: e.symbol,
+  }));
+
+  const riskData: BlockDatum[] = [
+    { label: 'Regime', value: state.risk.regime, tone: 'accent' as const, primary: state.risk.realizedVol, secondary: state.risk.impliedVolProxy, marker: state.risk.regime },
+    { label: 'RealizedVol', value: `${state.risk.realizedVol}%`, tone: 'accent' as const, primary: state.risk.realizedVol, secondary: state.risk.impliedVolProxy, marker: 'RV' },
+    { label: 'ImpliedVol', value: `${state.risk.impliedVolProxy}%`, tone: 'accent' as const, primary: state.risk.impliedVolProxy, secondary: state.risk.realizedVol, marker: 'IV' },
+    { label: 'VaR', value: state.risk.intradayVar.toFixed(0), tone: 'negative' as const, primary: state.risk.intradayVar, secondary: state.risk.realizedVol, marker: 'VAR' },
+    ...riskProfile.debtMaturityLadder.map((d) => ({
+      label: `Debt ${d.bucket}`,
+      value: `${d.amount.toFixed(0)} | ${d.pctOfDebt.toFixed(2)}%`,
+      tone: 'neutral' as const,
+      primary: d.pctOfDebt,
+      secondary: d.amount,
+      marker: d.bucket,
+    })),
+    ...riskProfile.interestCoverageTrend.map((r) => ({
+      label: `Coverage ${r.year}`,
+      value: `${r.ratio.toFixed(2)}x`,
+      tone: r.ratio >= 3 ? ('positive' as const) : ('negative' as const),
+      primary: r.ratio,
+      secondary: r.ratio - 1,
+      marker: `${r.year}`,
+    })),
+    ...riskProfile.countryRevenuePct.map((r) => ({
+      label: `Country ${r.country}`,
+      value: `${r.pct.toFixed(2)}%`,
+      tone: 'neutral' as const,
+      primary: r.pct,
+      secondary: r.pct * 0.8,
+      marker: r.country,
+    })),
+    ...riskProfile.fxExposurePct.map((r) => ({
+      label: `FX ${r.currency}`,
+      value: `${r.pct.toFixed(2)}%`,
+      tone: 'neutral' as const,
+      primary: r.pct,
+      secondary: r.pct * 0.9,
+      marker: r.currency,
+    })),
+  ];
+
+  const eventData: BlockDatum[] = impacts.map((e) => ({
+    label: e.date,
+    value: `${e.event} | Px ${e.priceImpactPct >= 0 ? '+' : ''}${e.priceImpactPct}% | Vol ${e.volShiftPct >= 0 ? '+' : ''}${e.volShiftPct}%`,
+    tone: e.priceImpactPct >= 0 ? ('positive' as const) : ('negative' as const),
+    primary: e.priceImpactPct,
+    secondary: e.volShiftPct,
+    marker: e.date,
+  }));
+
+  const docsData: BlockDatum[] = newsArchive.map((d) => ({
+    label: `${d.published_at} ${d.source}`,
+    value: `${d.title} [Relevance ${(d.relevanceWeight * 100).toFixed(0)}]`,
+    tone: 'neutral' as const,
+    primary: d.relevanceWeight * 100,
+    secondary: d.relevanceWeight * 72,
+    marker: d.published_at,
+  }));
+
+  const relationshipData: BlockDatum[] = relationshipEdges.map((e) => ({
+    label: `${e.relationshipType} w${e.weight.toFixed(2)}`,
+    value: `${e.fromId.slice(0, 8)} -> ${e.toId.slice(0, 8)}`,
+    tone: 'neutral' as const,
+    primary: e.weightedStrength,
+    secondary: e.weight,
+    marker: e.relationshipType,
+  }));
+
+  const historicalData: BlockDatum[] = [
+    ...historicalSeries.map((h) => ({
+      label: `${h.year} Perf`,
+      value: `${h.value.toFixed(2)} (${h.yoy >= 0 ? '+' : ''}${h.yoy.toFixed(2)}%)`,
+      tone: h.yoy >= 0 ? ('positive' as const) : ('negative' as const),
+      primary: h.yoy,
+      secondary: h.value,
+      marker: `${h.year}`,
+    })),
+    ...historicalCrises.map((c) => ({
+      label: c.period,
+      value: `DD ${c.drawdownPct}% | Rec ${c.recoveryMonths}m | Vol ${c.volShiftPct}%`,
+      tone: 'negative' as const,
+      primary: c.drawdownPct,
+      secondary: c.volShiftPct,
+      marker: c.period,
+    })),
+    ...historicalEvents.map((e) => ({
+      label: e.date,
+      value: `${e.event} | ${e.impactPct >= 0 ? '+' : ''}${e.impactPct}%`,
+      tone: e.impactPct >= 0 ? ('positive' as const) : ('negative' as const),
+      primary: e.impactPct,
+      secondary: e.impactPct * 0.8,
+      marker: e.date,
+    })),
+  ];
+
+  const ownershipData: BlockDatum[] = [
+    ...secHolders.map((h) => ({
+      label: `Holder ${h.holder}`,
+      value: `${h.pctOut.toFixed(2)}% | Δ ${h.changePct >= 0 ? '+' : ''}${h.changePct.toFixed(2)}%`,
+      tone: h.changePct >= 0 ? ('positive' as const) : ('negative' as const),
+      primary: h.changePct,
+      secondary: h.pctOut,
+      marker: h.holder,
+    })),
+    ...secInsider.map((i) => ({
+      label: `${i.date} ${i.insider}`,
+      value: `${i.side} ${i.shares.toLocaleString()} @ ${i.price.toFixed(2)}`,
+      tone: i.side === 'Buy' ? ('positive' as const) : ('negative' as const),
+      primary: (i.side === 'Buy' ? 1 : -1) * i.shares * 0.001,
+      secondary: i.price,
+      marker: i.date,
+    })),
+    ...exposures.map((e) => ({
+      label: `Exposure ${e.bucket}`,
+      value: `G ${e.gross}% | N ${e.net}% | B ${e.betaAdj}%`,
+      tone: 'accent' as const,
+      primary: e.net,
+      secondary: e.gross,
+      marker: e.bucket,
+    })),
+    {
+      label: 'ETF Ownership',
+      value: `${flowPositioning.etfOwnershipPct.toFixed(2)}%`,
+      tone: 'neutral' as const,
+      primary: flowPositioning.etfOwnershipPct,
+      secondary: flowPositioning.passiveIndexWeightPct,
+      marker: 'ETF',
+    },
+    {
+      label: 'Passive Weight',
+      value: `${flowPositioning.passiveIndexWeightPct.toFixed(2)}%`,
+      tone: 'neutral' as const,
+      primary: flowPositioning.passiveIndexWeightPct,
+      secondary: flowPositioning.institutionalOwnershipPct,
+      marker: 'PASSIVE',
+    },
+    {
+      label: 'Institutional Ownership',
+      value: `${flowPositioning.institutionalOwnershipPct.toFixed(2)}%`,
+      tone: 'neutral' as const,
+      primary: flowPositioning.institutionalOwnershipPct,
+      secondary: flowPositioning.etfOwnershipPct,
+      marker: 'INST',
+    },
+  ];
+
   const blocks: StackBlock[] = [
-    {
-      id: 'market-overview',
-      title: 'MARKET OVERVIEW',
-      rows: densifyRows(marketOverviewRows, 36, 'MO'),
-      visual: mkVisual('market-overview', marketVisualSeries, marketVisualSecondary, marketIndices.map((r) => r.symbol)),
-      provenance: p.financial,
-    },
-    {
-      id: 'volatility-skew',
-      title: 'VOLATILITY & SKEW',
-      rows: densifyRows(volatilityRows, 36, 'VS'),
-      visual: mkVisual('volatility-skew', volatilityVisualSeries, volatilityVisualSecondary, optionsSurface.map((r) => r.delta)),
-      provenance: p.flow,
-    },
-    {
-      id: 'flow-positioning',
-      title: 'FLOW & POSITIONING',
-      rows: densifyRows(flowRows, 36, 'FP'),
-      visual: mkVisual('flow-positioning', flowVisualSeries, flowVisualSecondary, marketFlows.map((r) => r.vehicle)),
-      provenance: p.flow,
-    },
-    {
-      id: 'peer-comparison',
-      title: 'PEER COMPARISON',
-      rows: densifyRows(peerRows, 30, 'PC'),
-      visual: mkVisual('peer-comparison', peerVisualSeries, marketVisualSeries, peerEntities.map((e) => e.symbol)),
-      provenance: p.peers,
-    },
-    {
-      id: 'risk-diagnostics',
-      title: 'RISK DIAGNOSTICS',
-      rows: densifyRows(riskRows, 40, 'RD'),
-      visual: mkVisual('risk-diagnostics', riskVisualSeries, riskVisualSecondary, riskProfile.debtMaturityLadder.map((d) => d.bucket)),
-      provenance: p.risk,
-    },
-    {
-      id: 'event-timeline',
-      title: 'EVENT TIMELINE',
-      rows: densifyRows(eventRows, 32, 'EV'),
-      visual: mkVisual('event-timeline', eventVisualSeries, eventVisualSecondary, impacts.map((e) => e.date)),
-      provenance: p.events,
-    },
-    {
-      id: 'linked-documents',
-      title: 'LINKED DOCUMENTS',
-      rows: densifyRows(linkedDocsRows, 42, 'LD'),
-      visual: mkVisual('linked-documents', docsVisualSeries, docsVisualSecondary, newsArchive.map((d) => d.published_at)),
-      provenance: p.news,
-    },
-    {
-      id: 'relationship-summary',
-      title: 'RELATIONSHIP SUMMARY',
-      rows: densifyRows(relationshipRows, 34, 'RS'),
-      visual: mkVisual('relationship-summary', relVisualSeries, relVisualSecondary, relationshipEdges.map((e) => e.relationshipType)),
-      provenance: p.relationships,
-    },
-    {
-      id: 'historical-performance',
-      title: 'HISTORICAL PERFORMANCE',
-      rows: densifyRows(historicalRows, 40, 'HP'),
-      visual: mkVisual('historical-performance', historicalVisualSeries, historicalVisualSecondary, historicalSeries.map((h) => `${h.year}`)),
-      provenance: p.financial,
-    },
-    {
-      id: 'ownership-positioning',
-      title: 'OWNERSHIP & POSITIONING BREAKDOWN',
-      rows: densifyRows(ownershipRows, 36, 'OP'),
-      visual: mkVisual('ownership-positioning', ownershipVisualSeries, ownershipVisualSecondary, secHolders.map((h) => h.holder)),
-      provenance: p.flow,
-    },
+    buildBlock('market-overview', 'MARKET OVERVIEW', marketOverviewData, 36, 'MO', p.financial),
+    buildBlock('volatility-skew', 'VOLATILITY & SKEW', volatilityData, 36, 'VS', p.flow),
+    buildBlock('flow-positioning', 'FLOW & POSITIONING', flowData, 36, 'FP', p.flow),
+    buildBlock('peer-comparison', 'PEER COMPARISON', peerData, 30, 'PC', p.peers),
+    buildBlock('risk-diagnostics', 'RISK DIAGNOSTICS', riskData, 40, 'RD', p.risk),
+    buildBlock('event-timeline', 'EVENT TIMELINE', eventData, 32, 'EV', p.events),
+    buildBlock('linked-documents', 'LINKED DOCUMENTS', docsData, 42, 'LD', p.news),
+    buildBlock('relationship-summary', 'RELATIONSHIP SUMMARY', relationshipData, 34, 'RS', p.relationships),
+    buildBlock('historical-performance', 'HISTORICAL PERFORMANCE', historicalData, 40, 'HP', p.financial),
+    buildBlock('ownership-positioning', 'OWNERSHIP & POSITIONING BREAKDOWN', ownershipData, 36, 'OP', p.flow),
   ];
 
   return (
