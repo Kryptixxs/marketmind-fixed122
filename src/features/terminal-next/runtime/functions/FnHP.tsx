@@ -4,6 +4,8 @@ import React, { useMemo, useState, useCallback } from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
 import { PanelSubHeader } from '../primitives';
 import { useTerminalOS } from '../TerminalOSContext';
+import { makeSecurity } from '../entities/types';
+import { openContextMenu } from '../ui/ContextMenu';
 
 function hash(s: string) { return Array.from(s).reduce((a, c) => a + c.charCodeAt(0), 0); }
 function seededRandom(seed: number): number {
@@ -106,9 +108,11 @@ export function FnHP({ panelIdx }: { panelIdx: number }) {
       <div className="flex-1 min-h-0 overflow-auto terminal-scrollbar">
         {pageRows.map((row, ri) => {
           const isBold = (ri + 1) % 5 === 0;
+          const entity = makeSecurity(panels[panelIdx]!.activeSecurity);
           return (
-            <div key={row.id} className="grid items-center"
-              style={{ gridTemplateColumns: gridCols, height: RH, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: ri % 2 === 1 ? '#060606' : DENSITY.bgBase, fontWeight: isBold ? 700 : 400 }}>
+            <div key={row.id} className="grid items-center cursor-pointer hover:bg-[#0a1520]"
+              style={{ gridTemplateColumns: gridCols, height: RH, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: ri % 2 === 1 ? '#060606' : DENSITY.bgBase, fontWeight: isBold ? 700 : 400 }}
+              onContextMenu={(e) => openContextMenu(e, entity, panelIdx)}>
               <span className="px-[2px]" style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny }}>{row.date}</span>
               <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeDefault }}>{row.open.toFixed(2)}</span>
               <span className="px-[2px] tabular-nums text-right" style={{ color: DENSITY.accentGreen, fontSize: DENSITY.fontSizeDefault }}>{row.high.toFixed(2)}</span>

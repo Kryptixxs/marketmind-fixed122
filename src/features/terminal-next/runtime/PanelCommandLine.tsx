@@ -134,6 +134,17 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
   const [suggestIdx, setSuggestIdx] = useState(0);
   const suggestRef = useRef<HTMLDivElement>(null);
   const f1TimerRef = useRef<number>(0);
+  // Command input history (separate from panel nav history)
+  const cmdHistoryRef = useRef<string[]>([]);
+  const cmdHistoryIdxRef = useRef<number>(-1);
+
+  // Load command history from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`vantage-cmd-history-${panelIdx}`);
+      if (stored) cmdHistoryRef.current = JSON.parse(stored) as string[];
+    } catch { /* ignore */ }
+  }, [panelIdx]);
 
   const suggestions = useMemo(
     () => (suggestOpen ? getSuggestions(p.commandInput) : []),
@@ -235,6 +246,15 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
     const mn = parsed.mnemonic ?? p.activeMnemonic;
     const sec = parsed.security ?? p.activeSecurity;
     const sector = parsed.sector ?? p.marketSector;
+    // Save to command history
+    const hist = cmdHistoryRef.current;
+    const cmd = p.commandInput.trim();
+    if (cmd && hist[hist.length - 1] !== cmd) {
+      hist.push(cmd);
+      if (hist.length > 20) hist.shift();
+      cmdHistoryIdxRef.current = -1;
+      try { localStorage.setItem(`vantage-cmd-history-${panelIdx}`, JSON.stringify(hist)); } catch { /* ignore */ }
+    }
     navigatePanel(panelIdx, mn, sec, sector);
     if (parsed.timeframe) dispatchPanel(panelIdx, { type: 'SET_TIMEFRAME', tf: parsed.timeframe });
   }, [p.commandInput, p.activeSecurity, p.activeMnemonic, p.marketSector, p.timeframe, panelIdx, panels, dispatchPanel, navigatePanel]);
@@ -257,7 +277,8 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
       e.preventDefault();
       const now = Date.now();
       if (now - f1TimerRef.current < 600) {
-        dispatchPanel(panelIdx, { type: 'PRESS_HELP' }); // second press → help-desk
+        // Double-tap → help-desk directly
+        dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'help-desk' });
       } else {
         dispatchPanel(panelIdx, { type: 'PRESS_HELP' });
       }
@@ -309,15 +330,41 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
       dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
       return;
     }
-    // Arrow keys navigate suggestions
-    if (e.key === 'ArrowDown' && suggestOpen) {
+    // Arrow up/down: navigate suggestions or command history
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSuggestIdx((i) => Math.min(i + 1, suggestions.length - 1));
+      if (suggestOpen) {
+        setSuggestIdx((i) => Math.min(i + 1, suggestions.length - 1));
+      } else {
+        // Command history: forward
+        const hist = cmdHistoryRef.current;
+        const newIdx = Math.min(cmdHistoryIdxRef.current + 1, -1);
+        cmdHistoryIdxRef.current = newIdx;
+        if (newIdx === -1) {
+          dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+        }
+      }
       return;
     }
-    if (e.key === 'ArrowUp' && suggestOpen) {
+    if (e.key === 'ArrowUp') {
       e.preventDefault();
-      setSuggestIdx((i) => Math.max(i - 1, 0));
+      if (suggestOpen) {
+        setSuggestIdx((i) => Math.max(i - 1, 0));
+      } else if (!suggestOpen) {
+        // Command history: backward
+        const hist = cmdHistoryRef.current;
+        if (hist.length > 0) {
+          const newIdx = cmdHistoryIdxRef.current === -1
+            ? hist.length - 1
+            : Math.max(0, cmdHistoryIdxRef.current - 1);
+          cmdHistoryIdxRef.current = newIdx;
+          const cmd = hist[newIdx];
+          if (cmd !== undefined) {
+            dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: cmd });
+            setSuggestOpen(false);
+          }
+        }
+      }
       return;
     }
     // Tab = accept top suggestion
@@ -359,17 +406,30 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
           autoComplete="off"
           spellCheck={false}
         />
+        <button
+          type="button"
+          onClick={() => executeGo()}
+          style={{ color: '#000', background: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, fontWeight: 700, padding: '1px 6px', border: 'none', cursor: 'pointer', flexShrink: 0, marginLeft: 4 }}
+          title="GO (Enter)"
+        >GO</button>
         <span style={{ color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny, marginLeft: 4, flexShrink: 0 }}>
           {p.timeframe} {p.linkGroup ? `[${p.linkGroup.toUpperCase()}]` : ''}
         </span>
       </div>
 
-      {/* Autocomplete dropdown */}
+      {/* Autocomplete dropdown — flips upward if near bottom of viewport */}
       {hasSuggestions && (
         <div
           ref={suggestRef}
           className="absolute left-0 right-0"
-          style={{ top: DENSITY.commandBarHeightPx, background: '#0a0a0a', border: `1px solid ${DENSITY.borderColor}`, borderTop: 'none', zIndex: 50, maxHeight: 200, overflowY: 'auto' }}
+          style={{
+            ...(
+              inputRef.current && inputRef.current.getBoundingClientRect().bottom + 200 > window.innerHeight
+                ? { bottom: DENSITY.commandBarHeightPx }
+                : { top: DENSITY.commandBarHeightPx }
+            ),
+            background: '#0a0a0a', border: `1px solid ${DENSITY.borderColor}`, borderTop: 'none', zIndex: 50, maxHeight: 200, overflowY: 'auto'
+          }}
         >
           {suggestions.map((s, i) => (
             <div

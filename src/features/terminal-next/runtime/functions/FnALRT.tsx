@@ -3,8 +3,9 @@
 import React, { useMemo, useState } from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
 import { DenseTable, PanelSubHeader, type DenseColumn } from '../primitives';
-import { loadAlertRules, addAlertRule, type PriceAlertRule } from '../../services/alertMonitor';
+import { loadAlertRules, addAlertRule } from '../../services/alertMonitor';
 import { useTerminalStore } from '../../store/TerminalStore';
+import { makeSecurity } from '../entities/types';
 
 const COLS: DenseColumn[] = [
   { key: 'symbol', header: 'Symbol', width: '90px' },
@@ -13,7 +14,7 @@ const COLS: DenseColumn[] = [
   { key: 'created', header: 'Created', width: '1fr', format: (v) => new Date(Number(v)).toLocaleString() },
 ];
 
-export function FnALRT() {
+export function FnALRT({ panelIdx = 0 }: { panelIdx?: number }) {
   const { state } = useTerminalStore();
   const [input, setInput] = useState('');
   const rules = useMemo(() => loadAlertRules(), [state.tickMs]);
@@ -37,7 +38,15 @@ export function FnALRT() {
           placeholder="ALERT IF SPY > 510" className="flex-1 bg-transparent outline-none" style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeDefault, fontFamily: DENSITY.fontFamily }} />
         <button type="button" onClick={handleAdd} style={{ color: DENSITY.accentGreen, fontSize: DENSITY.fontSizeTiny }}>ADD</button>
       </div>
-      <DenseTable columns={COLS} rows={rows} rowKey="id" className="flex-1 min-h-0" />
+      {rows.length === 0 && (
+        <div style={{ padding: DENSITY.pad4, color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny, fontFamily: DENSITY.fontFamily }}>
+          NO ALERTS — TYPE &quot;ALERT IF SPY &gt; 510&quot; ABOVE TO CREATE ONE
+        </div>
+      )}
+      <DenseTable columns={COLS} rows={rows} rowKey="id" className="flex-1 min-h-0"
+        panelIdx={panelIdx}
+        rowEntity={(row) => makeSecurity(row.symbol as string)}
+      />
     </div>
   );
 }

@@ -2,8 +2,10 @@
 
 import React, { useMemo, useState } from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
-import { PanelSubHeader, StatusBadge } from '../primitives';
+import { PanelSubHeader, StatusBadge, NewsListItem } from '../primitives';
 import { useTerminalStore } from '../../store/TerminalStore';
+import { useTerminalOS } from '../TerminalOSContext';
+import { makeNews } from '../entities/types';
 
 const SOURCES = ['BBG', 'RTRS', 'DJ', 'AP', 'FT', 'WSJ', 'CNBC', 'NHK', 'AFP', 'BLO', 'PAD', 'SPX', 'EVS', 'FLR', 'MNI'];
 const TAGS = ['RATES', 'FX', 'EQUITIES', 'MACRO', 'ENERGY', 'TECH', 'BANKS', 'EMERGING', 'CREDIT', 'POLICY'];
@@ -91,7 +93,6 @@ export function FnTOP({ panelIdx, companyFilter }: { panelIdx: number; companyFi
   const [sourceFilter, setSourceFilter] = useState<string>('ALL');
 
   const headlines = useMemo(() => {
-    // Merge live + base headlines
     const live = state.headlines ?? [];
     const merged = [...live, ...BASE_HEADLINES].slice(0, 150);
     return merged.map((h, i) => {
@@ -103,21 +104,22 @@ export function FnTOP({ panelIdx, companyFilter }: { panelIdx: number; companyFi
       const minOff = i * 3;
       const ts = new Date(now.getTime() - minOff * 60000);
       const time = `${ts.toISOString().slice(0, 10).slice(5)} ${String(ts.getHours()).padStart(2, '0')}:${String(ts.getMinutes()).padStart(2, '0')}`;
-      return { id: `hl-${i}`, title: companyFilter ? h : h, time, src, tag, urgency };
+      return { id: `hl-${i}`, title: h, time, src, tag, urgency };
     });
-  }, [state.headlines, companyFilter]);
+  }, [state.headlines]);
 
   const uniqueTags = ['ALL', ...Array.from(new Set(headlines.map((h) => h.tag)))];
   const uniqueSources = ['ALL', ...Array.from(new Set(headlines.map((h) => h.src)))];
 
   const filtered = headlines.filter((h) =>
     (filter === 'ALL' || h.tag === filter) &&
-    (sourceFilter === 'ALL' || h.src === sourceFilter)
+    (sourceFilter === 'ALL' || h.src === sourceFilter) &&
+    (!companyFilter || h.title.toUpperCase().includes(companyFilter.toUpperCase()))
   );
 
   return (
     <div className="flex flex-col h-full min-h-0" style={{ fontFamily: DENSITY.fontFamily }}>
-      <PanelSubHeader title={`TOP • Top News — ${filtered.length} headlines`} right={<StatusBadge label="LIVE" variant="live" />} />
+      <PanelSubHeader title={`${companyFilter ? 'CN • ' + companyFilter : 'TOP • Top News'} — ${filtered.length} headlines`} right={<StatusBadge label="LIVE" variant="live" />} />
       {/* Filter bar */}
       <div className="flex items-center flex-none overflow-x-auto" style={{ height: 16, background: DENSITY.bgSurface, borderBottom: `1px solid ${DENSITY.gridlineColor}`, gap: 0 }}>
         {uniqueTags.slice(0, 8).map((t) => (
@@ -134,18 +136,28 @@ export function FnTOP({ panelIdx, companyFilter }: { panelIdx: number; companyFi
           </button>
         ))}
       </div>
-      {/* Headlines */}
+      {/* Headlines — using NewsListItem for entity drill */}
       <div className="flex-1 min-h-0 overflow-auto terminal-scrollbar">
-        {filtered.map((h, i) => (
-          <div key={h.id} className="flex items-start gap-1"
-            style={{ padding: `${DENSITY.pad2}px ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: i % 2 === 1 ? '#060606' : DENSITY.bgBase, minHeight: DENSITY.rowHeightPx }}>
-            <span className="shrink-0 tabular-nums" style={{ color: DENSITY.accentAmber, width: 75, fontSize: DENSITY.fontSizeTiny }}>{h.time}</span>
-            <span className="shrink-0" style={{ color: DENSITY.accentCyan, width: 28, fontSize: DENSITY.fontSizeTiny }}>{h.src}</span>
-            <span className="shrink-0" style={{ color: DENSITY.textMuted, width: 44, fontSize: '8px' }}>{h.tag}</span>
-            {h.urgency === 'flash' && <span style={{ color: '#fff', background: DENSITY.accentRed, fontSize: '8px', fontWeight: 700, padding: '0 2px', flexShrink: 0 }}>FLASH</span>}
-            {h.urgency === 'top' && <span style={{ color: DENSITY.accentRed, fontSize: DENSITY.fontSizeTiny, fontWeight: 700, flexShrink: 0 }}>TOP</span>}
-            <span className="flex-1" style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeDefault, lineHeight: 1.1 }}>{h.title}</span>
+        {filtered.length === 0 && (
+          <div style={{ padding: DENSITY.pad4, color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>
+            NO HEADLINES MATCH CURRENT FILTERS — TRY ALL / CLEAR FILTER
           </div>
+        )}
+        {filtered.map((h, i) => (
+          <NewsListItem
+            key={h.id}
+            idx={i}
+            panelIdx={panelIdx}
+            item={{
+              id: h.id,
+              headline: h.title,
+              time: h.time,
+              src: h.src,
+              tag: h.tag,
+              urgency: h.urgency,
+              entity: makeNews(h.title, h.src, h.time),
+            }}
+          />
         ))}
       </div>
     </div>
@@ -153,6 +165,7 @@ export function FnTOP({ panelIdx, companyFilter }: { panelIdx: number; companyFi
 }
 
 export function FnCN({ panelIdx }: { panelIdx: number }) {
-  // Reuse TOP with a thin company-specific filter framing
-  return <FnTOP panelIdx={panelIdx} />;
+  const { panels } = useTerminalOS();
+  const ticker = panels[panelIdx]!.activeSecurity.split(' ')[0] ?? 'AAPL';
+  return <FnTOP panelIdx={panelIdx} companyFilter={ticker} />;
 }

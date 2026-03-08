@@ -4,6 +4,9 @@ import React, { useMemo } from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
 import { PanelSubHeader, StatusBadge } from '../primitives';
 import { useTerminalStore } from '../../store/TerminalStore';
+import { useDrill } from '../entities/DrillContext';
+import { makeSector } from '../entities/types';
+import { openContextMenu } from '../ui/ContextMenu';
 
 const SECTORS = [
   { name: 'Technology', weight: 30 }, { name: 'Healthcare', weight: 13 },
@@ -23,8 +26,9 @@ function color(pct: number): string {
   return '#660000';
 }
 
-export function FnIMAP() {
+export function FnIMAP({ panelIdx = 0 }: { panelIdx?: number }) {
   const { state } = useTerminalStore();
+  const { drill } = useDrill();
   const data = useMemo(() => SECTORS.map((s, i) => {
     const pct = ((state.tick * 7 + i * 31) % 400 - 200) / 100;
     return { ...s, pct };
@@ -38,10 +42,15 @@ export function FnIMAP() {
       <div className="flex-1 min-h-0 flex flex-wrap content-start" style={{ padding: 1 }}>
         {data.map((d) => {
           const pct = (d.weight / total) * 100;
+          const entity = makeSector(d.name);
           return (
             <div
               key={d.name}
+              className="cursor-pointer"
               style={{ width: `${pct}%`, minWidth: 60, height: `${Math.max(30, pct * 1.5)}%`, background: color(d.pct), border: `1px solid ${DENSITY.gridlineColor}`, padding: DENSITY.pad2, display: 'flex', flexDirection: 'column', justifyContent: 'center', overflow: 'hidden' }}
+              onClick={(e) => drill(entity, e.shiftKey ? 'OPEN_IN_NEW_PANEL' : 'OPEN_IN_PLACE', panelIdx)}
+              onContextMenu={(e) => openContextMenu(e, entity, panelIdx)}
+              title={`${d.name} — Click: RELS  •  Shift+Click: new panel  •  Right-click: actions`}
             >
               <span style={{ fontSize: DENSITY.fontSizeTiny, color: '#fff', fontWeight: 700, fontFamily: DENSITY.fontFamily }}>{d.name}</span>
               <span className="tabular-nums" style={{ fontSize: DENSITY.fontSizeTiny, color: d.pct >= 0 ? DENSITY.accentGreen : DENSITY.accentRed, fontFamily: DENSITY.fontFamily }}>

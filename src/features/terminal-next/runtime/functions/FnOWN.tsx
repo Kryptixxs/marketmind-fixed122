@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { DENSITY } from '../../constants/layoutDensity';
 import { DenseTable, PanelSubHeader, type DenseColumn } from '../primitives';
 import { useTerminalOS } from '../TerminalOSContext';
+import { makeHolder } from '../entities/types';
 
 const HOLDERS = [
   'Vanguard Group', 'BlackRock', 'State Street', 'Fidelity Mgmt', 'Berkshire Hathaway',
@@ -38,7 +38,10 @@ export function FnOWN({ panelIdx }: { panelIdx: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title={`OWN • Institutional Ownership — ${ticker}`} />
-      <DenseTable columns={COLS} rows={rows} rowKey="id" className="flex-1 min-h-0" />
+      <DenseTable columns={COLS} rows={rows} rowKey="id" className="flex-1 min-h-0"
+        panelIdx={panelIdx}
+        rowEntity={(row) => makeHolder(row.holder as string, Number(row.pct))}
+      />
     </div>
   );
 }

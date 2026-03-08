@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { DENSITY } from '../../constants/layoutDensity';
 import { DenseTable, PanelSubHeader, type DenseColumn } from '../primitives';
 import { useTerminalOS } from '../TerminalOSContext';
+import { useDrill } from '../entities/DrillContext';
+import { makeSecurity } from '../entities/types';
 
 const PEER_POOL = [
   { ticker: 'MSFT', name: 'Microsoft Corp', sector: 'Software', mcap: 3200 },
@@ -31,7 +32,8 @@ const COLS: DenseColumn[] = [
 ];
 
 export function FnRELS({ panelIdx }: { panelIdx: number }) {
-  const { panels, navigatePanel } = useTerminalOS();
+  const { panels } = useTerminalOS();
+  const { drill } = useDrill();
   const ticker = panels[panelIdx]!.activeSecurity.split(' ')[0] ?? 'AAPL';
 
   const rows = useMemo(() => PEER_POOL.filter((p) => p.ticker !== ticker).map((p, i) => ({ id: i, ...p })), [ticker]);
@@ -40,7 +42,10 @@ export function FnRELS({ panelIdx }: { panelIdx: number }) {
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title={`RELS • Related Securities — ${ticker}`} />
       <DenseTable columns={COLS} rows={rows} rowKey="id" className="flex-1 min-h-0"
-        onRowClick={(r) => navigatePanel(panelIdx, 'DES', `${r.ticker} US Equity`)} />
+        panelIdx={panelIdx}
+        rowEntity={(row) => makeSecurity(`${row.ticker} US Equity`, row.name as string)}
+        onRowClick={(row) => drill(makeSecurity(`${row.ticker} US Equity`, row.name as string), 'OPEN_IN_PLACE', panelIdx)}
+      />
     </div>
   );
 }

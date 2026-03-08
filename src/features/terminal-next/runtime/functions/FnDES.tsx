@@ -6,6 +6,7 @@ import { KeyValueGrid, PanelSubHeader, StatusBadge, type KVPair } from '../primi
 import { useTerminalOS } from '../TerminalOSContext';
 import { useDrill } from '../entities/DrillContext';
 import { makeSecurity, makeSector, makeField } from '../entities/types';
+import { openContextMenu } from '../ui/ContextMenu';
 
 function h(s: string) { return Array.from(s).reduce((a, c) => a + c.charCodeAt(0), 0); }
 function fmtB(n: number) { return n >= 1e12 ? (n / 1e12).toFixed(2) + 'T' : n >= 1e9 ? (n / 1e9).toFixed(2) + 'B' : n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n.toLocaleString(); }
@@ -18,7 +19,7 @@ const SUMMARIES = [
 ];
 
 export function FnDES({ panelIdx }: { panelIdx: number }) {
-  const { panels, navigatePanel } = useTerminalOS();
+  const { panels } = useTerminalOS();
   const p = panels[panelIdx]!;
   const sec = p.activeSecurity;
   const ticker = sec.split(' ')[0] ?? 'AAPL';
@@ -77,29 +78,31 @@ export function FnDES({ panelIdx }: { panelIdx: number }) {
         <div style={{ padding: DENSITY.pad4, borderTop: `1px solid ${DENSITY.borderColor}` }}>
           <div style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, textTransform: 'uppercase', marginBottom: 2 }}>Related Securities</div>
           <div className="flex flex-wrap gap-1">
-            {[...data.relatedBonds, ...data.relatedOptions].map((s) => {
-              const ent = makeSecurity(s + ' Corp', s);
-              return (
-                <button key={s} type="button" className="px-1 hover:text-white"
-                  style={{ border: `1px solid ${DENSITY.borderColor}`, background: DENSITY.bgSurface, color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, fontFamily: DENSITY.fontFamily, cursor: 'pointer' }}
-                  onClick={(e) => { const intent = e.shiftKey ? 'OPEN_IN_NEW_PANEL' as const : 'OPEN_IN_PLACE' as const; navigatePanel(panelIdx, 'DES', s + ' Corp', 'CORP'); }}
-                >{s}</button>
-              );
-            })}
+            {[...data.relatedBonds, ...data.relatedOptions].map((s) => (
+              <button key={s} type="button" className="px-1 hover:text-white"
+                style={{ border: `1px solid ${DENSITY.borderColor}`, background: DENSITY.bgSurface, color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, fontFamily: DENSITY.fontFamily, cursor: 'pointer' }}
+                onClick={(e) => {
+                  const entity = makeSecurity(s + ' Corp', s);
+                  drill(entity, e.shiftKey ? 'OPEN_IN_NEW_PANEL' : 'OPEN_IN_PLACE', panelIdx);
+                }}
+                onContextMenu={(e) => { e.preventDefault(); openContextMenu(e, makeSecurity(s + ' Corp', s), panelIdx); }}
+              >{s}</button>
+            ))}
           </div>
         </div>
         <div style={{ padding: DENSITY.pad4, borderTop: `1px solid ${DENSITY.borderColor}` }}>
           <div style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, textTransform: 'uppercase', marginBottom: 2 }}>Peers</div>
           <div className="flex flex-wrap gap-1">
-            {data.peers.map((t) => {
-              const ent = makeSecurity(`${t} US Equity`, t);
-              return (
-                <button key={t} type="button" className="px-1 hover:text-white"
-                  style={{ border: `1px solid ${DENSITY.borderColor}`, background: DENSITY.bgSurface, color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeTiny, fontFamily: DENSITY.fontFamily, cursor: 'pointer' }}
-                  onClick={(e) => { const intent = e.shiftKey ? 'OPEN_IN_NEW_PANEL' as const : 'OPEN_IN_PLACE' as const; /* use drill */ navigatePanel(panelIdx, 'DES', `${t} US Equity`); }}
-                >{t}</button>
-              );
-            })}
+            {data.peers.map((t) => (
+              <button key={t} type="button" className="px-1 hover:text-white"
+                style={{ border: `1px solid ${DENSITY.borderColor}`, background: DENSITY.bgSurface, color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeTiny, fontFamily: DENSITY.fontFamily, cursor: 'pointer' }}
+                onClick={(e) => {
+                  const entity = makeSecurity(`${t} US Equity`, t);
+                  drill(entity, e.shiftKey ? 'OPEN_IN_NEW_PANEL' : 'OPEN_IN_PLACE', panelIdx);
+                }}
+                onContextMenu={(e) => { e.preventDefault(); openContextMenu(e, makeSecurity(`${t} US Equity`, t), panelIdx); }}
+              >{t}</button>
+            ))}
           </div>
         </div>
       </div>

@@ -25,6 +25,9 @@ import { FnFXC } from './functions/FnFXC';
 import { FnIMAP } from './functions/FnIMAP';
 import { AnalyticsMonitor } from '../components/visualizations/AnalyticsMonitor';
 import { FnMON, FnWS } from './functions/FnMON';
+import { FnRV } from './functions/FnRV';
+import { FnGC } from './functions/FnGC';
+import { FnMKT } from './functions/FnMKT';
 
 type FnC = React.ComponentType<{ panelIdx: number }>;
 
@@ -57,6 +60,9 @@ const FUNCTION_MAP: Record<string, FnC> = {
   MON: FnMON,
   WS: FnWS,
   WSMGR: FnWS,
+  RV: FnRV,
+  GC: FnGC as FnC,
+  MKT: FnMKT as FnC,
 };
 
 const WAKE_MNEMONICS = new Set(['WAKE', 'HOME', '']);

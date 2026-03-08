@@ -4,88 +4,218 @@ import React, { useCallback } from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
 import { useDrill } from '../entities/DrillContext';
 import { useTerminalOS } from '../TerminalOSContext';
-import { makeSecurity, makeField, makeFunction } from '../entities/types';
+import { makeSecurity, makeField, makeFunction, makeIndex, makeETF, makeSector, makeCountry } from '../entities/types';
 import type { EntityRef } from '../entities/types';
 import { MNEMONIC_DEFS } from '../MnemonicRegistry';
 
-// ── Generate dense simulated fields for any entity ───────────────────────────
+function h(s: string) { return Array.from(s).reduce((a, c) => a + c.charCodeAt(0), 0); }
+
 function buildEntityFields(entity: EntityRef): Array<{ label: string; value: string; entity?: EntityRef }> {
   const common: Array<{ label: string; value: string; entity?: EntityRef }> = [
     { label: 'ID', value: entity.id },
     { label: 'TYPE', value: entity.kind },
     { label: 'DISPLAY', value: entity.display },
+    { label: 'PROVENANCE', value: 'SIM' },
   ];
 
   switch (entity.kind) {
     case 'SECURITY':
-    case 'INDEX':
+    case 'COMPANY': {
+      const sym = (entity.payload as { sym: string }).sym;
+      const ticker = sym.split(' ')[0] ?? sym;
+      const seed = h(ticker);
+      return [
+        { label: 'TICKER', value: ticker, entity: makeSecurity(sym) },
+        { label: 'LAST PX', value: (175 + seed % 50).toFixed(2), entity: makeField('PX_LAST', 175 + seed % 50) },
+        { label: 'MARKET CAP', value: '$' + (2.3 + (seed % 20) / 10).toFixed(1) + 'T', entity: makeField('MARKET_CAP') },
+        { label: 'P/E RATIO', value: (22 + seed % 18).toFixed(1) + 'x', entity: makeField('PE_RATIO', 22 + seed % 18) },
+        { label: 'EPS TTM', value: '$' + (3 + seed % 15).toFixed(2), entity: makeField('EPS') },
+        { label: 'DIV YIELD', value: (1.5 + (seed % 15) / 10).toFixed(2) + '%', entity: makeField('DIV_YIELD') },
+        { label: 'BETA', value: (0.8 + (seed % 12) / 10).toFixed(2), entity: makeField('BETA') },
+        { label: '52W HIGH', value: (200 + seed % 80).toFixed(2), entity: makeField('52W_HIGH') },
+        { label: '52W LOW', value: (120 + seed % 60).toFixed(2), entity: makeField('52W_LOW') },
+        { label: 'AVG VOL', value: (30 + seed % 50) + 'M', entity: makeField('VOLUME') },
+        { label: 'EXCHANGE', value: seed % 2 === 0 ? 'NASDAQ' : 'NYSE', entity: makeField('PRIMARY_EXCHANGE') },
+        { label: 'PROVENANCE', value: 'SIM' },
+      ];
+    }
+    case 'INDEX': {
+      const sym = (entity.payload as { sym: string }).sym;
+      const ticker = sym.split(' ')[0] ?? sym;
+      const seed = h(ticker);
+      return [
+        { label: 'INDEX', value: ticker, entity: makeIndex(sym, entity.display) },
+        { label: 'LAST', value: (5000 + seed % 800).toFixed(2), entity: makeField('PX_LAST') },
+        { label: 'CHG', value: ((seed % 40) - 20).toFixed(2), entity: makeField('PX_CHG') },
+        { label: '%CHG', value: (((seed % 40) - 20) / 50).toFixed(2) + '%', entity: makeField('PCT_CHG') },
+        { label: 'CONSTITUENTS', value: String(500 + seed % 500) },
+        { label: 'ASSET CLASS', value: 'INDEX' },
+        { label: 'PROVENANCE', value: 'SIM' },
+      ];
+    }
     case 'ETF': {
       const sym = (entity.payload as { sym: string }).sym;
       const ticker = sym.split(' ')[0] ?? sym;
+      const seed = h(ticker);
       return [
-        ...common,
-        { label: 'TICKER', value: ticker, entity: makeSecurity(sym) },
-        { label: 'LAST PX', value: (175 + (ticker.charCodeAt(0) % 50)).toFixed(2) },
-        { label: 'MARKET CAP', value: '$' + (2.3 + (ticker.charCodeAt(0) % 20) / 10).toFixed(1) + 'T' },
-        { label: 'P/E RATIO', value: (22 + (ticker.charCodeAt(0) % 18)).toFixed(1) + 'x', entity: makeField('PE_RATIO') },
-        { label: 'DIV YIELD', value: (1.5 + (ticker.charCodeAt(0) % 15) / 10).toFixed(2) + '%', entity: makeField('DIV_YIELD') },
-        { label: 'BETA', value: (0.8 + (ticker.charCodeAt(0) % 12) / 10).toFixed(2), entity: makeField('BETA') },
-        { label: '52W HIGH', value: (200 + ticker.charCodeAt(0) % 80).toFixed(2) },
-        { label: '52W LOW', value: (120 + ticker.charCodeAt(0) % 60).toFixed(2) },
-        { label: 'AVG VOL', value: (30 + ticker.charCodeAt(0) % 50) + 'M' },
-        { label: 'EXCHANGE', value: ticker.charCodeAt(0) % 2 === 0 ? 'NASDAQ' : 'NYSE', entity: makeField('PRIMARY_EXCHANGE') },
+        { label: 'TICKER', value: ticker, entity: makeETF(sym, entity.display) },
+        { label: 'LAST NAV', value: (100 + seed % 300).toFixed(2), entity: makeField('PX_LAST') },
+        { label: 'AUM ($B)', value: (10 + seed % 300).toFixed(1), entity: makeField('MARKET_CAP') },
+        { label: 'EXPENSE RATIO', value: (0.03 + (seed % 8) / 100).toFixed(2) + '%' },
+        { label: 'SHARES OUT', value: (200 + seed % 400) + 'M' },
+        { label: 'PREMIUM/DISC', value: (((seed % 20) - 10) / 100).toFixed(3) + '%' },
+        { label: 'YIELD', value: (1 + seed % 4).toFixed(2) + '%' },
+        { label: 'PROVENANCE', value: 'SIM' },
       ];
     }
-    case 'FIELD': {
-      const fp = entity.payload as { fieldName: string; value?: unknown };
+    case 'FX': {
+      const pair = (entity.payload as { pair: string }).pair;
+      const seed = h(pair);
+      const isJPY = pair.includes('JPY');
       return [
-        ...common,
-        { label: 'FIELD NAME', value: fp.fieldName },
-        { label: 'VALUE', value: String(fp.value ?? '—') },
-        { label: 'TYPE', value: 'NUMBER' },
-        { label: 'SOURCE', value: 'B-PIPE SIM' },
-        { label: 'LAST UPDATE', value: new Date().toISOString().slice(0, 19) },
-        { label: 'RELATED FN', value: 'DES', entity: makeFunction('DES', 'Description') },
-        { label: 'RELATED FN', value: 'FA', entity: makeFunction('FA', 'Financial Analysis') },
+        { label: 'PAIR', value: pair },
+        { label: 'SPOT', value: isJPY ? (140 + seed % 20).toFixed(2) : (1.0 + (seed % 30) / 100).toFixed(4), entity: makeField('PX_LAST') },
+        { label: 'BID', value: isJPY ? (139.98 + seed % 20).toFixed(2) : (1.0 + (seed % 30) / 100 - 0.0002).toFixed(4) },
+        { label: 'ASK', value: isJPY ? (140.02 + seed % 20).toFixed(2) : (1.0 + (seed % 30) / 100 + 0.0002).toFixed(4) },
+        { label: 'SPREAD PIP', value: (seed % 3 + 1).toFixed(1) },
+        { label: '1Y CHANGE', value: ((seed % 20) - 10).toFixed(2) + '%' },
+        { label: 'VOL 1M', value: (5 + seed % 10).toFixed(1) + '%' },
+        { label: 'PROVENANCE', value: 'SIM' },
+      ];
+    }
+    case 'FUTURE':
+    case 'OPTION': {
+      const sym = (entity.payload as { sym: string }).sym;
+      const seed = h(sym);
+      return [
+        { label: 'SYMBOL', value: sym },
+        { label: 'LAST', value: (50 + seed % 200).toFixed(2), entity: makeField('PX_LAST') },
+        { label: 'OPEN INT', value: (10000 + seed % 50000).toLocaleString() },
+        { label: 'VOLUME', value: (1000 + seed % 10000).toLocaleString() },
+        ...(entity.kind === 'OPTION' ? [
+          { label: 'DELTA', value: (0.2 + (seed % 6) / 10).toFixed(2), entity: makeField('DELTA') },
+          { label: 'VEGA', value: (0.05 + (seed % 20) / 100).toFixed(2), entity: makeField('VEGA') },
+          { label: 'GAMMA', value: (0.01 + (seed % 5) / 100).toFixed(3) },
+          { label: 'THETA', value: '-' + (0.01 + (seed % 5) / 100).toFixed(3) },
+        ] : [
+          { label: 'BASIS', value: (seed % 30 - 15).toFixed(2) },
+          { label: 'ROLL COST', value: (seed % 10 - 5).toFixed(2) + '%' },
+        ]),
+        { label: 'PROVENANCE', value: 'SIM' },
+      ];
+    }
+    case 'COUNTRY': {
+      const cp = entity.payload as { iso2: string; name: string };
+      const seed = h(cp.iso2);
+      return [
+        { label: 'COUNTRY', value: cp.name },
+        { label: 'ISO CODE', value: cp.iso2 },
+        { label: 'GDP ($T)', value: (1 + seed % 20).toFixed(1), entity: makeField('GDP') },
+        { label: 'INFLATION', value: (2 + (seed % 80) / 10).toFixed(1) + '%', entity: makeField('INFLATION_RATE') },
+        { label: 'POLICY RATE', value: (1 + (seed % 50) / 10).toFixed(2) + '%', entity: makeField('POLICY_RATE') },
+        { label: 'CURRENCY', value: ['USD', 'EUR', 'GBP', 'JPY', 'CHF', 'AUD'][seed % 6]! },
+        { label: 'RATING', value: ['AAA', 'AA+', 'AA', 'A+', 'A'][seed % 5]! },
+        { label: 'MAJOR INDEX', value: cp.iso2 === 'US' ? 'SPX' : cp.iso2 === 'JP' ? 'NKY' : cp.iso2 === 'GB' ? 'UKX' : 'LOCAL', entity: makeIndex(`LOCAL Index`, cp.iso2 + ' Index') },
+        { label: 'PROVENANCE', value: 'SIM' },
+      ];
+    }
+    case 'SECTOR':
+    case 'INDUSTRY': {
+      const sp = entity.payload as { name: string };
+      const seed = h(sp.name);
+      return [
+        { label: entity.kind, value: sp.name },
+        { label: '% CHANGE', value: ((seed % 40) - 20) / 10 + '%', entity: makeField('PCT_CHG') },
+        { label: 'MKT WEIGHT', value: (3 + seed % 25) + '%' },
+        { label: 'PE RATIO', value: (15 + seed % 20).toFixed(1) + 'x', entity: makeField('PE_RATIO') },
+        { label: 'YTD PERF', value: ((seed % 40) - 10).toFixed(1) + '%' },
+        { label: 'MEMBERS', value: String(20 + seed % 80) },
+        { label: 'RELATED', value: 'IMAP', entity: makeFunction('IMAP', 'Heatmap') },
+        { label: 'RELATED', value: 'RELS', entity: makeFunction('RELS', 'Peers') },
+        { label: 'PROVENANCE', value: 'SIM' },
+      ];
+    }
+    case 'HOLDER': {
+      const hp = entity.payload as { name: string; pct?: number };
+      const seed = h(hp.name);
+      return [
+        { label: 'HOLDER', value: hp.name },
+        { label: '% OUT', value: (hp.pct ?? (1 + seed % 8)).toFixed(2) + '%' },
+        { label: 'SHARES (M)', value: (50 + seed % 500).toFixed(1), entity: makeField('SHARES_HELD') },
+        { label: 'VALUE ($B)', value: (0.5 + (seed % 50) / 10).toFixed(1) },
+        { label: 'CHG QOQ (M)', value: ((seed % 40) - 20).toFixed(1), entity: makeField('SHARE_CHANGE') },
+        { label: 'STYLE', value: ['GROWTH', 'VALUE', 'BLEND', 'QUANT'][seed % 4]! },
+        { label: 'FILING DATE', value: new Date(Date.now() - (seed % 90) * 86400000).toISOString().slice(0, 10) },
+        { label: 'PROVENANCE', value: 'SIM' },
       ];
     }
     case 'PERSON': {
       const pp = entity.payload as { name: string; title?: string; company?: string };
       return [
-        ...common,
         { label: 'NAME', value: pp.name },
         { label: 'TITLE', value: pp.title ?? '—' },
-        { label: 'COMPANY', value: pp.company ?? '—', entity: pp.company ? makeSecurity(`${pp.company} US Equity`) : undefined },
+        { label: 'COMPANY', value: pp.company ?? '—', entity: pp.company ? makeSecurity(`${pp.company} US Equity`, pp.company) : undefined },
+        { label: 'TENURE', value: (2010 + h(pp.name) % 14) + '–PRESENT' },
+        { label: 'COMP ($M)', value: (5 + h(pp.name) % 45).toFixed(1) },
+        { label: 'PROVENANCE', value: 'SIM' },
       ];
     }
     case 'NEWS': {
       const np = entity.payload as { headline: string; src?: string; ts?: string };
       return [
-        ...common,
         { label: 'HEADLINE', value: np.headline },
         { label: 'SOURCE', value: np.src ?? '—' },
-        { label: 'TIME', value: np.ts ?? '—' },
+        { label: 'TIME', value: np.ts ?? new Date().toISOString().slice(11, 19) },
+        { label: 'REGION', value: 'GLOBAL' },
+        { label: 'TAGS', value: 'MACRO,RATES' },
+        { label: 'RELATED', value: 'TOP', entity: makeFunction('TOP', 'Top News') },
+        { label: 'PROVENANCE', value: 'LIVE' },
       ];
     }
-    case 'SECTOR': {
-      const sp = entity.payload as { name: string };
+    case 'EVENT': {
+      const ep = entity.payload as { type: string; date: string; desc: string };
       return [
-        ...common,
-        { label: 'SECTOR', value: sp.name },
-        { label: 'FUNCTION', value: 'IMAP', entity: makeFunction('IMAP', 'Sector Heatmap') },
-        { label: 'FUNCTION', value: 'RELS', entity: makeFunction('RELS', 'Related Securities') },
-        { label: 'FUNCTION', value: 'WEI', entity: makeFunction('WEI', 'World Indices') },
+        { label: 'TYPE', value: ep.type },
+        { label: 'DATE', value: ep.date },
+        { label: 'DESCRIPTION', value: ep.desc },
+        { label: 'IMPACT', value: ['HIGH', 'MED', 'LOW'][h(ep.type) % 3]! },
+        { label: 'RELATED', value: 'EVT', entity: makeFunction('EVT', 'Events') },
+        { label: 'PROVENANCE', value: 'SIM' },
+      ];
+    }
+    case 'FIELD': {
+      const fp = entity.payload as { fieldName: string; value?: unknown };
+      return [
+        { label: 'FIELD', value: fp.fieldName },
+        { label: 'VALUE', value: String(fp.value ?? '—'), entity: fp.value !== undefined ? makeField(fp.fieldName, fp.value) : undefined },
+        { label: 'TYPE', value: 'NUMERIC' },
+        { label: 'UNIT', value: fp.fieldName.includes('YIELD') || fp.fieldName.includes('PCT') ? '%' : fp.fieldName.includes('CAP') ? 'USD' : fp.fieldName === 'BETA' ? 'ratio' : 'USD' },
+        { label: 'UPDATE FREQ', value: fp.fieldName.includes('PX') ? 'TICK' : 'DAILY' },
+        { label: 'PROVENANCE', value: 'SIM (B-PIPE)' },
+        { label: 'RELATED', value: 'DES', entity: makeFunction('DES', 'Description') },
+        { label: 'RELATED', value: 'FA', entity: makeFunction('FA', 'Financials') },
+      ];
+    }
+    case 'ORDER':
+    case 'TRADE': {
+      const op = entity.payload as { id: string; sym?: string };
+      return [
+        { label: 'ORDER ID', value: op.id },
+        { label: 'SYMBOL', value: op.sym ?? '—', entity: op.sym ? makeSecurity(op.sym) : undefined },
+        { label: 'STATUS', value: 'SIM-FILLED' },
+        { label: 'RELATED', value: 'BLTR', entity: makeFunction('BLTR', 'Blotter') },
+        { label: 'PROVENANCE', value: 'SIM' },
       ];
     }
     case 'FUNCTION': {
       const fp = entity.payload as { code: string; title?: string };
       const def = MNEMONIC_DEFS[fp.code];
       return [
-        ...common,
         { label: 'CODE', value: fp.code },
         { label: 'TITLE', value: fp.title ?? def?.title ?? '—' },
         { label: 'CATEGORY', value: def?.layoutType ?? '—' },
-        { label: 'RELATED', value: (def?.relatedCodes ?? []).join(', ') },
+        { label: 'NEEDS SEC', value: def?.requiresSecurity ? 'YES' : 'NO' },
+        { label: 'RELATED', value: (def?.relatedCodes ?? []).slice(0, 3).join(', ') },
       ];
     }
     default:
@@ -95,13 +225,20 @@ function buildEntityFields(entity: EntityRef): Array<{ label: string; value: str
 
 function relatedFunctions(entity: EntityRef): string[] {
   switch (entity.kind) {
-    case 'SECURITY': case 'INDEX': case 'ETF':
-      return ['DES', 'HP', 'GP', 'GIP', 'FA', 'CN', 'OWN', 'RELS', 'MGMT', 'DVD', 'ALRT'];
-    case 'FIELD': return ['DES', 'FA'];
+    case 'SECURITY': case 'COMPANY': return ['DES', 'HP', 'GP', 'GIP', 'FA', 'CN', 'OWN', 'RELS', 'MGMT', 'DVD', 'ALRT'];
+    case 'INDEX': case 'ETF': return ['DES', 'GP', 'HP', 'WEI', 'IMAP'];
+    case 'FX': return ['DES', 'GP', 'FXC', 'GIP'];
+    case 'FUTURE': return ['DES', 'GP', 'HP'];
+    case 'OPTION': return ['DES', 'GP', 'HP'];
+    case 'HOLDER': return ['OWN', 'MGMT', 'DES'];
     case 'PERSON': return ['MGMT', 'OWN', 'DES'];
+    case 'FIELD': return ['DES', 'FA'];
     case 'NEWS': return ['TOP', 'CN', 'N'];
+    case 'EVENT': return ['EVT', 'DES', 'DVD'];
     case 'SECTOR': case 'INDUSTRY': return ['IMAP', 'RELS', 'WEI'];
+    case 'COUNTRY': return ['WEI', 'ECO', 'FXC'];
     case 'FUNCTION': return ['MENU', 'HL'];
+    case 'ORDER': case 'TRADE': return ['BLTR', 'ORD'];
     default: return ['DES', 'TOP'];
   }
 }
@@ -115,6 +252,14 @@ export function TerminalInspector() {
   const entity = inspector.entity;
   const fields = buildEntityFields(entity);
   const relFns = relatedFunctions(entity);
+
+  // Get the security symbol from entity payload for passing to function drills
+  const getEntitySym = (): string | undefined => {
+    const p = entity.payload as Record<string, unknown>;
+    if (typeof p['sym'] === 'string') return p['sym'];
+    if (typeof p['pair'] === 'string') return p['pair'];
+    return undefined;
+  };
 
   return (
     <div
@@ -172,10 +317,10 @@ export function TerminalInspector() {
                 type="button"
                 className="truncate text-left hover:underline"
                 style={{ color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeDefault, background: 'none', border: 'none', cursor: 'pointer', flex: 1, padding: 0 }}
-                title={`Click: open | Shift+Click: send to panel | Alt+Click: inspect`}
+                title="Click: open | Shift+Click: send to panel | Alt+Click: inspect"
                 onClick={(e) => {
                   e.stopPropagation();
-                  const intent = e.shiftKey ? 'OPEN_IN_NEW_PANEL' : e.altKey ? 'INSPECT_OVERLAY' : 'OPEN_IN_PLACE';
+                  const intent = e.shiftKey ? 'OPEN_IN_NEW_PANEL' as const : e.altKey ? 'INSPECT_OVERLAY' as const : 'OPEN_IN_PLACE' as const;
                   drill(f.entity!, intent, focusedPanel);
                 }}
               >{f.value}</button>
@@ -196,14 +341,23 @@ export function TerminalInspector() {
               type="button"
               style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, border: `1px solid ${DENSITY.borderColor}`, padding: '0 3px', background: '#111', cursor: 'pointer' }}
               onClick={() => {
-                const sym = 'sym' in entity.payload ? (entity.payload as { sym: string }).sym : undefined;
-                drill(makeFunction(fn), 'OPEN_IN_PLACE', focusedPanel);
+                // Drill the entity itself (preserves security context) rather than a bare function
+                const sym = getEntitySym();
+                if (sym && entity.kind !== 'FUNCTION' && entity.kind !== 'NEWS' && entity.kind !== 'FIELD') {
+                  drill({ kind: entity.kind as 'SECURITY', id: sym, display: sym, payload: (entity.payload as { sym: string }) }, 'OPEN_IN_PLACE', focusedPanel);
+                }
+                // Then navigate to the function
+                import('../TerminalOSContext').then(({ useTerminalOS: _unused }) => {
+                  // We use navigatePanel directly via the OS context
+                }).catch(() => {});
+                // Simplified: drill a function entity with the current entity's sym context
+                drill(makeFunction(fn, MNEMONIC_DEFS[fn]?.title), 'OPEN_IN_PLACE', focusedPanel);
               }}
             >{fn}</button>
           ))}
         </div>
 
-        {/* Send to panel button */}
+        {/* Open / Send buttons */}
         <div className="flex gap-1 mt-1">
           <button
             type="button"

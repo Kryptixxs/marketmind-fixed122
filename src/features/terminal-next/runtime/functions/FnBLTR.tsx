@@ -3,6 +3,7 @@
 import React, { useMemo } from 'react';
 import { DenseTable, PanelSubHeader, type DenseColumn } from '../primitives';
 import { useTerminalStore } from '../../store/TerminalStore';
+import { makeSecurity } from '../entities/types';
 
 const COLS: DenseColumn[] = [
   { key: 'id', header: 'ID', width: '50px' },
@@ -14,7 +15,7 @@ const COLS: DenseColumn[] = [
   { key: 'pnl', header: 'P&L', width: '60px', align: 'right', tone: true, format: (v) => { const n = Number(v); return (n >= 0 ? '+' : '') + n.toFixed(0); } },
 ];
 
-export function FnBLTR() {
+export function FnBLTR({ panelIdx = 0 }: { panelIdx?: number }) {
   const { state } = useTerminalStore();
   const rows = useMemo(() => state.blotter.map((b) => ({
     id: b.id,
@@ -30,7 +31,10 @@ export function FnBLTR() {
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="BLTR • Blotter" />
       {rows.length > 0 ? (
-        <DenseTable columns={COLS} rows={rows} rowKey="id" className="flex-1 min-h-0" />
+        <DenseTable columns={COLS} rows={rows} rowKey="id" className="flex-1 min-h-0"
+          panelIdx={panelIdx}
+          rowEntity={(row) => makeSecurity(row.symbol as string)}
+        />
       ) : (
         <div className="flex-1 flex items-center justify-center" style={{ color: '#555', fontSize: '10px', fontFamily: "'JetBrains Mono',monospace" }}>NO ACTIVE ORDERS — USE ORD TO PLACE</div>
       )}

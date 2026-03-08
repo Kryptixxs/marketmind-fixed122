@@ -86,14 +86,18 @@ export function DenseTable({
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
         setInternalSelected((s) => Math.max(s - 1, 0));
-      } else if (e.key === 'Enter' || e.key === 'Return') {
-        e.preventDefault();
-        const row = sorted[internalSelected];
-        if (row) handleRowAction(row, e.shiftKey ? 'OPEN_IN_NEW_PANEL' : 'OPEN_IN_PLACE');
-      } else if (e.key === 'Enter' && e.altKey) {
+      } else if ((e.key === 'Enter' || e.key === 'Return') && e.altKey) {
         e.preventDefault();
         const row = sorted[internalSelected];
         if (row) handleRowAction(row, 'INSPECT_OVERLAY');
+      } else if ((e.key === 'Enter' || e.key === 'Return') && e.shiftKey) {
+        e.preventDefault();
+        const row = sorted[internalSelected];
+        if (row) handleRowAction(row, 'OPEN_IN_NEW_PANEL');
+      } else if (e.key === 'Enter' || e.key === 'Return') {
+        e.preventDefault();
+        const row = sorted[internalSelected];
+        if (row) handleRowAction(row, 'OPEN_IN_PLACE');
       } else if (e.key === 'PageDown') {
         e.preventDefault();
         el.scrollBy({ top: el.clientHeight, behavior: 'instant' as ScrollBehavior });
@@ -145,7 +149,7 @@ export function DenseTable({
                 ${flash === 'up' ? 'cell-flash-up' : flash === 'down' ? 'cell-flash-down' : ''}
                 hover:bg-[#0a1520]`}
               style={{ gridTemplateColumns: gridCols, height: rh, borderBottom: `1px solid ${DENSITY.gridlineColor}`, fontWeight: isBold ? 700 : 400 }}
-              onClick={(e) => { setInternalSelected(ri); handleRowAction(row, e.shiftKey ? 'OPEN_IN_NEW_PANEL' : 'OPEN_IN_PLACE', e); }}
+              onClick={(e) => { setInternalSelected(ri); containerRef.current?.focus(); handleRowAction(row, e.shiftKey ? 'OPEN_IN_NEW_PANEL' : 'OPEN_IN_PLACE', e); }}
               onAuxClick={(e) => { if (e.button === 1) { setInternalSelected(ri); handleRowAction(row, 'INSPECT_OVERLAY', e); } }}
               onContextMenu={(e) => {
                 const entity = rowEntity?.(row);
@@ -213,7 +217,11 @@ export function KeyValueGrid({ pairs, columns = 2, className = '', panelIdx = 0 
                 const intent: DrillIntent = e.shiftKey ? 'OPEN_IN_NEW_PANEL' : e.altKey ? 'INSPECT_OVERLAY' : 'OPEN_IN_PLACE';
                 drill?.(p.entity!, intent, panelIdx);
               }}
-              title="Click: drill  •  Shift+Click: send  •  Alt+Click: inspect"
+              onContextMenu={(e) => {
+                e.preventDefault();
+                if (p.entity) openContextMenu(e, p.entity, panelIdx);
+              }}
+              title="Click: drill  •  Shift+Click: send  •  Alt+Click: inspect  •  Right-click: actions"
             >
               {typeof p.value === 'number' ? p.value.toLocaleString() : p.value}
             </span>
@@ -282,7 +290,11 @@ export function NewsListItem({ item, panelIdx = 0, idx = 0 }: { item: NewsItem; 
         const intent: DrillIntent = e.shiftKey ? 'OPEN_IN_NEW_PANEL' : e.altKey ? 'INSPECT_OVERLAY' : 'OPEN_IN_PLACE';
         if (item.entity && drill) drill(item.entity, intent, panelIdx);
       }}
-      title="Click: drill  •  Shift+Click: send  •  Alt+Click: inspect"
+      onContextMenu={(e) => {
+        e.preventDefault();
+        if (item.entity) openContextMenu(e, item.entity, panelIdx);
+      }}
+      title="Click: drill  •  Shift+Click: send  •  Alt+Click: inspect  •  Right-click: actions"
     >
       <span className="shrink-0 tabular-nums" style={{ color: DENSITY.accentAmber, width: 75, fontSize: DENSITY.fontSizeTiny }}>{item.time}</span>
       <span className="shrink-0" style={{ color: DENSITY.accentCyan, width: 28, fontSize: DENSITY.fontSizeTiny }}>{item.src}</span>

@@ -39,6 +39,8 @@ export const MNEMONIC_DEFS: Record<string, MnemonicDef> = {
   MKT:  { code: 'MKT', title: 'Market Context', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'composite', relatedCodes: ['WEI', 'ECO'] },
   MON:  { code: 'MON', title: 'Monitor / Watchlist', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'table', relatedCodes: ['WEI', 'ALRT'] },
   WS:   { code: 'WS', title: 'Workspace Manager', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'table', relatedCodes: [] },
+  NEWS: { code: 'NEWS', title: 'News Search', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'news', relatedCodes: ['TOP', 'CN'] },
+  MKT:  { code: 'MKT', title: 'Market Context', requiresSecurity: false, supportedSectors: ALL_SECTORS, layoutType: 'composite', relatedCodes: ['WEI', 'ECO', 'IMAP'] },
 };
 
 export function getMnemonicDef(code: string): MnemonicDef | undefined {

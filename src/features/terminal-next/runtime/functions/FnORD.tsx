@@ -51,7 +51,7 @@ export function FnORD({ panelIdx }: { panelIdx: number }) {
           <button type="button" onClick={() => setSubmitted(true)} style={{ background: side === 'BUY' ? '#004400' : '#440000', color: '#fff', padding: '2px 12px', border: `1px solid ${side === 'BUY' ? DENSITY.accentGreen : DENSITY.accentRed}`, fontFamily: DENSITY.fontFamily, fontSize: DENSITY.fontSizeDefault }}>
             {side} {qty} {ticker} @ {orderType}
           </button>
-          <button type="button" style={{ background: '#220000', color: DENSITY.accentRed, padding: '2px 8px', border: `1px solid ${DENSITY.accentRed}`, fontFamily: DENSITY.fontFamily, fontSize: DENSITY.fontSizeTiny }}>KILL</button>
+          <button type="button" onClick={() => { setSubmitted(false); setQty('100'); setPrice(''); }} style={{ background: '#220000', color: DENSITY.accentRed, padding: '2px 8px', border: `1px solid ${DENSITY.accentRed}`, fontFamily: DENSITY.fontFamily, fontSize: DENSITY.fontSizeTiny, cursor: 'pointer' }} title="Cancel / Kill order">KILL</button>
         </div>
 
         {submitted && (

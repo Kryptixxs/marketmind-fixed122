@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useReducer, useCallback, useMemo, useRef, useEffect } from 'react';
 import { PanelState, PanelAction, panelReducer, createDefaultPanel, LinkColor, MarketSector } from './panelState';
+import { saveRecoverySnapshot, loadRecoverySnapshot } from '../services/recoveryStore';
 
 interface TerminalOSContextValue {
   panels: PanelState[];
@@ -25,7 +26,11 @@ function multiPanelReducer(state: PanelState[], action: { panelIdx: number; acti
       for (let i = 0; i < next.length; i++) {
         if (i === action.panelIdx) continue;
         if (next[i]!.linkGroup === src.linkGroup) {
-          next[i] = panelReducer(next[i]!, { type: 'SET_SECURITY', security: src.activeSecurity, sector: src.marketSector });
+          next[i] = panelReducer(next[i]!, {
+            type: 'SET_SECURITY',
+            security: src.activeSecurity,
+            sector: src.marketSector,
+          });
         }
       }
     }
@@ -43,6 +48,50 @@ const DEFAULT_PANELS: PanelState[] = [
 export function TerminalOSProvider({ children }: { children: React.ReactNode }) {
   const [panels, dispatch] = useReducer(multiPanelReducer, DEFAULT_PANELS);
   const [focusedPanel, setFocusedPanelRaw] = React.useState(0);
+  const saveTimerRef = useRef<number | null>(null);
+  const restoredRef = useRef(false);
+
+  // Restore from IndexedDB on mount (once)
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    void loadRecoverySnapshot().then((snap) => {
+      if (!snap) return;
+      if (Date.now() - snap.ts > 2 * 60 * 60 * 1000) return; // 2-hour cutoff
+      snap.quadrantStates.slice(0, 4).forEach((q, idx) => {
+        dispatch({
+          panelIdx: idx,
+          action: {
+            type: 'NAVIGATE',
+            mnemonic: q.activeMnemonic ?? 'DES',
+            security: q.loadedSecurity,
+            sector: (q.sector as MarketSector) ?? 'EQUITY',
+          },
+        });
+      });
+    });
+  }, []);
+
+  // Auto-save to IndexedDB every 30s (debounced on panel changes)
+  useEffect(() => {
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      void saveRecoverySnapshot({
+        ts: Date.now(),
+        panelFunctions: panels.map((p) => p.activeMnemonic),
+        quadrantStates: panels.map((p) => ({
+          loadedSecurity: p.activeSecurity,
+          activeMnemonic: p.activeMnemonic,
+          history: p.history.map((h) => h.mnemonic),
+          sector: p.marketSector,
+        })),
+        panelSizes: [0.25, 0.25, 0.25, 0.25],
+        zoomedQuadrant: null,
+        lastCommands: [],
+      });
+    }, 5000);
+    return () => { if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current); };
+  }, [panels]);
 
   const setFocusedPanel = useCallback((idx: number) => {
     if (idx >= 0 && idx < 4) setFocusedPanelRaw(idx);
@@ -71,7 +120,6 @@ export function TerminalOSProvider({ children }: { children: React.ReactNode }) 
         if (n >= 1 && n <= 4) { e.preventDefault(); setFocusedPanel(n - 1); return; }
       }
       if (e.ctrlKey && e.key === 'Tab') { e.preventDefault(); cycleFocus(); return; }
-      // Ctrl+` = cycle focus (PANEL key equivalent)
       if (e.ctrlKey && e.key === '`') { e.preventDefault(); cycleFocus(); return; }
     };
     window.addEventListener('keydown', handler);

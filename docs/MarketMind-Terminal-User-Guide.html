@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarketMind Terminal — Complete User Guide</title>
+<style>
+  /* ── Print + Screen base ── */
+  @page {
+    size: A4;
+    margin: 18mm 15mm 18mm 15mm;
+  }
+
+  @media print {
+    body { font-size: 9pt; }
+    .no-break { page-break-inside: avoid; }
+    .page-break { page-break-before: always; }
+    h1 { font-size: 18pt; }
+    h2 { font-size: 12pt; }
+    h3 { font-size: 10pt; }
+    .tip-box, .warning-box, .example-box { page-break-inside: avoid; }
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #000;
+    color: #e6e6e6;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 10pt;
+    line-height: 1.45;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  /* ── Cover page ── */
+  .cover {
+    min-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    border-bottom: 3px solid #FFB000;
+    padding-bottom: 40px;
+    margin-bottom: 40px;
+  }
+
+  .cover-logo {
+    font-size: 10pt;
+    color: #63c8ff;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .cover-title {
+    font-size: 36pt;
+    font-weight: 900;
+    color: #FFB000;
+    letter-spacing: -1px;
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+
+  .cover-subtitle {
+    font-size: 14pt;
+    color: #93a9c6;
+    margin-bottom: 32px;
+  }
+
+  .cover-meta {
+    font-size: 8pt;
+    color: #555;
+    margin-top: 32px;
+  }
+
+  .cover-badges {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 20px;
+  }
+
+  .badge {
+    border: 1px solid #333;
+    padding: 2px 8px;
+    font-size: 8pt;
+    color: #93a9c6;
+  }
+
+  .badge.amber { border-color: #FFB000; color: #FFB000; }
+  .badge.green { border-color: #00c853; color: #00c853; }
+  .badge.cyan { border-color: #63c8ff; color: #63c8ff; }
+  .badge.red { border-color: #d32f2f; color: #d32f2f; }
+
+  /* ── TOC ── */
+  .toc-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 24px;
+    margin-top: 12px;
+  }
+
+  .toc-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9pt;
+    border-bottom: 1px dotted #222;
+    padding: 2px 0;
+    color: #93a9c6;
+  }
+
+  .toc-item .page { color: #FFB000; }
+
+  /* ── Section headings ── */
+  h1 {
+    font-size: 22pt;
+    color: #FFB000;
+    font-weight: 900;
+    border-bottom: 2px solid #FFB000;
+    padding-bottom: 6px;
+    margin: 32px 0 16px 0;
+    letter-spacing: -0.5px;
+  }
+
+  h2 {
+    font-size: 13pt;
+    color: #63c8ff;
+    font-weight: 700;
+    border-left: 3px solid #63c8ff;
+    padding-left: 10px;
+    margin: 24px 0 10px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  h3 {
+    font-size: 10pt;
+    color: #FFB000;
+    font-weight: 700;
+    margin: 16px 0 6px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  h4 {
+    font-size: 9pt;
+    color: #93a9c6;
+    font-weight: 700;
+    margin: 10px 0 4px 0;
+  }
+
+  p { margin-bottom: 8px; color: #c8d0da; font-size: 9.5pt; }
+
+  /* ── Keyboard keys ── */
+  kbd {
+    display: inline-block;
+    background: #111;
+    border: 1px solid #444;
+    border-bottom: 2px solid #555;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 8.5pt;
+    color: #FFB000;
+    white-space: nowrap;
+    margin: 0 1px;
+  }
+
+  /* ── Code / command inline ── */
+  code {
+    background: #0a0a0a;
+    border: 1px solid #222;
+    padding: 0px 5px;
+    font-size: 9pt;
+    color: #63c8ff;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Command examples ── */
+  .cmd-block {
+    background: #050505;
+    border: 1px solid #222;
+    border-left: 3px solid #FFB000;
+    padding: 8px 12px;
+    margin: 8px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9pt;
+  }
+
+  .cmd-line {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 4px;
+    align-items: flex-start;
+  }
+
+  .cmd-line:last-child { margin-bottom: 0; }
+
+  .cmd-prompt {
+    color: #FFB000;
+    font-weight: 700;
+    flex-shrink: 0;
+    min-width: 180px;
+  }
+
+  .cmd-desc { color: #93a9c6; }
+
+  /* ── Mnemonic table ── */
+  .mnemonic-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 8.5pt;
+  }
+
+  .mnemonic-table th {
+    background: #000084;
+    color: #fff;
+    padding: 3px 8px;
+    text-align: left;
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 8pt;
+    letter-spacing: 0.04em;
+  }
+
+  .mnemonic-table td {
+    padding: 3px 8px;
+    border-bottom: 1px solid #111;
+    vertical-align: top;
+  }
+
+  .mnemonic-table tr:nth-child(odd) td { background: #060606; }
+  .mnemonic-table tr:nth-child(even) td { background: #030303; }
+
+  .mnemonic-table tr:hover td { background: #0a1520; }
+
+  .mnemonic-code { color: #FFB000; font-weight: 700; font-family: monospace; }
+  .mnemonic-title { color: #e6e6e6; }
+  .mnemonic-sector { color: #93a9c6; font-size: 8pt; }
+  .mnemonic-related { color: #555; font-size: 8pt; }
+
+  .req-yes { color: #00c853; font-size: 8pt; }
+  .req-no { color: #555; font-size: 8pt; }
+
+  /* ── Keyboard table ── */
+  .key-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 9pt;
+  }
+
+  .key-table th {
+    background: #0a0a0a;
+    color: #FFB000;
+    padding: 4px 10px;
+    text-align: left;
+    font-size: 8pt;
+    text-transform: uppercase;
+    border-bottom: 1px solid #333;
+  }
+
+  .key-table td {
+    padding: 4px 10px;
+    border-bottom: 1px solid #111;
+    vertical-align: middle;
+  }
+
+  .key-table tr:nth-child(odd) td { background: #050505; }
+  .key-col { min-width: 190px; }
+
+  /* ── Tip / Warning / Example boxes ── */
+  .tip-box {
+    background: #050d0a;
+    border: 1px solid #00c853;
+    border-left: 4px solid #00c853;
+    padding: 8px 12px;
+    margin: 10px 0;
+    font-size: 9pt;
+    color: #c8d0da;
+  }
+
+  .tip-box .box-label { color: #00c853; font-weight: 700; margin-bottom: 4px; font-size: 8pt; text-transform: uppercase; }
+
+  .warning-box {
+    background: #0d0500;
+    border: 1px solid #FFB000;
+    border-left: 4px solid #FFB000;
+    padding: 8px 12px;
+    margin: 10px 0;
+    font-size: 9pt;
+    color: #c8d0da;
+  }
+
+  .warning-box .box-label { color: #FFB000; font-weight: 700; margin-bottom: 4px; font-size: 8pt; text-transform: uppercase; }
+
+  .example-box {
+    background: #030508;
+    border: 1px solid #63c8ff;
+    border-left: 4px solid #63c8ff;
+    padding: 8px 12px;
+    margin: 10px 0;
+    font-size: 9pt;
+    color: #c8d0da;
+  }
+
+  .example-box .box-label { color: #63c8ff; font-weight: 700; margin-bottom: 4px; font-size: 8pt; text-transform: uppercase; }
+
+  /* ── Layout diagram ── */
+  .layout-diagram {
+    border: 2px solid #333;
+    width: 100%;
+    font-size: 8pt;
+    font-family: monospace;
+    margin: 12px 0;
+  }
+
+  .layout-global-bar {
+    background: #1a1a00;
+    border-bottom: 1px solid #FFB000;
+    padding: 4px 8px;
+    color: #FFB000;
+    font-weight: 700;
+  }
+
+  .layout-panels {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1px;
+    background: #333;
+  }
+
+  .layout-panel {
+    background: #000;
+    padding: 6px 8px;
+    min-height: 80px;
+  }
+
+  .layout-panel-header {
+    background: #000084;
+    color: #fff;
+    padding: 2px 6px;
+    font-size: 8pt;
+    margin: -6px -8px 6px -8px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .layout-panel-body { color: #93a9c6; font-size: 7.5pt; line-height: 1.6; }
+  .layout-panel-focused { border: 1px solid #0068FF; }
+
+  .layout-status {
+    background: #050505;
+    border-top: 1px solid #111;
+    padding: 2px 8px;
+    color: #555;
+    font-size: 7.5pt;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── Two-column layout ── */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 10px 0;
+  }
+
+  .col-block {
+    border: 1px solid #1a1a1a;
+    padding: 10px;
+    background: #030303;
+  }
+
+  .col-block h4 { color: #63c8ff; margin-bottom: 6px; }
+
+  /* ── Entity kinds chip list ── */
+  .chip-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 8px 0;
+  }
+
+  .chip {
+    border: 1px solid #222;
+    padding: 1px 6px;
+    font-size: 8pt;
+    font-family: monospace;
+    color: #93a9c6;
+  }
+
+  .chip.amber { border-color: #FFB000; color: #FFB000; }
+  .chip.cyan { border-color: #63c8ff; color: #63c8ff; }
+  .chip.green { border-color: #00c853; color: #00c853; }
+
+  /* ── Step list ── */
+  .steps { margin: 8px 0 8px 0; }
+  .step {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 6px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    background: #FFB000;
+    color: #000;
+    font-weight: 900;
+    min-width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9pt;
+    flex-shrink: 0;
+  }
+
+  .step-body { color: #c8d0da; font-size: 9.5pt; }
+
+  /* ── Bullet list ── */
+  ul.term-list {
+    list-style: none;
+    margin: 6px 0;
+    padding-left: 0;
+  }
+
+  ul.term-list li {
+    padding: 2px 0 2px 14px;
+    position: relative;
+    color: #c8d0da;
+    font-size: 9pt;
+  }
+
+  ul.term-list li::before {
+    content: '▶';
+    position: absolute;
+    left: 0;
+    color: #FFB000;
+    font-size: 7pt;
+    top: 4px;
+  }
+
+  /* ── Workflow chain ── */
+  .workflow {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 8px 0;
+    font-size: 8.5pt;
+  }
+
+  .wf-step {
+    background: #050505;
+    border: 1px solid #333;
+    padding: 2px 8px;
+    color: #FFB000;
+    font-weight: 700;
+  }
+
+  .wf-arrow { color: #555; font-size: 10pt; }
+
+  /* ── Color legend ── */
+  .color-legend { margin: 8px 0; }
+  .color-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 4px;
+    font-size: 9pt;
+  }
+
+  .color-swatch {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    border: 1px solid #333;
+  }
+
+  /* ── Footer ── */
+  .doc-footer {
+    margin-top: 40px;
+    border-top: 1px solid #222;
+    padding-top: 12px;
+    font-size: 8pt;
+    color: #444;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  hr.section-divider {
+    border: none;
+    border-top: 1px solid #1a1a1a;
+    margin: 20px 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     COVER PAGE
+══════════════════════════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-logo">Institutional Terminal Platform</div>
+  <div class="cover-title">MarketMind<br>Terminal</div>
+  <div class="cover-subtitle">Complete User Guide &amp; Reference Manual</div>
+  <p>A Bloomberg-style professional terminal running in your browser. This guide covers everything from first login to advanced keyboard workflows. No prior terminal experience required.</p>
+  <div class="cover-badges">
+    <span class="badge amber">19 Function Mnemonics</span>
+    <span class="badge cyan">4-Panel Workspace</span>
+    <span class="badge green">Real-Time Simulation</span>
+    <span class="badge">Keyboard-First Design</span>
+    <span class="badge">Entity Drill System</span>
+  </div>
+  <div class="cover-meta">MarketMind Terminal · User Documentation · v2.0</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     TABLE OF CONTENTS
+══════════════════════════════════════════════════════════════════ -->
+<h1>Table of Contents</h1>
+<div class="toc-grid">
+  <div class="toc-item"><span>1. What Is This Terminal?</span><span class="page">2</span></div>
+  <div class="toc-item"><span>2. Screen Layout Explained</span><span class="page">2</span></div>
+  <div class="toc-item"><span>3. The 4-Panel System</span><span class="page">3</span></div>
+  <div class="toc-item"><span>4. Command Line: How to Navigate</span><span class="page">3</span></div>
+  <div class="toc-item"><span>5. Command Grammar Reference</span><span class="page">4</span></div>
+  <div class="toc-item"><span>6. Complete Keyboard Shortcuts</span><span class="page">5</span></div>
+  <div class="toc-item"><span>7. All Function Mnemonics (A–Z)</span><span class="page">6</span></div>
+  <div class="toc-item"><span>8. Clicking & Drilling Into Data</span><span class="page">8</span></div>
+  <div class="toc-item"><span>9. Market Sectors & Asset Classes</span><span class="page">9</span></div>
+  <div class="toc-item"><span>10. Overlays: Inspector, Menu, Search</span><span class="page">9</span></div>
+  <div class="toc-item"><span>11. Charts (GP &amp; GIP)</span><span class="page">10</span></div>
+  <div class="toc-item"><span>12. Alerts Engine</span><span class="page">11</span></div>
+  <div class="toc-item"><span>13. Watchlists (MON)</span><span class="page">11</span></div>
+  <div class="toc-item"><span>14. Workspaces (WS)</span><span class="page">12</span></div>
+  <div class="toc-item"><span>15. Panel Sync (Link Groups)</span><span class="page">12</span></div>
+  <div class="toc-item"><span>16. Quick Workflow Examples</span><span class="page">13</span></div>
+  <div class="toc-item"><span>17. Built-In Securities Reference</span><span class="page">14</span></div>
+  <div class="toc-item"><span>18. Color Coding Reference</span><span class="page">15</span></div>
+  <div class="toc-item"><span>19. Troubleshooting & Tips</span><span class="page">15</span></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 1
+══════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>1. What Is This Terminal?</h1>
+
+<p>MarketMind Terminal is a professional-grade financial data platform modeled after Bloomberg Terminal. It is designed for analysts, traders, and investors who need fast, dense, keyboard-driven access to market data across multiple securities and asset classes simultaneously.</p>
+
+<div class="tip-box">
+  <div class="box-label">Key Concept</div>
+  Instead of navigating between pages, you type short command codes called <strong>mnemonics</strong> (like <code>DES</code>, <code>GP</code>, <code>WEI</code>) and press <kbd>Enter</kbd>. The data loads directly into your focused panel. Everything is driven by the command line.
+</div>
+
+<h3>What makes it different from a normal web app</h3>
+<ul class="term-list">
+  <li>There are NO pages — you never click "navigate to" a URL. You type commands.</li>
+  <li>You have 4 independent panels open at once, each showing different data.</li>
+  <li>Everything you see is clickable: tickers, sectors, people, news headlines, fields.</li>
+  <li>All data is <em>simulated</em> (SIM mode) with realistic market behavior — no live exchange connection needed.</li>
+  <li>Price data updates automatically; cells flash green/red as prices change.</li>
+</ul>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 2 — SCREEN LAYOUT
+══════════════════════════════════════════════════════════════════ -->
+<h1>2. Screen Layout Explained</h1>
+
+<div class="layout-diagram">
+  <div class="layout-global-bar">
+    ● B-PIPE &nbsp;&nbsp; P1: WEI — AAPL US Equity &nbsp; [ALRT 0/2] &nbsp; [IB] &nbsp; [MON]
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+    Latency:4ms FPS:60 &nbsp; EST 09:32:14 &nbsp; GMT 13:32:14 &nbsp; SIM
+  </div>
+  <div class="layout-panels">
+    <div class="layout-panel layout-panel-focused">
+      <div class="layout-panel-header">
+        <span>P1 · WEI — AAPL US Equity · SIM · FOCUS</span>
+        <span>1Y ■</span>
+      </div>
+      <div class="layout-panel-body">
+        ◀ ▶ MENU HL RECENT ★ &nbsp;&nbsp;&nbsp;&nbsp; 1/3<br>
+        EQUITY › AAPL US › WEI<br>
+        NEXT: DES GP HP CN OWN<br>
+        ENTER=Drill SHIFT+ENTER=SendPanel<br>
+        <em style="color:#555">1&gt; [command input here...]</em>
+      </div>
+    </div>
+    <div class="layout-panel">
+      <div class="layout-panel-header">
+        <span>P2 · DES — MSFT US Equity · SIM</span>
+        <span>1Y □</span>
+      </div>
+      <div class="layout-panel-body">
+        ◀ ▶ MENU HL RECENT ★<br>
+        EQUITY › MSFT US › DES<br>
+        NEXT: HP OWN FA RELS MGMT<br>
+        <em style="color:#555">Function content renders here</em>
+      </div>
+    </div>
+    <div class="layout-panel">
+      <div class="layout-panel-header">
+        <span>P3 · TOP — News Feed · SIM</span>
+        <span>1Y □</span>
+      </div>
+      <div class="layout-panel-body">
+        ◀ ▶ MENU HL RECENT ★<br>
+        EQUITY › AAPL US › TOP<br>
+        NEXT: N CN WEI<br>
+        <em style="color:#555">News headlines list</em>
+      </div>
+    </div>
+    <div class="layout-panel">
+      <div class="layout-panel-header">
+        <span>P4 · GP — AAPL US Equity · SIM</span>
+        <span>1Y □</span>
+      </div>
+      <div class="layout-panel-body">
+        ◀ ▶ MENU HL RECENT ★<br>
+        EQUITY › AAPL US › GP<br>
+        NEXT: GIP HP RV<br>
+        <em style="color:#555">Canvas price chart</em>
+      </div>
+    </div>
+  </div>
+  <div class="layout-status">
+    <span>● CONNECTED &nbsp; P1: WEI — AAPL US Equity</span>
+    <span>F1=HELP F2=MENU Ctrl+K=SEARCH Ctrl+B=BACK &nbsp; EST 09:32 GMT 13:32 SIM</span>
+  </div>
+</div>
+
+<div class="two-col">
+  <div class="col-block">
+    <h4>Panel Frame Anatomy (each panel has):</h4>
+    <ul class="term-list">
+      <li><strong>Header bar</strong> (dark blue) — Panel#, mnemonic, security, SIM badge, focus indicator, timeframe, link color</li>
+      <li><strong>Toolbar strip</strong> — ◀▶ back/forward, MENU, HL search, RECENT dropdown, ★ favorite</li>
+      <li><strong>Breadcrumb</strong> — shows navigation path (e.g. EQUITY › AAPL US › DES)</li>
+      <li><strong>Next Actions bar</strong> — 5-6 quick-jump function buttons relevant to current context</li>
+      <li><strong>Keyboard hint bar</strong> — always-visible shortcut reminder</li>
+      <li><strong>Command line</strong> (amber text on dark) — your input goes here</li>
+      <li><strong>Function body</strong> — the actual data: tables, charts, forms, news</li>
+    </ul>
+  </div>
+  <div class="col-block">
+    <h4>Global Status Bar (bottom strip):</h4>
+    <ul class="term-list">
+      <li><strong>● B-PIPE</strong> — data connection indicator</li>
+      <li><strong>P1: WEI — AAPL</strong> — focused panel summary</li>
+      <li><strong>ALRT [N]</strong> — alert count; turns red when triggered</li>
+      <li><strong>IB</strong> button — opens messaging panel</li>
+      <li><strong>MON</strong> button — opens watchlist panel</li>
+      <li><strong>Latency / FPS</strong> — system health</li>
+      <li><strong>EST / GMT clocks</strong> — live market time</li>
+      <li><strong>SIM</strong> — confirms simulation mode</li>
+    </ul>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 3 — 4-PANEL SYSTEM
+══════════════════════════════════════════════════════════════════ -->
+<h1>3. The 4-Panel System</h1>
+
+<p>The screen is always divided into <strong>four independent panels</strong> (P1–P4) arranged in a 2×2 grid. Each panel is completely independent — it has its own security, function, history, and command line.</p>
+
+<h3>Focusing a Panel</h3>
+<p>Only one panel is "focused" at a time — indicated by a bright blue border. Commands you type go to the focused panel only. Click any panel to focus it, or use keyboard shortcuts.</p>
+
+<div class="cmd-block">
+  <div class="cmd-line"><span class="cmd-prompt">Click a panel</span><span class="cmd-desc">Focus that panel</span></div>
+  <div class="cmd-line"><span class="cmd-prompt"><kbd>Alt</kbd>+<kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>4</kbd></span><span class="cmd-desc">Focus Panel 1, 2, 3, or 4 directly</span></div>
+  <div class="cmd-line"><span class="cmd-prompt"><kbd>Ctrl</kbd>+<kbd>`</kbd> or <kbd>Ctrl</kbd>+<kbd>Tab</kbd></span><span class="cmd-desc">Cycle focus clockwise through all panels</span></div>
+</div>
+
+<div class="two-col">
+  <div class="col-block">
+    <h4>Each panel stores independently:</h4>
+    <ul class="term-list">
+      <li>Active security (e.g. AAPL US Equity)</li>
+      <li>Active function/mnemonic (e.g. DES)</li>
+      <li>Navigation history (up to 40 entries)</li>
+      <li>Timeframe for charts (5D / 1M / 1Y etc.)</li>
+      <li>Scroll position and selected row</li>
+      <li>Recent securities &amp; favorites</li>
+      <li>Link group color (for panel sync)</li>
+    </ul>
+  </div>
+  <div class="col-block">
+    <h4>Back / Forward Navigation:</h4>
+    <p>Every panel tracks a history of where you've been — like a browser, but per panel.</p>
+    <ul class="term-list">
+      <li><kbd>Ctrl</kbd>+<kbd>B</kbd> — Go back one step in this panel's history</li>
+      <li><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> — Go forward</li>
+      <li>Click ◀ or ▶ in the toolbar</li>
+      <li>History restores scroll position and row selection exactly</li>
+    </ul>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 4 — COMMAND LINE
+══════════════════════════════════════════════════════════════════ -->
+<h1>4. The Command Line — How to Navigate</h1>
+
+<p>The amber command line at the bottom of each panel is your primary navigation tool. Type a command and press <kbd>Enter</kbd> (the "GO" key) to execute it.</p>
+
+<div class="tip-box">
+  <div class="box-label">Golden Rule</div>
+  Type the security you want, then the function you want, then press <kbd>Enter</kbd>.<br>
+  Example: <code>AAPL US DES</code> then <kbd>Enter</kbd> → loads Apple's description screen.
+</div>
+
+<h3>Autocomplete</h3>
+<p>As you type, a dropdown appears with matching <strong>securities</strong> (shown with →) and <strong>mnemonics/functions</strong> (shown with fn). Navigate with <kbd>↑↓</kbd>, confirm with <kbd>Enter</kbd> or <kbd>Tab</kbd>, close with <kbd>Esc</kbd>.</p>
+
+<h3>Special Command Keys</h3>
+<div class="cmd-block">
+  <div class="cmd-line"><span class="cmd-prompt"><kbd>Enter</kbd> (GO)</span><span class="cmd-desc">Execute the command</span></div>
+  <div class="cmd-line"><span class="cmd-prompt"><kbd>Esc</kbd> (CANCEL)</span><span class="cmd-desc">Clear input OR close any open overlay</span></div>
+  <div class="cmd-line"><span class="cmd-prompt"><kbd>F1</kbd></span><span class="cmd-desc">Open help for the current function (press twice within 0.6s for Help Desk)</span></div>
+  <div class="cmd-line"><span class="cmd-prompt"><kbd>F2</kbd></span><span class="cmd-desc">Open MENU — shows related functions for current security &amp; sector</span></div>
+  <div class="cmd-line"><span class="cmd-prompt"><kbd>Ctrl</kbd>+<kbd>K</kbd></span><span class="cmd-desc">Open HL Search — search all securities and functions</span></div>
+  <div class="cmd-line"><span class="cmd-prompt"><kbd>Ctrl</kbd>+<kbd>L</kbd></span><span class="cmd-desc">Focus the command line (from anywhere)</span></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 5 — COMMAND GRAMMAR
+══════════════════════════════════════════════════════════════════ -->
+<h1>5. Command Grammar Reference</h1>
+
+<p>Commands follow a structured grammar. You don't need to type all parts — the terminal fills in defaults intelligently.</p>
+
+<h3>Full Grammar</h3>
+<div class="cmd-block" style="border-color:#63c8ff;">
+  <div style="color:#63c8ff; font-weight:700; margin-bottom:6px;">[ TICKER ] [ MARKET ] [ ASSET CLASS ] [ MNEMONIC ] + Enter</div>
+  <div class="cmd-line"><span class="cmd-prompt">AAPL US Equity DES</span><span class="cmd-desc">Apple equity — Description screen</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">AAPL US DES</span><span class="cmd-desc">Same — asset class inferred from "US"</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">AAPL DES</span><span class="cmd-desc">Same — defaults to US Equity</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">DES</span><span class="cmd-desc">Runs DES on the currently loaded security</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">AAPL</span><span class="cmd-desc">Loads AAPL, keeps current function</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">WEI</span><span class="cmd-desc">No security needed — loads World Equity Indices</span></div>
+</div>
+
+<h3>Common Command Patterns</h3>
+<table class="mnemonic-table">
+  <thead><tr><th>What you type</th><th>What happens</th></tr></thead>
+  <tbody>
+    <tr><td><code>AAPL US DES</code></td><td>Load Apple Inc, show Description</td></tr>
+    <tr><td><code>MSFT GP</code></td><td>Load Microsoft, show Price Chart</td></tr>
+    <tr><td><code>HP</code></td><td>Switch current panel to Historical Prices (keeps security)</td></tr>
+    <tr><td><code>IBM US Equity FA</code></td><td>Load IBM equity, show Financial Analysis</td></tr>
+    <tr><td><code>EURUSD Curncy GP</code></td><td>Load EUR/USD, show price chart</td></tr>
+    <tr><td><code>SPX Index WEI</code></td><td>Load S&amp;P 500, show World Equity Indices</td></tr>
+    <tr><td><code>TOP</code></td><td>Open top news feed (no security needed)</td></tr>
+    <tr><td><code>WEI</code></td><td>Open world equity index monitor</td></tr>
+    <tr><td><code>1Y</code></td><td>Change chart timeframe to 1 Year</td></tr>
+    <tr><td><code>5D</code></td><td>Change chart timeframe to 5 Days</td></tr>
+    <tr><td><code>GRAB</code></td><td>Export current panel snapshot</td></tr>
+    <tr><td><code>HL</code></td><td>Open security/function search overlay</td></tr>
+    <tr><td><code>WS MORNING</code></td><td>Save current 4-panel layout as "MORNING" (or load if it exists)</td></tr>
+    <tr><td><code>MON</code></td><td>Open watchlist monitor</td></tr>
+    <tr><td><code>ALRT</code></td><td>Open alerts panel</td></tr>
+    <tr><td><code>ALERT IF SPY > 510</code></td><td>Create a price alert for SPY above $510</td></tr>
+  </tbody>
+</table>
+
+<h3>Asset Class Suffixes</h3>
+<div class="cmd-block">
+  <div class="cmd-line"><span class="cmd-prompt">AAPL US Equity</span><span class="cmd-desc">US equity (default for US tickers)</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">SPX Index</span><span class="cmd-desc">Market index</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">EURUSD Curncy</span><span class="cmd-desc">Foreign exchange pair</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">CL1 Comdty</span><span class="cmd-desc">Commodity futures</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">T US Corp</span><span class="cmd-desc">Corporate bond</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">AAPL 2.5 05/25</span><span class="cmd-desc">Specific bond issue</span></div>
+</div>
+
+<h3>Timeframe Commands (for chart panels)</h3>
+<div class="chip-grid">
+  <span class="chip amber">1D</span>
+  <span class="chip amber">5D</span>
+  <span class="chip amber">1M</span>
+  <span class="chip amber">3M</span>
+  <span class="chip amber">6M</span>
+  <span class="chip amber">1Y</span>
+  <span class="chip amber">3Y</span>
+  <span class="chip amber">5Y</span>
+  <span class="chip amber">10Y</span>
+  <span class="chip amber">YTD</span>
+  <span class="chip amber">MAX</span>
+</div>
+<p>Type any of these and press Enter while on a chart panel to change the range.</p>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 6 — KEYBOARD SHORTCUTS
+══════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>6. Complete Keyboard Shortcuts</h1>
+
+<h2>Navigation &amp; Focus</h2>
+<table class="key-table">
+  <thead><tr><th class="key-col">Keys</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>Enter</kbd></td><td>Execute command (GO)</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Cancel — close overlay or clear command input</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>L</kbd></td><td>Focus the command line of focused panel</td></tr>
+    <tr><td><kbd>Alt</kbd>+<kbd>1</kbd> / <kbd>2</kbd> / <kbd>3</kbd> / <kbd>4</kbd></td><td>Focus Panel 1 / 2 / 3 / 4 directly</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>`</kbd></td><td>Cycle panel focus clockwise (Panel key)</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Tab</kbd></td><td>Cycle panel focus (same as Ctrl+`)</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>B</kbd></td><td>Go back in focused panel's history</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd></td><td>Go forward in focused panel's history</td></tr>
+  </tbody>
+</table>
+
+<h2>Command Overlays</h2>
+<table class="key-table">
+  <thead><tr><th class="key-col">Keys</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>F1</kbd></td><td>Open HELP overlay — shows function shortcuts and related mnemonics</td></tr>
+    <tr><td><kbd>F1</kbd> + <kbd>F1</kbd> (within 0.6s)</td><td>Open HELP DESK overlay — extended help and support information</td></tr>
+    <tr><td><kbd>F2</kbd></td><td>Open MENU — related functions for current security and sector</td></tr>
+    <tr><td><kbd>Ctrl</kbd>+<kbd>K</kbd></td><td>Open HL Search — search all securities and functions simultaneously</td></tr>
+  </tbody>
+</table>
+
+<h2>Autocomplete Dropdown</h2>
+<table class="key-table">
+  <thead><tr><th class="key-col">Keys</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Navigate autocomplete suggestions up or down</td></tr>
+    <tr><td><kbd>Enter</kbd> or <kbd>Tab</kbd></td><td>Select highlighted suggestion and execute</td></tr>
+    <tr><td><kbd>Esc</kbd></td><td>Close autocomplete without selecting</td></tr>
+  </tbody>
+</table>
+
+<h2>Table Navigation (in any data table)</h2>
+<table class="key-table">
+  <thead><tr><th class="key-col">Keys</th><th>Action</th></tr></thead>
+  <tbody>
+    <tr><td><kbd>↑</kbd> / <kbd>↓</kbd></td><td>Move selection cursor up or down one row</td></tr>
+    <tr><td><kbd>Enter</kbd></td><td>Drill into selected row — opens that entity in the current panel</td></tr>
+    <tr><td><kbd>Shift</kbd>+<kbd>Enter</kbd></td><td>Send selected row's entity to the next available panel</td></tr>
+    <tr><td><kbd>Alt</kbd>+<kbd>Enter</kbd></td><td>Open Inspector overlay for selected row (without leaving current panel)</td></tr>
+    <tr><td><kbd>PageUp</kbd></td><td>Scroll table up by one full viewport</td></tr>
+    <tr><td><kbd>PageDown</kbd></td><td>Scroll table down by one full viewport</td></tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 7 — ALL MNEMONICS
+══════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>7. All Function Mnemonics (A–Z)</h1>
+
+<p>Mnemonics are short codes that load specific functions into the focused panel. Type the code and press Enter, optionally preceded by a security symbol.</p>
+
+<h2>Market Data &amp; Indices</h2>
+<table class="mnemonic-table">
+  <thead>
+    <tr><th>Code</th><th>Full Name</th><th>Needs Security?</th><th>What it shows</th><th>Try after</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="mnemonic-code">WEI</td>
+      <td class="mnemonic-title">World Equity Indices</td>
+      <td class="req-no">No</td>
+      <td>40 global indices/ETFs — 12 columns: Name, Ticker, Region, CCY, Type, Last, Change, %Chg, Open, High, Low, Time. Live flashing prices.</td>
+      <td class="mnemonic-related">IMAP, TOP, ECO</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">FXC</td>
+      <td class="mnemonic-title">FX Cross Matrix</td>
+      <td class="req-no">No</td>
+      <td>8×8 currency cross rate matrix (USD/EUR/GBP/JPY/CHF/AUD/CAD/NZD) with live simulated rates.</td>
+      <td class="mnemonic-related">WEI, ECO</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">IMAP</td>
+      <td class="mnemonic-title">Sector Heatmap</td>
+      <td class="req-no">No</td>
+      <td>11-sector treemap heatmap with color intensity showing % change. Red = down, Green = up.</td>
+      <td class="mnemonic-related">WEI, RELS</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">ECO</td>
+      <td class="mnemonic-title">Economic Calendar</td>
+      <td class="req-no">No</td>
+      <td>Upcoming economic events with Time, Country, Indicator, Actual, Forecast, Prior values.</td>
+      <td class="mnemonic-related">WEI, TOP</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">MON</td>
+      <td class="mnemonic-title">Monitor / Watchlist</td>
+      <td class="req-no">No</td>
+      <td>Your personal watchlist with live Last/Change/Vol/VWAP per symbol. Add any security from the input bar.</td>
+      <td class="mnemonic-related">WEI, ALRT</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">ANR</td>
+      <td class="mnemonic-title">Analytics Runtime</td>
+      <td class="req-no">No</td>
+      <td>Streams VWAP, MACD, and arbitrage spread data computed by the B-PIPE web worker in real time.</td>
+      <td class="mnemonic-related">WEI</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>News &amp; Events</h2>
+<table class="mnemonic-table">
+  <thead>
+    <tr><th>Code</th><th>Full Name</th><th>Needs Security?</th><th>What it shows</th><th>Try after</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="mnemonic-code">TOP</td>
+      <td class="mnemonic-title">Top News</td>
+      <td class="req-no">No</td>
+      <td>Up to 150 global headlines with timestamp, source (BBG/RTRS/DJ...), topic tag, and urgency (FLASH/TOP). Filterable by topic and source.</td>
+      <td class="mnemonic-related">N, CN, WEI</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">N</td>
+      <td class="mnemonic-title">News Search</td>
+      <td class="req-no">No</td>
+      <td>Broader news feed with same density as TOP. Useful for open-ended browsing.</td>
+      <td class="mnemonic-related">TOP, CN</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">CN</td>
+      <td class="mnemonic-title">Company News</td>
+      <td class="req-yes">Yes</td>
+      <td>News headlines filtered to the loaded company. Shows timestamps, source codes, and headlines.</td>
+      <td class="mnemonic-related">TOP, N, DES</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">EVT</td>
+      <td class="mnemonic-title">Corporate Events</td>
+      <td class="req-yes">Yes</td>
+      <td>Timeline of earnings releases, dividends, splits, guidance updates, and analyst rating changes.</td>
+      <td class="mnemonic-related">DES, DVD, HP</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Security Description &amp; Reference</h2>
+<table class="mnemonic-table">
+  <thead>
+    <tr><th>Code</th><th>Full Name</th><th>Needs Security?</th><th>What it shows</th><th>Try after</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="mnemonic-code">DES</td>
+      <td class="mnemonic-title">Security Description</td>
+      <td class="req-yes">Yes</td>
+      <td>Full fundamental overview: Market Cap, P/E, EPS, Div Yield, Shares, Volume, Beta, 52W H/L, Exchange, Sector, Industry, Business Summary, Related Securities, Peer group.</td>
+      <td class="mnemonic-related">HP, OWN, FA, RELS, MGMT</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">RELS</td>
+      <td class="mnemonic-title">Related Securities</td>
+      <td class="req-yes">Yes</td>
+      <td>Table of 14 peer companies in the same industry group — Ticker, Name, Sector, Market Cap. Click any peer to drill into it.</td>
+      <td class="mnemonic-related">DES, OWN</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">MGMT</td>
+      <td class="mnemonic-title">Management Team</td>
+      <td class="req-yes">Yes</td>
+      <td>15-row executive roster with Name, Title, Age, Tenure. Click names to see person entity details.</td>
+      <td class="mnemonic-related">DES, OWN</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">OWN</td>
+      <td class="mnemonic-title">Ownership</td>
+      <td class="req-yes">Yes</td>
+      <td>Top 20 institutional holders — Holder name, Shares (M), % Outstanding, Change in position (green/red), Value ($B).</td>
+      <td class="mnemonic-related">MGMT, DES, RELS</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Pricing &amp; History</h2>
+<table class="mnemonic-table">
+  <thead>
+    <tr><th>Code</th><th>Full Name</th><th>Needs Security?</th><th>What it shows</th><th>Try after</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="mnemonic-code">HP</td>
+      <td class="mnemonic-title">Historical Pricing</td>
+      <td class="req-yes">Yes</td>
+      <td>Up to 500 trading days of OHLCV data. Paginated at 50 rows per page. Sortable. Every 5th row bolded. Prev/Next pagination.</td>
+      <td class="mnemonic-related">GP, DES, DVD</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">DVD</td>
+      <td class="mnemonic-title">Dividend History</td>
+      <td class="req-yes">Yes</td>
+      <td>20 quarters of dividend history — Ex-Date, Pay Date, Amount, Type, Frequency.</td>
+      <td class="mnemonic-related">HP, DES, FA</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">FA</td>
+      <td class="mnemonic-title">Financial Analysis</td>
+      <td class="req-yes">Yes</td>
+      <td>Three tabbed financial statements: Income Statement, Balance Sheet, Cash Flow — FY2022/23/24 with YoY% column.</td>
+      <td class="mnemonic-related">DES, HP</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Charts</h2>
+<table class="mnemonic-table">
+  <thead>
+    <tr><th>Code</th><th>Full Name</th><th>Needs Security?</th><th>What it shows</th><th>Try after</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="mnemonic-code">GP</td>
+      <td class="mnemonic-title">Price Chart (Daily)</td>
+      <td class="req-yes">Yes</td>
+      <td>Daily OHLCV chart. Blue price line on black. Bottom 20% volume histogram. Mouse crosshair with OHLC tooltip. Timeframe buttons in header. Compare vs another ticker using "vs" input.</td>
+      <td class="mnemonic-related">GIP, HP, RV</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">GIP</td>
+      <td class="mnemonic-title">Intraday Chart</td>
+      <td class="req-yes">Yes</td>
+      <td>1-minute bar chart for the current session. Market open marked with dotted vertical line. Crosshair tooltip shows bar OHLC.</td>
+      <td class="mnemonic-related">GP, HP</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">RV</td>
+      <td class="mnemonic-title">Relative Value</td>
+      <td class="req-yes">Yes</td>
+      <td>Ratio chart normalized to base. Used for comparing a security to a benchmark.</td>
+      <td class="mnemonic-related">GP</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Trading &amp; Workflow</h2>
+<table class="mnemonic-table">
+  <thead>
+    <tr><th>Code</th><th>Full Name</th><th>Needs Security?</th><th>What it shows</th><th>Try after</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="mnemonic-code">ORD</td>
+      <td class="mnemonic-title">Order Ticket</td>
+      <td class="req-yes">Yes</td>
+      <td>Simulated order entry form — BUY/SELL side, MKT/LMT type, quantity, limit price (amber fields). KILL button. SIM only.</td>
+      <td class="mnemonic-related">BLTR</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">BLTR</td>
+      <td class="mnemonic-title">Blotter</td>
+      <td class="req-no">No</td>
+      <td>Order blotter table — simulated fills from the execution engine with ID, Symbol, Side, Qty, Price, Status, P&amp;L.</td>
+      <td class="mnemonic-related">ORD</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">ALRT</td>
+      <td class="mnemonic-title">Alerts Monitor</td>
+      <td class="req-no">No</td>
+      <td>All your price alerts with triggered status. Create new alert: type rule in input (e.g. <code>ALERT IF SPY > 510</code>) and press Enter.</td>
+      <td class="mnemonic-related">TOP</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>Utilities &amp; Messaging</h2>
+<table class="mnemonic-table">
+  <thead>
+    <tr><th>Code</th><th>Full Name</th><th>Needs Security?</th><th>What it shows</th><th>Try after</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="mnemonic-code">IB</td>
+      <td class="mnemonic-title">Instant Bloomberg (Messaging)</td>
+      <td class="req-no">No</td>
+      <td>Simulated trader messaging — inbox with desk/sales/risk messages. Type and send your own messages. Notification badge in status bar.</td>
+      <td class="mnemonic-related">—</td>
+    </tr>
+    <tr>
+      <td class="mnemonic-code">WS</td>
+      <td class="mnemonic-title">Workspace Manager</td>
+      <td class="req-no">No</td>
+      <td>Save and restore full 4-panel layouts. Each saved workspace records the security, function, and timeframe for all 4 panels.</td>
+      <td class="mnemonic-related">MON</td>
+    </tr>
+  </tbody>
+</table>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 8 — CLICKING & DRILLING
+══════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>8. Clicking &amp; Drilling Into Data</h1>
+
+<p>In MarketMind Terminal, <strong>everything visible is clickable</strong>. Tickers, index names, sectors, countries, analyst names, news headlines, data fields — all are linked to deeper data. The system knows what type of object it is and opens the right function automatically.</p>
+
+<h2>Three Ways to Click</h2>
+<div class="cmd-block">
+  <div class="cmd-line"><span class="cmd-prompt">Normal click</span><span class="cmd-desc">Open in the current panel (replaces current view, pushes to history)</span></div>
+  <div class="cmd-line"><span class="cmd-prompt"><kbd>Shift</kbd> + click</span><span class="cmd-desc">Open in a new panel (sends to the next available panel; switches focus there)</span></div>
+  <div class="cmd-line"><span class="cmd-prompt"><kbd>Alt</kbd> + click</span><span class="cmd-desc">Open Inspector overlay — see dense field details WITHOUT leaving the current view</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">Right-click</span><span class="cmd-desc">Context menu with entity-specific actions: Open, Open in panel, Inspect, DES/GP/CN, Copy symbol, Add to monitor, Create alert</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">Middle-click</span><span class="cmd-desc">Open Inspector overlay (same as Alt+click)</span></div>
+</div>
+
+<h2>Entity Types and Their Default Drill Destinations</h2>
+<table class="mnemonic-table">
+  <thead><tr><th>What You Click</th><th>Entity Kind</th><th>Default Function Opens</th></tr></thead>
+  <tbody>
+    <tr><td>A ticker (e.g., AAPL, MSFT)</td><td>SECURITY</td><td>DES (or last-used function for that security)</td></tr>
+    <tr><td>An index (e.g., SPX, NKY)</td><td>INDEX</td><td>DES</td></tr>
+    <tr><td>An ETF (e.g., SPY, QQQ)</td><td>ETF</td><td>DES</td></tr>
+    <tr><td>An FX pair (e.g., EURUSD)</td><td>FX</td><td>DES</td></tr>
+    <tr><td>A sector name (e.g., Technology)</td><td>SECTOR</td><td>IMAP (sector heatmap)</td></tr>
+    <tr><td>An industry name</td><td>INDUSTRY</td><td>RELS (related securities)</td></tr>
+    <tr><td>A country code (e.g., US, JP)</td><td>COUNTRY</td><td>WEI (world indices)</td></tr>
+    <tr><td>A person's name (from MGMT)</td><td>PERSON</td><td>MGMT detail</td></tr>
+    <tr><td>An institutional holder</td><td>HOLDER</td><td>OWN (ownership detail)</td></tr>
+    <tr><td>A news headline</td><td>NEWS</td><td>TOP (news feed)</td></tr>
+    <tr><td>A corporate event</td><td>EVENT</td><td>EVT (events timeline)</td></tr>
+    <tr><td>A data field (P/E, Beta, etc.)</td><td>FIELD</td><td>Inspector overlay</td></tr>
+    <tr><td>A function code (DES, GP, etc.)</td><td>FUNCTION</td><td>Runs that function</td></tr>
+    <tr><td>An order or trade row</td><td>ORDER/TRADE</td><td>BLTR (blotter)</td></tr>
+  </tbody>
+</table>
+
+<div class="tip-box">
+  <div class="box-label">Smart Memory</div>
+  The terminal remembers the last function you used for each security in each panel. If you previously looked at AAPL's chart (GP), then navigate away and click AAPL again — it opens GP, not DES. This is "last-used mnemonic" memory.
+</div>
+
+<h2>The Drill Chain — How Deep Can You Go?</h2>
+<div class="workflow">
+  <span class="wf-step">WEI</span><span class="wf-arrow">→ click index →</span>
+  <span class="wf-step">DES</span><span class="wf-arrow">→ click sector →</span>
+  <span class="wf-step">IMAP</span><span class="wf-arrow">→ click peer →</span>
+  <span class="wf-step">RELS</span><span class="wf-arrow">→ click ticker →</span>
+  <span class="wf-step">DES</span><span class="wf-arrow">→ click field →</span>
+  <span class="wf-step">Inspector</span>
+</div>
+<p>There is no limit to how deep you can drill. Every view offers next steps. The back button (<kbd>Ctrl</kbd>+<kbd>B</kbd>) always takes you one step back.</p>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 9 — SECTORS & ASSET CLASSES
+══════════════════════════════════════════════════════════════════ -->
+<h1>9. Market Sectors &amp; Asset Classes</h1>
+
+<div class="two-col">
+  <div class="col-block">
+    <h4>Asset Class Keywords</h4>
+    <table class="mnemonic-table">
+      <thead><tr><th>Keyword</th><th>What it means</th></tr></thead>
+      <tbody>
+        <tr><td><code>Equity</code></td><td>Common stocks (default for most US tickers)</td></tr>
+        <tr><td><code>Index</code></td><td>Market indices (SPX, NKY, DAX…)</td></tr>
+        <tr><td><code>Curncy</code></td><td>FX pairs (EURUSD, USDJPY…)</td></tr>
+        <tr><td><code>Comdty</code></td><td>Commodities (CL1, GC1, NG1…)</td></tr>
+        <tr><td><code>Corp</code></td><td>Corporate bonds</td></tr>
+        <tr><td><code>Govt</code></td><td>Government bonds</td></tr>
+        <tr><td><code>Muni</code></td><td>Municipal bonds</td></tr>
+        <tr><td><code>Mtge</code></td><td>Mortgage-backed securities</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="col-block">
+    <h4>Market Sectors (GICS)</h4>
+    <ul class="term-list">
+      <li>Technology</li>
+      <li>Healthcare</li>
+      <li>Financials</li>
+      <li>Consumer Discretionary</li>
+      <li>Communication Services</li>
+      <li>Industrials</li>
+      <li>Consumer Staples</li>
+      <li>Energy</li>
+      <li>Utilities</li>
+      <li>Real Estate</li>
+      <li>Materials</li>
+    </ul>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 10 — OVERLAYS
+══════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>10. Overlays: Inspector, Menu, Search</h1>
+
+<h2>HL Search Overlay (<kbd>Ctrl</kbd>+<kbd>K</kbd> or type <code>HL</code>)</h2>
+<p>The most powerful discovery tool. Opens a full-panel search over all securities and all functions simultaneously.</p>
+<ul class="term-list">
+  <li>Type any part of a ticker, company name, or function code</li>
+  <li>Results show <strong>fn</strong> for function or <strong>→</strong> for security, with full name and category</li>
+  <li>Navigate with <kbd>↑↓</kbd>, confirm with <kbd>Enter</kbd></li>
+  <li>Selecting a function runs it on the current security</li>
+  <li>Selecting a security loads it and keeps the current function</li>
+  <li>Close with <kbd>Esc</kbd></li>
+</ul>
+
+<h2>MENU Overlay (<kbd>F2</kbd>)</h2>
+<p>Shows contextual next steps based on the currently loaded security and its sector.</p>
+<ul class="term-list">
+  <li>Two tabs: <strong>Security Functions</strong> (sector-aware) and <strong>Global Functions</strong></li>
+  <li>Equity panel: shows DES, HP, GP, FA, CN, OWN, RELS, MGMT, DVD, EVT, ORD, ALRT, TOP, WEI, IMAP</li>
+  <li>FX panel: shows DES, GP, FXC, ECO</li>
+  <li>Click any item or type its number and Enter</li>
+</ul>
+
+<h2>Inspector Overlay (<kbd>Alt</kbd>+Click or <kbd>Alt</kbd>+<kbd>Enter</kbd>)</h2>
+<p>Opens a dense side-panel (right edge) without destroying your current view. Shows all known fields for any entity.</p>
+<ul class="term-list">
+  <li>Header shows entity kind, name, and timestamp</li>
+  <li>Body: key-value grid of all fields — every cyan field is itself clickable</li>
+  <li>Footer: Related functions list + Open/Send-to-Panel buttons</li>
+  <li><strong>Pin button</strong> — keeps inspector open as you click other entities</li>
+  <li><strong>Send to Panel</strong> — drills the inspected entity in the next panel</li>
+  <li>Close with ✕ or <kbd>Esc</kbd> (unless pinned)</li>
+</ul>
+
+<h2>Context Menu (Right-Click)</h2>
+<p>Available on any entity — row in a table, headline in news, field in DES, chart element.</p>
+<div class="example-box">
+  <div class="box-label">Right-Click on AAPL row in WEI — shows:</div>
+  SECURITY: AAPL US Equity<br>
+  ─────────────────────<br>
+  ▶ Open (DES) | ↗ Open in new panel | 🔍 Inspect<br>
+  ─────────────────────<br>
+  &nbsp;&nbsp;DES — Security Description<br>
+  &nbsp;&nbsp;GP — Price Chart<br>
+  &nbsp;&nbsp;CN — Company News<br>
+  &nbsp;&nbsp;HP — Historical Pricing<br>
+  &nbsp;&nbsp;OWN — Ownership<br>
+  &nbsp;&nbsp;RELS — Related Securities<br>
+  ─────────────────────<br>
+  📋 Copy symbol | ★ Add to monitor | 🔔 Alert on field
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 11 — CHARTS
+══════════════════════════════════════════════════════════════════ -->
+<h1>11. Charts (GP &amp; GIP)</h1>
+
+<h3>GP — Daily Price Chart</h3>
+<ul class="term-list">
+  <li>Black background, 10×10 fixed grey grid</li>
+  <li>Blue price line (1px), grey volume bars in the bottom 20%</li>
+  <li>Y-axis labels inside the chart area on the right edge</li>
+  <li>Timeframe buttons in the header bar: 5D / 1M / 3M / 6M / 1Y / 3Y / 5Y / MAX</li>
+  <li>Mouse crosshair: hover over chart to see OHLC values for that date in a tooltip box</li>
+  <li>No mouse wheel zoom — change range via timeframe buttons or type <code>1Y</code>, <code>5D</code>, etc. in command line</li>
+</ul>
+
+<h3>Compare Mode (GP only)</h3>
+<div class="steps">
+  <div class="step"><div class="step-num">1</div><div class="step-body">Load GP for any security</div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-body">In the small "vs…" input field in the panel header, type another ticker (e.g. <code>MSFT</code>)</div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-body">Press Enter — a second line appears in a different color (magenta)</div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-body">Both series are normalized to the same starting point for fair comparison</div></div>
+</div>
+
+<h3>GIP — Intraday Chart</h3>
+<ul class="term-list">
+  <li>1-minute bars for the current simulated trading session</li>
+  <li>Dotted vertical line marks market open (9:30 AM)</li>
+  <li>Mouse crosshair shows per-bar OHLC</li>
+  <li>390 bars shown (full trading day)</li>
+</ul>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 12 — ALERTS
+══════════════════════════════════════════════════════════════════ -->
+<h1>12. Alerts Engine</h1>
+
+<p>Set price triggers on any security. When triggered, the global status bar turns red with a badge count and the ALRT panel highlights the triggered rule.</p>
+
+<h3>Creating Alerts</h3>
+<div class="cmd-block">
+  <div class="cmd-line"><span class="cmd-prompt">ALERT IF SPY > 510</span><span class="cmd-desc">Alert when SPY crosses above $510</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">ALERT IF AAPL < 170</span><span class="cmd-desc">Alert when AAPL drops below $170</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">ALRT</span><span class="cmd-desc">Open the alerts monitor panel to manage all rules</span></div>
+</div>
+
+<div class="two-col">
+  <div class="col-block">
+    <h4>From Command Line:</h4>
+    <p>Type the rule exactly as shown above in any panel's command line and press Enter.</p>
+    <p>Format: <code>ALERT IF [SYMBOL] [>|<] [PRICE]</code></p>
+  </div>
+  <div class="col-block">
+    <h4>From Context Menu:</h4>
+    <p>Right-click on any numeric field (P/E, price, yield, etc.) in DES, HP, OWN, or any table — select "Alert on field" to create a pre-filled alert.</p>
+  </div>
+</div>
+
+<p>Alert rules are saved to local browser storage and persist across sessions.</p>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 13 — WATCHLISTS
+══════════════════════════════════════════════════════════════════ -->
+<h1>13. Watchlists (MON)</h1>
+
+<p>MON is your personal live monitor — a real-time table of any securities you add. Data updates automatically from the B-PIPE simulation.</p>
+
+<h3>Accessing MON</h3>
+<ul class="term-list">
+  <li>Type <code>MON</code> + Enter in any panel</li>
+  <li>Click the <strong>MON</strong> button in the global status bar</li>
+</ul>
+
+<h3>Managing the Watchlist</h3>
+<div class="cmd-block">
+  <div class="cmd-line"><span class="cmd-prompt">Type symbol in input box</span><span class="cmd-desc">e.g. "TSLA US Equity" or just "TSLA" — press Enter or ADD button</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">✕ button on any row</span><span class="cmd-desc">Remove that symbol from watchlist</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">Click any row</span><span class="cmd-desc">Drill into that security (DES by default)</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">Shift+Click any row</span><span class="cmd-desc">Open that security in a new panel</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">Right-click any row</span><span class="cmd-desc">Full context menu with DES/GP/CN/etc.</span></div>
+</div>
+
+<h3>What MON Shows</h3>
+<p>Columns: Security name, Last price, % Change (color coded), Volume (M), VWAP (volume-weighted average price from worker analytics).</p>
+
+<div class="tip-box">
+  <div class="box-label">Add from Context Menu</div>
+  Right-click on any ticker in any table → "★ Add to monitor" — instantly adds it to your MON watchlist without leaving your current view.
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 14 — WORKSPACES
+══════════════════════════════════════════════════════════════════ -->
+<h1>14. Workspaces (WS)</h1>
+
+<p>Workspaces let you save your entire 4-panel configuration — what security and function is in each panel — and restore it in one command.</p>
+
+<h3>Saving a Workspace</h3>
+<div class="cmd-block">
+  <div class="cmd-line"><span class="cmd-prompt">WS MORNING</span><span class="cmd-desc">If "MORNING" doesn't exist: saves current 4-panel layout as "MORNING"</span></div>
+  <div class="cmd-line"><span class="cmd-prompt">WS MORNING</span><span class="cmd-desc">If "MORNING" already exists: loads it, restoring all 4 panels</span></div>
+</div>
+
+<h3>Managing Workspaces via WS Panel</h3>
+<div class="steps">
+  <div class="step"><div class="step-num">1</div><div class="step-body">Type <code>WS</code> and press Enter to open the Workspace Manager function</div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-body">Type a workspace name in the input and click SAVE (or press Enter)</div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-body">Saved workspaces appear in the list showing name, date, and panel summary (e.g. "WEI | DES | TOP | GP")</div></step></div>
+  <div class="step"><div class="step-num">4</div><div class="step-body">Click LOAD to restore a workspace, DEL to remove it</div></div>
+</div>
+
+<div class="example-box">
+  <div class="box-label">Workflow Example</div>
+  Set up Panel 1: WEI · Panel 2: AAPL DES · Panel 3: TOP · Panel 4: AAPL GP<br>
+  Type <code>WS EQUITY-WATCH</code> + Enter to save.<br>
+  Next session: type <code>WS EQUITY-WATCH</code> + Enter to instantly restore.
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 15 — PANEL SYNC
+══════════════════════════════════════════════════════════════════ -->
+<h1>15. Panel Sync (Link Groups)</h1>
+
+<p>Link groups let you connect panels so that changing the security in one panel automatically updates others in the same group.</p>
+
+<h3>Setting Up a Link Group</h3>
+<div class="steps">
+  <div class="step"><div class="step-num">1</div><div class="step-body">In a panel header, click the small colored square (■) in the top-right corner</div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-body">Each click cycles through: no link (dark) → Red → Green → Blue → Yellow → back to no link</div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-body">Set two panels to the same color (e.g., both Red)</div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-body">Now change a security in one of the Red panels — the other Red panel automatically loads the same security</div></div>
+</div>
+
+<div class="tip-box">
+  <div class="box-label">Classic Bloomberg Workflow</div>
+  Set Panel 1 (WEI) and Panel 2 (DES) both to "Red". Browse the WEI table — click any index. Panel 2 (DES) instantly updates to show details for whatever you're looking at. Panel 3 (GP, also Red) updates too.
+</div>
+
+<div class="warning-box">
+  <div class="box-label">Note</div>
+  Link groups sync the <strong>security</strong> only — not the function. Panel 2 keeps showing DES even when Panel 1 switches to a different function.
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 16 — WORKFLOW EXAMPLES
+══════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>16. Quick Workflow Examples</h1>
+
+<h2>Workflow 1 — Research a Stock from Scratch</h2>
+<div class="steps">
+  <div class="step"><div class="step-num">1</div><div class="step-body">Press <kbd>Ctrl</kbd>+<kbd>K</kbd> and type "apple" — select AAPL US Equity from results</div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-body">Terminal loads <code>AAPL US DES</code> — read the fundamentals and business summary</div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-body">Press <kbd>F2</kbd> (MENU) — select HP to see historical prices</div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-body">Press the "NEXT: GP" button in the header strip — see the price chart</div></div>
+  <div class="step"><div class="step-num">5</div><div class="step-body">Type <code>MSFT</code> in the "vs…" box in GP header → compare AAPL vs MSFT performance</div></div>
+  <div class="step"><div class="step-num">6</div><div class="step-body">Press <kbd>Ctrl</kbd>+<kbd>B</kbd> to go back to DES, click the Technology sector → see sector heatmap IMAP</div></div>
+</div>
+
+<h2>Workflow 2 — Monitor Global Markets</h2>
+<div class="steps">
+  <div class="step"><div class="step-num">1</div><div class="step-body">In Panel 1 (command line): type <code>WEI</code> + Enter</div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-body">In Panel 2: type <code>TOP</code> + Enter</div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-body">In Panel 3: type <code>ECO</code> + Enter</div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-body">In Panel 4: type <code>IMAP</code> + Enter</div></div>
+  <div class="step"><div class="step-num">5</div><div class="step-body">Type <code>WS MARKETS</code> + Enter → saves this layout as "MARKETS"</div></div>
+  <div class="step"><div class="step-num">6</div><div class="step-body">Next time: type <code>WS MARKETS</code> to restore instantly</div></div>
+</div>
+
+<h2>Workflow 3 — Deep Dive from WEI to News</h2>
+<div class="steps">
+  <div class="step"><div class="step-num">1</div><div class="step-body">Load WEI — see 40 live indices</div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-body"><kbd>Shift</kbd>+click on SPX Index row → opens DES in Panel 2 without disturbing Panel 1</div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-body">In Panel 2, type <code>CN</code> → see S&amp;P news</div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-body"><kbd>Alt</kbd>+click a news headline → Inspector shows headline detail, source, time</div></div>
+  <div class="step"><div class="step-num">5</div><div class="step-body">Click "OPEN IN P1" button in Inspector → Panel 1 now shows full TOP news feed</div></div>
+</div>
+
+<h2>Workflow 4 — Set Up Alerts for a Watchlist</h2>
+<div class="steps">
+  <div class="step"><div class="step-num">1</div><div class="step-body">Type <code>MON</code> + Enter — open the watchlist monitor</div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-body">Add: AAPL, MSFT, NVDA, SPX, EURUSD (type each + Enter in the input bar)</div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-body">Right-click NVDA row → "Alert on field" or type <code>ALERT IF NVDA > 950</code> + Enter</div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-body">Type <code>ALRT</code> + Enter → see all your alert rules in the ALRT panel</div></div>
+  <div class="step"><div class="step-num">5</div><div class="step-body">When triggered: red ALRT badge appears in status bar; click it to see which rules fired</div></div>
+</div>
+
+<h2>Workflow 5 — Keyboard-Only Deep Research</h2>
+<div class="steps">
+  <div class="step"><div class="step-num">1</div><div class="step-body"><kbd>Alt</kbd>+<kbd>1</kbd> to focus Panel 1, <kbd>Ctrl</kbd>+<kbd>L</kbd> to focus command line</div></div>
+  <div class="step"><div class="step-num">2</div><div class="step-body">Type <code>WEI</code> + <kbd>Enter</kbd> — WEI loads</div></div>
+  <div class="step"><div class="step-num">3</div><div class="step-body">Click Panel 1 content area → focus inside the table, press <kbd>↓</kbd> to select first row, <kbd>↓↓↓</kbd> to reach DAX Index</div></div>
+  <div class="step"><div class="step-num">4</div><div class="step-body"><kbd>Shift</kbd>+<kbd>Enter</kbd> → DAX opens in Panel 2</div></div>
+  <div class="step"><div class="step-num">5</div><div class="step-body"><kbd>Alt</kbd>+<kbd>2</kbd> → focus Panel 2, press <kbd>F2</kbd> → MENU opens</div></div>
+  <div class="step"><div class="step-num">6</div><div class="step-body">Type <code>GP</code> → price chart loads. Type <code>1Y</code> + <kbd>Enter</kbd> → 1-year view.</div></div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 17 — BUILT-IN SECURITIES
+══════════════════════════════════════════════════════════════════ -->
+<h1>17. Built-In Securities Reference</h1>
+
+<div class="two-col">
+  <div class="col-block">
+    <h4>US Equities (type just the ticker)</h4>
+    <ul class="term-list">
+      <li><code>AAPL</code> — Apple Inc</li>
+      <li><code>MSFT</code> — Microsoft Corp</li>
+      <li><code>NVDA</code> — NVIDIA Corp</li>
+      <li><code>GOOGL</code> — Alphabet Inc</li>
+      <li><code>AMZN</code> — Amazon.com</li>
+      <li><code>META</code> — Meta Platforms</li>
+      <li><code>TSLA</code> — Tesla Inc</li>
+      <li><code>JPM</code> — JPMorgan Chase</li>
+      <li><code>BAC</code> — Bank of America</li>
+      <li><code>GS</code> — Goldman Sachs</li>
+      <li><code>MS</code> — Morgan Stanley</li>
+      <li><code>WFC</code> — Wells Fargo</li>
+      <li><code>IBM</code> — IBM Corp</li>
+      <li><code>INTC</code> — Intel Corp</li>
+      <li><code>AMD</code> — AMD Inc</li>
+      <li><code>AVGO</code> — Broadcom Inc</li>
+      <li><code>CRM</code> — Salesforce</li>
+      <li><code>ORCL</code> — Oracle Corp</li>
+      <li><code>ADBE</code> — Adobe Inc</li>
+      <li><code>NFLX</code> — Netflix Inc</li>
+      <li><code>DIS</code> — Walt Disney Co</li>
+      <li><code>WMT</code> — Walmart Inc</li>
+      <li><code>XOM</code> — ExxonMobil Corp</li>
+      <li><code>CVX</code> — Chevron Corp</li>
+    </ul>
+  </div>
+  <div class="col-block">
+    <h4>Indices</h4>
+    <ul class="term-list">
+      <li><code>SPX Index</code> — S&amp;P 500</li>
+      <li><code>INDU Index</code> — Dow Jones 30</li>
+      <li><code>CCMP Index</code> — NASDAQ Composite</li>
+      <li><code>NDX Index</code> — NASDAQ 100</li>
+      <li><code>RTY Index</code> — Russell 2000</li>
+      <li><code>UKX Index</code> — FTSE 100</li>
+      <li><code>DAX Index</code> — German DAX 40</li>
+      <li><code>NKY Index</code> — Nikkei 225</li>
+      <li><code>HSI Index</code> — Hang Seng</li>
+      <li><code>SHCOMP Index</code> — Shanghai Composite</li>
+    </ul>
+    <h4 style="margin-top:12px">FX Pairs</h4>
+    <ul class="term-list">
+      <li><code>EURUSD Curncy</code> — EUR/USD</li>
+      <li><code>GBPUSD Curncy</code> — GBP/USD</li>
+      <li><code>USDJPY Curncy</code> — USD/JPY</li>
+    </ul>
+    <h4 style="margin-top:12px">Commodities</h4>
+    <ul class="term-list">
+      <li><code>CL1 Comdty</code> — WTI Crude Oil Futures</li>
+      <li><code>GC1 Comdty</code> — Gold Futures</li>
+      <li><code>NG1 Comdty</code> — Natural Gas Futures</li>
+    </ul>
+    <h4 style="margin-top:12px">ETFs</h4>
+    <ul class="term-list">
+      <li><code>SPY US Equity</code> — SPDR S&amp;P 500</li>
+      <li><code>QQQ US Equity</code> — Invesco QQQ</li>
+      <li><code>GLD US Equity</code> — SPDR Gold</li>
+      <li><code>TLT US Equity</code> — iShares 20Y Treasury</li>
+      <li><code>XLK US Equity</code> — SPDR Technology</li>
+      <li><code>XLF US Equity</code> — SPDR Financials</li>
+    </ul>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 18 — COLOR CODING
+══════════════════════════════════════════════════════════════════ -->
+<h1>18. Color Coding Reference</h1>
+
+<div class="color-legend">
+  <div class="color-row"><div class="color-swatch" style="background:#FFB000"></div><strong style="color:#FFB000">Amber / #FFB000</strong> — Labels, mnemonic codes, editable fields, your command input, key identifiers</div>
+  <div class="color-row"><div class="color-swatch" style="background:#63c8ff"></div><strong style="color:#63c8ff">Cyan / #63c8ff</strong> — Clickable/drillable values, security tickers in tables, linked entities</div>
+  <div class="color-row"><div class="color-swatch" style="background:#00c853"></div><strong style="color:#00c853">Green / #00c853</strong> — Positive change, price up, bullish indicator, alerts connected, VWAP above price</div>
+  <div class="color-row"><div class="color-swatch" style="background:#d32f2f"></div><strong style="color:#d32f2f">Red / #d32f2f</strong> — Negative change, price down, bearish, triggered alerts, sell side</div>
+  <div class="color-row"><div class="color-swatch" style="background:#e6e6e6"></div><strong style="color:#e6e6e6">White / #e6e6e6</strong> — Primary data values, prices, unchanged values</div>
+  <div class="color-row"><div class="color-swatch" style="background:#93a9c6"></div><strong style="color:#93a9c6">Blue-grey / #93a9c6</strong> — Secondary information, metadata, timestamps</div>
+  <div class="color-row"><div class="color-swatch" style="background:#555555"></div><strong style="color:#888">Muted grey / #555</strong> — Tertiary info, less important fields, "zero" values</div>
+  <div class="color-row"><div class="color-swatch" style="background:#0068FF"></div><strong style="color:#0068FF">Bright blue / #0068FF</strong> — Active / focused panel border. Indicates which panel receives your commands.</div>
+  <div class="color-row"><div class="color-swatch" style="background:#000084"></div><strong style="color:#aaa">Terminal blue / #000084</strong> — Panel header bar background (classic terminal aesthetic)</div>
+</div>
+
+<h3>Price Flash Colors</h3>
+<div class="color-legend">
+  <div class="color-row"><div class="color-swatch" style="background:#004400; border-color:#00c853"></div><strong style="color:#00c853">Green flash</strong> — Price has just moved UP since last tick (lasts ~150ms)</div>
+  <div class="color-row"><div class="color-swatch" style="background:#440000; border-color:#d32f2f"></div><strong style="color:#d32f2f">Red flash</strong> — Price has just moved DOWN since last tick (lasts ~150ms)</div>
+</div>
+
+<h3>Link Group Colors (Panel Sync)</h3>
+<div class="chip-grid">
+  <span class="chip" style="border-color:#f00; color:#f00">■ RED — Group 1</span>
+  <span class="chip" style="border-color:#0f0; color:#0f0">■ GREEN — Group 2</span>
+  <span class="chip" style="border-color:#08f; color:#08f">■ BLUE — Group 3</span>
+  <span class="chip" style="border-color:#ff0; color:#ff0">■ YELLOW — Group 4</span>
+  <span class="chip" style="border-color:#444; color:#888">■ DARK — No link</span>
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════════
+     SECTION 19 — TROUBLESHOOTING
+══════════════════════════════════════════════════════════════════ -->
+<div class="page-break"></div>
+<h1>19. Troubleshooting &amp; Tips</h1>
+
+<div class="warning-box">
+  <div class="box-label">Simulation Mode</div>
+  All data in MarketMind Terminal is <strong>simulated</strong>. Prices, news, ownership data, and analytics are generated algorithmically and do not represent real market data. This is clearly indicated by the <strong>SIM</strong> badge visible throughout the interface.
+</div>
+
+<h3>Common Situations</h3>
+<table class="mnemonic-table">
+  <thead><tr><th>Situation</th><th>Solution</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Command doesn't load anything</td>
+      <td>Make sure you pressed <kbd>Enter</kbd>. Autocomplete showing doesn't execute — you must confirm.</td>
+    </tr>
+    <tr>
+      <td>Can't type in the command line</td>
+      <td>Click the panel first to focus it, then press <kbd>Ctrl</kbd>+<kbd>L</kbd> to focus the command line.</td>
+    </tr>
+    <tr>
+      <td>Overlay is stuck open</td>
+      <td>Press <kbd>Esc</kbd> to close any open overlay (inspector, menu, search, help).</td>
+    </tr>
+    <tr>
+      <td>Panel shows a "WAKE UP" screen</td>
+      <td>That's intentional — it means no function is loaded. Type any command or click an example to start.</td>
+    </tr>
+    <tr>
+      <td>Back button (◀) is greyed out</td>
+      <td>You're at the beginning of this panel's history — nothing to go back to.</td>
+    </tr>
+    <tr>
+      <td>Prices aren't flashing</td>
+      <td>Normal — prices only flash when they change. The simulation updates every ~200ms.</td>
+    </tr>
+    <tr>
+      <td>Security not found in autocomplete</td>
+      <td>The built-in universe has ~35 securities. You can still type any symbol manually and it will simulate data.</td>
+    </tr>
+    <tr>
+      <td>Want to reset panels to default</td>
+      <td>Refresh the browser. The terminal restores from IndexedDB if available, or starts fresh with default panels.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Power User Tips</h3>
+<ul class="term-list">
+  <li>The <strong>fastest way to research anything</strong> is: <kbd>Ctrl</kbd>+<kbd>K</kbd> → type → Enter. No mouse needed.</li>
+  <li>Use the <strong>Next Actions strip</strong> (the row of small amber buttons under the breadcrumb) to navigate between related functions instantly with one click.</li>
+  <li>Use <strong>Shift+Click</strong> constantly to fill multiple panels with related data without disrupting what you're already looking at.</li>
+  <li>The <strong>Inspector overlay</strong> (Alt+Click) is perfect for quickly checking field values without losing your scroll position in a table.</li>
+  <li>Right-click anywhere you see data — the context menu always has at least 3-5 relevant actions.</li>
+  <li>FA (Financial Analysis) has three tabs at the top: Income Statement, Balance Sheet, Cash Flow. Click to switch.</li>
+  <li>In GP chart, type a ticker in the "vs…" box to compare two securities on the same chart.</li>
+  <li>The breadcrumb (e.g. EQUITY › AAPL US › DES) shows exactly where you are and can remind you of what path you took.</li>
+</ul>
+
+<hr class="section-divider">
+<h3>Quick Reference Cheat Sheet</h3>
+
+<div class="cmd-block" style="border-color:#333;">
+<strong style="color:#FFB000">5 MOST USEFUL FIRST COMMANDS</strong><br><br>
+<div class="cmd-line"><span class="cmd-prompt" style="min-width:160px;">WEI</span><span class="cmd-desc">See all global markets at once</span></div>
+<div class="cmd-line"><span class="cmd-prompt" style="min-width:160px;">AAPL DES</span><span class="cmd-desc">Research Apple (replace with any ticker)</span></div>
+<div class="cmd-line"><span class="cmd-prompt" style="min-width:160px;">TOP</span><span class="cmd-desc">See what's happening in markets right now</span></div>
+<div class="cmd-line"><span class="cmd-prompt" style="min-width:160px;">AAPL GP</span><span class="cmd-desc">See Apple's price chart</span></div>
+<div class="cmd-line"><span class="cmd-prompt" style="min-width:160px;">Ctrl+K</span><span class="cmd-desc">Search for anything — best starting point</span></div>
+</div>
+
+<div class="doc-footer">
+  <span>MarketMind Terminal — User Guide v2.0</span>
+  <span>All data is simulated (SIM mode) — not for investment use</span>
+  <span>© MarketMind Terminal</span>
+</div>
+
+</body>
+</html>

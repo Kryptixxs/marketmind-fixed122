@@ -12,7 +12,7 @@ import { PanelFiller } from './fillers/PanelFillers';
 const LINK_COLORS: Record<string, string> = { red: '#f00', green: '#0f0', blue: '#08f', yellow: '#ff0' };
 const LINK_CYCLE = [null, 'red', 'green', 'blue', 'yellow'] as const;
 
-const KEYBOARD_HINT = 'ENTER=Drill  SHIFT+ENTER=SendPanel  ALT+ENTER=Inspect  ↑↓=Select  PgDn=Scroll';
+// Dynamic hints computed at render time, not a static constant
 
 function PanelHeader({ panelIdx }: { panelIdx: number }) {
   const { panels, focusedPanel, dispatchPanel } = useTerminalOS();
@@ -107,27 +107,50 @@ function PanelToolbar({ panelIdx }: { panelIdx: number }) {
 }
 
 function BreadcrumbStrip({ panelIdx }: { panelIdx: number }) {
-  const { panels } = useTerminalOS();
+  const { panels, navigatePanel, dispatchPanel } = useTerminalOS();
   const p = panels[panelIdx]!;
   const ticker = p.activeSecurity.split(' ').slice(0, 2).join(' ');
-  const crumbs = [p.marketSector, ticker, p.activeMnemonic];
+  const crumbs = [
+    { label: p.marketSector, action: () => navigatePanel(panelIdx, 'IMAP') },
+    { label: ticker, action: () => navigatePanel(panelIdx, 'DES') },
+    { label: p.activeMnemonic, action: () => dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'menu' }) },
+  ];
   return (
-    <div className="flex items-center flex-none truncate select-none"
+    <div className="flex items-center flex-none truncate"
       style={{ height: 13, background: DENSITY.bgSurface, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, fontFamily: DENSITY.fontFamily, fontSize: '8px', color: DENSITY.textMuted }}>
       {crumbs.map((c, i) => (
         <React.Fragment key={i}>
           {i > 0 && <span style={{ margin: '0 3px', opacity: 0.5 }}>›</span>}
-          <span>{c}</span>
+          <button type="button" onClick={(e) => { e.stopPropagation(); c.action(); }}
+            className="hover:text-white"
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: '8px', fontFamily: DENSITY.fontFamily, padding: 0 }}>
+            {c.label}
+          </button>
         </React.Fragment>
       ))}
     </div>
   );
 }
 
-function KeyboardHintStrip() {
+const MNEMONIC_HINTS: Record<string, string> = {
+  GP:   'TF=1Y/5D/1M/etc  •  vs box=Compare  •  Crosshair=OHLC',
+  GIP:  'Intraday bars  •  Crosshair=OHLC  •  Open line marked',
+  FA:   'Click tab=IS/BS/CF  •  Enter=Drill field  •  ↑↓=Navigate',
+  ORD:  'BUY/SELL toggle  •  MKT/LMT type  •  KILL=Cancel',
+  HP:   'PgDn=Next page  •  Click col=Sort  •  Enter=Drill security',
+  WEI:  '↑↓=Select  •  Enter=Chart  •  Shift+Enter=Send  •  Click col=Sort',
+  IMAP: 'Click tile=RELS  •  Shift+Click=New panel',
+  FXC:  'Click cell=DES  •  Right-click=Actions',
+};
+const DEFAULT_HINT = 'ENTER=Drill  SHIFT+ENTER=SendPanel  ALT+ENTER=Inspect  ↑↓=Select  PgDn=Scroll';
+
+function KeyboardHintStrip({ panelIdx }: { panelIdx: number }) {
+  const { panels } = useTerminalOS();
+  const mn = panels[panelIdx]!.activeMnemonic;
+  const hint = MNEMONIC_HINTS[mn] ?? DEFAULT_HINT;
   return (
     <div style={{ height: 12, background: '#020202', borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, display: 'flex', alignItems: 'center', flexShrink: 0, fontFamily: DENSITY.fontFamily, fontSize: '8px', color: DENSITY.textMuted, overflow: 'hidden' }}>
-      {KEYBOARD_HINT}
+      {hint}
     </div>
   );
 }
@@ -140,14 +163,14 @@ export function NewPanelFrame({ panelIdx, children }: { panelIdx: number; childr
   return (
     <div
       className="flex flex-col min-h-0 min-w-0 overflow-hidden relative"
-      style={{ background: DENSITY.bgBase, border: `1px solid ${isFocused ? '#0068FF' : DENSITY.gridlineColor}` }}
+      style={{ background: DENSITY.bgBase, border: `1px solid ${isFocused ? DENSITY.focusBorderColor : DENSITY.gridlineColor}` }}
       onClick={() => setFocusedPanel(panelIdx)}
     >
       <PanelHeader panelIdx={panelIdx} />
       <PanelToolbar panelIdx={panelIdx} />
       <BreadcrumbStrip panelIdx={panelIdx} />
       <NextActionsStrip panelIdx={panelIdx} />
-      <KeyboardHintStrip />
+      <KeyboardHintStrip panelIdx={panelIdx} />
       <PanelCommandLine panelIdx={panelIdx} isFocused={isFocused} />
 
       {/* Function body */}
@@ -159,6 +182,7 @@ export function NewPanelFrame({ panelIdx, children }: { panelIdx: number; childr
         {p.overlayMode === 'menu' && <PanelMenuOverlay panelIdx={panelIdx} />}
         {(p.overlayMode === 'help' || p.overlayMode === 'help-desk') && <PanelHelpOverlay panelIdx={panelIdx} />}
         {p.overlayMode === 'search' && <HLSearchOverlay panelIdx={panelIdx} />}
+        {/* 'inspector' mode is rendered globally by TerminalInspector — no local overlay needed */}
       </div>
     </div>
   );
