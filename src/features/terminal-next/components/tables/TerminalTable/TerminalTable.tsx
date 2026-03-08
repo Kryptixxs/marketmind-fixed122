@@ -101,6 +101,7 @@ export function TerminalTable({
     dir: 'asc',
   });
   const [hoverRowIndex, setHoverRowIndex] = useState<number | null>(null);
+  const lastPaintMetaRef = useRef<{ key: string; rowSignatures: string[] }>({ key: '', rowSignatures: [] });
 
   const sortedRows = useMemo(() => {
     return [...rows].sort((a, b) => {
@@ -156,14 +157,14 @@ export function TerminalTable({
   const pageDown = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollBy({ top: el.clientHeight, behavior: 'instant' });
-  }, []);
+    el.scrollBy({ top: rowHeight * 20, behavior: 'instant' });
+  }, [rowHeight]);
 
   const pageUp = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollBy({ top: -el.clientHeight, behavior: 'instant' });
-  }, []);
+    el.scrollBy({ top: -rowHeight * 20, behavior: 'instant' });
+  }, [rowHeight]);
 
   const paint = useCallback(() => {
     const scrollEl = scrollRef.current;
@@ -197,6 +198,19 @@ export function TerminalTable({
 
     const startRow = Math.max(0, Math.floor(scrollTop / rowHeight));
     const endRow = Math.min(sortedRows.length, Math.ceil((scrollTop + h) / rowHeight) + 1);
+    const paintKey = `${w}|${h}|${startRow}|${endRow}|${hoverRowIndex ?? -1}|${sort.key}|${sort.dir}`;
+    const nextRowSignatures = sortedRows
+      .slice(startRow, endRow)
+      .map((r) => `${r.id}|${r.price}|${r.change}|${r.pctChange}|${(flashMap[r.id]?.change ?? '')}`);
+    const prevMeta = lastPaintMetaRef.current;
+    const unchangedRows = prevMeta.rowSignatures.length === nextRowSignatures.length
+      && prevMeta.rowSignatures.every((s, i) => s === nextRowSignatures[i]);
+    if (prevMeta.key === paintKey && unchangedRows) {
+      return;
+    }
+    lastPaintMetaRef.current = { key: paintKey, rowSignatures: nextRowSignatures };
+
+    ctx.clearRect(0, 0, w, h);
 
     for (let r = startRow; r < endRow; r++) {
       const row = sortedRows[r];

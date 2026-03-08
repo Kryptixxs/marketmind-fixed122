@@ -326,4 +326,11 @@ export type TerminalState = {
   };
   executionControls: ExecutionControlState;
   overrideAuditTrail: OverrideAuditEvent[];
+  workerAnalytics?: {
+    vwapBySymbol: Record<string, number>;
+    macdBySymbol: Record<string, number>;
+    arbitrageSpreads: Array<{ left: string; right: string; spread: number }>;
+    workerLatencyMs: number;
+    uiFps: number;
+  };
 };

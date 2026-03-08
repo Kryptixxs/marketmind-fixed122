@@ -4,14 +4,35 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { clsx } from 'clsx';
 import { useTerminalStore } from '../store/TerminalStore';
 import { usePanelFocus } from '../context/PanelFocusContext';
-import { parseCommand } from '../services/commandParser';
-import { getSuggestions, MNEMONIC_REGISTRY } from '../services/MnemonicEngine';
+import { getSuggestions } from '../services/MnemonicEngine';
 import { useTerminalContextMenu } from '../context/TerminalContextMenuContext';
+import { parseTerminalCommand, type YellowKey } from '../services/terminalParser';
+import { addAlertRule } from '../services/alertMonitor';
+import { searchSecurityMaster } from '../services/securityMaster';
 import { useTerminalLayout } from '../context/TerminalLayoutContext';
 import { loadWorkspace, saveWorkspace, workspaceExists } from '../services/workspaceManager';
 import type { PanelFunction } from '../context/PanelFocusContext';
 
 export const COMMAND_CENTER_INPUT_ID = 'command-center-input';
+
+function terminalBeep() {
+  try {
+    const AudioCtx = (window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext);
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'square';
+    o.frequency.value = 880;
+    g.gain.value = 0.015;
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start();
+    o.stop(ctx.currentTime + 0.06);
+  } catch {
+    // ignore beep failures
+  }
+}
 
 /** Map FunctionCode from parseCommand to PanelFunction */
 function toPanelFunction(code: string): PanelFunction {
@@ -20,6 +41,9 @@ function toPanelFunction(code: string): PanelFunction {
   if (valid.includes(c as PanelFunction)) return c as PanelFunction;
   if (c === 'GIP' || c === 'GCDS') return 'MKT';
   if (c === 'CN') return 'NEWS';
+  if (c === 'TOP') return 'N';
+  if (c === 'ANR') return 'MKT';
+  if (c === 'DVD' || c === 'MGMT' || c === 'OWN' || c === 'RELS') return 'DES';
   if (c === 'OQ') return 'OVME';
   return 'MKT';
 }
@@ -31,21 +55,35 @@ export function CommandCenterBar() {
   const [showSuggestions, setShowSuggestions] = useState(true);
   const { state, dispatch } = useTerminalStore();
   const { registerExecuteCommand } = useTerminalContextMenu() ?? {};
+  const { zoomedQuadrant, setZoomedQuadrant, panelSizes, setPanelSizes } = useTerminalLayout();
   const {
     activePanelIndex,
     panelFunctions,
+    panelLinkGroups,
+    quadrantStates,
     setPanelFunction,
     setPanelFunctions,
+    setQuadrantState,
     pushPanelState,
     popPanelState,
   } = usePanelFocus();
-  const { zoomedQuadrant, setZoomedQuadrant, panelSizes, setPanelSizes } = useTerminalLayout();
-
   const activeFunction = activePanelIndex !== null ? panelFunctions[activePanelIndex] ?? 'MKT' : 'MKT';
 
   const historyRef = useRef<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [isInvalidCommand, setIsInvalidCommand] = useState(false);
+  const [yellowKeyMode, setYellowKeyMode] = useState<YellowKey>('EQUITY');
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('vantage-command-history');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as string[];
+      historyRef.current = parsed.slice(-20);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const displayValue = useMemo(() => {
     const parts = state.commandInput.trim().split(/\s+/);
@@ -59,7 +97,21 @@ export function CommandCenterBar() {
     return tokens.length >= 2 ? (tokens[tokens.length - 2] ?? '') : tokens[0] ?? '';
   }, [state.commandInput]);
 
-  const suggestions = useMemo(() => getSuggestions(suggestionPrefix), [suggestionPrefix]);
+  const suggestions = useMemo(() => {
+    const mnemonic = getSuggestions(suggestionPrefix).map((m) => ({
+      key: `m-${m.code}`,
+      code: m.code,
+      label: m.label,
+      kind: 'mnemonic' as const,
+    }));
+    const sec = searchSecurityMaster(displayValue).map((s) => ({
+      key: `s-${s.symbol}`,
+      code: s.symbol,
+      label: `${s.securityName} • ${s.assetClass}`,
+      kind: 'security' as const,
+    }));
+    return [...mnemonic, ...sec].slice(0, 14);
+  }, [suggestionPrefix, displayValue]);
 
   const executeCommand = useCallback(
     (raw: string) => {
@@ -86,26 +138,46 @@ export function CommandCenterBar() {
         return;
       }
 
-      let command = '';
-      const tokens = trimmed.split(/\s+/);
-      const hasGo = tokens[tokens.length - 1] === 'GO';
-      const fnFromInput = hasGo && tokens.length >= 2 ? tokens[tokens.length - 2] : null;
-      const firstToken = tokens[0] ?? '';
-      const isMnemonicOnly = MNEMONIC_REGISTRY.some((m) => m.code === firstToken) && tokens.length <= 2;
-      const match = state.quotes.find(
-        (q) =>
-          q.symbol.toUpperCase().startsWith(tokens[0] ?? '') ||
-          q.symbol.toUpperCase().includes(tokens[0] ?? '') ||
-          q.name.toUpperCase().includes(tokens[0] ?? '')
-      );
-      const symbol = isMnemonicOnly
-        ? state.activeSymbol
-        : match?.symbol ?? (tokens[0]?.includes(' ') ? tokens[0] : `${tokens[0] ?? trimmed} US`);
-      const panelToCode = (p: PanelFunction) => (p === 'GP' ? 'MKT' : p === 'N' ? 'NEWS' : p);
-      const fn = hasGo && fnFromInput ? fnFromInput : isMnemonicOnly ? firstToken : panelToCode(activeFunction);
-      command = `${symbol} ${fn} GO`;
-      const parsed = parseCommand(command);
-      const newFn = parsed.ok ? toPanelFunction(parsed.functionCode) : activeFunction;
+      if (trimmed.startsWith('W ')) {
+        const wsName = trimmed.replace(/\s+GO$/, '').slice(2).trim();
+        if (wsName) {
+          if (workspaceExists(wsName)) {
+            const loaded = loadWorkspace(wsName);
+            if (loaded) {
+              setPanelFunctions(loaded.panelFunctions);
+              setZoomedQuadrant(loaded.zoomedQuadrant as 0 | 1 | 2 | 3 | null);
+              setPanelSizes(loaded.panelSizes);
+            }
+          } else {
+            saveWorkspace(wsName, { panelFunctions, zoomedQuadrant, panelSizes });
+          }
+        }
+        dispatch({ type: 'SET_COMMAND', payload: '' });
+        return;
+      }
+
+      if (trimmed.startsWith('ALERT IF ')) {
+        const rule = addAlertRule(trimmed.replace(/\s+GO$/, ''));
+        if (!rule) {
+          setIsInvalidCommand(true);
+          setTimeout(() => setIsInvalidCommand(false), 220);
+          return;
+        }
+        dispatch({ type: 'SET_COMMAND', payload: '' });
+        return;
+      }
+
+      const currentQuadrant = activePanelIndex !== null ? quadrantStates[activePanelIndex] : undefined;
+      const parsedCli = parseTerminalCommand(trimmed, yellowKeyMode, currentQuadrant?.activeMnemonic ?? activeFunction);
+      if (!parsedCli.ok) {
+        setIsInvalidCommand(true);
+        terminalBeep();
+        setTimeout(() => setIsInvalidCommand(false), 220);
+        return;
+      }
+      const command = parsedCli.value.normalizedCommand;
+      const newFn = toPanelFunction(parsedCli.value.function);
+      const symbol = parsedCli.value.normalizedSecurity;
 
       if (activePanelIndex !== null) {
         pushPanelState(activePanelIndex, activeFunction, state.activeSymbol);
@@ -114,7 +186,12 @@ export function CommandCenterBar() {
         const h = historyRef.current;
         if (h[h.length - 1] !== command) {
           h.push(command);
-          if (h.length > 50) h.shift();
+          if (h.length > 20) h.shift();
+          try {
+            localStorage.setItem('vantage-command-history', JSON.stringify(h));
+          } catch {
+            // ignore
+          }
         }
         setHistoryIndex(-1);
       }
@@ -123,9 +200,30 @@ export function CommandCenterBar() {
       dispatch({ type: 'EXECUTE_COMMAND', payload: command });
       if (activePanelIndex !== null) {
         setPanelFunction(activePanelIndex, newFn);
+        const prior = quadrantStates[activePanelIndex]!;
+        setQuadrantState(activePanelIndex, {
+          loadedSecurity: `${parsedCli.value.ticker} ${parsedCli.value.market} ${parsedCli.value.sector}`,
+          activeMnemonic: parsedCli.value.function,
+          history: parsedCli.value.function !== prior.activeMnemonic
+            ? [...prior.history, prior.activeMnemonic].slice(-20)
+            : prior.history,
+          sector: parsedCli.value.sector,
+        });
+        const activeLink = panelLinkGroups[activePanelIndex];
+        if (activeLink) {
+          panelLinkGroups.forEach((group, idx) => {
+            if (idx === activePanelIndex || group !== activeLink) return;
+            const target = quadrantStates[idx]!;
+            setQuadrantState(idx, {
+              ...target,
+              loadedSecurity: `${parsedCli.value.ticker} ${parsedCli.value.market} ${parsedCli.value.sector}`,
+              sector: parsedCli.value.sector,
+            });
+          });
+        }
       }
     },
-    [state.quotes, state.activeSymbol, activeFunction, activePanelIndex, panelFunctions, zoomedQuadrant, panelSizes, setPanelFunction, setPanelFunctions, setZoomedQuadrant, setPanelSizes, pushPanelState, dispatch]
+    [state.quotes, state.activeSymbol, activeFunction, activePanelIndex, panelFunctions, quadrantStates, panelLinkGroups, yellowKeyMode, setPanelFunction, setPanelFunctions, setQuadrantState, pushPanelState, zoomedQuadrant, setZoomedQuadrant, panelSizes, setPanelSizes, dispatch]
   );
 
   useEffect(() => {
@@ -133,6 +231,10 @@ export function CommandCenterBar() {
       return registerExecuteCommand(executeCommand);
     }
   }, [registerExecuteCommand, executeCommand]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const handleMENU = useCallback(() => {
     if (activePanelIndex === null) return;
@@ -145,16 +247,16 @@ export function CommandCenterBar() {
   }, [activePanelIndex, popPanelState, setPanelFunction, dispatch]);
 
   const applySuggestion = useCallback(
-    (code: string) => {
+    (code: string, kind: 'mnemonic' | 'security') => {
       const tokens = displayValue.trim().split(/\s+/);
-      const hasMultiple = tokens.length > 1;
-      const base = hasMultiple ? tokens.slice(0, -1).join(' ') : state.activeSymbol;
-      const newVal = `${base} ${code}`;
+      const newVal = kind === 'security'
+        ? `${code} ${activeFunction}`
+        : `${tokens.length > 1 ? tokens.slice(0, -1).join(' ') : state.activeSymbol} ${code}`;
       dispatch({ type: 'SET_COMMAND', payload: `${newVal} GO` });
       setSuggestionIndex(0);
       setShowSuggestions(false);
     },
-    [displayValue, state.activeSymbol, dispatch]
+    [displayValue, state.activeSymbol, activeFunction, dispatch]
   );
 
   useEffect(() => {
@@ -170,6 +272,55 @@ export function CommandCenterBar() {
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      const sectorByF: Record<string, string> = {
+        F1: 'EQUITY',
+        F2: 'CURNCY',
+        F3: 'CMDTY',
+        F4: 'INDEX',
+        F5: 'GOVT',
+        F6: 'CORP',
+        F7: 'MUNI',
+        F8: 'EQUITY',
+        F9: 'COMDTY',
+        F10: 'RATE',
+        F11: 'VOL',
+        F12: 'NEWS',
+      };
+      if (e.key === 'F2') {
+        e.preventDefault();
+        setYellowKeyMode('CURNCY');
+        if (!displayValue.trim() && activePanelIndex !== null) {
+          const prior = quadrantStates[activePanelIndex]!;
+          setQuadrantState(activePanelIndex, { ...prior, activeMnemonic: 'MENU', sector: 'CURNCY' });
+        }
+        return;
+      }
+      if (e.key === 'F3') {
+        e.preventDefault();
+        setYellowKeyMode('CMDTY');
+        if (!displayValue.trim() && activePanelIndex !== null) {
+          const prior = quadrantStates[activePanelIndex]!;
+          setQuadrantState(activePanelIndex, { ...prior, activeMnemonic: 'MENU', sector: 'CORP' });
+        }
+        return;
+      }
+      if (e.key === 'F8') {
+        e.preventDefault();
+        setYellowKeyMode('EQUITY');
+        if (!displayValue.trim() && activePanelIndex !== null) {
+          const prior = quadrantStates[activePanelIndex]!;
+          setQuadrantState(activePanelIndex, { ...prior, activeMnemonic: 'MENU', sector: 'EQUITY' });
+        }
+        return;
+      }
+      if (sectorByF[e.key]) {
+        e.preventDefault();
+        const current = displayValue.trim();
+        const next = current ? `${current} ${sectorByF[e.key]}` : sectorByF[e.key];
+        dispatch({ type: 'SET_COMMAND', payload: next });
+        inputRef.current?.focus();
+        return;
+      }
       if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
         const active = document.activeElement as HTMLElement | null;
         if (active?.tagName !== 'INPUT' && active?.tagName !== 'TEXTAREA') {
@@ -180,7 +331,7 @@ export function CommandCenterBar() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [displayValue, activePanelIndex, quadrantStates, setQuadrantState]);
 
   return (
     <div
@@ -190,11 +341,11 @@ export function CommandCenterBar() {
         backgroundColor: '#333',
         fontFamily: "'JetBrains Mono', 'Roboto Mono', monospace",
         fontSize: '11px',
-        color: 'var(--color-bbg-amber, #FFB000)',
+        color: '#FFD700',
       }}
     >
       <div className="h-[28px] flex items-center gap-3 px-3">
-        <span className="font-bold uppercase tracking-wider shrink-0" style={{ color: '#FFB000' }}>
+        <span className="font-bold uppercase tracking-wider shrink-0" style={{ color: '#FFD700' }}>
           Command Center
         </span>
         <div className={clsx('flex-1 min-w-0 max-w-md relative', isInvalidCommand && 'command-invalid-shake')}>
@@ -217,7 +368,7 @@ export function CommandCenterBar() {
                   const sel = suggestions[suggestionIndex];
                   const tokens = displayValue.trim().split(/\s+/).filter(Boolean);
                   const base = tokens.length > 1 ? tokens.slice(0, -1).join(' ') : state.activeSymbol;
-                  executeCommand(`${base} ${sel.code}`);
+                  executeCommand(sel.kind === 'security' ? `${sel.code} ${activeFunction}` : `${base} ${sel.code}`);
                   setShowSuggestions(false);
                   setSuggestionIndex(0);
                   return;
@@ -265,7 +416,7 @@ export function CommandCenterBar() {
                 ? 'border-[#FF0000] text-[#FF0000] focus:border-[#FF0000] focus:ring-[#FF0000]/50'
                 : 'border-[#444] focus:border-[#FFB000] focus:ring-[#FFB000]/50'
             )}
-            style={{ color: isInvalidCommand ? '#FF0000' : '#FFB000', fontSize: '11px' }}
+            style={{ color: isInvalidCommand ? '#FF0000' : '#FFD700', fontSize: '11px' }}
           />
           {showSuggestions && suggestions.length > 0 && (
             <div
@@ -274,15 +425,15 @@ export function CommandCenterBar() {
             >
               {suggestions.map((s, i) => (
                 <button
-                  key={s.code}
+                  key={s.key}
                   type="button"
-                  onClick={() => applySuggestion(s.code)}
+                  onClick={() => applySuggestion(s.code, s.kind)}
                   className={`
                     w-full text-left px-3 py-1.5 flex items-center gap-2
                     ${i === suggestionIndex ? 'bg-[#0068FF]/30 text-[#FFB000]' : 'text-[#999] hover:bg-[#222]'}
                   `}
                 >
-                  <span className="font-mono font-bold text-[#FFB000] w-12 shrink-0">{s.code}</span>
+                  <span className="font-mono font-bold text-[#FFB000] w-20 shrink-0">{s.code}</span>
                   <span className="truncate">{s.label}</span>
                 </button>
               ))}
@@ -290,7 +441,7 @@ export function CommandCenterBar() {
           )}
         </div>
         <span className="shrink-0" style={{ color: '#666', fontSize: '9px' }}>
-          Enter=GO • Esc=MENU • Panel {activePanelIndex !== null ? activePanelIndex + 1 : '-'} • {activeFunction}
+          Enter=GO • Esc=MENU • {yellowKeyMode} • Panel {activePanelIndex !== null ? activePanelIndex + 1 : '-'} • {activeFunction}
         </span>
       </div>
     </div>

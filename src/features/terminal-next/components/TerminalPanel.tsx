@@ -2,7 +2,6 @@
 
 import React, { ReactNode } from 'react';
 import { clsx } from 'clsx';
-import { Link2 } from 'lucide-react';
 import { usePanelFocus, type PanelFunction, type LinkGroupId } from '../context/PanelFocusContext';
 
 export interface TerminalPanelProps {
@@ -41,10 +40,19 @@ export function TerminalPanel({
   const fn = panelFunctions[index] ?? 'MKT';
   const linkGroup: LinkGroupId = panelLinkGroups[index] ?? null;
   const isLinked = linkGroup !== null;
+  const LINK_GROUPS: Array<LinkGroupId> = [null, 'red', 'blue', 'green', 'yellow'];
+  const LINK_COLORS: Record<string, string> = {
+    red: '#FF0000',
+    blue: '#0068FF',
+    green: '#00FF00',
+    yellow: '#FFD700',
+  };
 
   const toggleLink = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setPanelLinkGroup(index, isLinked ? null : 'blue');
+    const idx = LINK_GROUPS.indexOf(linkGroup);
+    const next = LINK_GROUPS[(idx + 1) % LINK_GROUPS.length] ?? null;
+    setPanelLinkGroup(index, next);
   };
 
   return (
@@ -61,18 +69,20 @@ export function TerminalPanel({
     >
       {label !== undefined && (
         <div
-          className="flex-none h-6 px-2 flex items-center justify-between border-b border-[#333] bg-[#0a0a0a] text-[10px] font-mono font-bold uppercase tracking-wider text-[#999]"
+          className="flex-none h-[22px] px-[2px] flex items-center justify-between border-b border-[#333] bg-[#000084] text-[10px] font-mono font-bold uppercase tracking-wider text-[#fff]"
           style={{ borderColor: 'inherit' }}
         >
           <span>{label ?? FN_LABELS[fn]}</span>
           <button
             type="button"
             onClick={toggleLink}
-            className="p-0.5 hover:bg-[#222] border-0 cursor-pointer"
-            title={isLinked ? 'Unlink panel' : 'Link panel (sync ticker with linked panels)'}
-            style={{ color: isLinked ? '#0068FF' : '#555' }}
+            className="p-0.5 hover:bg-[#222] border border-[#333] cursor-pointer flex items-center justify-center"
+            title={isLinked ? `Sync group: ${linkGroup}` : 'Unlinked panel'}
           >
-            <Link2 size={12} />
+            <span
+              className="inline-block w-[12px] h-[12px]"
+              style={{ backgroundColor: isLinked ? LINK_COLORS[String(linkGroup)] : '#222' }}
+            />
           </button>
         </div>
       )}

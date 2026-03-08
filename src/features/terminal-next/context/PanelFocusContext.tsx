@@ -9,6 +9,20 @@ export interface PanelHistoryEntry {
   symbol: string;
 }
 
+export interface PanelCommandContext {
+  ticker: string;
+  market: string;
+  yellowKey: 'EQUITY' | 'CURNCY' | 'CMDTY' | 'INDEX';
+  functionCode: PanelFunction;
+}
+
+export interface QuadrantState {
+  loadedSecurity: string;
+  activeMnemonic: string;
+  history: string[];
+  sector: 'EQUITY' | 'CORP' | 'CURNCY' | 'INDEX';
+}
+
 export type LinkGroupId = string | null;
 
 interface PanelFocusContextValue {
@@ -17,6 +31,10 @@ interface PanelFocusContextValue {
   panelFunctions: PanelFunction[];
   setPanelFunction: (panelIndex: number, fn: PanelFunction) => void;
   setPanelFunctions: (fns: PanelFunction[]) => void;
+  quadrantStates: QuadrantState[];
+  setQuadrantState: (panelIndex: number, state: QuadrantState) => void;
+  panelContexts: PanelCommandContext[];
+  setPanelContext: (panelIndex: number, ctx: PanelCommandContext) => void;
   panelHistory: PanelHistoryEntry[][];
   pushPanelState: (panelIndex: number, fn: PanelFunction, symbol: string) => void;
   popPanelState: (panelIndex: number, onRestore?: (entry: PanelHistoryEntry) => void) => void;
@@ -27,6 +45,18 @@ interface PanelFocusContextValue {
 const PanelFocusContext = createContext<PanelFocusContextValue | null>(null);
 
 const DEFAULT_FUNCTIONS: PanelFunction[] = ['WEI', 'GP', 'N', 'MKT'];
+const DEFAULT_CONTEXTS: PanelCommandContext[] = [
+  { ticker: 'AAPL', market: 'US', yellowKey: 'EQUITY', functionCode: 'WEI' },
+  { ticker: 'AAPL', market: 'US', yellowKey: 'EQUITY', functionCode: 'GP' },
+  { ticker: 'AAPL', market: 'US', yellowKey: 'EQUITY', functionCode: 'N' },
+  { ticker: 'AAPL', market: 'US', yellowKey: 'EQUITY', functionCode: 'MKT' },
+];
+const DEFAULT_QUADRANT_STATES: QuadrantState[] = [
+  { loadedSecurity: 'AAPL US Equity', activeMnemonic: 'WEI', history: [], sector: 'EQUITY' },
+  { loadedSecurity: 'AAPL US Equity', activeMnemonic: 'GP', history: [], sector: 'EQUITY' },
+  { loadedSecurity: 'AAPL US Equity', activeMnemonic: 'N', history: [], sector: 'EQUITY' },
+  { loadedSecurity: 'AAPL US Equity', activeMnemonic: 'MKT', history: [], sector: 'EQUITY' },
+];
 
 const emptyHistory = (): PanelHistoryEntry[][] =>
   Array.from({ length: 4 }, () => []);
@@ -34,6 +64,8 @@ const emptyHistory = (): PanelHistoryEntry[][] =>
 export function PanelFocusProvider({ children }: { children: React.ReactNode }) {
   const [activePanelIndex, setActivePanelIndex] = useState<number | null>(0);
   const [panelFunctions, setPanelFunctionsState] = useState<PanelFunction[]>(DEFAULT_FUNCTIONS);
+  const [quadrantStates, setQuadrantStates] = useState<QuadrantState[]>(DEFAULT_QUADRANT_STATES);
+  const [panelContexts, setPanelContextsState] = useState<PanelCommandContext[]>(DEFAULT_CONTEXTS);
   const [panelHistory, setPanelHistory] = useState<PanelHistoryEntry[][]>(emptyHistory);
   const [panelLinkGroups, setPanelLinkGroupsState] = useState<(LinkGroupId)[]>([null, null, null, null]);
 
@@ -53,6 +85,22 @@ export function PanelFocusProvider({ children }: { children: React.ReactNode }) 
     if (fns.length >= 4) {
       setPanelFunctionsState([fns[0]!, fns[1]!, fns[2]!, fns[3]!]);
     }
+  }, []);
+
+  const setPanelContext = useCallback((panelIndex: number, ctx: PanelCommandContext) => {
+    setPanelContextsState((prev) => {
+      const next = [...prev];
+      next[panelIndex] = ctx;
+      return next;
+    });
+  }, []);
+
+  const setQuadrantState = useCallback((panelIndex: number, state: QuadrantState) => {
+    setQuadrantStates((prev) => {
+      const next = [...prev];
+      next[panelIndex] = state;
+      return next;
+    });
   }, []);
 
   const pushPanelState = useCallback((panelIndex: number, fn: PanelFunction, symbol: string) => {
@@ -89,6 +137,10 @@ export function PanelFocusProvider({ children }: { children: React.ReactNode }) 
     panelFunctions,
     setPanelFunction,
     setPanelFunctions,
+    quadrantStates,
+    setQuadrantState,
+    panelContexts,
+    setPanelContext,
     panelHistory,
     pushPanelState,
     popPanelState,

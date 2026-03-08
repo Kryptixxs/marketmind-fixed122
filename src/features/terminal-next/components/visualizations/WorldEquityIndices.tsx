@@ -2,6 +2,7 @@
 
 import React, { useMemo, useRef, useEffect, useState } from 'react';
 import { useTerminalStore } from '../../store/TerminalStore';
+import { getWeiSeedData } from '../../services/financialDataStore';
 
 const TICK_FLASH_MS = 200;
 
@@ -22,7 +23,20 @@ export function WorldEquityIndices() {
   const { state, dispatch } = useTerminalStore();
   const [sort, setSort] = useState<{ key: SortKey; dir: SortDir }>({ key: 'symbol', dir: 'asc' });
   const rows = useMemo(() => {
-    const r = [...state.quotes.slice(0, 21)];
+    const seed = getWeiSeedData();
+    const liveMap = new Map(state.quotes.map((q) => [q.symbol.split(' ')[0], q]));
+    const r = seed.map((idx) => {
+      const mapped = idx.symbol === 'SPX' ? 'SPY' : idx.symbol === 'CCMP' ? 'QQQ' : 'DIA';
+      const live = liveMap.get(mapped);
+      return {
+        id: idx.symbol,
+        name: idx.symbol === 'SPX' ? 'S&P 500' : idx.symbol === 'CCMP' ? 'NASDAQ 100' : 'DOW JONES',
+        symbol: idx.symbol,
+        last: live?.last ?? idx.lastPrice,
+        abs: live?.abs ?? idx.netChange,
+        pct: live?.pct ?? idx.percentChange,
+      };
+    });
     r.sort((a, b) => {
       const vA = a[sort.key];
       const vB = b[sort.key];
@@ -96,7 +110,7 @@ export function WorldEquityIndices() {
                   key={r.symbol}
                   className="border-b border-[#222] hover:bg-[#111] cursor-pointer"
                   style={{ height: '20px' }}
-                  onClick={() => dispatch({ type: 'TICKER_SELECTED', payload: r.symbol })}
+                  onClick={() => dispatch({ type: 'TICKER_SELECTED', payload: `${r.symbol} Index` })}
                 >
                   <td className="py-0 px-2 text-[#FFFFFF] whitespace-nowrap overflow-hidden text-ellipsis">{r.name}</td>
                   <td className="py-0 px-2 text-[#999] whitespace-nowrap overflow-hidden text-ellipsis tabular-nums" data-ticker={r.symbol}>{r.symbol}</td>

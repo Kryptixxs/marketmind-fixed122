@@ -24,6 +24,16 @@ import { generateFakeHeadline } from '../services/fakeNewsGenerator';
 type TerminalAction =
   | { type: 'TICK_QUOTES' }
   | { type: 'TICK_QUOTES_FROM_WORKER'; payload: { streamTick: number; tickMs: number; quotes: TerminalState['quotes'] } }
+  | {
+      type: 'TICK_MARKET_SNAPSHOT';
+      payload: {
+        streamTick: number;
+        tickMs: number;
+        quotes: TerminalState['quotes'];
+        analytics: NonNullable<TerminalState['workerAnalytics']>;
+        emittedAt: number;
+      };
+    }
   | { type: 'TICK_DEPTH_TAPE' }
   | { type: 'TICK_EXECUTION' }
   | { type: 'TICK_FEED' }
@@ -51,7 +61,8 @@ type TerminalAction =
   | { type: 'SET_SYMBOL'; payload: string }
   | { type: 'TICKER_SELECTED'; payload: string }
   | { type: 'SET_INTEL_FILTERS'; payload: { country?: string; date?: string } | undefined }
-  | { type: 'PUSH_HEADLINE'; payload: string };
+  | { type: 'PUSH_HEADLINE'; payload: string }
+  | { type: 'SET_UI_FPS'; payload: number };
 
 type TerminalContextType = {
   state: TerminalState;
@@ -68,8 +79,8 @@ type TerminalContextType = {
   clocks: { ny: string; ldn: string; hkg: string; tky: string };
 };
 
-/** 500ms mock tick when no API - UI "breathing" with price updates */
-const MOCK_QUOTES_MS = 500;
+/** 200ms mock tick cadence for high-frequency simulation */
+const MOCK_QUOTES_MS = 200;
 
 function getQuotesCadence() {
   if (typeof window === 'undefined') return MOCK_QUOTES_MS;
@@ -301,6 +312,13 @@ const initialState: TerminalState = {
     symbolOverrides: {},
   },
   overrideAuditTrail: [],
+  workerAnalytics: {
+    vwapBySymbol: {},
+    macdBySymbol: {},
+    arbitrageSpreads: [],
+    workerLatencyMs: 0,
+    uiFps: 60,
+  },
 };
 
 function terminalReducer(state: TerminalState, action: TerminalAction): TerminalState {
@@ -328,6 +346,28 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
       tick: streamTick,
       tickMs,
       quotes,
+      activeSymbol: activeSymbolPrefix(state),
+      executionControls: { ...state.executionControls, symbolOverrides: expiry.symbolOverrides },
+      overrideAuditTrail: [...expiry.events, ...state.overrideAuditTrail],
+      systemFeed: [...expiry.feedLines, ...state.systemFeed],
+      streamClock: { ...state.streamClock, quotes: streamTick },
+      staged: nextStaged(state, 'quotesReadyAt', tickMs),
+    });
+  }
+
+  if (action.type === 'TICK_MARKET_SNAPSHOT') {
+    const { streamTick, tickMs, quotes, analytics, emittedAt } = action.payload;
+    const expiry = expireOverrides(state, tickMs);
+    const latency = Math.max(0, Date.now() - emittedAt);
+    return deriveNext(state, {
+      tick: streamTick,
+      tickMs,
+      quotes,
+      workerAnalytics: {
+        ...analytics,
+        workerLatencyMs: latency,
+        uiFps: state.workerAnalytics?.uiFps ?? 60,
+      },
       activeSymbol: activeSymbolPrefix(state),
       executionControls: { ...state.executionControls, symbolOverrides: expiry.symbolOverrides },
       overrideAuditTrail: [...expiry.events, ...state.overrideAuditTrail],
@@ -403,6 +443,22 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
 
   if (action.type === 'PUSH_HEADLINE') {
     return { ...state, headlines: [action.payload, ...state.headlines].slice(0, 72) };
+  }
+
+  if (action.type === 'SET_UI_FPS') {
+    return {
+      ...state,
+      workerAnalytics: {
+        ...(state.workerAnalytics ?? {
+          vwapBySymbol: {},
+          macdBySymbol: {},
+          arbitrageSpreads: [],
+          workerLatencyMs: 0,
+          uiFps: 60,
+        }),
+        uiFps: action.payload,
+      },
+    };
   }
 
   if (action.type === 'SET_FUNCTION') {
@@ -633,8 +689,8 @@ export function TerminalProvider({ children }: { children: React.ReactNode }) {
     const worker = new Worker(new URL('../workers/bpipe.worker.ts', import.meta.url));
     workerRef.current = worker;
     worker.onmessage = (e: MessageEvent) => {
-      if (e.data?.type === 'QUOTES_BATCH') {
-        dispatch({ type: 'TICK_QUOTES_FROM_WORKER', payload: e.data.payload });
+      if (e.data?.type === 'MARKET_SNAPSHOT') {
+        dispatch({ type: 'TICK_MARKET_SNAPSHOT', payload: e.data.payload });
       }
     };
     worker.onerror = () => {
@@ -642,23 +698,19 @@ export function TerminalProvider({ children }: { children: React.ReactNode }) {
     };
 
     const seed = 31051990;
-    const requestTick = () => {
-      streamTickRef.current += 1;
-      worker.postMessage({
-        seed,
-        streamTick: streamTickRef.current,
-        intervalMs: STREAM_CADENCE.quotes,
-      });
-    };
-    requestTick();
-    const quotesId = window.setInterval(requestTick, STREAM_CADENCE.quotes);
+    worker.postMessage({
+      type: 'START',
+      seed,
+      intervalMs: STREAM_CADENCE.quotes,
+      activeSymbols: ['AAPL US', 'MSFT US', 'NVDA US', 'SPY US', 'QQQ US'],
+    });
 
     const depthId = window.setInterval(() => dispatch({ type: 'TICK_DEPTH_TAPE' }), STREAM_CADENCE.depth);
     const executionId = window.setInterval(() => dispatch({ type: 'TICK_EXECUTION' }), STREAM_CADENCE.execution);
     const feedId = window.setInterval(() => dispatch({ type: 'TICK_FEED' }), STREAM_CADENCE.feed);
     const newsId = window.setInterval(() => dispatch({ type: 'PUSH_HEADLINE', payload: generateFakeHeadline() }), 30_000);
     return () => {
-      window.clearInterval(quotesId);
+      worker.postMessage({ type: 'STOP' });
       workerRef.current?.terminate();
       workerRef.current = null;
       window.clearInterval(depthId);
@@ -671,7 +723,8 @@ export function TerminalProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
-        const input = document.getElementById('command-center-input') || document.getElementById('terminal-command-input') as HTMLInputElement | null;
+        const input = (document.getElementById('command-center-input')
+          || document.getElementById('terminal-command-input')) as HTMLInputElement | null;
         input?.focus();
         input?.select();
       }
@@ -697,6 +750,26 @@ export function TerminalProvider({ children }: { children: React.ReactNode }) {
     };
     window.addEventListener('vantage-symbol-change', onSymbolChange);
     return () => window.removeEventListener('vantage-symbol-change', onSymbolChange);
+  }, [dispatch]);
+
+  useEffect(() => {
+    let rafId = 0;
+    let frames = 0;
+    let last = performance.now();
+    const loop = (now: number) => {
+      frames += 1;
+      if (now - last >= 1000) {
+        const fps = Math.round((frames * 1000) / (now - last));
+        dispatch({ type: 'SET_UI_FPS', payload: fps });
+        const flashMs = fps < 50 ? 120 : 200;
+        document.documentElement.style.setProperty('--terminal-flash-ms', `${flashMs}ms`);
+        frames = 0;
+        last = now;
+      }
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafId);
   }, [dispatch]);
 
   const value = useMemo<TerminalContextType>(() => {

@@ -3,9 +3,12 @@
 import React from 'react';
 import { TerminalFunction } from '../types';
 import { useTerminalStore } from '../store/TerminalStore';
-import type { PanelFunction } from '../context/PanelFocusContext';
+import type { PanelFunction, QuadrantState } from '../context/PanelFocusContext';
 import { TerminalRuntimeSkeleton } from '../runtime/TerminalRuntimeSkeleton';
 import { MarketTerminalModule } from '../modules/market/MarketModule';
+import { resolveDispatch } from '../services/functionDispatcher';
+import { getAvailableFieldSet } from '../services/securityMaster';
+import { SectorMenu } from './SectorMenu';
 import { WorldEquityIndices } from './visualizations/WorldEquityIndices';
 import {
   NewsWire,
@@ -17,6 +20,7 @@ import {
   YieldCurve,
   FinancialAnalysisTable,
   IBChat,
+  AnalyticsMonitor,
 } from './visualizations';
 
 const MODULE_TITLES: Record<TerminalFunction, string> = {
@@ -62,44 +66,70 @@ const MODULE_DECISION_PROMPTS: Record<TerminalFunction, string> = {
 export function FunctionRouter({
   activeFunction,
   panelFunction,
+  symbol,
+  quadrantState,
+  onSectorMenuSelect,
 }: {
   activeFunction: TerminalFunction;
   panelFunction?: PanelFunction;
+  symbol?: string;
+  quadrantState?: QuadrantState;
+  onSectorMenuSelect?: (idx: number) => void;
 }) {
   const { state } = useTerminalStore();
+  const activeSymbol = symbol ?? state.activeSymbol;
+  const activeMnemonic = quadrantState?.activeMnemonic ?? panelFunction ?? activeFunction;
+  const dispatchEntry = resolveDispatch(activeMnemonic);
+  const available = getAvailableFieldSet(activeSymbol);
+  const hasRequiredFields = dispatchEntry.requiredFields.every((f) => available.has(f));
 
-  if (activeFunction === 'WEI') {
+  if (dispatchEntry.componentKey === 'MENU') {
+    return <SectorMenu sector={quadrantState?.sector ?? 'EQUITY'} onSelect={(idx) => onSectorMenuSelect?.(idx)} />;
+  }
+
+  if (!hasRequiredFields) {
+    return (
+      <div className="h-full border border-[#333] bg-[#000] p-2 font-mono text-[11px] text-[#FFB000]">
+        DATA UNAVAILABLE FOR {activeSymbol} / {dispatchEntry.mnemonic}
+      </div>
+    );
+  }
+
+  if (dispatchEntry.componentKey === 'WEI') {
     return <WorldEquityIndices />;
   }
-  if (activeFunction === 'NEWS') {
+  if (dispatchEntry.componentKey === 'NEWS') {
     return <NewsWire maxHeight="100%" className="flex-1 min-h-0" />;
   }
-  if (activeFunction === 'DES') {
-    return <SecurityDescription />;
+  if (dispatchEntry.componentKey === 'DES') {
+    return <SecurityDescription symbol={activeSymbol} />;
   }
-  if (panelFunction === 'GP') {
-    return <PriceChart className="flex-1 min-h-0 w-full" />;
+  if (dispatchEntry.componentKey === 'GP') {
+    return <PriceChart ticker={activeSymbol} className="flex-1 min-h-0 w-full" />;
   }
-  if (activeFunction === 'IMAP') {
+  if (dispatchEntry.componentKey === 'IMAP') {
     return <SectorHeatmap />;
   }
-  if (activeFunction === 'MKT') {
+  if (dispatchEntry.componentKey === 'MKT') {
     return <MarketTerminalModule className="flex-1 min-w-0 min-h-0" />;
   }
-  if (activeFunction === 'ECO') {
+  if (dispatchEntry.componentKey === 'ECO') {
     return <EconomicCalendar maxHeight="100%" className="flex-1 min-h-0" />;
   }
-  if (activeFunction === 'FXC') {
+  if (dispatchEntry.componentKey === 'FXC') {
     return <FXCrossMatrix className="flex-1 min-h-0 w-full" />;
   }
-  if (activeFunction === 'GC') {
+  if (dispatchEntry.componentKey === 'GC') {
     return <YieldCurve height={220} className="flex-1 min-h-0 w-full" />;
   }
-  if (activeFunction === 'FA') {
-    return <FinancialAnalysisTable className="flex-1 min-h-0 w-full" />;
+  if (dispatchEntry.componentKey === 'FA') {
+    return <FinancialAnalysisTable className="flex-1 min-h-0 w-full" symbol={activeSymbol} />;
   }
-  if (activeFunction === 'IB') {
+  if (dispatchEntry.componentKey === 'IB') {
     return <IBChat className="flex-1 min-h-0 w-full" />;
+  }
+  if (dispatchEntry.componentKey === 'ANR') {
+    return <AnalyticsMonitor />;
   }
 
   return (

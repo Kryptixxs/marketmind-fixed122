@@ -12,3 +12,4 @@ export { FXCrossMatrix } from './FXCrossMatrix';
 export { YieldCurve } from './YieldCurve';
 export { FinancialAnalysisTable } from './FinancialAnalysisTable';
 export { IBChat } from './IBChat';
+export { AnalyticsMonitor } from './AnalyticsMonitor';

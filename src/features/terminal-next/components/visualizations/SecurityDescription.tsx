@@ -2,34 +2,28 @@
 
 import React, { useMemo } from 'react';
 import { useTerminalStore } from '../../store/TerminalStore';
-
-const hash = (s: string) => Array.from(s).reduce((a, c) => a + c.charCodeAt(0), 0);
-
-function buildDescription(ticker: string): { marketCap: string; pe: number; divYield: string; summary: string } {
-  const h = hash(ticker);
-  const mcap = (50 + (h % 950)) * 1e9;
-  const mcapStr = mcap >= 1e12 ? `${(mcap / 1e12).toFixed(2)}T` : mcap >= 1e9 ? `${(mcap / 1e9).toFixed(2)}B` : `${(mcap / 1e6).toFixed(0)}M`;
-  const pe = 8 + (h % 45);
-  const divYld = (0.5 + (h % 80) / 100).toFixed(2) + '%';
-  const sentences = [
-    'The company operates across multiple segments including technology, services, and consumer products.',
-    'Revenue has shown consistent growth over the past five years with expanding margins.',
-    'Management has prioritized capital allocation toward high-return growth initiatives and strategic M&A.',
-    'The balance sheet remains strong with manageable leverage and ample liquidity.',
-    'Analysts remain broadly positive on the long-term outlook given the competitive moat and market position.',
-  ];
-  const summary = sentences.join(' ');
-  return { marketCap: mcapStr, pe, divYield: divYld, summary };
-}
+import { getDesFinancialObject } from '../../services/financialDataStore';
+import { getField, parseOverrides } from '../../services/fieldEngine';
+import { lookupSecurity } from '../../services/securityMaster';
 
 /**
  * DES - Security Description. 2-column layout:
  * Market Cap, P/E Ratio, Dividend Yield, 5-sentence Business Summary in Amber.
  */
-export function SecurityDescription() {
+export function SecurityDescription({ symbol }: { symbol?: string }) {
   const { state } = useTerminalStore();
-  const ticker = state.activeSymbol;
-  const data = useMemo(() => buildDescription(ticker), [ticker]);
+  const ticker = symbol ?? state.activeSymbol;
+  const [overrideInput, setOverrideInput] = React.useState('');
+  const overrides = parseOverrides(overrideInput);
+  const data = useMemo(() => getDesFinancialObject(ticker), [ticker]);
+  const masterNode = useMemo(() => lookupSecurity(ticker), [ticker]);
+  const overrideMcap = getField(ticker, 'MARKET_CAP', overrides);
+  const overridePe = getField(ticker, 'PE_RATIO', overrides);
+  const marketCapNum = typeof overrideMcap === 'number' ? overrideMcap : data.marketCap;
+  const marketCap = marketCapNum >= 1e12
+    ? `${(marketCapNum / 1e12).toFixed(2)}T`
+    : `${(marketCapNum / 1e9).toFixed(2)}B`;
+  const shares = `${(data.sharesOutstanding / 1e9).toFixed(2)}B`;
 
   return (
     <div className="flex flex-col h-full min-h-0 bg-[#000000] overflow-auto terminal-scrollbar">
@@ -42,23 +36,53 @@ export function SecurityDescription() {
         <div className="col-span-2 grid grid-cols-2 gap-4 mb-2">
           <div className="flex flex-col gap-1">
             <span className="text-[#666] text-[10px] uppercase tracking-wider">Market Cap</span>
-            <span className="text-[#FFFFFF] tabular-nums">{data.marketCap}</span>
+            <span className="text-[#FFFFFF] tabular-nums">{marketCap}</span>
           </div>
           <div className="flex flex-col gap-1">
             <span className="text-[#666] text-[10px] uppercase tracking-wider">P/E Ratio</span>
-            <span className="text-[#FFFFFF] tabular-nums">{data.pe}x</span>
+            <span className="text-[#FFFFFF] tabular-nums">{typeof overridePe === 'number' ? overridePe.toFixed(2) : data.peRatio}x</span>
           </div>
           <div className="flex flex-col gap-1">
-            <span className="text-[#666] text-[10px] uppercase tracking-wider">Dividend Yield</span>
-            <span className="text-[#FFFFFF] tabular-nums">{data.divYield}</span>
+            <span className="text-[#666] text-[10px] uppercase tracking-wider">Shares Outstanding</span>
+            <span className="text-[#FFFFFF] tabular-nums">{shares}</span>
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="text-[#666] text-[10px] uppercase tracking-wider">Primary Exchange</span>
+            <span className="text-[#FFFFFF] tabular-nums">{data.primaryExchange}</span>
           </div>
         </div>
         <div className="col-span-2 flex flex-col gap-1 mt-2">
           <span className="text-[#666] text-[10px] uppercase tracking-wider">Business Summary</span>
           <p className="text-[#FFB000] leading-relaxed" style={{ fontSize: '11px' }}>
-            {data.summary}
+            {data.businessSummary}
           </p>
         </div>
+        {(masterNode?.relatedBonds.length || masterNode?.relatedOptions.length) ? (
+          <div className="col-span-2 mt-2 border-t border-[#333] pt-2">
+            <div className="text-[#666] text-[10px] uppercase tracking-wider mb-1">Related Securities</div>
+            <div className="flex flex-wrap gap-1">
+              {[...(masterNode?.relatedBonds ?? []), ...(masterNode?.relatedOptions ?? [])].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  className="px-1 border border-[#333] bg-[#060606] text-[#d7deea] hover:text-[#FFB000]"
+                  onClick={() => window.dispatchEvent(new CustomEvent('vantage-symbol-change', { detail: s }))}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
+      <div className="flex-none h-6 border-t border-[#333] px-2 flex items-center gap-2">
+        <span className="text-[#FFB000] text-[9px] uppercase">Override</span>
+        <input
+          value={overrideInput}
+          onChange={(e) => setOverrideInput(e.target.value.toUpperCase())}
+          placeholder="PX=200"
+          className="h-4 flex-1 bg-[#111] border border-[#333] px-1 text-[10px] text-[#FFB000] outline-none"
+        />
       </div>
     </div>
   );

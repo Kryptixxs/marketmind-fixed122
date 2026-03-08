@@ -1,22 +1,23 @@
-# Terminal Constitution
+# Terminal Constitution — Enforced Rules
 
-## Objective
-Transform the app from a panel collage into a terminal runtime with strict structural grammar. Modules become decision-first tools with enforced hierarchy, bounded visual complexity, and semantically grounded visuals.
+## Visual Rules
+- No cards, rounded corners, shadows, gradients, or "dashboard" spacing. Sharp 90° corners only.
+- Background: #000. Base text: #e6e6e6. Dim text: #93a9c6. Borders: #111 (grid) / #222 (divider).
+- Accent palette: green #00c853, red #d32f2f, cyan #63c8ff, amber #FFB000, white #fff.
+- Monospace only. Default 10–11px. Headers 9–10px. Micro 8–9px. `tabular-nums` for all numeric columns.
+- Padding: 2px default, 4px max. Row height: 16–18px.
+- No responsive wrapping. Clip or scroll inside panel body.
+- Page scrolling forbidden. Only panel bodies scroll.
+- Empty areas must never exist. Show placeholder content + hints, never blank black space.
 
-## Non-negotiable Outcomes
-1. **Single Primary Decision:** Every function has a single primary decision visible immediately.
-2. **Enforced Proportions:** Every screen has enforced Primary / Secondary / Tertiary bands with fixed proportions.
-3. **Governed Panels:** Panels are typed and governed (verdict, snapshot, diagnostic, flow, vulnerability, order_state, historical).
-4. **Compact Charts:** Charts are compact, purposeful, and never dominate unless in a chart-specific function.
-5. **Collapsed Detail:** Deep detail is collapsed by default.
-6. **No Improvised Layout:** No module may improvise layout; modules declare intent and data models, runtime renders.
+## Architectural Rules
+- Every screen is a FUNCTION (mnemonic) rendered inside one of up to FOUR independent PANELs.
+- Navigation is command-line + GO. No page routes. No browser-style navigation.
+- Clicking a ticker nests within the same panel (pushes history), never routes globally.
+- Each panel has its own security context, mnemonic, history stack, and link group.
+- Functions are registered in MnemonicRegistry and rendered via FunctionRouter.
+- No component may use `rounded-lg`, `shadow`, `bg-slate-*`, `max-w-*`, or centering wrappers.
 
-## Governance Rules
-- Use CSS grid with fixed rows (e.g., `0.25fr 0.45fr 0.30fr`).
-- Band containers enforce `flex-1 w-full min-w-0 min-h-0`.
-- No `max-w-*`, `mx-auto`, or centered wrappers.
-- Max panels per band (default): Primary 6, Secondary 8, Tertiary 8.
-- Panels of type `HISTORICAL` default collapsed.
-- Each panel declares `priority` and `minHeightUnits`.
-- Charts must receive data from the module data model (no chart-only generators).
-- One data model per module: both table rows and chart series derived from the same fields.
+## Density Tokens (from layoutDensity.ts)
+All layout measurements come from the shared constant file.
+Components must import tokens rather than hardcoding pixel values.

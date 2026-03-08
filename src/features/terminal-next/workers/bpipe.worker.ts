@@ -1,5 +1,6 @@
 /**
- * B-PIPE Web Worker – generates randomized price ticks for 500 equities off the main thread.
+ * B-PIPE Web Worker – unified market snapshot generator off main thread.
+ * Emits MARKET_SNAPSHOT every intervalMs with quotes + analytics.
  */
 
 const hash = (x: string) => Array.from(x).reduce((a, c) => a + c.charCodeAt(0), 0);
@@ -115,13 +116,97 @@ function nextQuotes(seed: number, tick: number) {
   });
 }
 
-self.onmessage = (e: MessageEvent<{ seed: number; streamTick: number; intervalMs: number }>) => {
-  const { seed, streamTick, intervalMs } = e.data;
-  const tickMs = streamTickMs(streamTick, intervalMs);
-  const quotes = nextQuotes(seed, streamTick);
+type StartMessage = {
+  type: 'START';
+  seed: number;
+  intervalMs: number;
+  activeSymbols?: string[];
+};
+
+type StopMessage = { type: 'STOP' };
+
+let timer: number | null = null;
+let activeSeed = 31051990;
+let activeIntervalMs = 100;
+let streamTick = 0;
+let activeSymbols: string[] = ['AAPL US', 'MSFT US', 'NVDA US'];
+const closeHistory = new Map<string, number[]>();
+
+function ema(values: number[], period: number) {
+  if (values.length === 0) return 0;
+  const k = 2 / (period + 1);
+  let prev = values[0]!;
+  for (let i = 1; i < values.length; i++) prev = values[i]! * k + prev * (1 - k);
+  return prev;
+}
+
+function computeMacd(series: number[]) {
+  if (series.length < 10) return 0;
+  return ema(series, 12) - ema(series, 26);
+}
+
+function computeAnalytics(quotes: ReturnType<typeof nextQuotes>) {
+  const vwapBySymbol: Record<string, number> = {};
+  const macdBySymbol: Record<string, number> = {};
+  for (const q of quotes) {
+    const h = closeHistory.get(q.symbol) ?? [];
+    h.push(q.last);
+    if (h.length > 120) h.shift();
+    closeHistory.set(q.symbol, h);
+    const vwap = h.reduce((acc, v, i) => acc + v * (i + 1), 0) / h.reduce((acc, _, i) => acc + (i + 1), 0);
+    vwapBySymbol[q.symbol] = Number(vwap.toFixed(4));
+    macdBySymbol[q.symbol] = Number(computeMacd(h).toFixed(4));
+  }
+
+  const arbitrageSpreads: Array<{ left: string; right: string; spread: number }> = [];
+  for (let i = 0; i < activeSymbols.length - 1; i++) {
+    const left = quotes.find((q) => q.symbol === activeSymbols[i]);
+    const right = quotes.find((q) => q.symbol === activeSymbols[i + 1]);
+    if (!left || !right) continue;
+    arbitrageSpreads.push({
+      left: left.symbol,
+      right: right.symbol,
+      spread: Number((left.last - right.last).toFixed(4)),
+    });
+  }
+  return { vwapBySymbol, macdBySymbol, arbitrageSpreads };
+}
+
+function emitSnapshot() {
+  streamTick += 1;
+  const tickMs = streamTickMs(streamTick, activeIntervalMs);
+  const quotes = nextQuotes(activeSeed, streamTick);
   const regime = regimeFromTick(streamTick);
+  const analytics = computeAnalytics(quotes);
   self.postMessage({
-    type: 'QUOTES_BATCH',
-    payload: { streamTick, tickMs, quotes, regime },
+    type: 'MARKET_SNAPSHOT',
+    payload: {
+      streamTick,
+      tickMs,
+      quotes,
+      regime,
+      analytics,
+      emittedAt: Date.now(),
+    },
   });
+}
+
+self.onmessage = (e: MessageEvent<StartMessage | StopMessage>) => {
+  if (e.data?.type === 'STOP') {
+    if (timer != null) {
+      clearInterval(timer);
+      timer = null;
+    }
+    return;
+  }
+
+  if (e.data?.type === 'START') {
+    activeSeed = e.data.seed;
+    activeIntervalMs = Math.max(50, e.data.intervalMs);
+    activeSymbols = (e.data.activeSymbols ?? activeSymbols).slice(0, 12);
+    streamTick = 0;
+    if (timer != null) clearInterval(timer);
+    emitSnapshot();
+    timer = self.setInterval(emitSnapshot, activeIntervalMs);
+  }
 };

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { memo, useState } from 'react';
+import { getField, parseOverrides } from '../../services/fieldEngine';
 
 type RowKind = 'section' | 'line' | 'subtotal';
 
@@ -83,6 +84,7 @@ const INCOME_STATEMENT: FARow[] = [
 
 export interface FinancialAnalysisTableProps {
   className?: string;
+  symbol?: string;
 }
 
 function FARowInner({
@@ -137,8 +139,13 @@ function FARowInner({
 
 export const FinancialAnalysisTable = memo(function FinancialAnalysisTable({
   className = '',
+  symbol = 'AAPL US Equity',
 }: FinancialAnalysisTableProps) {
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['opex', 'other']));
+  const [overrideInput, setOverrideInput] = useState('');
+  const overrides = parseOverrides(overrideInput);
+  const pe = getField(symbol, 'PE_RATIO', overrides);
+  const mcap = getField(symbol, 'MARKET_CAP', overrides);
 
   const toggle = (id: string) => {
     setExpanded((prev) => {
@@ -155,6 +162,9 @@ export const FinancialAnalysisTable = memo(function FinancialAnalysisTable({
     >
       <div className="flex-none px-2 py-1 border-b border-[#333] text-[#FFB000] font-bold uppercase tracking-wider">
         FA • Income Statement
+        <span className="ml-2 text-[9px] text-[#666] font-normal">
+          PE {typeof pe === 'number' ? pe.toFixed(2) : 'n/a'} | MCAP {typeof mcap === 'number' ? (mcap / 1e12).toFixed(2) : 'n/a'}T
+        </span>
       </div>
       <table className="w-full" style={{ borderCollapse: 'collapse', fontSize: '10px' }}>
         <thead>
@@ -169,6 +179,15 @@ export const FinancialAnalysisTable = memo(function FinancialAnalysisTable({
           ))}
         </tbody>
       </table>
+      <div className="flex-none h-6 border-t border-[#333] px-2 flex items-center gap-2">
+        <span className="text-[#FFB000] text-[9px] uppercase">Override</span>
+        <input
+          value={overrideInput}
+          onChange={(e) => setOverrideInput(e.target.value.toUpperCase())}
+          placeholder="PX=200"
+          className="h-4 flex-1 bg-[#111] border border-[#333] px-1 text-[10px] text-[#FFB000] outline-none"
+        />
+      </div>
     </div>
   );
 });

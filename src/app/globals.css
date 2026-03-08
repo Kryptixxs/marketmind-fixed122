@@ -44,6 +44,15 @@
   --radius-lg: 0px;
 }
 
+:root {
+  --terminal-flash-ms: 200ms;
+}
+
+* {
+  box-sizing: border-box;
+  border-radius: 0 !important;
+}
+
 /* ── Theme Profiles ── */
 :root[data-theme="bloomberg"] {
   --color-background: #000205;
@@ -123,9 +132,9 @@ body {
   color: #FFFFFF;
   font-family: "JetBrains Mono", "Roboto Mono", "SF Mono", monospace;
   font-size: 11px;
-  line-height: 1.25;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.1;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: auto;
   font-variant-numeric: tabular-nums;
 }
 
@@ -156,10 +165,10 @@ body {
 
 /* Tick Flash: 200ms green/red flash when price or %chg updates */
 .cell-flash-up {
-  animation: tick-flash-up 200ms ease-out forwards;
+  animation: tick-flash-up var(--terminal-flash-ms) ease-out forwards;
 }
 .cell-flash-down {
-  animation: tick-flash-down 200ms ease-out forwards;
+  animation: tick-flash-down var(--terminal-flash-ms) ease-out forwards;
 }
 @keyframes tick-flash-up {
   0% { background-color: rgba(0, 255, 0, 0.4); }
@@ -619,11 +628,16 @@ body {
 }
 
 .terminal-table-flash-up {
-  animation: terminal-flash-up 0.2s ease-out;
+  animation: terminal-flash-up var(--terminal-flash-ms) ease-out;
 }
 
 .terminal-table-flash-down {
-  animation: terminal-flash-down 0.2s ease-out;
+  animation: terminal-flash-down var(--terminal-flash-ms) ease-out;
+}
+
+.terminal-alert-flash .terminal-panel.active {
+  border-width: 2px !important;
+  border-color: #FFFFFF !important;
 }
 
 /* ── High-Density (Bloomberg-style) Palette ── */
