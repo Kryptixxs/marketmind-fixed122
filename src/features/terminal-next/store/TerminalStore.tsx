@@ -13,8 +13,11 @@ import {
   seedReferenceProfiles,
 } from '../services/simulator';
 import { resolveFunctionDeck } from '../services/functionRouter';
-import { DeltaState, FunctionCode, TerminalFunction, TerminalState } from '../types';
+import { DeltaState, FunctionCode, OverrideAuditEvent, OverrideReason, TerminalFunction, TerminalState } from '../types';
 import { deriveRiskSnapshot } from '../selectors/riskSelectors';
+import { buildMarketDataModel } from '../modules/market/buildMarketDataModel';
+import { buildExecutionContextFromMarket, toMacroExecutionState } from '../modules/market/buildExecutionContextFromMarket';
+import { selectExecutionPolicy } from '../selectors/executionContextSelectors';
 
 type TerminalAction =
   | { type: 'TICK_QUOTES' }
@@ -29,6 +32,19 @@ type TerminalAction =
   | { type: 'SET_ANALYTICS_TAB'; payload: TerminalState['analyticsTab'] }
   | { type: 'SET_RIGHT_TAB'; payload: TerminalState['rightRailTab'] }
   | { type: 'SET_FEED_TAB'; payload: TerminalState['feedTab'] }
+  | { type: 'SET_MARKET_ACTIVE_BAND'; payload: 'REGIME' | 'DRIVERS' | 'FLOW' }
+  | { type: 'TOGGLE_MARKET_DEEP_DETAIL' }
+  | {
+      type: 'ACTIVATE_SYMBOL_OVERRIDE';
+      payload: {
+        symbol: string;
+        reasonCode: OverrideReason;
+        ttlMs: number;
+        initiatedBy: string;
+        otherReasonText?: string;
+      };
+    }
+  | { type: 'CANCEL_SYMBOL_OVERRIDE'; payload: { symbol: string; initiatedBy: string } }
   | { type: 'SET_SYMBOL'; payload: string }
   | { type: 'SET_INTEL_FILTERS'; payload: { country?: string; date?: string } | undefined };
 
@@ -134,7 +150,17 @@ function deriveNext(state: TerminalState, patch: Partial<TerminalState>): Termin
     tape: merged.tape,
     alerts: merged.alerts,
   });
-  return { ...merged, risk, delta };
+  const withRiskDelta = { ...merged, risk, delta };
+  const marketModel = buildMarketDataModel(withRiskDelta);
+  const executionInput = buildExecutionContextFromMarket(marketModel);
+  return {
+    ...withRiskDelta,
+    executionControls: {
+      ...(withRiskDelta.executionControls ?? { symbolOverrides: {} }),
+      macro: toMacroExecutionState(executionInput),
+      symbolOverrides: withRiskDelta.executionControls?.symbolOverrides ?? {},
+    },
+  };
 }
 
 function nextStaged(state: TerminalState, key: 'quotesReadyAt' | 'depthReadyAt' | 'executionReadyAt' | 'feedReadyAt', tickMs: number) {
@@ -143,6 +169,58 @@ function nextStaged(state: TerminalState, key: 'quotesReadyAt' | 'depthReadyAt' 
     [key]: tickMs,
     commitSeq: state.staged.commitSeq + 1,
   };
+}
+
+function buildOverrideAuditEvent(args: {
+  action: OverrideAuditEvent['action'];
+  symbol: string;
+  reasonCode: OverrideReason;
+  ts: number;
+  regimeState: TerminalState['executionControls']['macro']['regimeState'];
+  ttlMs: number;
+  initiatedBy: string;
+  otherReasonText?: string;
+}): OverrideAuditEvent {
+  return {
+    id: `override-${args.action}-${args.symbol}-${args.ts}`,
+    ts: args.ts,
+    symbol: args.symbol,
+    action: args.action,
+    reasonCode: args.reasonCode,
+    regimeState: args.regimeState,
+    ttlMs: args.ttlMs,
+    initiatedBy: args.initiatedBy,
+    otherReasonText: args.otherReasonText,
+  };
+}
+
+function expireOverrides(state: TerminalState, nowTs: number): {
+  symbolOverrides: TerminalState['executionControls']['symbolOverrides'];
+  events: OverrideAuditEvent[];
+  feedLines: string[];
+} {
+  const events: OverrideAuditEvent[] = [];
+  const feedLines: string[] = [];
+  const nextOverrides: TerminalState['executionControls']['symbolOverrides'] = { ...state.executionControls.symbolOverrides };
+  for (const [symbol, override] of Object.entries(state.executionControls.symbolOverrides)) {
+    if (!override?.isActive) continue;
+    if (override.expiresAt > nowTs) continue;
+    const ttlMs = Math.max(0, override.expiresAt - override.initiatedAt);
+    const event = buildOverrideAuditEvent({
+      action: 'EXPIRED',
+      symbol,
+      reasonCode: override.reasonCode,
+      ts: nowTs,
+      regimeState: state.executionControls.macro.regimeState,
+      ttlMs,
+      initiatedBy: override.initiatedBy,
+      otherReasonText: override.otherReasonText,
+    });
+    events.push(event);
+    feedLines.push(`OVERRIDE EXPIRED ${symbol} ${override.reasonCode}`);
+    delete nextOverrides[symbol];
+  }
+  return { symbolOverrides: nextOverrides, events, feedLines };
 }
 
 const initialState: TerminalState = {
@@ -194,17 +272,36 @@ const initialState: TerminalState = {
   streamClock: { quotes: 0, depth: 0, execution: 0, feed: 0 },
   staged: { quotesReadyAt: 0, depthReadyAt: 0, executionReadyAt: 0, feedReadyAt: 0, commitSeq: 0 },
   drillPath: [],
+  marketUi: {
+    activeBand: 'REGIME',
+    deepDetailExpanded: false,
+  },
+  executionControls: {
+    macro: {
+      regimeState: 'TRANSITION',
+      riskBias: 'HEDGE',
+      urgencyModifier: 1,
+      participationCap: 0.18,
+      throttleLevel: 0.92,
+    },
+    symbolOverrides: {},
+  },
+  overrideAuditTrail: [],
 };
 
 function terminalReducer(state: TerminalState, action: TerminalAction): TerminalState {
   if (action.type === 'TICK_QUOTES') {
     const streamTick = state.streamClock.quotes + 1;
     const batch = buildQuotesStream(state.seed, streamTick, STREAM_CADENCE.quotes);
+    const expiry = expireOverrides(state, batch.tickMs);
     return deriveNext(state, {
       tick: streamTick,
       tickMs: batch.tickMs,
       quotes: batch.quotes,
       activeSymbol: activeSymbolPrefix(state),
+      executionControls: { ...state.executionControls, symbolOverrides: expiry.symbolOverrides },
+      overrideAuditTrail: [...expiry.events, ...state.overrideAuditTrail],
+      systemFeed: [...expiry.feedLines, ...state.systemFeed],
       streamClock: { ...state.streamClock, quotes: streamTick },
       staged: nextStaged(state, 'quotesReadyAt', batch.tickMs),
     });
@@ -215,10 +312,14 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
     const quote = activeQuoteFrom(state);
     const batch = buildDepthTapeStream(state.seed, streamTick, state.tickMs, quote?.last ?? 100);
     const accumulatedTape = [...batch.tape, ...state.tape];
+    const expiry = expireOverrides(state, state.tickMs);
     return deriveNext(state, {
       orderBook: batch.orderBook,
       tape: accumulatedTape,
       microstructure: batch.micro,
+      executionControls: { ...state.executionControls, symbolOverrides: expiry.symbolOverrides },
+      overrideAuditTrail: [...expiry.events, ...state.overrideAuditTrail],
+      systemFeed: [...expiry.feedLines, ...state.systemFeed],
       streamClock: { ...state.streamClock, depth: streamTick },
       staged: nextStaged(state, 'depthReadyAt', state.tickMs),
     });
@@ -226,13 +327,28 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
 
   if (action.type === 'TICK_EXECUTION') {
     const streamTick = state.streamClock.execution + 1;
-    const batch = buildExecutionStream(streamTick, state.tickMs, state.quotes, state.blotter, state.tape, state.barsBySymbol);
-    const executionLines = batch.executionEvents.map((e) => `EXEC ${e.symbol} ${e.status} ${e.fillQty}@${e.fillPrice.toFixed(2)} ${e.source}`);
+    const policy = selectExecutionPolicy(state);
+    const batch = buildExecutionStream(streamTick, state.tickMs, state.quotes, state.blotter, state.tape, state.barsBySymbol, {
+      mode: policy.mode,
+      symbol: policy.symbol,
+      urgencyMultiplier: policy.urgencyMultiplier,
+      participationRate: policy.participationRate,
+      routingAggressiveness: policy.routingAggressiveness,
+      maxNotional: policy.maxNotional,
+      maxSlippageBps: policy.maxSlippageBps,
+      killSwitch: policy.killSwitch,
+      reasonCode: policy.reasonCode,
+    });
+    const expiry = expireOverrides(state, state.tickMs);
+    const executionLines = batch.executionEvents.map((e) => `EXEC ${e.symbol} ${e.status} ${e.fillQty}@${e.fillPrice.toFixed(2)} ${e.source} ${e.mode ?? 'MACRO_CONTROLLED'}`);
+    const guardrailLine = policy.killSwitch ? `EXEC GUARDRAIL KILL_SWITCH ACTIVE ${policy.symbol}` : '';
     return deriveNext(state, {
       blotter: batch.blotter,
       executionEvents: batch.executionEvents,
       barsBySymbol: batch.barsBySymbol,
-      systemFeed: [...executionLines, ...state.systemFeed],
+      executionControls: { ...state.executionControls, symbolOverrides: expiry.symbolOverrides },
+      overrideAuditTrail: [...expiry.events, ...state.overrideAuditTrail],
+      systemFeed: [guardrailLine, ...executionLines, ...expiry.feedLines, ...state.systemFeed].filter(Boolean),
       streamClock: { ...state.streamClock, execution: streamTick },
       staged: nextStaged(state, 'executionReadyAt', state.tickMs),
     });
@@ -241,10 +357,13 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
   if (action.type === 'TICK_FEED') {
     const streamTick = state.streamClock.feed + 1;
     const batch = buildFeedStream(streamTick, state.microstructure.sweep.active);
+    const expiry = expireOverrides(state, state.tickMs);
     return deriveNext(state, {
       headlines: batch.headlines,
       alerts: batch.alerts,
-      systemFeed: [`FEED ROTATE -> H${streamTick}`, ...state.systemFeed],
+      executionControls: { ...state.executionControls, symbolOverrides: expiry.symbolOverrides },
+      overrideAuditTrail: [...expiry.events, ...state.overrideAuditTrail],
+      systemFeed: [`FEED ROTATE -> H${streamTick}`, ...expiry.feedLines, ...state.systemFeed],
       streamClock: { ...state.streamClock, feed: streamTick },
       staged: nextStaged(state, 'feedReadyAt', state.tickMs),
     });
@@ -281,6 +400,79 @@ function terminalReducer(state: TerminalState, action: TerminalAction): Terminal
   if (action.type === 'SET_ANALYTICS_TAB') return { ...state, analyticsTab: action.payload };
   if (action.type === 'SET_RIGHT_TAB') return { ...state, rightRailTab: action.payload };
   if (action.type === 'SET_FEED_TAB') return { ...state, feedTab: action.payload };
+  if (action.type === 'SET_MARKET_ACTIVE_BAND') {
+    return { ...state, marketUi: { ...(state.marketUi ?? { deepDetailExpanded: false }), activeBand: action.payload } };
+  }
+  if (action.type === 'TOGGLE_MARKET_DEEP_DETAIL') {
+    return {
+      ...state,
+      marketUi: {
+        activeBand: state.marketUi?.activeBand ?? 'REGIME',
+        deepDetailExpanded: !(state.marketUi?.deepDetailExpanded ?? false),
+      },
+    };
+  }
+
+  if (action.type === 'ACTIVATE_SYMBOL_OVERRIDE') {
+    const nowTs = state.tickMs;
+    const ttlMs = Math.min(15 * 60_000, Math.max(5 * 60_000, action.payload.ttlMs));
+    const symbol = action.payload.symbol;
+    const overrideEntry = {
+      isActive: true,
+      reasonCode: action.payload.reasonCode,
+      expiresAt: nowTs + ttlMs,
+      initiatedAt: nowTs,
+      initiatedBy: action.payload.initiatedBy,
+      otherReasonText: action.payload.otherReasonText,
+    };
+    const event = buildOverrideAuditEvent({
+      action: 'ACTIVATED',
+      symbol,
+      reasonCode: action.payload.reasonCode,
+      ts: nowTs,
+      regimeState: state.executionControls.macro.regimeState,
+      ttlMs,
+      initiatedBy: action.payload.initiatedBy,
+      otherReasonText: action.payload.otherReasonText,
+    });
+    return {
+      ...state,
+      executionControls: {
+        ...state.executionControls,
+        symbolOverrides: {
+          ...state.executionControls.symbolOverrides,
+          [symbol]: overrideEntry,
+        },
+      },
+      overrideAuditTrail: [event, ...state.overrideAuditTrail],
+      systemFeed: [`OVERRIDE ACTIVE ${symbol} ${action.payload.reasonCode} TTL ${Math.round(ttlMs / 60_000)}m`, ...state.systemFeed],
+    };
+  }
+
+  if (action.type === 'CANCEL_SYMBOL_OVERRIDE') {
+    const nowTs = state.tickMs;
+    const current = state.executionControls.symbolOverrides[action.payload.symbol];
+    if (!current?.isActive) return state;
+    const ttlMs = Math.max(0, current.expiresAt - current.initiatedAt);
+    const event = buildOverrideAuditEvent({
+      action: 'CANCELLED',
+      symbol: action.payload.symbol,
+      reasonCode: current.reasonCode,
+      ts: nowTs,
+      regimeState: state.executionControls.macro.regimeState,
+      ttlMs,
+      initiatedBy: action.payload.initiatedBy,
+      otherReasonText: current.otherReasonText,
+    });
+    const nextOverrides = { ...state.executionControls.symbolOverrides };
+    delete nextOverrides[action.payload.symbol];
+    return {
+      ...state,
+      executionControls: { ...state.executionControls, symbolOverrides: nextOverrides },
+      overrideAuditTrail: [event, ...state.overrideAuditTrail],
+      systemFeed: [`OVERRIDE CANCELLED ${action.payload.symbol} ${current.reasonCode}`, ...state.systemFeed],
+    };
+  }
 
   if (action.type === 'SET_SYMBOL') {
     const [ticker, market = ''] = action.payload.split(' ');
@@ -403,10 +595,15 @@ export function TerminalProvider({ children }: { children: React.ReactNode }) {
         input?.select();
       }
       if (e.key === 'Escape') dispatch({ type: 'SET_COMMAND', payload: '' });
+      if (state.activeFunction !== 'MKT') return;
+      if (e.key === '1') dispatch({ type: 'SET_MARKET_ACTIVE_BAND', payload: 'REGIME' });
+      if (e.key === '2') dispatch({ type: 'SET_MARKET_ACTIVE_BAND', payload: 'DRIVERS' });
+      if (e.key === '3') dispatch({ type: 'SET_MARKET_ACTIVE_BAND', payload: 'FLOW' });
+      if (e.key.toLowerCase() === 'd') dispatch({ type: 'TOGGLE_MARKET_DEEP_DETAIL' });
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [dispatch, state.activeFunction]);
 
   const value = useMemo<TerminalContextType>(() => {
     const adv = state.quotes.filter((q) => q.pct > 0).length;

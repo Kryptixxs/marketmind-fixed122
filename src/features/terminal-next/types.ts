@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 export type FunctionCode = 'EXEC' | 'ESC' | 'DES' | 'FA' | 'WEI' | 'HP' | 'YAS' | 'TOP' | 'ECO' | 'NI' | 'OVME' | 'PORT' | 'NEWS' | 'CAL' | 'SEC' | 'MKT' | 'INTEL';
 export type TerminalFunction = 'EXEC' | 'DES' | 'FA' | 'HP' | 'WEI' | 'YAS' | 'OVME' | 'PORT' | 'NEWS' | 'CAL' | 'SEC' | 'MKT' | 'INTEL';
 
@@ -66,6 +68,8 @@ export type ExecutionEvent = {
   fillPrice: number;
   source: 'TAPE' | 'DEPTH';
   ts: number;
+  mode?: 'MACRO_CONTROLLED' | 'MANUAL_OVERRIDE';
+  reasonCode?: OverrideReason;
 };
 
 export type IntradayBar = {
@@ -169,6 +173,123 @@ export type StagedStreamState = {
   commitSeq: number;
 };
 
+export type ModuleTableRow = {
+  key: string;
+  value: string;
+  tone?: 'neutral' | 'positive' | 'negative' | 'accent' | 'warning';
+};
+
+export type ModuleChartData = {
+  key: string;
+  question: string;
+  series: number[];
+  secondary?: number[];
+  labels?: string[];
+  timeframes?: { label: '5D' | '1M' | '3M'; series: number[] }[];
+};
+
+export type ModuleDataModel = {
+  moduleCode: FunctionCode;
+  asOfTs: number;
+  table: Record<string, ModuleTableRow[]>;
+  charts: Record<string, ModuleChartData>;
+};
+
+export type TerminalBandKey = 'primary' | 'secondary' | 'tertiary';
+export type PanelType =
+  | 'VERDICT'
+  | 'SNAPSHOT'
+  | 'DIAGNOSTIC'
+  | 'FLOW'
+  | 'VULNERABILITY'
+  | 'ORDER_STATE'
+  | 'HISTORICAL';
+
+export type TerminalPanelDefinition = {
+  id: string;
+  type: PanelType;
+  question: string;
+  priority: number;
+  content: ReactNode;
+  collapsible?: boolean;
+  defaultCollapsed?: boolean;
+};
+
+export type TerminalBandDefinition = {
+  key: TerminalBandKey;
+  panels: TerminalPanelDefinition[];
+};
+
+export type TerminalModuleDefinition = {
+  code: TerminalFunction;
+  primaryDecision: string;
+  bands: {
+    primary: TerminalBandDefinition;
+    secondary: TerminalBandDefinition;
+    tertiary: TerminalBandDefinition;
+  };
+};
+
+export type RegimeState = 'RISK_ON' | 'TRANSITION' | 'RISK_OFF';
+export type RiskBias = 'ADD' | 'REDUCE' | 'HEDGE';
+export type OverrideReason =
+  | 'URGENT_NEWS'
+  | 'LIQUIDITY_WINDOW'
+  | 'BLOCK_OPPORTUNITY'
+  | 'CLIENT_MANDATE'
+  | 'RISK_UNWIND'
+  | 'VOL_DISLOCATION'
+  | 'OTHER';
+
+export type ExecutionContextInput = {
+  regimeState: RegimeState;
+  riskBias: RiskBias;
+  urgencyModifier: number;
+  participationCap: number;
+  throttleLevel: number;
+  riskOnScore: number;
+  volatilityAlert: boolean;
+  liquidityStress: boolean;
+  breadthDeterioration: boolean;
+};
+
+export type SymbolOverrideEntry = {
+  isActive: boolean;
+  reasonCode: OverrideReason;
+  otherReasonText?: string;
+  expiresAt: number;
+  initiatedAt: number;
+  initiatedBy: string;
+};
+
+export type SymbolOverrideState = Record<string, SymbolOverrideEntry | undefined>;
+
+export type MacroExecutionState = {
+  regimeState: RegimeState;
+  riskBias: RiskBias;
+  urgencyModifier: number;
+  participationCap: number;
+  throttleLevel: number;
+};
+
+export type ExecutionControlState = {
+  macro: MacroExecutionState;
+  symbolOverrides: SymbolOverrideState;
+};
+
+export type OverrideAuditEvent = {
+  id: string;
+  ts: number;
+  symbol: string;
+  action: 'ACTIVATED' | 'EXPIRED' | 'CANCELLED';
+  reasonCode: OverrideReason;
+  regimeState: RegimeState;
+  ttlMs: number;
+  initiatedBy: string;
+  otherReasonText?: string;
+  performanceDeltaBps?: number;
+};
+
 export type TerminalState = {
   seed: number;
   tick: number;
@@ -199,4 +320,10 @@ export type TerminalState = {
   streamClock: StreamClock;
   staged: StagedStreamState;
   intelFilters?: { country?: string; date?: string };
+  marketUi?: {
+    activeBand: 'REGIME' | 'DRIVERS' | 'FLOW';
+    deepDetailExpanded: boolean;
+  };
+  executionControls: ExecutionControlState;
+  overrideAuditTrail: OverrideAuditEvent[];
 };

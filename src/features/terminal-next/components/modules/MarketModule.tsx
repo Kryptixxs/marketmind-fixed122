@@ -1,7 +1,7 @@
 'use client';
 
-import { StandardIntelligenceModule } from './StandardIntelligenceModule';
+import { MarketRegimeSurface } from './market/MarketRegimeSurface';
 
 export function MarketModule() {
-  return <StandardIntelligenceModule code="MKT" title="MARKET REGIME STACK" />;
+  return <MarketRegimeSurface />;
 }

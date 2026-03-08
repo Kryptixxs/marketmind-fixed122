@@ -20,6 +20,11 @@ export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MI
           : { news: 2.2, system: 1.9, alerts: 1.3 };
   const laneStyle = (key: keyof typeof laneWeights) => ({ flexBasis: 0, flexGrow: laneWeights[key] });
   const title = execMode === 'EVENTS' ? 'EVENT FEED / SYSTEM / ALERT LOG' : 'NEWS / SYSTEM / ALERT LOG';
+  const overrideLines = state.overrideAuditTrail.slice(0, 18).map((event) => {
+    const ttlSec = Math.max(0, Math.round(event.ttlMs / 1000));
+    return `OVR ${event.action} ${event.symbol} ${event.reasonCode} TTL=${ttlSec}s REGIME=${event.regimeState}`;
+  });
+  const centerLines = state.feedTab === 'SYSTEM' ? [...overrideLines, ...state.systemFeed] : state.headlines;
   const modeHeaderClass =
     execMode === 'MICROSTRUCTURE'
       ? 'border-[#274b66] text-[#63c8ff]'
@@ -67,7 +72,7 @@ export function FeedPanel({ execMode = 'PRIMARY' }: { execMode?: 'PRIMARY' | 'MI
         </div>
         <div ref={centerRef} style={laneStyle('system')} className="bg-[#0a0a0a] min-w-0 min-h-0 overflow-y-auto custom-scrollbar">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-px bg-[#090f18]">
-            {(state.feedTab === 'SYSTEM' ? state.systemFeed : state.headlines).map((line, i) => (
+            {centerLines.map((line, i) => (
               <div key={`${line}-${i}`} className="text-[8px] px-[2px] py-[1px] border-b border-[#111] text-[#aebed2]">{line}</div>
             ))}
           </div>

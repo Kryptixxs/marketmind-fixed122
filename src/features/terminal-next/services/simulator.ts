@@ -495,7 +495,13 @@ export function buildBlotter(quotes: Quote[], previous: BlotterRow[] | undefined
   });
 }
 
-export function buildExecutionEvents(blotter: BlotterRow[], previous: BlotterRow[] | undefined, tape: TapePrint[], tickMs: number): ExecutionEvent[] {
+export function buildExecutionEvents(
+  blotter: BlotterRow[],
+  previous: BlotterRow[] | undefined,
+  tape: TapePrint[],
+  tickMs: number,
+  policy?: ExecutionPolicyInput,
+): ExecutionEvent[] {
   const prevMap = new Map((previous ?? []).map((r) => [r.id, r.status]));
   const events: ExecutionEvent[] = [];
   for (const row of blotter) {
@@ -511,6 +517,8 @@ export function buildExecutionEvents(blotter: BlotterRow[], previous: BlotterRow
         fillPrice: topTape?.price ?? row.last,
         source: topTape?.isSweep ? 'DEPTH' : 'TAPE',
         ts: tickMs,
+        mode: policy?.symbol === row.symbol ? policy.mode : 'MACRO_CONTROLLED',
+        reasonCode: policy?.symbol === row.symbol ? (policy.reasonCode as ExecutionEvent['reasonCode']) : undefined,
       });
     }
   }
@@ -609,6 +617,18 @@ export type ExecutionStreamBatch = {
   barsBySymbol: Record<string, IntradayBar[]>;
 };
 
+export type ExecutionPolicyInput = {
+  mode: 'MACRO_CONTROLLED' | 'MANUAL_OVERRIDE';
+  symbol: string;
+  urgencyMultiplier: number;
+  participationRate: number;
+  routingAggressiveness: number;
+  maxNotional: number;
+  maxSlippageBps: number;
+  killSwitch: boolean;
+  reasonCode?: string;
+};
+
 export type FeedStreamBatch = {
   streamTick: number;
   headlines: string[];
@@ -648,9 +668,23 @@ export function buildExecutionStream(
   previousBlotter: BlotterRow[],
   tape: TapePrint[],
   previousBarsBySymbol: Record<string, IntradayBar[]>,
+  executionPolicy?: ExecutionPolicyInput,
 ): ExecutionStreamBatch {
-  const blotter = buildBlotter(quotes, previousBlotter, tape, streamTick);
-  const executionEvents = buildExecutionEvents(blotter, previousBlotter, tape, tickMs);
+  const baseBlotter = buildBlotter(quotes, previousBlotter, tape, streamTick);
+  const blotter = baseBlotter.map((row) => {
+    if (!executionPolicy || row.symbol !== executionPolicy.symbol) return row;
+    const baseQty = Math.max(1, row.qty);
+    const targetQty = Math.max(1, Math.round(baseQty * executionPolicy.participationRate * executionPolicy.urgencyMultiplier));
+    const cappedQty = Math.max(1, Math.min(targetQty, Math.floor(executionPolicy.maxNotional / Math.max(0.01, row.last))));
+    const slippageBps = (Math.abs(row.last - row.avg) / Math.max(0.01, row.avg)) * 10_000;
+    const blocked = executionPolicy.killSwitch || slippageBps > executionPolicy.maxSlippageBps;
+    return {
+      ...row,
+      qty: cappedQty,
+      status: blocked ? 'WORKING' : row.status,
+    };
+  });
+  const executionEvents = buildExecutionEvents(blotter, previousBlotter, tape, tickMs, executionPolicy);
   const barsBySymbol: Record<string, IntradayBar[]> = {};
   for (const q of quotes) {
     barsBySymbol[q.symbol] = buildBarsForSymbol(previousBarsBySymbol[q.symbol], q, streamTick, tickMs);

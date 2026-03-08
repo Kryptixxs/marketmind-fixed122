@@ -1,4 +1,5 @@
 import { FunctionModuleDefinition } from './moduleTypes';
+import { buildMarketDataModel } from '../modules/market/buildMarketDataModel';
 
 export const mktModule: FunctionModuleDefinition = {
   code: 'MKT',
@@ -6,9 +7,9 @@ export const mktModule: FunctionModuleDefinition = {
   track: 'A',
   latencyBudgetMs: 3,
   isDeferred: false,
-  getRows: ({ state }) => [
-    ['Advance', `${state.quotes.filter((q) => q.pct >= 0).length}`],
-    ['Decline', `${state.quotes.filter((q) => q.pct < 0).length}`],
-    ['Focus', state.activeSymbol],
-  ],
+  getRows: ({ state }) => {
+    const model = buildMarketDataModel(state);
+    const rows = model.table.regimeSnapshot.slice(0, 4);
+    return rows.map((row) => [row.key, row.value]);
+  },
 };

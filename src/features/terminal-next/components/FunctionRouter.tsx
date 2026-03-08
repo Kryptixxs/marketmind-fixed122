@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
-import { TerminalFunction } from '../types';
+import { TerminalModuleFrame } from './structure/TerminalModuleFrame';
+import { TerminalModuleDefinition, TerminalFunction } from '../types';
+import { useTerminalStore } from '../store/TerminalStore';
 import { BondAnalyticsModule } from './modules/BondAnalyticsModule';
 import { CalendarModule } from './modules/CalendarModule';
 import { DescriptionModule } from './modules/DescriptionModule';
@@ -17,6 +19,7 @@ import { PortfolioModule } from './modules/PortfolioModule';
 import { SecFilingsModule } from './modules/SecFilingsModule';
 
 export function FunctionRouter({ activeFunction }: { activeFunction: TerminalFunction }) {
+  const { state } = useTerminalStore();
   const componentByFunction: Record<TerminalFunction, React.ComponentType> = {
     EXEC: ExecutionCockpitModule,
     DES: DescriptionModule,
@@ -33,6 +36,27 @@ export function FunctionRouter({ activeFunction }: { activeFunction: TerminalFun
     MKT: MarketModule,
   };
   const Active = componentByFunction[activeFunction] ?? ExecutionCockpitModule;
-  // Keyed mount ensures hard structural transition between workspaces.
-  return <Active key={`module-${activeFunction}`} />;
+  if (activeFunction === 'MKT') return <Active key={`module-${activeFunction}`} />;
+
+  const definition: TerminalModuleDefinition = {
+    code: activeFunction,
+    primaryDecision: `${activeFunction} CONTEXT ACTIVE FOR ${state.activeSymbol}`,
+    bands: {
+      primary: {
+        key: 'primary',
+        panels: [
+          {
+            id: `${activeFunction}-workspace`,
+            type: 'SNAPSHOT',
+            question: `What is primary objective of ${activeFunction}?`,
+            priority: 100,
+            content: <Active key={`module-${activeFunction}`} />,
+          },
+        ],
+      },
+      secondary: { key: 'secondary', panels: [] },
+      tertiary: { key: 'tertiary', panels: [] },
+    },
+  };
+  return <TerminalModuleFrame definition={definition} />;
 }

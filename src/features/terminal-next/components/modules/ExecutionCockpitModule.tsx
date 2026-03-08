@@ -15,6 +15,13 @@ type ExecTab = (typeof EXEC_TABS)[number];
 export function ExecutionCockpitModule() {
   const { state, dispatch } = useTerminalStore();
   const selected: ExecTab = state.activeSubTab && EXEC_TABS.includes(state.activeSubTab as ExecTab) ? (state.activeSubTab as ExecTab) : 'PRIMARY';
+  const activeOverride = state.executionControls.symbolOverrides[state.activeSymbol];
+  const ttlMs = activeOverride?.isActive ? Math.max(0, activeOverride.expiresAt - state.tickMs) : 0;
+  const ttlLabel = `${Math.floor(ttlMs / 60_000)
+    .toString()
+    .padStart(2, '0')}:${Math.floor((ttlMs % 60_000) / 1000)
+    .toString()
+    .padStart(2, '0')}`;
   const modeStripClass =
     selected === 'MICROSTRUCTURE'
       ? 'border-[#1a1a1a] bg-[#0a0a0a]'
@@ -62,6 +69,33 @@ export function ExecutionCockpitModule() {
             {tab}
           </button>
         ))}
+        <div className={`ml-auto px-[2px] border text-[7px] leading-none ${activeOverride?.isActive ? 'border-[#7c5f16] bg-[#251d0b] text-[#ffd57d]' : 'border-[#1a5f4b] bg-[#0d2118] text-[#99f1d6]'}`}>
+          {activeOverride?.isActive ? `MACRO OVERRIDE ${activeOverride.reasonCode} TTL ${ttlLabel}` : `MACRO CONTROLLED ${state.executionControls.macro.regimeState}`}
+        </div>
+        {activeOverride?.isActive ? (
+          <button
+            onClick={() => dispatch({ type: 'CANCEL_SYMBOL_OVERRIDE', payload: { symbol: state.activeSymbol, initiatedBy: 'TRADER_DESK' } })}
+            className="px-[2px] border border-[#61324a] bg-[#2a1220] text-[#ffb4d0] text-[7px] leading-none"
+          >
+            CANCEL OVR
+          </button>
+        ) : (
+          <button
+            onClick={() =>
+              dispatch({
+                type: 'ACTIVATE_SYMBOL_OVERRIDE',
+                payload: {
+                  symbol: state.activeSymbol,
+                  reasonCode: 'LIQUIDITY_WINDOW',
+                  ttlMs: 10 * 60_000,
+                  initiatedBy: 'TRADER_DESK',
+                },
+              })}
+            className="px-[2px] border border-[#7c5f16] bg-[#251d0b] text-[#ffd57d] text-[7px] leading-none"
+          >
+            OVR 10M
+          </button>
+        )}
       </div>
       <div key={`exec-${selected.toLowerCase()}`} className="flex-1 min-h-0 flex gap-px bg-black">
         <aside className="flex-[1.1] min-w-0 min-h-0 flex flex-col gap-px">

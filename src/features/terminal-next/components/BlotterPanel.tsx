@@ -6,17 +6,25 @@ const fmt = (v: number, d = 2) => v.toLocaleString(undefined, { minimumFractionD
 
 export function BlotterPanel() {
   const { state, dispatch } = useTerminalStore();
+  const activeOverride = state.executionControls.symbolOverrides[state.activeSymbol];
+  const latestAudit = state.overrideAuditTrail.find((event) => event.symbol === state.activeSymbol);
 
   return (
     <section className="bg-black min-h-0 overflow-hidden flex flex-col font-mono tracking-tight uppercase tabular-nums">
       <div className="h-[14px] px-[2px] border-b border-[#111] bg-[#0a0a0a] flex items-center justify-between text-[8px]">
         <span className="text-[#9bc3e8] font-bold">EXECUTION BLOTTER</span>
-        <button
-          onClick={() => dispatch({ type: 'SET_FUNCTION', payload: 'YAS' })}
-          className="text-[#7f99ba] text-[7px]"
-        >
-          Fills
-        </button>
+        <div className="flex items-center gap-[2px]">
+          <span className={`text-[7px] ${activeOverride?.isActive ? 'text-[#ffd57d]' : 'text-[#7f99ba]'}`}>
+            {activeOverride?.isActive ? `OVR ${activeOverride.reasonCode}` : 'MACRO'}
+          </span>
+          {latestAudit ? <span className="text-[7px] text-[#7f99ba]">{latestAudit.action}</span> : null}
+          <button
+            onClick={() => dispatch({ type: 'SET_FUNCTION', payload: 'YAS' })}
+            className="text-[#7f99ba] text-[7px]"
+          >
+            Fills
+          </button>
+        </div>
       </div>
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar">
         <table className="w-full text-[8px] tabular-nums">
