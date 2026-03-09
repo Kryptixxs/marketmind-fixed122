@@ -3,6 +3,7 @@ import "./globals.css";
 import { SettingsProvider } from '@/services/context/SettingsContext';
 import { LayoutWrapper } from '@/features/Terminal/components/LayoutWrapper';
 import { AuthProvider } from '@/services/context/AuthContext';
+import { ClientProviders } from './_components/ClientProviders';
 
 export const metadata: Metadata = {
   title: "VANTAGE TERMINAL",
@@ -32,9 +33,11 @@ export default function RootLayout({
       <body className="min-h-screen w-full text-text-primary antialiased" style={{ backgroundColor: '#000000' }}>
         <AuthProvider>
           <SettingsProvider>
-            <LayoutWrapper>
-              {children}
-            </LayoutWrapper>
+            <ClientProviders>
+              <LayoutWrapper>
+                {children}
+              </LayoutWrapper>
+            </ClientProviders>
           </SettingsProvider>
         </AuthProvider>
       </body>

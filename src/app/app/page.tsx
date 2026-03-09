@@ -1,14 +1,14 @@
-'use client';
-
 import Link from 'next/link';
-import { useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { BookOpen, LayoutGrid, PlayCircle, TerminalSquare } from 'lucide-react';
 import { FunctionExplorer } from '../_components/FunctionExplorer';
 
-export default function AppHomePage() {
-  const params = useSearchParams();
-  const showOnboarding = useMemo(() => params.get('onboarding') === '1', [params]);
+export default function AppHomePage({
+  searchParams,
+}: {
+  searchParams?: { onboarding?: string | string[] };
+}) {
+  const onboardingValue = Array.isArray(searchParams?.onboarding) ? searchParams?.onboarding[0] : searchParams?.onboarding;
+  const showOnboarding = onboardingValue === '1';
 
   return (
     <div className="space-y-4">
