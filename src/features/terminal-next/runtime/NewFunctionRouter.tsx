@@ -246,6 +246,58 @@ const FUNCTION_MAP: Record<string, FnC> = {
 
 const WAKE_MNEMONICS = new Set(['WAKE', 'HOME', '']);
 
+function InlineSecurityRequirement({
+  panelIdx,
+  mnemonic,
+  title,
+}: {
+  panelIdx: number;
+  mnemonic: string;
+  title: string;
+}) {
+  const { navigatePanel } = useTerminalOS();
+  const [input, setInput] = React.useState('');
+  const quick = ['AAPL US Equity', 'MSFT US Equity', 'NVDA US Equity', 'SPX Index', 'EURUSD Curncy', 'GC1 Comdty'];
+  const choices = input.trim()
+    ? quick.filter((s) => s.toUpperCase().includes(input.trim().toUpperCase())).slice(0, 6)
+    : quick;
+  return (
+    <div className="flex flex-col h-full min-h-0 p-2" style={{ fontFamily: DENSITY.fontFamily }}>
+      <div style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeDefault, marginBottom: 4 }}>
+        {mnemonic} — {title}
+      </div>
+      <div style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny, marginBottom: 6 }}>
+        This function needs a security. Pick one to open immediately.
+      </div>
+      <input
+        value={input}
+        onChange={(e) => setInput(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && input.trim()) {
+            e.preventDefault();
+            navigatePanel(panelIdx, mnemonic, input.trim());
+          }
+        }}
+        placeholder="AAPL US Equity"
+        style={{ border: `1px solid ${DENSITY.borderColor}`, background: DENSITY.bgBase, color: DENSITY.textPrimary, padding: '2px 4px', fontSize: DENSITY.fontSizeTiny }}
+      />
+      <div className="grid mt-2" style={{ gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 4 }}>
+        {choices.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => navigatePanel(panelIdx, mnemonic, c)}
+            style={{ textAlign: 'left', border: `1px solid ${DENSITY.borderColor}`, background: DENSITY.panelBgAlt, color: DENSITY.textSecondary, fontSize: DENSITY.fontSizeTiny, padding: '2px 4px', cursor: 'pointer' }}
+          >
+            {c}
+          </button>
+        ))}
+      </div>
+      <div style={{ marginTop: 6, color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>Sim-only input accepted. Enter opens selected symbol.</div>
+    </div>
+  );
+}
+
 export function NewFunctionRouter({ panelIdx }: { panelIdx: number }) {
   const { panels, dispatchPanel, navigatePanel } = useTerminalOS();
   const p = panels[panelIdx]!;
@@ -270,6 +322,12 @@ export function NewFunctionRouter({ panelIdx }: { panelIdx: number }) {
 
   const Fn = FUNCTION_MAP[code];
   const catalogDef = getCatalogMnemonic(code);
+  const requiresSecurity = catalogDef?.requiresSecurity ?? false;
+  const hasSecurity = Boolean(p.activeSecurity?.trim());
+
+  if (requiresSecurity && !hasSecurity) {
+    return <InlineSecurityRequirement panelIdx={panelIdx} mnemonic={code} title={catalogDef?.title ?? code} />;
+  }
 
   if (!Fn && !catalogDef) {
     const suggestions = searchMnemonicCatalog(code).slice(0, 16);

@@ -10,7 +10,7 @@ import { makeField, makeFunction, makeNews, makeSecurity } from './entities/type
 import { addToMonitorList } from './monitorListStore';
 import { addAlertRule } from '../services/alertMonitor';
 import { appendAuditEvent } from './commandAuditStore';
-import { getCatalogMnemonic } from '../mnemonics/catalog';
+import { buildIntegratedRelatedCodes, getCatalogMnemonic, searchMnemonicCatalog } from '../mnemonics/catalog';
 
 const SECTOR_MENUS: Record<MarketSector, Array<{ code: string; label: string }>> = {
   EQUITY: [
@@ -235,7 +235,7 @@ export function PanelMenuOverlay({ panelIdx }: { panelIdx: number }) {
   const p = panels[panelIdx]!;
   const sec = p.activeSecurity;
   const ticker = sec.split(' ')[0] ?? sec;
-  const related = (getCatalogMnemonic(p.activeMnemonic)?.relatedCodes ?? MNEMONIC_DEFS[p.activeMnemonic]?.relatedCodes ?? []);
+  const related = buildIntegratedRelatedCodes(p.activeMnemonic, 16);
   const graphCodes = [p.activeMnemonic, ...related.slice(0, 12)];
   const primaryFlow = ['DES', 'CN', 'HP', 'OWN', 'RELS', 'GP'].filter((c) => c !== p.activeMnemonic);
   const primaryActions = primaryFlow
@@ -244,6 +244,10 @@ export function PanelMenuOverlay({ panelIdx }: { panelIdx: number }) {
   const fallbackActions = (SECTOR_MENUS[p.marketSector] ?? SECTOR_MENUS.EQUITY).slice(0, 8);
   const nextActions = primaryActions.length > 0 ? primaryActions : fallbackActions;
   const [cursor, setCursor] = useState(0);
+  const [functionQuery, setFunctionQuery] = useState('');
+  const functionSearchResults = functionQuery.trim()
+    ? searchMnemonicCatalog(functionQuery, getCatalogMnemonic(p.activeMnemonic)?.category).slice(0, 10)
+    : [];
 
   const relatedEntities = [
     { label: sec, entity: makeSecurity(sec, ticker) },
@@ -310,6 +314,14 @@ export function PanelMenuOverlay({ panelIdx }: { panelIdx: number }) {
       label: re.label,
       run: (intent: 'OPEN_IN_PLACE' | 'OPEN_IN_NEW_PANE' | 'INSPECT_OVERLAY') => drill(re.entity, intent, panelIdx),
     })),
+    ...(functionSearchResults.length > 0 ? [{ kind: 'header' as const, title: 'SEARCH WITHIN FUNCTIONS' }] : []),
+    ...functionSearchResults.map((m) => ({
+      kind: 'action' as const,
+      label: `${m.code} — ${m.title}`,
+      run: (intent: 'OPEN_IN_PLACE' | 'OPEN_IN_NEW_PANE' | 'INSPECT_OVERLAY') => {
+        drill(makeFunction(m.code, m.title), intent, panelIdx);
+      },
+    })),
   ];
   const selectable = rows.filter((r): r is Exclude<MenuRow, { kind: 'header' }> => r.kind !== 'header');
 
@@ -334,6 +346,23 @@ export function PanelMenuOverlay({ panelIdx }: { panelIdx: number }) {
               </button>
             </React.Fragment>
           ))}
+        </div>
+        <div className="flex items-center gap-1 mt-1">
+          <span style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>Find Function</span>
+          <input
+            value={functionQuery}
+            onChange={(e) => setFunctionQuery(e.target.value)}
+            placeholder="Search code/title/keywords"
+            style={{
+              flex: 1,
+              background: DENSITY.bgBase,
+              border: `1px solid ${DENSITY.borderColor}`,
+              color: DENSITY.textSecondary,
+              fontSize: DENSITY.fontSizeTiny,
+              padding: '1px 3px',
+              fontFamily: DENSITY.fontFamily,
+            }}
+          />
         </div>
       </div>
       {/* Items */}
@@ -384,7 +413,7 @@ export function PanelMenuOverlay({ panelIdx }: { panelIdx: number }) {
 }
 
 export function PanelHelpOverlay({ panelIdx }: { panelIdx: number }) {
-  const { panels, dispatchPanel } = useTerminalOS();
+  const { panels, dispatchPanel, navigatePanel } = useTerminalOS();
   const p = panels[panelIdx]!;
   const isDeskMode = p.overlayMode === 'help-desk';
   const mnDef = MNEMONIC_DEFS[p.activeMnemonic];
@@ -426,8 +455,16 @@ export function PanelHelpOverlay({ panelIdx }: { panelIdx: number }) {
           <div style={{ marginBottom: 1 }}>PageUp/Dn = Scroll table</div>
           <div style={{ marginTop: 6, color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny }}>RELATED FUNCTIONS</div>
           <div className="flex flex-wrap gap-1 mt-1">
-            {(mnDef?.relatedCodes ?? []).map((c) => (
-              <span key={c} style={{ border: `1px solid ${DENSITY.borderColor}`, padding: '0 3px', color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeTiny }}>{c}</span>
+            {(buildIntegratedRelatedCodes(p.activeMnemonic, 14).length > 0 ? buildIntegratedRelatedCodes(p.activeMnemonic, 14) : (mnDef?.relatedCodes ?? []))
+              .map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => { navigatePanel(panelIdx, c, p.activeSecurity, p.marketSector); dispatchPanel(panelIdx, { type: 'SET_OVERLAY', mode: 'none' }); }}
+                style={{ border: `1px solid ${DENSITY.borderColor}`, background: DENSITY.bgSurfaceAlt, padding: '0 3px', color: DENSITY.accentCyan, fontSize: DENSITY.fontSizeTiny, cursor: 'pointer' }}
+              >
+                {c}
+              </button>
             ))}
           </div>
           <div style={{ marginTop: 8, color: DENSITY.textMuted, fontSize: DENSITY.fontSizeTiny }}>

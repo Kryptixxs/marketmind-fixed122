@@ -296,6 +296,14 @@ export function getDockPaneOrder(workspace: 'left' | 'right' | 'all' = 'all'): n
   return Array.from(new Set(from)).sort((a, b) => a - b);
 }
 
+export function getWorkspaceForPane(paneIdx: number): 'left' | 'right' | null {
+  const left = getDockPaneOrder('left');
+  if (left.includes(paneIdx)) return 'left';
+  const right = getDockPaneOrder('right');
+  if (right.includes(paneIdx)) return 'right';
+  return null;
+}
+
 export function getNextDockPane(currentPaneIdx: number, workspace: 'left' | 'right' | 'all' = 'all'): number | null {
   const order = getDockPaneOrder(workspace);
   if (order.length === 0) return null;
@@ -314,30 +322,36 @@ export function ensurePaneInDock(paneIdx: number, workspace: 'left' | 'right' = 
 }
 
 export function setActiveDockTab(paneIdx: number, workspace: 'left' | 'right' = state.activeWorkspace) {
-  const root = getWorkspaceRoot(workspace);
+  const inferred = getWorkspaceForPane(paneIdx);
+  const targetWorkspace = inferred ?? workspace;
+  const root = getWorkspaceRoot(targetWorkspace);
   const next = setActiveInTabs(root, paneIdx);
-  setWorkspaceRoot(workspace, next);
+  setWorkspaceRoot(targetWorkspace, next);
   save();
   emit();
 }
 
 export function insertPaneRelative(targetPaneIdx: number, newPaneIdx: number, mode: DockInsertMode = 'tab', workspace: 'left' | 'right' = state.activeWorkspace) {
-  const root = getWorkspaceRoot(workspace);
+  const inferred = getWorkspaceForPane(targetPaneIdx);
+  const targetWorkspace = inferred ?? workspace;
+  const root = getWorkspaceRoot(targetWorkspace);
   const targetTabsNodeId = findTabsNodeIdByPane(root, targetPaneIdx);
   if (!targetTabsNodeId) {
-    ensurePaneInDock(newPaneIdx, workspace);
+    ensurePaneInDock(newPaneIdx, targetWorkspace);
     return;
   }
   const next = insertPaneAtNode(root, targetTabsNodeId, newPaneIdx, mode);
-  setWorkspaceRoot(workspace, normalizeTree(next) ?? buildDefaultRoot([targetPaneIdx, newPaneIdx]));
+  setWorkspaceRoot(targetWorkspace, normalizeTree(next) ?? buildDefaultRoot([targetPaneIdx, newPaneIdx]));
   save();
   emit();
 }
 
 export function closePaneInDock(paneIdx: number, workspace: 'left' | 'right' = state.activeWorkspace) {
-  const root = getWorkspaceRoot(workspace);
+  const inferred = getWorkspaceForPane(paneIdx);
+  const targetWorkspace = inferred ?? workspace;
+  const root = getWorkspaceRoot(targetWorkspace);
   const nextRoot = normalizeTree(removePane(root, paneIdx) ?? root) ?? buildDefaultRoot([0]);
-  setWorkspaceRoot(workspace, nextRoot);
+  setWorkspaceRoot(targetWorkspace, nextRoot);
   save();
   emit();
 }

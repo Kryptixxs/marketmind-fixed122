@@ -54,6 +54,9 @@ Valid: INTRADAY, 1D, 5D, 1W, 1M, 3M, 6M, 1Y, 3Y, 5Y, 10Y, YTD, MAX
 MENU GO        → Open MENU overlay
 HELP GO        → Open HELP / TUTOR
 HL GO          → Open Search overlay (same as Ctrl+K)
+PREF GO        → Open terminal settings
+SET GO         → Alias for PREF
+SETTINGS GO    → Alias for PREF
 GRAB GO        → Export panel snapshot to new tab
 WS <name> GO   → Save or load workspace by name
 WS DEL <name>  → Delete workspace

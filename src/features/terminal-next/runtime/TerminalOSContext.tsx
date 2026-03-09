@@ -4,7 +4,7 @@ import React, { createContext, useContext, useReducer, useCallback, useMemo, use
 import { PanelState, PanelAction, panelReducer, createDefaultPanel, LinkColor, MarketSector } from './panelState';
 import { saveRecoverySnapshot, loadRecoverySnapshot } from '../services/recoveryStore';
 import { loadAllCommandHistories } from './commandHistoryStore';
-import { getDockPaneOrder, getDockLayout, setActiveWorkspace } from './dockLayoutStore';
+import { getDockPaneOrder, getDockLayout, getWorkspaceForPane, setActiveWorkspace } from './dockLayoutStore';
 
 interface TerminalOSContextValue {
   panels: PanelState[];
@@ -113,7 +113,11 @@ export function TerminalOSProvider({ children }: { children: React.ReactNode }) 
   }, [panels, focusedPanel]);
 
   const setFocusedPanel = useCallback((idx: number) => {
-    if (idx >= 0 && idx < panels.length) setFocusedPanelRaw(idx);
+    if (idx >= 0 && idx < panels.length) {
+      const ws = getWorkspaceForPane(idx);
+      if (ws) setActiveWorkspace(ws);
+      setFocusedPanelRaw(idx);
+    }
   }, [panels.length]);
 
   const cycleFocus = useCallback(() => {

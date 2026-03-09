@@ -11,6 +11,7 @@ import { makeFunction, makeSecurity } from '../entities/types';
 import { checkPolicy, loadPolicyState, savePolicyState } from '../policyStore';
 import { isAllowedByRole } from '../entitlementsStore';
 import { appendErrorEntry } from '../errorConsoleStore';
+import { useDrill } from '../entities/DrillContext';
 
 function ts(v?: number) { return v ? new Date(v).toISOString().slice(11, 19) : '—'; }
 
@@ -48,7 +49,8 @@ export function FnCHAT({ panelIdx = 0 }: { panelIdx?: number }) {
 }
 
 export function FnSHAR({ panelIdx = 0 }: { panelIdx?: number }) {
-  const { panels, navigatePanel } = useTerminalOS();
+  const { panels } = useTerminalOS();
+  const { drill } = useDrill();
   const p = panels[panelIdx]!;
   const [, setRefresh] = useState(0);
   const shares = listWave4Store('shares');
@@ -82,10 +84,14 @@ export function FnSHAR({ panelIdx = 0 }: { panelIdx?: number }) {
     const row = all.find((s) => s.id === id);
     if (!row) return;
     if (row.kind === 'PANEL' && row.mnemonic && row.security) {
-      navigatePanel(panelIdx, row.mnemonic, row.security);
+      drill(makeSecurity(row.security), 'OPEN_IN_PLACE', panelIdx);
+      drill(makeFunction(row.mnemonic), 'OPEN_IN_PLACE', panelIdx);
     }
     if (row.kind === 'WORKSPACE' && row.panels?.length) {
-      row.panels.slice(0, panels.length).forEach((sp, idx) => navigatePanel(idx, sp.mnemonic, sp.security, sp.sector as never));
+      row.panels.slice(0, panels.length).forEach((sp, idx) => {
+        drill(makeSecurity(sp.security), 'OPEN_IN_PLACE', idx);
+        drill(makeFunction(sp.mnemonic), 'OPEN_IN_PLACE', idx);
+      });
     }
     replaceWave4Store('shares', all.map((s) => (s.id === id ? { ...s, opens: (s.opens ?? 0) + 1 } : s)));
     appendAuditEvent({ panelIdx, type: 'GO', actor: 'USER', detail: `SHAR open ${row.token}`, mnemonic: 'SHAR', security: row.security });
@@ -143,7 +149,8 @@ export function FnNOTE({ panelIdx = 0 }: { panelIdx?: number }) {
 }
 
 export function FnTASK({ panelIdx = 0 }: { panelIdx?: number }) {
-  const { panels, navigatePanel } = useTerminalOS();
+  const { panels } = useTerminalOS();
+  const { drill } = useDrill();
   const { state } = useTerminalStore();
   const p = panels[panelIdx]!;
   const [title, setTitle] = useState('');
@@ -180,7 +187,13 @@ export function FnTASK({ panelIdx = 0 }: { panelIdx?: number }) {
         <button type="button" onClick={add}>ADD TASK</button>
         <button type="button" onClick={fromAlerts}>FROM ALERTS</button>
       </div>
-      {rows.length ? <DenseTable columns={cols} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" onRowClick={(r) => { toggleDone(String(r.id)); if (String(r.security) !== '—') navigatePanel(panelIdx, String(r.mnemonic), String(r.security)); }} rowEntity={(r) => makeSecurity(String(r.security !== '—' ? r.security : p.activeSecurity))} /> : <EmptyFill hint="NO TASKS" />}
+      {rows.length ? <DenseTable columns={cols} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" onRowClick={(r) => {
+        toggleDone(String(r.id));
+        if (String(r.security) !== '—') {
+          drill(makeSecurity(String(r.security)), 'OPEN_IN_PLACE', panelIdx);
+          drill(makeFunction(String(r.mnemonic)), 'OPEN_IN_PLACE', panelIdx);
+        }
+      }} rowEntity={(r) => makeSecurity(String(r.security !== '—' ? r.security : p.activeSecurity))} /> : <EmptyFill hint="NO TASKS" />}
     </div>
   );
 }

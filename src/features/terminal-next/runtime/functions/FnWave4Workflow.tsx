@@ -262,7 +262,7 @@ export function FnRPT({ panelIdx = 0 }: { panelIdx?: number }) {
     const w = window.open('', '_blank');
     if (!w) return;
     w.document.title = `RPT ${rpt.title}`;
-    w.document.body.innerHTML = `<div style="font-family:monospace;background:#000;color:#ddd;padding:16px">${rpt.bodyHtml}</div>`;
+    w.document.body.innerHTML = `<div style="font-family:${DENSITY.fontFamily};background:${DENSITY.bgBase};color:${DENSITY.textPrimary};padding:16px">${rpt.bodyHtml}</div>`;
   };
   return (
     <div className="flex flex-col h-full min-h-0">

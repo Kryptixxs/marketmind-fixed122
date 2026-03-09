@@ -29,7 +29,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="flex flex-col-reverse md:flex-row h-[100dvh] w-full overflow-hidden text-text-primary antialiased" style={{ backgroundColor: '#000000' }}>
+      <body className="min-h-screen w-full text-text-primary antialiased" style={{ backgroundColor: '#000000' }}>
         <AuthProvider>
           <SettingsProvider>
             <LayoutWrapper>

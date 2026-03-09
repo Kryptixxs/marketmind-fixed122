@@ -36,7 +36,7 @@ export default function RegisterPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/app`,
           data: {
             first_name: firstName,
             last_name: lastName,
@@ -51,7 +51,7 @@ export default function RegisterPage() {
         setLoading(false);
       } else {
         if (data.session) {
-          router.push('/dashboard');
+          router.push('/app');
         } else {
           setSuccess("Invite code verified. Please check your email to confirm your institutional account.");
           setLoading(false);

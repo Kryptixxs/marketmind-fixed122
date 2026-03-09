@@ -213,22 +213,13 @@ export function MiniAlertsBlock({ panelIdx }: { panelIdx: number }) {
         const isTriggered = triggered.some((t) => t.id === r.id);
         return (
           <div key={r.id} className="flex items-center"
-            style={{ height: DENSITY.rowHeightPx, padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: isTriggered ? '#2a0e1a' : DENSITY.panelBg }}>
+            style={{ height: DENSITY.rowHeightPx, padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: isTriggered ? DENSITY.rowSelectedBg : DENSITY.panelBg }}>
             <span style={{ color: isTriggered ? DENSITY.accentRed : DENSITY.textSecondary, fontSize: DENSITY.fontSizeDefault, flex: 1 }}>{r.symbol}</span>
             <span className="tabular-nums" style={{ color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>{r.op} {r.value}</span>
             {isTriggered && <span style={{ color: DENSITY.accentRed, fontSize: DENSITY.fontSizeTiny, marginLeft: 4 }}>● TRIGGERED</span>}
           </div>
         );
       })}
-    </div>
-  );
-}
-
-// ── Hint Strip ────────────────────────────────────────────────────────────────
-export function HintStrip() {
-  return (
-    <div style={{ borderTop: `1px solid ${DENSITY.borderColor}`, padding: `2px ${DENSITY.pad4}px`, background: DENSITY.panelBgAlt, display: 'flex', flexWrap: 'wrap', gap: 8, fontFamily: DENSITY.fontFamily, fontSize: '8px', color: DENSITY.textDim }}>
-      {['ENTER=Drill', 'SHIFT+ENTER=NewPanel', 'ALT+ENTER=Inspect', '↑↓=Navigate', 'F2=MENU', 'F1=HELP', 'Ctrl+K=Search', 'Right-click=Actions'].map((h) => <span key={h}>{h}</span>)}
     </div>
   );
 }

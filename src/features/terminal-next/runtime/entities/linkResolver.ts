@@ -1,5 +1,6 @@
 import type { EntityRef, EntityKind } from './types';
 import type { MarketSector } from '../panelState';
+import { suggestMnemonicsForEntityKind } from '../../mnemonics/catalog';
 
 // ── DrillIntent ───────────────────────────────────────────────────────────────
 export type DrillIntent =
@@ -19,31 +20,10 @@ export interface DrillAction {
   inspectorEntity?: EntityRef; // for INSPECT_OVERLAY
 }
 
-// ── Default mnemonic for each entity kind ────────────────────────────────────
-const KIND_TO_MNEMONIC: Partial<Record<EntityKind, string>> = {
-  SECURITY: 'DES',
-  INDEX:    'DES',
-  FX:       'DES',
-  FUTURE:   'DES',
-  OPTION:   'DES',
-  ETF:      'DES',
-  COMPANY:  'DES',
-  SECTOR:   'RELS',
-  INDUSTRY: 'RELS',
-  COUNTRY:  'WEI',
-  PERSON:   'MGMT',
-  HOLDER:   'OWN',
-  NEWS:     'TOP',
-  EVENT:    'EVT',
-  FIELD:    'LINE',
-  RATE:     'DES',
-  FUNCTION: 'DES',
-  MONITOR:  'MON+',
-  WORKSPACE:'WS',
-  ALERT:    'ALRT+',
-  ORDER:    'BLTR',
-  TRADE:    'BLTR',
-};
+function dynamicMnemonicForEntity(kind: EntityKind, fallback: string): string {
+  const suggested = suggestMnemonicsForEntityKind(kind, 1)[0];
+  return suggested?.code ?? fallback;
+}
 
 // Last-used mnemonic per security per panel stored in session memory
 const lastMnemonicStore = new Map<string, string>();
@@ -107,9 +87,10 @@ export function resolveLink(
     case 'ETF':
     case 'COMPANY': {
       const sym = (entity.payload as { sym: string }).sym;
+      const dynamicDefault = dynamicMnemonicForEntity(entity.kind, 'DES');
       const mnemonic = normalizedIntent === 'OPEN_IN_NEW_PANEL'
-        ? 'DES'
-        : getLastMnemonic(currentPanelIdx, sym, KIND_TO_MNEMONIC[entity.kind] ?? 'DES');
+        ? dynamicDefault
+        : getLastMnemonic(currentPanelIdx, sym, dynamicDefault);
       return {
         panelIdx: targetPanel,
         mnemonic,
@@ -121,41 +102,41 @@ export function resolveLink(
 
     case 'SECTOR': {
       const s = entity.payload as { name: string };
-      return { panelIdx: targetPanel, mnemonic: 'IMAP', security: s.name, sector: 'EQUITY', intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('SECTOR', 'IMAP'), security: s.name, sector: 'EQUITY', intent: normalizedIntent };
     }
     case 'INDUSTRY': {
       const s = entity.payload as { name: string };
-      return { panelIdx: targetPanel, mnemonic: 'RELS', security: s.name, sector: 'EQUITY', intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('INDUSTRY', 'RELS'), security: s.name, sector: 'EQUITY', intent: normalizedIntent };
     }
     case 'COUNTRY': {
       const c = entity.payload as { iso2: string; name: string };
-      return { panelIdx: targetPanel, mnemonic: 'WEI', security: c.name, sector: 'INDEX', intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('COUNTRY', 'CTY'), security: c.name, sector: 'INDEX', intent: normalizedIntent };
     }
     case 'PERSON':
-      return { panelIdx: targetPanel, mnemonic: 'MGMT', intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('PERSON', 'MGMT'), intent: normalizedIntent };
     case 'HOLDER':
-      return { panelIdx: targetPanel, mnemonic: 'OWN', intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('HOLDER', 'OWN'), intent: normalizedIntent };
     case 'NEWS':
-      return { panelIdx: targetPanel, mnemonic: 'TOP', intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('NEWS', 'TOP'), intent: normalizedIntent };
     case 'EVENT':
-      return { panelIdx: targetPanel, mnemonic: 'EVT', intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('EVENT', 'EVT'), intent: normalizedIntent };
     case 'FIELD':
-      return { panelIdx: targetPanel, mnemonic: 'LINE', security: (entity.payload as { fieldName: string }).fieldName, intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('FIELD', 'LINE'), security: (entity.payload as { fieldName: string }).fieldName, intent: normalizedIntent };
     case 'RATE':
-      return { panelIdx: targetPanel, mnemonic: 'LINE', security: (entity.payload as { fieldName: string }).fieldName, intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('RATE', 'CURV'), security: (entity.payload as { fieldName: string }).fieldName, intent: normalizedIntent };
     case 'FUNCTION': {
       const fn = entity.payload as { code: string };
       return { panelIdx: targetPanel, mnemonic: fn.code, intent: normalizedIntent };
     }
     case 'MONITOR':
-      return { panelIdx: targetPanel, mnemonic: 'MON+', intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('MONITOR', 'MON+'), intent: normalizedIntent };
     case 'WORKSPACE':
-      return { panelIdx: targetPanel, mnemonic: 'WS', intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('WORKSPACE', 'WS'), intent: normalizedIntent };
     case 'ALERT':
-      return { panelIdx: targetPanel, mnemonic: 'ALRT+', intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('ALERT', 'ALRT+'), intent: normalizedIntent };
     case 'ORDER':
     case 'TRADE':
-      return { panelIdx: targetPanel, mnemonic: 'BLTR', intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity(entity.kind, 'BLTR'), intent: normalizedIntent };
     default:
       return { panelIdx: targetPanel, mnemonic: currentMnemonic, intent: normalizedIntent };
   }

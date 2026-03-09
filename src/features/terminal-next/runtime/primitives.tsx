@@ -10,6 +10,7 @@ import type { DrillIntent } from './entities/linkResolver';
 import { intentFromMouseEvent, INTERACTION_HINT } from './interaction';
 import { getDockLayout } from './dockLayoutStore';
 import { fieldBadgeLabel } from '../services/fieldRuntime';
+import { useSettings } from '@/services/context/SettingsContext';
 
 /* ────── DenseTable — with EntityRefs + keyboard nav ────── */
 
@@ -54,12 +55,15 @@ export function DenseTable({
   const drill = useDrill()?.drill;
   const layout = getDockLayout();
   const highDensity = layout.highDensityMode || layout.highDensityLiveMode;
+  const { settings } = useSettings();
   const rh = compact || highDensity ? DENSITY.rowHeightCompactPx : DENSITY.rowHeightPx;
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportH, setViewportH] = useState(360);
   const [cellFlash, setCellFlash] = useState<Record<string, 'up' | 'down'>>({});
   const flashTimersRef = useRef<Record<string, number>>({});
   const prevNumericRef = useRef<Record<string, number>>({});
+  const prevFormattedRef = useRef<Record<string, string>>({});
+  const flashThrottleRef = useRef<Record<string, number>>({});
 
   const selected = externalSelected !== undefined ? externalSelected : internalSelected;
 
@@ -152,8 +156,18 @@ export function DenseTable({
   }, []);
 
   useEffect(() => {
+    if (!settings.updateFlash) {
+      setCellFlash({});
+      prevNumericRef.current = {};
+      prevFormattedRef.current = {};
+      return;
+    }
     const nextFlash: Record<string, 'up' | 'down'> = {};
     const nextNumeric: Record<string, number> = {};
+    const nextFormatted: Record<string, string> = {};
+    const now = Date.now();
+    const FLASH_THROTTLE_MS = 900;
+    const EPSILON = 1e-6;
     for (let ri = 0; ri < sorted.length; ri += 1) {
       const row = sorted[ri]!;
       const rk = String(row[rowKey] ?? ri);
@@ -161,13 +175,21 @@ export function DenseTable({
         const val = row[col.key];
         if (typeof val !== 'number') continue;
         const k = `${rk}:${col.key}`;
+        const formatted = col.format ? col.format(val) : val.toFixed(2);
         nextNumeric[k] = val;
+        nextFormatted[k] = formatted;
         const prev = prevNumericRef.current[k];
-        if (prev == null || prev === val) continue;
+        const prevFormatted = prevFormattedRef.current[k];
+        if (prev == null || prevFormatted == null) continue;
+        if (Math.abs(val - prev) < EPSILON || formatted === prevFormatted) continue;
+        const lastFlashAt = flashThrottleRef.current[k] ?? 0;
+        if (now - lastFlashAt < FLASH_THROTTLE_MS) continue;
         nextFlash[k] = val > prev ? 'up' : 'down';
+        flashThrottleRef.current[k] = now;
       }
     }
     prevNumericRef.current = nextNumeric;
+    prevFormattedRef.current = nextFormatted;
     if (Object.keys(nextFlash).length === 0) return;
     setCellFlash((prev) => ({ ...prev, ...nextFlash }));
     Object.entries(nextFlash).forEach(([k]) => {
@@ -184,7 +206,7 @@ export function DenseTable({
     return () => {
       Object.values(flashTimersRef.current).forEach((id) => window.clearTimeout(id));
     };
-  }, [sorted, columns, rowKey]);
+  }, [sorted, columns, rowKey, settings.updateFlash]);
 
   return (
     <div

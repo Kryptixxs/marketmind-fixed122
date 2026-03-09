@@ -46,7 +46,7 @@ export default function LoginPage() {
       setError(error.message);
       setLoading(false);
     } else {
-      router.push('/dashboard');
+      router.push('/app');
     }
   };
 
@@ -116,13 +116,9 @@ export default function LoginPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-bold text-text-tertiary uppercase tracking-widest">Passphrase</label>
-                  <button 
-                    type="button"
-                    onClick={() => handlePlaceholderAction('Password Recovery')}
-                    className="text-[10px] font-bold text-accent hover:underline uppercase tracking-widest"
-                  >
+                  <Link href="/forgot" className="text-[10px] font-bold text-accent hover:underline uppercase tracking-widest">
                     Lost Access?
-                  </button>
+                  </Link>
                 </div>
                 <div className="relative">
                   <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-text-tertiary" />
@@ -170,7 +166,7 @@ export default function LoginPage() {
 
             <div className="bg-surface-highlight/50 border-t border-border p-6 text-center">
               <p className="text-xs text-text-tertiary font-medium">
-                No active allocation? <Link href="/register" className="text-text-primary font-bold hover:text-accent transition-colors underline underline-offset-4">Apply for Access</Link>
+                No active allocation? <Link href="/signup" className="text-text-primary font-bold hover:text-accent transition-colors underline underline-offset-4">Apply for Access</Link>
               </p>
             </div>
           </div>

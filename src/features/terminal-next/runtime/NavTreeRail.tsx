@@ -50,13 +50,13 @@ const RECENT_KEY  = 'mm_fn_recent';
 const MYSET_KEY   = 'mm_fn_myset';
 
 // ── fuzzy match (char-prefix match so "wev" matches "WEI") ─────────────────
-function fuzzyScore(code: string, title: string, keywords: string[], q: string): number {
+function fuzzyScore(code: string, title: string, keywords: string[], synonyms: string[], tags: string, q: string): number {
   const qU = q.toUpperCase();
   if (code === qU) return 200;
   if (code.startsWith(qU)) return 150;
   if (title.toUpperCase().startsWith(qU)) return 100;
   if (title.toUpperCase().includes(qU)) return 70;
-  const hay = `${keywords.join(' ')}`.toUpperCase();
+  const hay = `${keywords.join(' ')} ${synonyms.join(' ')} ${tags}`.toUpperCase();
   if (hay.includes(qU)) return 40;
   // char-sequence fuzzy
   let j = 0;
@@ -288,7 +288,8 @@ export function NavTreeRail() {
     if (qStr) {
       const scored: Array<{ m: CatalogMnemonic; score: number }> = [];
       for (const m of pool) {
-        const s = fuzzyScore(m.code, m.title, m.keywords, qStr);
+        const tags = `${m.category} ${m.assetClass} ${m.functionType} ${m.scope}`;
+        const s = fuzzyScore(m.code, m.title, m.keywords, m.searchSynonyms, tags, qStr);
         if (s > 0) scored.push({ m, score: s });
       }
       return scored.sort((a, b) => b.score - a.score).map((x) => x.m);
@@ -699,7 +700,8 @@ export function NavTreePanel({ panelIdx }: { panelIdx: number }) {
     if (qStr) {
       const scored: Array<{ m: CatalogMnemonic; score: number }> = [];
       for (const m of pool) {
-        const s = fuzzyScore(m.code, m.title, m.keywords, qStr);
+        const tags = `${m.category} ${m.assetClass} ${m.functionType} ${m.scope}`;
+        const s = fuzzyScore(m.code, m.title, m.keywords, m.searchSynonyms, tags, qStr);
         if (s > 0) scored.push({ m, score: s });
       }
       return scored.sort((a, b) => b.score - a.score).map((x) => x.m);

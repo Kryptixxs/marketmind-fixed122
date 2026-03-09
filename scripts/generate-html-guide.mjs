@@ -18,6 +18,7 @@ mkdirSync(join(ROOT, 'public/user-guide'), { recursive: true });
 const catalogPath = join(ROOT, 'src/features/terminal-next/mnemonics/catalog.ts');
 const { listCatalogMnemonics } = await import(`file:///${catalogPath.replace(/\\/g, '/')}`);
 const ALL = listCatalogMnemonics();
+const FUNCTION_COUNT = ALL.length.toLocaleString('en-US');
 
 const CORE_MNEMONICS = [
   { code: 'WEI',     title: 'World Equity Indices',         cat: 'Market Monitors',  scoped: false,
@@ -77,7 +78,7 @@ const CORE_MNEMONICS = [
     example: 'WS GO  |  WS myname GO  |  WS DEL myname GO',  related: 'DOCK · FLOAT · LAYOUT · SNAP',
     tips: ['WS myname GO → saves OR loads (uses existing if found)', 'WS:MARKET-WALL / NEWSROOM / RESEARCH / TRADING → load presets', 'Workspaces stored in localStorage — export before clearing browser'] },
   { code: 'NAVTREE', title: 'Function Catalog',             cat: 'Platform',         scoped: false,
-    purpose: 'Browse, filter, and launch all 2,949+ functions. Category filters, taxonomy grouping, favorites/recent.',
+    purpose: 'Browse, filter, and launch all functions at catalog scale. Category filters, taxonomy grouping, favorites/recent.',
     example: 'NAVTREE GO',  related: 'TUTOR · PREF · KEYMAP · NX',
     tips: ['Type to filter instantly', 'Category dropdown → filter by asset class', 'Click any row → opens that function'] },
   { code: 'FLD',     title: 'Field Catalog',                cat: 'Data & Lineage',   scoped: false,
@@ -89,7 +90,7 @@ const CORE_MNEMONICS = [
     example: 'LINE GO  |  LINE PX_LAST GO',  related: 'FLD · MAP · QLT · SRC',
     tips: ['Click any numeric value in DES/WEI/HP → auto-opens LINE', 'Alt+Click → Inspector shows field provenance in FIELDS section'] },
   { code: 'PREF',    title: 'Preferences & Settings',       cat: 'Platform',         scoped: false,
-    purpose: 'User settings: display density, layout mode, streaming mode, and advanced settings links.',
+    purpose: 'User settings: contrast mode, density, font size, update flash, and time display.',
     example: 'PREF GO',  related: 'KEYMAP · GRIDCFG · THEMEPRO · FORMAT',
     tips: ['Density changes persist across sessions via localStorage', 'Live Mode increases streaming rate for all panels'] },
   { code: 'TUTOR',   title: 'Guided Tutorial',              cat: 'Platform',         scoped: false,
@@ -228,7 +229,7 @@ tr:hover td{background:var(--bg3);}
   <a class="nav-section">Mnemonic Reference</a>
 ${CORE_MNEMONICS.map(m => `  <a href="#mn-${m.code.replace(/[^A-Za-z0-9]/g,'_')}">${m.code} — ${m.title}</a>`).join('\n')}
   <a class="nav-section">Full Catalog</a>
-  <a href="#catalog-index">All 2,949 Functions</a>
+  <a href="#catalog-index">All ${FUNCTION_COUNT} Functions</a>
   <a class="nav-section">Reference</a>
   <a href="#data-provenance">Data &amp; Provenance</a>
   <a href="#settings">Settings</a>
@@ -239,7 +240,7 @@ ${CORE_MNEMONICS.map(m => `  <a href="#mn-${m.code.replace(/[^A-Za-z0-9]/g,'_')}
 
 <div class="section-header">
   <h1>MarketMind Terminal<br/>Complete User Guide</h1>
-  <p style="color:var(--text2);font-size:12px;">2,949 functions · Bloomberg-style terminal OS · Professional market intelligence platform</p>
+  <p style="color:var(--text2);font-size:12px;">${FUNCTION_COUNT} functions · Bloomberg-style terminal OS · Professional market intelligence platform</p>
 </div>
 
 <div class="download-bar">
@@ -256,7 +257,7 @@ EURUSD Curncy GP GO     → EUR/USD daily price chart
 WEI GO                  → World equity indices monitor
 TOP GO                  → Top news headlines
 GEO GO                  → Global intelligence map
-NAVTREE GO              → Browse all 2,900+ functions
+NAVTREE GO              → Browse all functions in catalog
 TUTOR GO                → This guided walkthrough</pre>
 
 <h2 id="command-grammar">Command Grammar</h2>
@@ -331,7 +332,7 @@ ${KEYBOARD_SHORTCUTS.map(([k,v]) => `<tr><td><code>${k}</code></td><td>${v}</td>
 
 <h2 id="search">🔍 Search — HL / Ctrl+K</h2>
 <p>Open with <code>Ctrl+K</code>, <code>HL GO</code>, or the HL button in the panel toolbar.</p>
-<p>Searches across: <strong>Functions</strong> (2,949 mnemonics) · <strong>Securities</strong> · <strong>Fields</strong> · <strong>Monitors</strong> · <strong>Workspaces</strong> · <strong>News</strong></p>
+<p>Searches across: <strong>Functions</strong> (${FUNCTION_COUNT} mnemonics) · <strong>Securities</strong> · <strong>Fields</strong> · <strong>Monitors</strong> · <strong>Workspaces</strong> · <strong>News</strong></p>
 <div class="tip"><strong>Examples:</strong> Type <code>div</code> → finds DVD (Dividend History). Type <code>ownership</code> → finds OWN. Type <code>options chain</code> → finds CHAIN.</div>
 
 <!-- WORKFLOWS -->
@@ -436,13 +437,14 @@ ${ALL.map(m => `<tr><td><code>${m.code}</code></td><td>${m.title}</td><td>${m.ca
 
 <!-- SETTINGS -->
 <h2 id="settings">⚙️ Settings &amp; Personalization</h2>
-<p>Open with <code>PREF GO</code>.</p>
+<p>Open with <code>PREF GO</code>, <code>SET GO</code>, or <code>SETTINGS GO</code>.</p>
 <table>
 <tr><th>Setting</th><th>Options</th><th>Effect</th></tr>
-<tr><td>Density</td><td>Comfortable / Default / Compact</td><td>Row height, font size, padding</td></tr>
-<tr><td>Layout Mode</td><td>Tile / Tab / Stack</td><td>Pane arrangement style</td></tr>
-<tr><td>Live Mode</td><td>ON / OFF</td><td>Increases streaming rate, fills panels</td></tr>
-<tr><td>High Density</td><td>ON / OFF</td><td>Reduces row padding for maximum rows</td></tr>
+<tr><td>Contrast Mode</td><td>Normal / High</td><td>Improves readability and separation</td></tr>
+<tr><td>Density</td><td>Compact / Standard</td><td>Controls row height and panel packing</td></tr>
+<tr><td>Font Size</td><td>S / M / L</td><td>Scales UI typography for legibility</td></tr>
+<tr><td>Update Flash</td><td>Off / On</td><td>Flashes cells only when displayed value changes</td></tr>
+<tr><td>Time Display</td><td>ET / Local / GMT</td><td>Controls system strip clock mode</td></tr>
 </table>
 <h3>Workspace Commands</h3>
 <pre>WS myname GO         → Save or load workspace by name

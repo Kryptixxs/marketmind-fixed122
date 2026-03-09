@@ -948,6 +948,104 @@ export function searchMnemonicCatalog(query: string, category?: MnemonicCategory
     .map((x) => x.m);
 }
 
+function uniqueCodesInOrder(codes: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const c of codes) {
+    const key = c.toUpperCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(key);
+  }
+  return out;
+}
+
+export function taxonomyAdjacentMnemonics(code: string, limit = 12): CatalogMnemonic[] {
+  const base = getCatalogMnemonic(code);
+  if (!base) return [];
+  const scored = MNEMONIC_CATALOG
+    .filter((m) => m.code !== base.code)
+    .map((m) => {
+      let score = 0;
+      if (m.category === base.category) score += 40;
+      if (m.functionType === base.functionType) score += 28;
+      if (m.scope === base.scope) score += 18;
+      if (m.assetClass === base.assetClass) score += 14;
+      const keywordOverlap = m.keywords.filter((k) => base.keywords.includes(k)).length;
+      score += keywordOverlap * 5;
+      return { m, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || a.m.code.localeCompare(b.m.code))
+    .slice(0, Math.max(0, limit))
+    .map((x) => x.m);
+  return scored;
+}
+
+type EntityKindHint =
+  | 'SECURITY' | 'INDEX' | 'FX' | 'RATE' | 'FUTURE' | 'OPTION' | 'ETF' | 'COMPANY'
+  | 'SECTOR' | 'INDUSTRY' | 'COUNTRY' | 'PERSON' | 'HOLDER' | 'NEWS' | 'EVENT'
+  | 'FIELD' | 'FUNCTION' | 'MONITOR' | 'WORKSPACE' | 'ALERT' | 'ORDER' | 'TRADE';
+
+const ENTITY_HINTS: Record<EntityKindHint, { categories: MnemonicCategory[]; keywords: string[]; functionTypes: MnemonicFunctionType[] }> = {
+  SECURITY:  { categories: ['EQUITY', 'CREDIT', 'DERIVS'], keywords: ['security', 'description', 'fundamentals', 'reference'], functionTypes: ['REFERENCE', 'ANALYTICS'] },
+  INDEX:     { categories: ['EQUITY', 'MACRO'], keywords: ['index', 'benchmark', 'market'], functionTypes: ['REFERENCE', 'CHART'] },
+  FX:        { categories: ['FX', 'MACRO'], keywords: ['fx', 'pair', 'cross', 'currency'], functionTypes: ['MONITOR', 'ANALYTICS'] },
+  RATE:      { categories: ['RATES', 'MACRO'], keywords: ['yield', 'curve', 'rates', 'term'], functionTypes: ['CHART', 'ANALYTICS'] },
+  FUTURE:    { categories: ['DERIVS', 'MACRO'], keywords: ['future', 'term', 'curve', 'contract'], functionTypes: ['REFERENCE', 'MONITOR'] },
+  OPTION:    { categories: ['DERIVS'], keywords: ['option', 'chain', 'volatility', 'surface'], functionTypes: ['REFERENCE', 'ANALYTICS'] },
+  ETF:       { categories: ['EQUITY', 'PORTFOLIO'], keywords: ['etf', 'holding', 'basket', 'flows'], functionTypes: ['REFERENCE', 'MONITOR'] },
+  COMPANY:   { categories: ['EQUITY', 'NEWS_DOCS'], keywords: ['company', 'fundamentals', 'news', 'ownership'], functionTypes: ['REFERENCE', 'EVENT'] },
+  SECTOR:    { categories: ['EQUITY', 'MACRO'], keywords: ['sector', 'heatmap', 'relative'], functionTypes: ['ANALYTICS', 'MONITOR'] },
+  INDUSTRY:  { categories: ['EQUITY'], keywords: ['industry', 'peer', 'comparable'], functionTypes: ['REFERENCE', 'ANALYTICS'] },
+  COUNTRY:   { categories: ['MACRO', 'NEWS_DOCS', 'RATES'], keywords: ['country', 'region', 'macro', 'geo'], functionTypes: ['REFERENCE', 'ANALYTICS'] },
+  PERSON:    { categories: ['EQUITY', 'NEWS_DOCS'], keywords: ['management', 'executive', 'insider'], functionTypes: ['REFERENCE', 'EVENT'] },
+  HOLDER:    { categories: ['EQUITY', 'PORTFOLIO'], keywords: ['ownership', 'holder', 'stake'], functionTypes: ['ANALYTICS', 'REFERENCE'] },
+  NEWS:      { categories: ['NEWS_DOCS', 'MACRO'], keywords: ['news', 'headline', 'narrative', 'impact'], functionTypes: ['EVENT', 'REFERENCE'] },
+  EVENT:     { categories: ['NEWS_DOCS', 'MACRO'], keywords: ['event', 'calendar', 'timeline'], functionTypes: ['EVENT', 'ANALYTICS'] },
+  FIELD:     { categories: ['OPS_ADMIN', 'PORTFOLIO'], keywords: ['field', 'lineage', 'provenance', 'catalog'], functionTypes: ['REFERENCE', 'ADMIN'] },
+  FUNCTION:  { categories: ['OPS_ADMIN'], keywords: ['function', 'catalog', 'navigation'], functionTypes: ['REFERENCE', 'WORKFLOW'] },
+  MONITOR:   { categories: ['PORTFOLIO', 'OPS_ADMIN', 'EQUITY'], keywords: ['monitor', 'watchlist', 'worksheet'], functionTypes: ['MONITOR', 'WORKFLOW'] },
+  WORKSPACE: { categories: ['OPS_ADMIN'], keywords: ['workspace', 'layout', 'dock'], functionTypes: ['WORKFLOW', 'ADMIN'] },
+  ALERT:     { categories: ['OPS_ADMIN', 'PORTFOLIO'], keywords: ['alert', 'rule', 'notification'], functionTypes: ['WORKFLOW', 'ADMIN'] },
+  ORDER:     { categories: ['PORTFOLIO', 'OPS_ADMIN'], keywords: ['order', 'execution', 'blotter'], functionTypes: ['WORKFLOW', 'MONITOR'] },
+  TRADE:     { categories: ['PORTFOLIO', 'OPS_ADMIN'], keywords: ['trade', 'execution', 'cost'], functionTypes: ['WORKFLOW', 'ANALYTICS'] },
+};
+
+export function suggestMnemonicsForEntityKind(kind: EntityKindHint, limit = 12): CatalogMnemonic[] {
+  const hint = ENTITY_HINTS[kind];
+  if (!hint) return [];
+  const scored = MNEMONIC_CATALOG
+    .map((m) => {
+      let score = 0;
+      if (hint.categories.includes(m.category)) score += 35;
+      if (hint.functionTypes.includes(m.functionType)) score += 20;
+      if (kind === 'SECURITY' || kind === 'OPTION' || kind === 'FUTURE' || kind === 'COMPANY') {
+        if (m.requiresSecurity) score += 10;
+      } else if (!m.requiresSecurity) {
+        score += 5;
+      }
+      const hay = `${m.code} ${m.title} ${m.keywords.join(' ')} ${m.searchSynonyms.join(' ')}`.toUpperCase();
+      for (const kw of hint.keywords) {
+        if (hay.includes(kw.toUpperCase())) score += 8;
+      }
+      return { m, score };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || a.m.code.localeCompare(b.m.code))
+    .slice(0, Math.max(0, limit))
+    .map((x) => x.m);
+  return scored;
+}
+
+export function buildIntegratedRelatedCodes(code: string, limit = 16): string[] {
+  const base = getCatalogMnemonic(code);
+  const direct = base?.relatedCodes ?? [];
+  const adjacent = taxonomyAdjacentMnemonics(code, limit).map((m) => m.code);
+  const merged = uniqueCodesInOrder([...direct, ...adjacent]);
+  return merged.filter((c) => c !== code.toUpperCase()).slice(0, limit);
+}
+
 export function catalogToMnemonicRegistryDef(m: CatalogMnemonic): {
   code: string;
   title: string;

@@ -21,6 +21,8 @@ export type WorkspaceLayout = {
   rightWidth: number;
   bottomHeight: number;
 };
+export type ContrastMode = 'normal' | 'high';
+export type TimeDisplayMode = 'ET' | 'LOCAL' | 'GMT';
 
 type Settings = {
   strategy: 'Scalper' | 'Swing' | 'Macro';
@@ -42,6 +44,9 @@ type Settings = {
   dataDelayMode: 'realtime' | 'delayed' | 'simulated';
   activeWorkspace: WorkspacePreset;
   workspaceLayouts: Record<WorkspacePreset, WorkspaceLayout>;
+  contrastMode: ContrastMode;
+  updateFlash: boolean;
+  timeDisplay: TimeDisplayMode;
 };
 
 const DEFAULT_WORKSPACE_LAYOUTS: Record<WorkspacePreset, WorkspaceLayout> = {
@@ -71,6 +76,9 @@ const DEFAULT: Settings = {
   dataDelayMode: 'realtime',
   activeWorkspace: 'BMON',
   workspaceLayouts: DEFAULT_WORKSPACE_LAYOUTS,
+  contrastMode: 'normal',
+  updateFlash: true,
+  timeDisplay: 'ET',
 };
 
 const STORAGE_KEY = 'vantage-terminal-settings-v6';

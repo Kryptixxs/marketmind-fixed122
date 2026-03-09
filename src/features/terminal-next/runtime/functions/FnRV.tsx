@@ -58,14 +58,14 @@ export function FnRV({ panelIdx }: { panelIdx: number }) {
     ctx.fillRect(0, 0, W, H);
 
     // Grid
-    ctx.strokeStyle = '#1a1a1a';
+    ctx.strokeStyle = DENSITY.gridlineColor;
     ctx.lineWidth = 0.5;
     for (let i = 1; i < 10; i++) {
       ctx.beginPath(); ctx.moveTo(0, (H / 10) * i); ctx.lineTo(W, (H / 10) * i); ctx.stroke();
       ctx.beginPath(); ctx.moveTo((W / 10) * i, 0); ctx.lineTo((W / 10) * i, H); ctx.stroke();
     }
     // 100 line
-    ctx.strokeStyle = '#333';
+    ctx.strokeStyle = DENSITY.borderColor;
     ctx.setLineDash([4, 4]);
     const all = [...normSec, ...normBmk];
     const minV = Math.min(...all), maxV = Math.max(...all), rangeV = maxV - minV || 1;
@@ -76,14 +76,14 @@ export function FnRV({ panelIdx }: { panelIdx: number }) {
     ctx.setLineDash([]);
 
     // Benchmark line (grey)
-    ctx.strokeStyle = '#555';
+    ctx.strokeStyle = DENSITY.textDim;
     ctx.lineWidth = 1;
     ctx.beginPath();
     normBmk.forEach((v, i) => { const x = toX(i, normBmk.length); const y = toY(v); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
     ctx.stroke();
 
     // Security line (blue)
-    ctx.strokeStyle = '#5555FF';
+    ctx.strokeStyle = DENSITY.accentBlue;
     ctx.lineWidth = 1;
     ctx.beginPath();
     normSec.forEach((v, i) => { const x = toX(i, normSec.length); const y = toY(v); if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y); });
@@ -91,9 +91,9 @@ export function FnRV({ panelIdx }: { panelIdx: number }) {
 
     // Labels
     ctx.font = `8px ${DENSITY.fontFamily}`;
-    ctx.fillStyle = '#5555FF';
+    ctx.fillStyle = DENSITY.accentBlue;
     ctx.fillText(ticker, 4, 12);
-    ctx.fillStyle = '#555';
+    ctx.fillStyle = DENSITY.textDim;
     ctx.fillText(benchmark, 4, 22);
     ctx.fillStyle = DENSITY.textMuted;
     ctx.fillText('100 = base', W - 55, y100 - 2);
@@ -108,11 +108,11 @@ export function FnRV({ panelIdx }: { panelIdx: number }) {
         <div className="flex items-center gap-1">
           {TF_OPTIONS.map((tf) => (
             <button key={tf} type="button" onClick={() => dispatchPanel(panelIdx, { type: 'SET_TIMEFRAME', tf })}
-              style={{ background: p.timeframe === tf ? '#1a2a3a' : 'none', color: p.timeframe === tf ? DENSITY.accentAmber : DENSITY.textMuted, fontSize: '8px', border: `1px solid ${p.timeframe === tf ? DENSITY.accentAmber : DENSITY.gridlineColor}`, padding: '0 3px', cursor: 'pointer' }}>{tf}</button>
+              style={{ background: p.timeframe === tf ? DENSITY.bgSurfaceAlt : 'none', color: p.timeframe === tf ? DENSITY.accentAmber : DENSITY.textMuted, fontSize: '8px', border: `1px solid ${p.timeframe === tf ? DENSITY.accentAmber : DENSITY.gridlineColor}`, padding: '0 3px', cursor: 'pointer' }}>{tf}</button>
           ))}
           <input value={benchmark} onChange={(e) => setBenchmark(e.target.value.toUpperCase())}
             onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-            style={{ width: 44, background: '#111', border: `1px solid ${DENSITY.gridlineColor}`, color: DENSITY.accentAmber, fontSize: '8px', padding: '0 2px', outline: 'none' }} />
+            style={{ width: 44, background: DENSITY.bgBase, border: `1px solid ${DENSITY.gridlineColor}`, color: DENSITY.accentAmber, fontSize: '8px', padding: '0 2px', outline: 'none' }} />
         </div>
       } />
       <div ref={containerRef} className="flex-1 min-h-0 relative">

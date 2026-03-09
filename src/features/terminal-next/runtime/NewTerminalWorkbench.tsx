@@ -12,10 +12,12 @@ import { loadAlertRules, evaluateTriggeredRules } from '../services/alertMonitor
 import { listWave4Store } from './wave4Store';
 import { listWorkspaces } from './workspaceManager';
 import { getDockLayout, subscribeDockLayout } from './dockLayoutStore';
+import { useSettings } from '@/services/context/SettingsContext';
 
 function SystemStrip() {
   const { focusedPanel, navigatePanel } = useTerminalOS();
   const { state } = useTerminalStore();
+  const { settings } = useSettings();
   const [time, setTime] = React.useState({ est: '', gmt: '', local: '' });
   const [layout, setLayout] = React.useState(() => getDockLayout());
   const [tickRate, setTickRate] = React.useState(0);
@@ -87,8 +89,9 @@ function SystemStrip() {
       <div className="flex items-center gap-3">
         <span style={{ color: DENSITY.accentAmber, fontWeight: 700, letterSpacing: '0.1em', fontSize: '11px' }}>MM</span>
         <span style={{ color: DENSITY.accentGreen }}>● SIM</span>
-        <span style={{ color: DENSITY.textSecondary }}>ET {time.est}</span>
-        <span style={{ color: DENSITY.textDim }}>GMT {time.gmt}</span>
+        {settings.timeDisplay === 'ET' && <span style={{ color: DENSITY.textSecondary }}>ET {time.est}</span>}
+        {settings.timeDisplay === 'LOCAL' && <span style={{ color: DENSITY.textSecondary }}>Local {time.local}</span>}
+        {settings.timeDisplay === 'GMT' && <span style={{ color: DENSITY.textSecondary }}>GMT {time.gmt}</span>}
         {layout.highDensityLiveMode && <span style={{ color: DENSITY.accentAmber, fontWeight: 700 }}>LIVE MODE</span>}
       </div>
 
@@ -107,6 +110,11 @@ function SystemStrip() {
           style={{ color: DENSITY.textDim, background: 'none', border: 'none', cursor: 'pointer', fontFamily: DENSITY.fontFamily, fontSize: DENSITY.fontSizeTiny, padding: 0 }}
           onClick={() => navigatePanel(focusedPanel, 'IB')}>
           Messages {msgCount}
+        </button>
+        <button type="button"
+          style={{ color: DENSITY.textDim, background: 'none', border: 'none', cursor: 'pointer', fontFamily: DENSITY.fontFamily, fontSize: DENSITY.fontSizeTiny, padding: 0 }}
+          onClick={() => navigatePanel(focusedPanel, 'PREF')}>
+          ⚙ Settings
         </button>
         <span style={{ color: DENSITY.textDim }}>WS: {wsName}</span>
       </div>
@@ -154,10 +162,13 @@ function CommandStateStrip() {
 }
 
 function TerminalWorkbenchInner() {
+  const { settings } = useSettings();
+  const baseFontSize = settings.fontSize === 'lg' ? '13px' : settings.fontSize === 'md' ? '12px' : '11px';
+  const bg = settings.contrastMode === 'high' ? DENSITY.panelBg : DENSITY.bgBase;
   return (
     <div
       className="flex flex-col w-[100vw] h-[100dvh] overflow-hidden"
-      style={{ background: DENSITY.bgBase, fontFamily: DENSITY.fontFamily, fontSize: DENSITY.fontSizeDefault, color: DENSITY.textPrimary }}
+      style={{ background: bg, fontFamily: DENSITY.fontFamily, fontSize: baseFontSize, color: DENSITY.textPrimary }}
       onContextMenu={(e) => e.preventDefault()}
     >
       <SystemStrip />

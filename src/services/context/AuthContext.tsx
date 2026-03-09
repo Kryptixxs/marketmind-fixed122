@@ -101,7 +101,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         sessionStorage.setItem(BYPASS_KEY, 'true');
         setIsGuest(true);
         keyBuffer.current = '';
-        router.push('/dashboard');
+        router.push('/app');
       }
     };
 
@@ -120,13 +120,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     
-    const isPublicPage = pathname === '/' || pathname === '/login' || pathname === '/register';
+    const isPublicPage = (
+      pathname === '/' ||
+      pathname === '/features' ||
+      pathname === '/pricing' ||
+      pathname === '/solutions' ||
+      pathname === '/security' ||
+      pathname === '/status' ||
+      pathname === '/docs' ||
+      pathname === '/blog' ||
+      pathname === '/changelog' ||
+      pathname === '/about' ||
+      pathname === '/contact' ||
+      pathname === '/careers' ||
+      pathname === '/legal/terms' ||
+      pathname === '/legal/privacy' ||
+      pathname === '/legal/cookies' ||
+      pathname === '/legal/disclaimer' ||
+      pathname === '/login' ||
+      pathname === '/signup' ||
+      pathname === '/register' ||
+      pathname === '/forgot' ||
+      pathname === '/verify'
+    );
     const isAuthenticated = !!user || isGuest;
     
     if (!isAuthenticated && !isPublicPage) {
       router.push('/login');
-    } else if (isAuthenticated && (pathname === '/login' || pathname === '/register')) {
-      router.push('/dashboard');
+    } else if (isAuthenticated && (pathname === '/login' || pathname === '/register' || pathname === '/signup' || pathname === '/forgot' || pathname === '/verify')) {
+      router.push('/app');
     }
   }, [user, isGuest, isLoading, pathname, router, isExpired]);
 

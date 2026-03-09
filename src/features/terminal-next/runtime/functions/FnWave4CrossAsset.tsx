@@ -22,7 +22,7 @@ export function FnREG({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="REG • Regime Library" right={<StatusBadge label={active} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <button type="button" onClick={() => setActive('RISK_ON')}>RISK_ON</button>
         <button type="button" onClick={() => setActive('TRANSITION')}>TRANSITION</button>
         <button type="button" onClick={() => setActive('RISK_OFF')}>RISK_OFF</button>
@@ -54,7 +54,7 @@ export function FnSHCK({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="SHCK • Shock Library" right={<StatusBadge label="SCENARIO" variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <span>Rates</span><input type="number" value={rates} onChange={(e) => setRates(Number(e.target.value) || 0)} className="w-20 bg-transparent outline-none" />
         <span>Vol</span><input type="number" value={vol} onChange={(e) => setVol(Number(e.target.value) || 0)} className="w-20 bg-transparent outline-none" />
         <span>FX</span><input type="number" value={fx} onChange={(e) => setFx(Number(e.target.value) || 0)} className="w-20 bg-transparent outline-none" />
@@ -103,7 +103,7 @@ export function FnCORRPlus({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="CORR+ • Correlation Explorer" right={<StatusBadge label={anchor} variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input value={anchor} onChange={(e) => setAnchor(e.target.value.toUpperCase())} className="flex-1 bg-transparent outline-none" />
       </div>
       <DenseTable columns={cols} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" rowEntity={(r) => makeSecurity(String(r.symbol))} />
@@ -122,7 +122,7 @@ export function FnSENT({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="SENT • Sentiment Tape (Sim)" right={<StatusBadge label="SIM ONLY" variant="sim" />} />
-      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center gap-2 px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <button type="button" onClick={() => setToneFilter('ALL')}>ALL</button>
         <button type="button" onClick={() => setToneFilter('POS')}>POS</button>
         <button type="button" onClick={() => setToneFilter('NEG')}>NEG</button>
@@ -152,7 +152,7 @@ export function FnSUPP({ panelIdx = 0 }: { panelIdx?: number }) {
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title="SUPP • Supply Chain Signals (Sim)" right={<StatusBadge label="NETWORK" variant="sim" />} />
-      <div className="flex items-center px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: '1px solid #111' }}>
+      <div className="flex items-center px-1" style={{ height: DENSITY.commandBarHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}` }}>
         <input value={base} onChange={(e) => setBase(e.target.value.toUpperCase())} className="flex-1 bg-transparent outline-none" />
       </div>
       <DenseTable columns={cols} rows={rows} rowKey="id" panelIdx={panelIdx} className="flex-1 min-h-0" rowEntity={(r) => makeSecurity(`${String(r.node)} US EQUITY`)} />

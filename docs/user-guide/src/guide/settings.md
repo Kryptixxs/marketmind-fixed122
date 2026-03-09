@@ -1,20 +1,23 @@
 # Settings & Personalization
 
-## Preferences Panel (PREF)
+## Preferences Panel (PREF / SETTINGS)
 
-Open with: `PREF GO`
+Open with: `PREF GO`, `SET GO`, or `SETTINGS GO`  
+Also available from the gear icon in terminal global chrome and `/app/settings`.
 
-### Display Density
+### Core V1 Settings
 
-| Setting | Row Height | Font Size | Best For |
-|---------|-----------|-----------|---------|
-| **Comfortable** | 22px | 13px | Easier reading, larger screens |
-| **Default** | 20px | 12px | Balanced (recommended) |
-| **Compact** | 17px | 11px | Maximum density, Bloomberg-style |
+| Setting | Options | Effect |
+|---------|---------|--------|
+| **Contrast Mode** | Normal / High | Improves text-legibility and panel separation |
+| **Density** | Compact / Standard | Controls row height and panel packing |
+| **Font Size** | S / M / L | Improves readability in dense views |
+| **Update Flash** | Off / On | Enables cell flash only when formatted value actually changes |
+| **Time Display** | ET / Local / GMT | Sets system strip clock display mode |
 
-Changes persist to `localStorage`.
+Settings persist per user session and are restored automatically.
 
-### Layout Mode
+### Workspace and Layout
 
 | Mode | Description |
 |------|-------------|
@@ -28,6 +31,13 @@ Changes persist to `localStorage`.
 |--------|--------|
 | **Live Mode ON** | Increases streaming rate, fills panels with more data |
 | **High Density ON** | Reduces row padding, shows more rows per panel |
+
+### Update Flash (WEI / tables)
+
+- Flash triggers only when the **displayed value changes**
+- Numeric comparisons use epsilon checks to avoid noise flicker
+- Per-cell throttling prevents constant flashing in fast streams
+- Set **Update Flash = Off** for conservative visual behavior
 
 ## Workspace Save/Restore
 

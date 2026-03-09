@@ -6,10 +6,11 @@ import { TileCell, TileGrid, TileLayoutRoot, TerminalTile } from '../ui/TileLayo
 import { makeFunction, makeSecurity, type EntityRef } from '../entities/types';
 import { useDrill } from '../entities/DrillContext';
 import { DENSITY } from '../../constants/layoutDensity';
-import { getCatalogMnemonic, listCatalogByTaxonomy, listCatalogMnemonics, type MnemonicCategory, type MnemonicRecipeId } from '../../mnemonics/catalog';
+import { buildIntegratedRelatedCodes, getCatalogMnemonic, listCatalogByTaxonomy, listCatalogMnemonics, type MnemonicCategory, type MnemonicRecipeId } from '../../mnemonics/catalog';
 import { buildNewsStream, buildPortfolioRows, buildPriceSeries, buildRelationshipEdges, denseRowsForMnemonic, evidenceRowsFor, relatedEntitiesFor } from '../../services/dataFabric';
 import { makeFieldValueEntity } from '../../services/fieldRuntime';
 import { TerminalChart } from '../../../../components/charts/TerminalChart';
+import { useTerminalOS } from '../TerminalOSContext';
 
 const RECIPE_SPEC: Record<MnemonicCategory, { cols: string; rows: string; areas: string[] }> = {
   EQUITY: { cols: '2fr 1fr', rows: '1.2fr 1fr 0.9fr 0.9fr', areas: ['main side', 'main relf', 'rels relf', 'evid evid'] },
@@ -48,18 +49,28 @@ function categoryMainColumns(category: MnemonicCategory): DenseColumn[] {
 
 export function FnFactoryMnemonic({ panelIdx, code }: { panelIdx: number; code: string }) {
   const { drill } = useDrill();
+  const { panels } = useTerminalOS();
   const def = getCatalogMnemonic(code);
   const category = def?.category ?? 'EQUITY';
   const recipeId: MnemonicRecipeId = def?.defaultRecipeId ?? 'ReferenceSheet';
-  const security = `${code} US Equity`;
-  const rows = useMemo(() => denseRowsForMnemonic(category, security, 320), [category, security]);
-  const relatedEntities = useMemo(() => relatedEntitiesFor(security, 26), [security]);
-  const evidence = useMemo(() => evidenceRowsFor(security), [security]);
-  const relatedFunctions = useMemo(() => (def?.relatedCodes ?? ['DES', 'TOP', 'LINE', 'FLD', 'NAV', 'NX']).slice(0, 14), [def?.relatedCodes]);
-  const series = useMemo(() => buildPriceSeries(`${code}-${security}`, category === 'DERIVS' ? 90 : 120), [code, security, category]);
-  const news = useMemo(() => buildNewsStream(security, 30), [security]);
-  const relEdges = useMemo(() => buildRelationshipEdges(security, 60), [security]);
-  const positions = useMemo(() => buildPortfolioRows(security, 90), [security]);
+  const panel = panels[panelIdx];
+  const activeSecurity = panel?.activeSecurity?.trim() || `${code} US Equity`;
+  const activeUniverse = `${category}-CORE-UNIVERSE`;
+  const scopeLabel = def?.requiresSecurity ? activeSecurity : activeUniverse;
+  const rows = useMemo(() => denseRowsForMnemonic(category, scopeLabel, 320), [category, scopeLabel]);
+  const relatedEntities = useMemo(() => relatedEntitiesFor(activeSecurity, 26), [activeSecurity]);
+  const evidence = useMemo(() => evidenceRowsFor(activeSecurity), [activeSecurity]);
+  const relatedFunctions = useMemo(() => {
+    const merged = buildIntegratedRelatedCodes(code, 16);
+    if (merged.length >= 10) return merged;
+    const filler = ['DES', 'TOP', 'LINE', 'FLD', 'NAV', 'NX', 'MON', 'RPT', 'WS', 'TUTOR'];
+    return Array.from(new Set([...merged, ...filler])).slice(0, 12);
+  }, [code]);
+  const nextActions = useMemo(() => relatedFunctions.slice(0, 8), [relatedFunctions]);
+  const series = useMemo(() => buildPriceSeries(`${code}-${activeSecurity}`, category === 'DERIVS' ? 90 : 120), [code, activeSecurity, category]);
+  const news = useMemo(() => buildNewsStream(activeSecurity, 30), [activeSecurity]);
+  const relEdges = useMemo(() => buildRelationshipEdges(activeSecurity, 60), [activeSecurity]);
+  const positions = useMemo(() => buildPortfolioRows(activeSecurity, 90), [activeSecurity]);
   const spec = RECIPE_SPEC[category];
   const hasArea = (a: string) => spec.areas.some((row) => row.split(' ').includes(a));
   const mainCols = categoryMainColumns(category);
@@ -67,7 +78,7 @@ export function FnFactoryMnemonic({ panelIdx, code }: { panelIdx: number; code: 
     { key: 'kind', header: 'Kind', width: '80px' },
     { key: 'label', header: 'Entity', width: '1fr' },
   ];
-  const relRows = relatedEntities.map((e, i) => ({ id: `${e.kind}-${e.id}-${i}`, kind: e.kind, label: e.display, entity: e }));
+  const relRows = relatedEntities.map((e, i) => ({ id: `${e.kind}-${e.id}-${i}`, kind: `${e.kind}${i >= 20 ? ' (SIM)' : ''}`, label: e.display, entity: e }));
   const evidenceCols: DenseColumn[] = [
     { key: 'evidence', header: 'Evidence', width: '1fr' },
     { key: 'score', header: 'Score', width: '70px', align: 'right', entity: (r) => makeFieldValueEntity('BETA', r.score, { source: 'CALC' }) },
@@ -80,7 +91,7 @@ export function FnFactoryMnemonic({ panelIdx, code }: { panelIdx: number; code: 
   ];
   const newsCols: DenseColumn[] = [
     { key: 'ts', header: 'Time', width: '72px' },
-    { key: 'headline', header: 'Headline', width: '1fr', entity: (r) => makeSecurity(security, String(r.headline).slice(0, 16)) },
+    { key: 'headline', header: 'Headline', width: '1fr', entity: (r) => makeSecurity(activeSecurity, String(r.headline).slice(0, 16)) },
     { key: 'source', header: 'Src', width: '56px' },
   ];
   const edgeCols: DenseColumn[] = [
@@ -140,6 +151,22 @@ export function FnFactoryMnemonic({ panelIdx, code }: { panelIdx: number; code: 
   return (
     <div className="flex flex-col h-full min-h-0">
       <PanelSubHeader title={`${code} • ${def?.title ?? 'Factory Generated Mnemonic'} (${category}/${recipeId})`} right={<StatusBadge label="SIM/LIVE/STALE" variant="sim" />} />
+      <div className="flex items-center gap-1" style={{ height: 14, borderBottom: `1px solid ${DENSITY.gridlineColor}`, padding: `0 ${DENSITY.pad4}px`, color: DENSITY.textDim, fontSize: DENSITY.fontSizeTiny }}>
+        <span style={{ color: DENSITY.textSecondary }}>NEXT ACTIONS</span>
+        {nextActions.map((fn) => (
+          <button
+            key={fn}
+            type="button"
+            onClick={() => drill(makeFunction(fn, fn), 'OPEN_IN_PLACE', panelIdx)}
+            style={{ border: `1px solid ${DENSITY.groupSeparator}`, background: 'transparent', color: DENSITY.accentAmber, padding: '0 3px', cursor: 'pointer', fontSize: DENSITY.fontSizeTiny }}
+          >
+            {fn}
+          </button>
+        ))}
+        <span style={{ marginLeft: 'auto' }}>
+          {def?.requiresSecurity ? `Security: ${activeSecurity}` : `Universe: ${activeUniverse} (SIM)`}
+        </span>
+      </div>
       <div className="flex-1 min-h-0">
         <TileLayoutRoot panelIdx={panelIdx}>
           <TileGrid spec={{ columns: spec.cols, rows: spec.rows, areas: spec.areas }}>
@@ -173,7 +200,7 @@ export function FnFactoryMnemonic({ panelIdx, code }: { panelIdx: number; code: 
             {hasArea('flow') && <TileCell area="flow">
               <TerminalTile id={`${code}-flow`} title="Flow / Timeline" status="Event stream">
                 {category === 'NEWS_DOCS' || category === 'MACRO'
-                  ? <DenseTable columns={newsCols} rows={news as unknown as Array<Record<string, unknown>>} rowKey="id" panelIdx={panelIdx} rowEntity={(r) => makeSecurity(security, String(r.headline).slice(0, 16))} className="h-full" compact />
+                  ? <DenseTable columns={newsCols} rows={news as unknown as Array<Record<string, unknown>>} rowKey="id" panelIdx={panelIdx} rowEntity={(r) => makeSecurity(activeSecurity, String(r.headline).slice(0, 16))} className="h-full" compact />
                   : <DenseTable columns={mainCols.slice(0, 6)} rows={rows.slice(40, 170)} rowKey="id" panelIdx={panelIdx} rowEntity={(r) => makeSecurity(String(r.sym), String(r.name))} className="h-full" compact />}
               </TerminalTile>
             </TileCell>}

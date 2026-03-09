@@ -289,6 +289,11 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
       dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
       return;
     }
+    if (raw === 'SET' || raw === 'SET GO' || raw === 'SETTINGS' || raw === 'SETTINGS GO' || raw === 'PREF' || raw === 'PREF GO') {
+      navigatePanel(panelIdx, 'PREF', p.activeSecurity, p.marketSector);
+      dispatchPanel(panelIdx, { type: 'SET_COMMAND_INPUT', value: '' });
+      return;
+    }
     if (raw.startsWith('WS:')) {
       const tag = raw.replace(/\s+GO$/, '').slice(3).trim() as WorkstationPreset;
       if (tag === 'MARKET-WALL' || tag === 'NEWSROOM' || tag === 'RESEARCH' || tag === 'TRADING') {

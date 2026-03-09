@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useRef, useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { DENSITY } from '../../constants/layoutDensity';
 import { DenseTable, PanelSubHeader, StatusBadge, type DenseColumn } from '../primitives';
 import { useTerminalStore } from '../../store/TerminalStore';
@@ -117,23 +117,6 @@ export function FnWEI({ panelIdx }: { panelIdx: number }) {
       return sort.dir === 'asc' ? cmp : -cmp;
     });
   }, [rows, sort]);
-
-  const prevRef = useRef<Map<string, number>>(new Map());
-  const [flashMap, setFlashMap] = useState<Record<string, 'up' | 'down'>>({});
-
-  useEffect(() => {
-    const next: Record<string, 'up' | 'down'> = {};
-    for (const r of rows) {
-      const prev = prevRef.current.get(r.id);
-      if (prev != null && prev !== r.last) next[r.id] = r.last > prev ? 'up' : 'down';
-      prevRef.current.set(r.id, r.last);
-    }
-    if (Object.keys(next).length > 0) {
-      setFlashMap(next);
-      const t = setTimeout(() => setFlashMap({}), DENSITY.flashDurationMs);
-      return () => clearTimeout(t);
-    }
-  }, [rows]);
 
   const makeRowEntity = (row: typeof rows[number]) => {
     if (row.type === 'INDEX') return makeIndex(row.symbol, row.name);
@@ -265,7 +248,6 @@ export function FnWEI({ panelIdx }: { panelIdx: number }) {
                   rows={sorted}
                   rowKey="id"
                   selectedRow={mainSel}
-                  flashMap={flashMap}
                   rowEntity={(r) => makeRowEntity(r as typeof rows[number])}
                   onRowClick={(r) => setMainSel(sorted.findIndex((x) => x.id === String(r.id)))}
                   panelIdx={panelIdx}

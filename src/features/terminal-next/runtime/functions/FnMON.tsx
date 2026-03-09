@@ -219,8 +219,10 @@ export function FnMON({ panelIdx }: { panelIdx: number }) {
         {filteredRows.map((row, ri) => {
           const entity = makeSecurity(row.sym, row.ticker);
           return (
-            <div key={row.sym} className="grid items-center cursor-pointer hover:bg-[#0a1520]"
+            <div key={row.sym} className="grid items-center cursor-pointer"
               style={{ gridTemplateColumns: `1fr ${monitorFields.map(() => '80px').join(' ')} 16px`, height: DENSITY.rowHeightPx, borderBottom: `1px solid ${DENSITY.gridlineColor}`, background: ri === selectedIdx ? DENSITY.rowSelectedBg : ri % 2 === 1 ? DENSITY.rowZebra : DENSITY.bgBase }}
+              onMouseEnter={(e) => { if (ri !== selectedIdx) e.currentTarget.style.background = DENSITY.rowHover; }}
+              onMouseLeave={(e) => { if (ri !== selectedIdx) e.currentTarget.style.background = ri % 2 === 1 ? DENSITY.rowZebra : DENSITY.bgBase; }}
               onClick={(e) => { setSelectedIdx(ri); drill(entity, intentFromMouseEvent(e), panelIdx); }}
               onContextMenu={(e) => openContextMenu(e, entity, panelIdx)}
               title={INTERACTION_HINT}>

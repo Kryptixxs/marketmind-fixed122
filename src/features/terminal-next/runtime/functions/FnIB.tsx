@@ -62,7 +62,7 @@ export function FnIB({ panelIdx = 0 }: { panelIdx?: number }) {
           <div key={i} style={{ padding: `${DENSITY.pad2}px ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}` }} className="flex gap-1">
             <span style={{ color: DENSITY.accentAmber, width: 40, fontSize: DENSITY.fontSizeTiny }} className="shrink-0 tabular-nums">{m.time}</span>
             <span style={{ color: DENSITY.accentCyan, width: 40, fontSize: DENSITY.fontSizeTiny }} className="shrink-0">{m.from}</span>
-            <span style={{ color: m.from === 'YOU' ? '#fff' : DENSITY.textPrimary }}>{m.text}</span>
+            <span style={{ color: m.from === 'YOU' ? DENSITY.textPrimary : DENSITY.textSecondary }}>{m.text}</span>
           </div>
         ))}
       </div>

@@ -3,11 +3,12 @@
 import React, { useMemo, useState } from 'react';
 import { DenseTable, EmptyFill, PanelSubHeader, StatusBadge, type DenseColumn } from '../primitives';
 import { useTerminalOS } from '../TerminalOSContext';
-import { DENSITY } from '../../constants/layoutDensity';
+import { DENSITY, inputStyle } from '../../constants/layoutDensity';
 import { appendAuditEvent } from '../commandAuditStore';
-import { makeFunction } from '../entities/types';
+import { makeFunction, makeSecurity } from '../entities/types';
 import { checkPolicy, loadPolicyState } from '../policyStore';
 import { appendErrorEntry } from '../errorConsoleStore';
+import { useDrill } from '../entities/DrillContext';
 
 const COLS: DenseColumn[] = [
   { key: 'panel', header: 'Panel', width: '50px' },
@@ -18,7 +19,8 @@ const COLS: DenseColumn[] = [
 ];
 
 export function FnNAV({ panelIdx = 0 }: { panelIdx?: number }) {
-  const { panels, navigatePanel, setFocusedPanel } = useTerminalOS();
+  const { panels, setFocusedPanel } = useTerminalOS();
+  const { drill } = useDrill();
   const [selectedPanel, setSelectedPanel] = useState<'ALL' | '1' | '2' | '3' | '4'>('ALL');
 
   const rows = useMemo(() => {
@@ -61,7 +63,12 @@ export function FnNAV({ panelIdx = 0 }: { panelIdx?: number }) {
       return;
     }
     const targetPanel = Number(row.panelIdx);
-    navigatePanel(targetPanel, String(row.mnemonic), String(row.security), row.sector as never);
+    const security = String(row.security);
+    const mnemonic = String(row.mnemonic);
+    if (security && security !== '-') {
+      drill(makeSecurity(security), 'OPEN_IN_PLACE', targetPanel);
+    }
+    drill(makeFunction(mnemonic, `NAV jump ${mnemonic}`), 'OPEN_IN_PLACE', targetPanel);
     setFocusedPanel(targetPanel);
     appendAuditEvent({
       panelIdx,
@@ -81,7 +88,7 @@ export function FnNAV({ panelIdx = 0 }: { panelIdx?: number }) {
         <select
           value={selectedPanel}
           onChange={(e) => setSelectedPanel(e.target.value as typeof selectedPanel)}
-          style={{ background: '#000', color: DENSITY.textPrimary, border: `1px solid ${DENSITY.borderColor}`, fontSize: DENSITY.fontSizeTiny }}
+          style={{ ...inputStyle, fontSize: DENSITY.fontSizeTiny }}
         >
           <option value="ALL">ALL</option>
           <option value="1">Panel 1</option>

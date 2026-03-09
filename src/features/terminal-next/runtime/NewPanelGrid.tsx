@@ -4,6 +4,7 @@ import React from 'react';
 import { DENSITY } from '../constants/layoutDensity';
 import { NewPanelFrame } from './NewPanelFrame';
 import { NewFunctionRouter } from './NewFunctionRouter';
+import { TerminalErrorBoundary } from './TerminalErrorBoundary';
 import { useTerminalOS } from './TerminalOSContext';
 import {
   getDockLayout,
@@ -14,6 +15,7 @@ import {
   setActiveDockTab,
   ensurePaneInDock,
   getDockPaneOrder,
+  setPanelFloating,
 } from './dockLayoutStore';
 import { listPinItems } from './pinboardStore';
 import { Panel, Group, Separator } from 'react-resizable-panels';
@@ -87,7 +89,9 @@ function DockTree({
         </div>
         <div className="flex-1 min-h-0">
           <NewPanelFrame panelIdx={active}>
-            <NewFunctionRouter panelIdx={active} />
+            <TerminalErrorBoundary panelIdx={active}>
+              <NewFunctionRouter panelIdx={active} />
+            </TerminalErrorBoundary>
           </NewPanelFrame>
         </div>
         <div
@@ -172,7 +176,9 @@ export function NewPanelGrid() {
         <div className="flex-1 min-h-0 overflow-hidden" style={{ background: DENSITY.gridlineColor }}>
           {dockState.focusFullscreen ? (
             <NewPanelFrame panelIdx={focusedPanel}>
-              <NewFunctionRouter panelIdx={focusedPanel} />
+              <TerminalErrorBoundary panelIdx={focusedPanel}>
+                <NewFunctionRouter panelIdx={focusedPanel} />
+              </TerminalErrorBoundary>
             </NewPanelFrame>
           ) : dockState.twoUpMode && dockState.secondaryRoot ? (
             <div className="grid h-full min-h-0" style={{ gridTemplateColumns: '1fr 1fr', gap: 1, background: DENSITY.gridlineColor }}>
@@ -194,11 +200,13 @@ export function NewPanelGrid() {
             <div key={idx} className="pointer-events-auto absolute" style={{ left: 40 + i * 26, top: 40 + i * 22, width: 480, height: 320, border: `1px solid ${DENSITY.focusBorderColor}`, background: '#020202' }}>
               <div style={{ height: 18, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: `0 ${DENSITY.pad4}px`, borderBottom: `1px solid ${DENSITY.gridlineColor}`, color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny }}>
                 <span>FLOAT P{idx + 1}</span>
-                <button type="button" onClick={() => setDockLayout({ floatingPanels: dockState.floatingPanels.filter((x) => x !== idx) })}>ATTACH</button>
+                <button type="button" onClick={() => setPanelFloating(idx, false)}>ATTACH</button>
               </div>
               <div style={{ height: 'calc(100% - 18px)' }}>
                 <NewPanelFrame panelIdx={idx}>
-                  <NewFunctionRouter panelIdx={idx} />
+                  <TerminalErrorBoundary panelIdx={idx}>
+                    <NewFunctionRouter panelIdx={idx} />
+                  </TerminalErrorBoundary>
                 </NewPanelFrame>
               </div>
             </div>
