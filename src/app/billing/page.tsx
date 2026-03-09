@@ -20,7 +20,7 @@ export default function BillingPage() {
             <div className="absolute top-0 right-0 p-2 bg-accent text-accent-text text-[10px] font-bold uppercase tracking-widest">Active Plan</div>
             <div className="flex items-center gap-2 text-accent mb-2">
               <Zap size={24} fill="currentColor" />
-              <span className="text-xl font-bold uppercase tracking-tighter">Vantage Pro</span>
+              <span className="text-xl font-bold uppercase tracking-tighter">MarketMind Pro</span>
             </div>
             <div className="text-4xl font-mono font-bold text-text-primary mb-6">$499<span className="text-sm text-text-tertiary">/mo</span></div>
             

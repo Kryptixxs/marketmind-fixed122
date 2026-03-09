@@ -1,6 +1,6 @@
 import type { EntityRef, EntityKind } from './types';
 import type { MarketSector } from '../panelState';
-import { suggestMnemonicsForEntityKind } from '../../mnemonics/catalog';
+import { getCatalogMnemonic, suggestMnemonicsForEntityKind } from '../../mnemonics/catalog';
 
 // ── DrillIntent ───────────────────────────────────────────────────────────────
 export type DrillIntent =
@@ -18,6 +18,20 @@ export interface DrillAction {
   sector?: MarketSector;
   intent: DrillIntent;
   inspectorEntity?: EntityRef; // for INSPECT_OVERLAY
+}
+
+interface ResolveOptions {
+  totalPanels?: number;
+  orderedPanels?: number[];
+  targetPanelIdx?: number;
+  targetMnemonic?: string;
+  currentSecurity?: string;
+}
+
+function mnemonicSupportsEntity(targetMnemonic: string, entityKind: EntityKind): boolean {
+  const def = getCatalogMnemonic(targetMnemonic.toUpperCase());
+  if (!def) return true;
+  return def.entityKindsSupported.includes(entityKind);
 }
 
 function dynamicMnemonicForEntity(kind: EntityKind, fallback: string): string {
@@ -61,7 +75,7 @@ export function resolveLink(
   intent: DrillIntent,
   currentPanelIdx: number,
   currentMnemonic: string,
-  options?: { totalPanels?: number; orderedPanels?: number[]; targetPanelIdx?: number },
+  options?: ResolveOptions,
 ): DrillAction {
   const normalizedIntent: DrillIntent = intent === 'OPEN_IN_NEW_PANE' ? 'OPEN_IN_NEW_PANEL' : intent;
   // INSPECT_OVERLAY doesn't navigate, just opens inspector
@@ -88,9 +102,11 @@ export function resolveLink(
     case 'COMPANY': {
       const sym = (entity.payload as { sym: string }).sym;
       const dynamicDefault = dynamicMnemonicForEntity(entity.kind, 'DES');
-      const mnemonic = normalizedIntent === 'OPEN_IN_NEW_PANEL'
+      const requested = options?.targetMnemonic?.toUpperCase();
+      const preferred = requested && mnemonicSupportsEntity(requested, entity.kind) ? requested : undefined;
+      const mnemonic = preferred ?? (normalizedIntent === 'OPEN_IN_NEW_PANEL'
         ? dynamicDefault
-        : getLastMnemonic(currentPanelIdx, sym, dynamicDefault);
+        : getLastMnemonic(currentPanelIdx, sym, dynamicDefault));
       return {
         panelIdx: targetPanel,
         mnemonic,
@@ -126,7 +142,7 @@ export function resolveLink(
       return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('RATE', 'CURV'), security: (entity.payload as { fieldName: string }).fieldName, intent: normalizedIntent };
     case 'FUNCTION': {
       const fn = entity.payload as { code: string };
-      return { panelIdx: targetPanel, mnemonic: fn.code, intent: normalizedIntent };
+      return { panelIdx: targetPanel, mnemonic: fn.code, security: options?.currentSecurity, intent: normalizedIntent };
     }
     case 'MONITOR':
       return { panelIdx: targetPanel, mnemonic: dynamicMnemonicForEntity('MONITOR', 'MON+'), intent: normalizedIntent };

@@ -6,7 +6,7 @@ import { AuthProvider } from '@/services/context/AuthContext';
 import { ClientProviders } from './_components/ClientProviders';
 
 export const metadata: Metadata = {
-  title: "VANTAGE TERMINAL",
+  title: "MarketMind Terminal",
   description: "Institutional-Grade Market Intelligence Platform",
 };
 

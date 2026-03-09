@@ -21,7 +21,12 @@ interface InspectorState {
 }
 
 interface DrillContextValue {
-  drill: (entity: EntityRef, intent: DrillIntent, fromPanelIdx?: number) => void;
+  drill: (
+    entity: EntityRef,
+    intent: DrillIntent,
+    fromPanelIdx?: number,
+    options?: { targetMnemonic?: string },
+  ) => void;
   inspector: InspectorState;
   openInspector: (entity: EntityRef, panelIdx: number) => void;
   closeInspector: () => void;
@@ -48,7 +53,12 @@ export function DrillProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
-  const drill = useCallback((entity: EntityRef, intent: DrillIntent, fromPanelIdx?: number) => {
+  const drill = useCallback((
+    entity: EntityRef,
+    intent: DrillIntent,
+    fromPanelIdx?: number,
+    options?: { targetMnemonic?: string },
+  ) => {
     const srcPanelIdx = typeof fromPanelIdx === 'number' ? fromPanelIdx : focusedPanel;
     const normalizedIntent: DrillIntent = intent === 'OPEN_IN_NEW_PANE' ? 'OPEN_IN_NEW_PANEL' : intent;
     const policy = loadPolicyState();
@@ -84,6 +94,8 @@ export function DrillProvider({ children }: { children: React.ReactNode }) {
       orderedPanels,
       totalPanels: panels.length,
       targetPanelIdx: targetPanelOverride,
+      targetMnemonic: options?.targetMnemonic,
+      currentSecurity: currentPanel?.activeSecurity,
     });
 
     if (action.intent === 'INSPECT_OVERLAY' && action.inspectorEntity) {

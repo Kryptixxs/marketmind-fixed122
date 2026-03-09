@@ -101,16 +101,17 @@ const FTYPE_SHORT: Record<string, string> = {
 const ROW_H = 22;
 const OVERSCAN = 15;
 
-interface VirtualListProps {
-  items: CatalogMnemonic[];
+interface VirtualListProps<T> {
+  items: T[];
   height: number;
   selectedIdx: number;
   onSelect: (idx: number) => void;
-  renderItem: (item: CatalogMnemonic, idx: number, isSelected: boolean) => React.ReactNode;
+  renderItem: (item: T, idx: number, isSelected: boolean) => React.ReactNode;
+  itemKey: (item: T, idx: number) => string;
   selectedRef: React.RefObject<HTMLDivElement | null>;
 }
 
-function VirtualList({ items, height, selectedIdx, onSelect, renderItem, selectedRef }: VirtualListProps) {
+function VirtualList<T>({ items, height, selectedIdx, onSelect, renderItem, itemKey, selectedRef }: VirtualListProps<T>) {
   const [scrollTop, setScrollTop] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const totalH = items.length * ROW_H;
@@ -142,7 +143,7 @@ function VirtualList({ items, height, selectedIdx, onSelect, renderItem, selecte
             const isSelected = realIdx === selectedIdx;
             return (
               <div
-                key={item.code}
+                key={itemKey(item, realIdx)}
                 ref={isSelected ? (selectedRef as React.RefObject<HTMLDivElement>) : undefined}
                 onClick={() => onSelect(realIdx)}
                 style={{ height: ROW_H, cursor: 'pointer' }}
@@ -225,6 +226,63 @@ function SecurityPicker({
 // ── Taxonomy tree sidebar (collapsed groups) ────────────────────────────────
 type ViewMode = 'flat' | 'tree';
 type FocusMode = 'ALL' | 'FAV' | 'RECENT' | 'PINNED' | 'MYSET';
+type FamilyRow =
+  | { kind: 'family'; id: string; familyId: string; familyLabel: string; count: number; category: MnemonicCategory; defaultVariant: CatalogMnemonic }
+  | { kind: 'variant'; id: string; familyId: string; variant: CatalogMnemonic };
+
+function familyRowsFromItems(
+  items: CatalogMnemonic[],
+  collapsed: Set<string>,
+  compact: boolean,
+  query: string,
+): FamilyRow[] {
+  const rows: FamilyRow[] = [];
+  const families = new Map<string, CatalogMnemonic[]>();
+  for (const m of items) {
+    const key = `${m.category}:${m.familyId}`;
+    if (!families.has(key)) families.set(key, []);
+    families.get(key)!.push(m);
+  }
+  const q = query.trim().toUpperCase();
+  const familyEntries = Array.from(families.entries())
+    .map(([key, variants]) => ({ key, variants }))
+    .sort((a, b) => {
+      const af = a.variants[0]!;
+      const bf = b.variants[0]!;
+      return af.category.localeCompare(bf.category) || af.familyLabel.localeCompare(bf.familyLabel);
+    });
+
+  for (const entry of familyEntries) {
+    const variants = entry.variants.sort((a, b) => a.variantLabel.localeCompare(b.variantLabel));
+    const defaultVariant = variants[0]!;
+    const familyId = entry.key;
+    rows.push({
+      kind: 'family',
+      id: `fam:${familyId}`,
+      familyId,
+      familyLabel: defaultVariant.familyLabel,
+      count: variants.length,
+      category: defaultVariant.category,
+      defaultVariant,
+    });
+    const expanded = !collapsed.has(familyId);
+    if (compact || !expanded) continue;
+    for (const variant of variants) {
+      // Keep variant visibility broad during query so code/title searches still hit.
+      if (q) {
+        const hay = `${variant.code} ${variant.title} ${variant.variantLabel} ${variant.keywords.join(' ')} ${variant.searchSynonyms.join(' ')}`.toUpperCase();
+        if (!hay.includes(q)) continue;
+      }
+      rows.push({
+        kind: 'variant',
+        id: `var:${familyId}:${variant.code}`,
+        familyId,
+        variant,
+      });
+    }
+  }
+  return rows;
+}
 
 // ── Main NavTreeRail ────────────────────────────────────────────────────────
 export function NavTreeRail() {
@@ -235,7 +293,8 @@ export function NavTreeRail() {
   const [debouncedQ, setDebouncedQ] = useState('');
   const [catFilter, setCatFilter] = useState<'ALL' | MnemonicCategory>('ALL');
   const [focusMode, setFocusMode] = useState<FocusMode>('ALL');
-  const [viewMode, setViewMode] = useState<ViewMode>('flat');
+  const [viewMode, setViewMode] = useState<ViewMode>('tree');
+  const [compactFamilies, setCompactFamilies] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [secPicker, setSecPicker] = useState<{ code: string; title: string } | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
@@ -305,20 +364,15 @@ export function NavTreeRail() {
     });
   }, [debouncedQ, catFilter, focusMode, favs, pinned, mySet, recents, ALL_MNEMONICS]);
 
-  // reset selection on list change
-  useEffect(() => { setSelectedIdx(0); }, [items.length, debouncedQ, catFilter, focusMode]);
+  const familyRows = useMemo(
+    () => familyRowsFromItems(items, collapsed, compactFamilies, debouncedQ),
+    [items, collapsed, compactFamilies, debouncedQ],
+  );
 
-  // tree groups (only used in tree mode)
-  const treeGroups = useMemo(() => {
-    if (viewMode !== 'tree') return [];
-    const groups = new Map<string, CatalogMnemonic[]>();
-    for (const m of items) {
-      const key = m.category;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key)!.push(m);
-    }
-    return Array.from(groups.entries());
-  }, [items, viewMode]);
+  const boundedSelectedIdx = useMemo(() => {
+    const max = Math.max(0, (viewMode === 'tree' ? familyRows.length : items.length) - 1);
+    return Math.min(selectedIdx, max);
+  }, [selectedIdx, items.length, familyRows.length, viewMode]);
 
   // ── launch a mnemonic ──────────────────────────────────────────────────────
   const launch = useCallback((m: CatalogMnemonic, intent: 'current' | 'new' | 'help') => {
@@ -348,34 +402,64 @@ export function NavTreeRail() {
   }, [focusedPanel, activePanel, navigatePanel, addPanel]);
 
   const launchByIdx = useCallback((idx: number, intent: 'current' | 'new' | 'help') => {
+    if (viewMode === 'tree') {
+      const row = familyRows[idx];
+      if (!row) return;
+      const m = row.kind === 'family' ? row.defaultVariant : row.variant;
+      launch(m, intent);
+      return;
+    }
     const m = items[idx];
     if (m) launch(m, intent);
-  }, [items, launch]);
+  }, [items, launch, viewMode, familyRows]);
 
   // ── keyboard navigation ────────────────────────────────────────────────────
   const onKeyDown = useCallback((e: React.KeyboardEvent) => {
+    const listLen = viewMode === 'tree' ? familyRows.length : items.length;
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedIdx((i) => Math.min(i + 1, items.length - 1));
+      setSelectedIdx((i) => Math.min(i + 1, Math.max(0, listLen - 1)));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIdx((i) => Math.max(i - 1, 0));
+    } else if (viewMode === 'tree' && e.key === 'ArrowRight') {
+      const row = familyRows[boundedSelectedIdx];
+      if (row?.kind === 'family') {
+        e.preventDefault();
+        setCollapsed((prev) => {
+          if (!prev.has(row.familyId)) return prev;
+          const next = new Set(prev);
+          next.delete(row.familyId);
+          return next;
+        });
+      }
+    } else if (viewMode === 'tree' && e.key === 'ArrowLeft') {
+      const row = familyRows[boundedSelectedIdx];
+      if (row?.kind === 'family') {
+        e.preventDefault();
+        setCollapsed((prev) => {
+          if (prev.has(row.familyId)) return prev;
+          const next = new Set(prev);
+          next.add(row.familyId);
+          return next;
+        });
+      }
     } else if (e.key === 'Enter' && !e.shiftKey && !e.altKey) {
       e.preventDefault();
-      launchByIdx(selectedIdx, 'current');
+      launchByIdx(boundedSelectedIdx, 'current');
     } else if (e.key === 'Enter' && e.shiftKey) {
       e.preventDefault();
-      launchByIdx(selectedIdx, 'new');
+      launchByIdx(boundedSelectedIdx, 'new');
     } else if (e.key === 'Enter' && e.altKey) {
       e.preventDefault();
-      launchByIdx(selectedIdx, 'help');
+      launchByIdx(boundedSelectedIdx, 'help');
     } else if (e.key === 'Escape') {
       setQ('');
     } else if (e.key === 'f' && e.ctrlKey) {
       e.preventDefault();
       inputRef.current?.focus();
     }
-  }, [items.length, selectedIdx, launchByIdx]);
+  }, [items.length, launchByIdx, viewMode, familyRows, boundedSelectedIdx]);
 
   // ── toggle helpers ─────────────────────────────────────────────────────────
   const toggleFav = useCallback((code: string, e: React.MouseEvent) => {
@@ -454,6 +538,52 @@ export function NavTreeRail() {
       </div>
     );
   }, [favs, pinned, mySet, toggleFav, togglePin, toggleMySet]);
+
+  const renderFamilyRow = useCallback((row: FamilyRow, _idx: number, isSelected: boolean) => {
+    const bgColor = isSelected ? DENSITY.rowSelectedBg : 'transparent';
+    if (row.kind === 'family') {
+      const isCollapsed = collapsed.has(row.familyId);
+      return (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            height: ROW_H,
+            padding: '0 6px',
+            background: bgColor,
+            borderLeft: isSelected ? `2px solid ${DENSITY.rowSelectedMarker}` : '2px solid transparent',
+            gap: 5,
+          }}
+        >
+          <span style={{ color: CAT_COLORS[row.category] ?? DENSITY.textDim, fontSize: '10px', width: 12 }}>
+            {isCollapsed || compactFamilies ? '▶' : '▼'}
+          </span>
+          <span style={{ color: DENSITY.textPrimary, fontSize: DENSITY.fontSizeTiny, fontWeight: 700, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {row.familyLabel}
+          </span>
+          <span style={{ color: DENSITY.textDim, fontSize: '9px', flexShrink: 0 }}>({row.count})</span>
+        </div>
+      );
+    }
+    return (
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          height: ROW_H,
+          padding: '0 6px 0 20px',
+          background: bgColor,
+          borderLeft: isSelected ? `2px solid ${DENSITY.rowSelectedMarker}` : '2px solid transparent',
+          gap: 5,
+        }}
+      >
+        <span style={{ minWidth: 56, fontWeight: 700, fontSize: '10px', color: DENSITY.accentCyan }}>{row.variant.code}</span>
+        <span style={{ color: DENSITY.textSecondary, fontSize: DENSITY.fontSizeTiny, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {row.variant.variantLabel}
+        </span>
+      </div>
+    );
+  }, [collapsed, compactFamilies]);
 
   // ── tab bar pills ──────────────────────────────────────────────────────────
   const TAB_PILL = (mode: FocusMode, label: string, count?: number) => (
@@ -563,6 +693,18 @@ export function NavTreeRail() {
       }}>
         <span style={{ fontSize: '9px', color: DENSITY.textDim }}>Ctrl+F focus · ↑↓ nav · Enter open</span>
         <div style={{ display: 'flex', gap: 3 }}>
+          {viewMode === 'tree' && (
+            <button type="button"
+              onClick={() => setCompactFamilies((v) => !v)}
+              style={{
+                fontSize: '9px', padding: '1px 5px', cursor: 'pointer',
+                border: `1px solid ${compactFamilies ? DENSITY.accentAmber : DENSITY.borderColor}`,
+                background: compactFamilies ? DENSITY.rowSelectedBg : 'transparent',
+                color: compactFamilies ? DENSITY.accentAmber : DENSITY.textDim,
+                fontFamily: DENSITY.fontFamily,
+              }}
+            >compact</button>
+          )}
           {(['flat', 'tree'] as ViewMode[]).map((m) => (
             <button key={m} type="button"
               onClick={() => setViewMode(m)}
@@ -588,47 +730,40 @@ export function NavTreeRail() {
           <VirtualList
             items={items}
             height={listH}
-            selectedIdx={selectedIdx}
+            selectedIdx={boundedSelectedIdx}
             onSelect={(idx) => { setSelectedIdx(idx); launchByIdx(idx, 'current'); }}
             renderItem={renderItem}
+            itemKey={(item) => item.code}
             selectedRef={selectedRef}
           />
         ) : (
-          <div className="overflow-auto terminal-scrollbar" style={{ height: listH }}>
-            {treeGroups.map(([cat, catItems]) => {
-              const isCol = collapsed.has(cat);
-              return (
-                <div key={cat}>
-                  <button type="button"
-                    onClick={() => setCollapsed((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(cat)) next.delete(cat); else next.add(cat);
-                      return next;
-                    })}
-                    style={{
-                      width: '100%', textAlign: 'left', padding: '3px 6px',
-                      background: DENSITY.bgSurfaceAlt, border: 'none',
-                      borderBottom: `1px solid ${DENSITY.gridlineColor}`, cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: 4,
-                    }}
-                  >
-                    <span style={{ color: CAT_COLORS[cat as MnemonicCategory] ?? DENSITY.accentAmber, fontSize: '10px', fontWeight: 700 }}>
-                      {isCol ? '▶' : '▼'} {CAT_LABELS[cat as MnemonicCategory] ?? cat}
-                    </span>
-                    <span style={{ color: DENSITY.textDim, fontSize: '9px', marginLeft: 'auto' }}>{catItems.length}</span>
-                  </button>
-                  {!isCol && catItems.map((m, idx) => (
-                    <div key={m.code}
-                      onClick={() => launch(m, 'current')}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      {renderItem(m, idx, false)}
-                    </div>
-                  ))}
-                </div>
-              );
-            })}
-          </div>
+          <VirtualList
+            items={familyRows}
+            height={listH}
+            selectedIdx={boundedSelectedIdx}
+            onSelect={(idx) => {
+              setSelectedIdx(idx);
+              const row = familyRows[idx];
+              if (!row) return;
+              if (row.kind === 'family') {
+                if (compactFamilies) {
+                  launch(row.defaultVariant, 'current');
+                  return;
+                }
+                setCollapsed((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(row.familyId)) next.delete(row.familyId);
+                  else next.add(row.familyId);
+                  return next;
+                });
+                return;
+              }
+              launch(row.variant, 'current');
+            }}
+            renderItem={renderFamilyRow}
+            itemKey={(item) => item.id}
+            selectedRef={selectedRef}
+          />
         )}
       </div>
 
@@ -646,7 +781,7 @@ export function NavTreeRail() {
         background: DENSITY.bgSurfaceAlt, fontSize: '9px', color: DENSITY.textDim,
         flexShrink: 0,
       }}>
-        Enter open · Shift+Enter new pane · Alt+Enter help · ★ fav · 📌 pin · ⊕ my set
+        Enter open · Shift+Enter new pane · Alt+Enter help · ←/→ collapse/expand family · ★ fav · 📌 pin · ⊕ my set
       </div>
     </div>
   );
@@ -714,7 +849,7 @@ export function NavTreePanel({ panelIdx }: { panelIdx: number }) {
     });
   }, [debouncedQ, catFilter, focusMode, favs, pinned, mySet, recents, ALL_MNEMONICS]);
 
-  useEffect(() => { setSelectedIdx(0); }, [items.length, debouncedQ, catFilter, focusMode]);
+  const boundedSelectedIdx = useMemo(() => Math.min(selectedIdx, Math.max(0, items.length - 1)), [selectedIdx, items.length]);
 
   const launch = useCallback((m: CatalogMnemonic, intent: 'current' | 'new') => {
     const currentSec = activePanel?.activeSecurity ?? '';
@@ -732,10 +867,10 @@ export function NavTreePanel({ panelIdx }: { panelIdx: number }) {
   const onKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx((i) => Math.min(i+1, items.length-1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIdx((i) => Math.max(i-1, 0)); }
-    else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); launchByIdx(selectedIdx, 'current'); }
-    else if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); launchByIdx(selectedIdx, 'new'); }
+    else if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); launchByIdx(boundedSelectedIdx, 'current'); }
+    else if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); launchByIdx(boundedSelectedIdx, 'new'); }
     else if (e.key === 'Escape') setQ('');
-  }, [items.length, selectedIdx, launchByIdx]);
+  }, [items.length, launchByIdx, boundedSelectedIdx]);
 
   const renderItem = useCallback((m: CatalogMnemonic, _idx: number, isSelected: boolean) => {
     const catColor = CAT_COLORS[m.category] ?? DENSITY.textDim;
@@ -785,9 +920,11 @@ export function NavTreePanel({ panelIdx }: { panelIdx: number }) {
         ))}
       </div>
       <div ref={containerRef} className="flex-1 min-h-0">
-        <VirtualList items={items} height={listH} selectedIdx={selectedIdx}
+        <VirtualList items={items} height={listH} selectedIdx={boundedSelectedIdx}
           onSelect={(idx) => { setSelectedIdx(idx); launchByIdx(idx, 'current'); }}
-          renderItem={renderItem} selectedRef={selectedRef} />
+          renderItem={renderItem}
+          itemKey={(item) => item.code}
+          selectedRef={selectedRef} />
       </div>
       {secPicker && (
         <SecurityPicker

@@ -6,7 +6,6 @@ import { useDrill } from '../entities/DrillContext';
 import { loadAlertRules, addAlertRule } from '../../services/alertMonitor';
 import { useTerminalOS } from '../TerminalOSContext';
 import type { EntityRef } from '../entities/types';
-import { makeFunction } from '../entities/types';
 import { MNEMONIC_DEFS } from '../MnemonicRegistry';
 import type { EntityKind } from '../entities/types';
 import { addToMonitorList } from '../monitorListStore';
@@ -110,7 +109,7 @@ export function TerminalContextMenu() {
     { label: `${entity.kind}: ${entity.display.slice(0, 30)}`, action: () => {}, disabled: true },
     { label: '─────────────────', action: () => {}, disabled: true },
     // Open
-    { label: '▶  Open (DES)', icon: '▶', action: () => { close(); drill(entity, 'OPEN_IN_PLACE', state.panelIdx); } },
+    { label: '▶  Open', icon: '▶', action: () => { close(); drill(entity, 'OPEN_IN_PLACE', state.panelIdx); } },
     { label: '↗  Open in new pane', icon: '↗', action: () => { close(); drill(entity, 'OPEN_IN_NEW_PANE', state.panelIdx); } },
     { label: '🔍  Inspect (overlay)', action: () => { close(); drill(entity, 'INSPECT_OVERLAY', state.panelIdx); } },
     { label: '─────────────────', action: () => {}, disabled: true },
@@ -119,7 +118,7 @@ export function TerminalContextMenu() {
       label: `   ${code} — ${MNEMONIC_DEFS[code]?.title ?? code}`,
       action: () => {
         close();
-        drill(makeFunction(code, MNEMONIC_DEFS[code]?.title), 'OPEN_IN_PLACE', state.panelIdx);
+        drill(entity, 'OPEN_IN_PLACE', state.panelIdx, { targetMnemonic: code });
       },
     })),
     { label: '─────────────────', action: () => {}, disabled: true },
@@ -155,6 +154,22 @@ export function TerminalContextMenu() {
   ];
 
   if (entity.kind === 'SECURITY' || entity.kind === 'COMPANY') {
+    items.push({ label: '─────────────────', action: () => {}, disabled: true });
+    items.push({
+      label: 'Open with...',
+      action: () => {},
+      disabled: true,
+    });
+    const openWith = kindActions.slice(0, 14);
+    for (const code of openWith) {
+      items.push({
+        label: `   ↪ ${code} — ${MNEMONIC_DEFS[code]?.title ?? code}`,
+        action: () => {
+          close();
+          drill(entity, 'OPEN_IN_PLACE', state.panelIdx, { targetMnemonic: code });
+        },
+      });
+    }
     items.push({
       label: '📝  Add note',
       action: () => {

@@ -58,6 +58,10 @@ export type MnemonicRecipeId =
 export interface CatalogMnemonic {
   code: string;
   title: string;
+  familyId: string;
+  familyLabel: string;
+  variantKey: string;
+  variantLabel: string;
   category: MnemonicCategory;
   assetClass: MnemonicAssetClass;
   functionType: MnemonicFunctionType;
@@ -91,6 +95,13 @@ interface SeedDef {
   recipe?: MnemonicRecipeId;
   fieldSet?: string[];
   purpose?: string;
+}
+
+interface FamilyMeta {
+  familyId: string;
+  familyLabel: string;
+  variantKey: string;
+  variantLabel: string;
 }
 
 const ALL_SECTORS: MarketSector[] = ['EQUITY', 'CORP', 'CURNCY', 'COMDTY', 'INDEX', 'GOVT', 'MUNI', 'MTGE'];
@@ -261,6 +272,60 @@ function helpFor(
 > Click any row to drill. Shift+Click opens in a new pane. Alt+Click opens the Inspector overlay.`;
 }
 
+function deriveFamilyMeta(code: string, title: string): FamilyMeta {
+  const chn = code.match(/^CHN(\d+)$/);
+  if (chn) {
+    return { familyId: 'CHN', familyLabel: 'Options Chain', variantKey: chn[1]!, variantLabel: `Chain Slice ${Number(chn[1]).toString()}` };
+  }
+  const vol = code.match(/^VOL(\d+)$/);
+  if (vol) {
+    return { familyId: 'VOL', familyLabel: 'Volatility Surface', variantKey: vol[1]!, variantLabel: `Surface Slice ${Number(vol[1]).toString()}` };
+  }
+  const flow = code.match(/^FLOW(\d+)$/);
+  if (flow) {
+    return { familyId: 'FLOW', familyLabel: 'Derivatives Flow', variantKey: flow[1]!, variantLabel: `Flow Bucket ${Number(flow[1]).toString()}` };
+  }
+  const mon = code.match(/^M(\d+)$/);
+  if (mon) {
+    return { familyId: 'MON', familyLabel: 'Monitor Presets', variantKey: mon[1]!, variantLabel: `Monitor Variant ${Number(mon[1]).toString()}` };
+  }
+  const rank = code.match(/^R(\d+)$/);
+  if (rank) {
+    return { familyId: 'RANK', familyLabel: 'Ranking Presets', variantKey: rank[1]!, variantLabel: `Ranking Variant ${Number(rank[1]).toString()}` };
+  }
+  const scr = code.match(/^S(\d+)$/);
+  if (scr) {
+    return { familyId: 'SCR', familyLabel: 'Screener Presets', variantKey: scr[1]!, variantLabel: `Screener Variant ${Number(scr[1]).toString()}` };
+  }
+  const geo = code.match(/^GEO(?:\.(.+))?$/);
+  if (geo) {
+    const variant = geo[1] ? geo[1] : 'BASE';
+    return { familyId: 'GEO', familyLabel: 'Global Intelligence Map', variantKey: variant, variantLabel: geo[1] ? `Geo Variant ${geo[1]}` : 'Core Map' };
+  }
+  const macroFamily = code.match(/^(MACRO|CPI|NFP|PMI|CBWATCH|GROWTH|GEOPOL|FISCAL|CLIMATE|CBDC)/);
+  if (macroFamily) {
+    return { familyId: 'MACRO', familyLabel: 'Macro Intelligence', variantKey: code, variantLabel: title };
+  }
+
+  const alphaPrefix = code.match(/^([A-Z+\.]+?)(\d+)$/);
+  if (alphaPrefix) {
+    const prefix = alphaPrefix[1]!;
+    const num = alphaPrefix[2]!;
+    return {
+      familyId: prefix,
+      familyLabel: `${prefix} Family`,
+      variantKey: num,
+      variantLabel: `${title} (${Number(num).toString()})`,
+    };
+  }
+  return {
+    familyId: code,
+    familyLabel: title,
+    variantKey: code,
+    variantLabel: title,
+  };
+}
+
 function makeEntry(seed: SeedDef): CatalogMnemonic {
   const code = safeCode(seed.code);
   const fieldSet = seed.fieldSet && seed.fieldSet.length > 0
@@ -268,9 +333,14 @@ function makeEntry(seed: SeedDef): CatalogMnemonic {
     : ['PX_LAST', 'PCT_CHG', 'VOLUME', 'BETA'];
   const relatedCodes = relatedFor(seed.category, code);
   const recipe = seed.recipe ?? CATEGORY_RECIPE[seed.category];
+  const family = deriveFamilyMeta(code, seed.title);
   return {
     code,
     title: seed.title,
+    familyId: family.familyId,
+    familyLabel: family.familyLabel,
+    variantKey: family.variantKey,
+    variantLabel: family.variantLabel,
     category: seed.category,
     assetClass: seed.assetClass,
     functionType: seed.functionType,

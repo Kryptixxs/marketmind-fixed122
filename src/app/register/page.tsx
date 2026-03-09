@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Terminal, User, Mail, Lock, Building, ArrowRight, Loader2, AlertCircle, CheckCircle2, Ticket } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Hardcoded valid institutional invite codes
-const VALID_CODES = ['VANTAGE2026', 'ALPHA_TEST', 'BETA_ACCESS', 'QUANT_PRO', 'VANTAGE_PRO_2026'];
+// Keep legacy codes valid while moving to MarketMind branding
+const VALID_CODES = ['MARKETMIND2026', 'MM_TERMINAL_PRO', 'BLOOM_STYLE_V1', 'ALPHA_TEST', 'BETA_ACCESS', 'QUANT_PRO', 'VANTAGE2026', 'VANTAGE_PRO_2026'];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -73,7 +73,7 @@ export default function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center p-4 relative bg-background">
       <Link href="/" className="absolute top-8 left-8 flex items-center gap-2 text-text-secondary hover:text-accent transition-colors">
         <Terminal size={20} />
-        <span className="font-bold tracking-tight">VANTAGE</span>
+        <span className="font-bold tracking-tight">MARKETMIND</span>
       </Link>
 
       <div className="w-full max-w-md bg-surface border border-border rounded-md shadow-2xl p-8 my-12">

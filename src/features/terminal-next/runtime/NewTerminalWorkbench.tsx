@@ -122,9 +122,18 @@ function SystemStrip() {
   );
 }
 
-function CommandStateStrip() {
+function CommandStateStrip({ commandInputRef }: { commandInputRef: React.RefObject<HTMLInputElement | null> }) {
   const { panels, focusedPanel, dispatchPanel } = useTerminalOS();
   const p = panels[focusedPanel]!;
+
+  React.useEffect(() => {
+    const onFocus = () => {
+      commandInputRef.current?.focus();
+    };
+    window.addEventListener('terminal-shell-focus', onFocus as EventListener);
+    return () => window.removeEventListener('terminal-shell-focus', onFocus as EventListener);
+  }, [commandInputRef]);
+
   return (
     <div className="flex items-center flex-none" style={{
       height: 28,
@@ -138,6 +147,7 @@ function CommandStateStrip() {
       <span style={{ color: DENSITY.textSecondary, fontSize: DENSITY.fontSizeTiny, flexShrink: 0 }}>{p.activeMnemonic}</span>
       <span style={{ color: DENSITY.accentAmber, fontSize: DENSITY.fontSizeTiny, fontWeight: 700, flexShrink: 0 }}>CMD</span>
       <input
+        ref={commandInputRef}
         value={p.commandInput}
         onChange={(e) => dispatchPanel(focusedPanel, { type: 'SET_COMMAND_INPUT', value: e.target.value })}
         onKeyDown={(e) => {
@@ -161,10 +171,38 @@ function CommandStateStrip() {
   );
 }
 
-function TerminalWorkbenchInner() {
+function TerminalWorkbenchInner({ bootCommand }: { bootCommand?: string }) {
   const { settings } = useSettings();
+  const { focusedPanel, dispatchPanel } = useTerminalOS();
+  const commandInputRef = React.useRef<HTMLInputElement>(null);
   const baseFontSize = settings.fontSize === 'lg' ? '13px' : settings.fontSize === 'md' ? '12px' : '11px';
   const bg = settings.contrastMode === 'high' ? DENSITY.panelBg : DENSITY.bgBase;
+  const bootedRef = React.useRef(false);
+
+  React.useEffect(() => {
+    if (bootedRef.current || !bootCommand) return;
+    bootedRef.current = true;
+    dispatchPanel(focusedPanel, { type: 'SET_COMMAND_INPUT', value: bootCommand });
+    window.setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('terminal-execute-go', { detail: { panelIdx: focusedPanel } }));
+    }, 0);
+  }, [bootCommand, dispatchPanel, focusedPanel]);
+
+  React.useEffect(() => {
+    const onShellCommand = (ev: Event) => {
+      const detail = (ev as CustomEvent<{ command?: string }>).detail;
+      const cmd = detail?.command?.trim();
+      if (!cmd) return;
+      dispatchPanel(focusedPanel, { type: 'SET_COMMAND_INPUT', value: cmd });
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('terminal-execute-go', { detail: { panelIdx: focusedPanel } }));
+      }, 0);
+      commandInputRef.current?.focus();
+    };
+    window.addEventListener('terminal-shell-command', onShellCommand as EventListener);
+    return () => window.removeEventListener('terminal-shell-command', onShellCommand as EventListener);
+  }, [dispatchPanel, focusedPanel]);
+
   return (
     <div
       className="flex flex-col w-[100vw] h-[100dvh] overflow-hidden"
@@ -172,7 +210,7 @@ function TerminalWorkbenchInner() {
       onContextMenu={(e) => e.preventDefault()}
     >
       <SystemStrip />
-      <CommandStateStrip />
+      <CommandStateStrip commandInputRef={commandInputRef} />
       <NewPanelGrid />
       <TerminalInspector />
       <TerminalContextMenu />
@@ -180,12 +218,12 @@ function TerminalWorkbenchInner() {
   );
 }
 
-export function NewTerminalWorkbench() {
+export function NewTerminalWorkbench({ bootCommand }: { bootCommand?: string } = {}) {
   return (
     <TerminalProvider>
       <TerminalOSProvider>
         <DrillProvider>
-          <TerminalWorkbenchInner />
+          <TerminalWorkbenchInner bootCommand={bootCommand} />
         </DrillProvider>
       </TerminalOSProvider>
     </TerminalProvider>

@@ -67,7 +67,7 @@ export default function LoginPage() {
         </div>
         <div className="flex items-center gap-6 text-[10px] font-mono text-text-tertiary">
           <span>{systemTime} UTC</span>
-          <span className="text-accent font-bold">VANTAGE_OS v4.0.2</span>
+          <span className="text-accent font-bold">MARKETMIND_TERMINAL v1</span>
         </div>
       </div>
 
@@ -108,7 +108,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-background border border-border rounded-sm pl-12 pr-4 py-4 text-sm text-text-primary focus:border-accent outline-none transition-all font-mono"
-                    placeholder="trader@vantage.com"
+                    placeholder="trader@marketmind.ai"
                   />
                 </div>
               </div>
@@ -187,7 +187,7 @@ export default function LoginPage() {
 
       {/* Bottom Footer */}
       <footer className="h-12 border-t border-border bg-surface flex items-center justify-center px-8 shrink-0">
-        <p className="text-[10px] text-text-tertiary font-bold uppercase tracking-[0.4em]">© 2026 Vantage Terminal // All Rights Reserved</p>
+        <p className="text-[10px] text-text-tertiary font-bold uppercase tracking-[0.4em]">© 2026 MarketMind Terminal // All Rights Reserved</p>
       </footer>
     </div>
   );

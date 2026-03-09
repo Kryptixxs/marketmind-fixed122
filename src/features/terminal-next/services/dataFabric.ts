@@ -57,6 +57,19 @@ const SECTORS = ['Technology', 'Financials', 'Healthcare', 'Industrials', 'Energ
 const INDUSTRIES = ['Software', 'Banks', 'Biotech', 'Aerospace', 'Oil&Gas', 'Retail', 'Chemicals', 'Power', 'REIT'];
 const COUNTRIES = ['US', 'GB', 'JP', 'DE', 'FR', 'CN', 'IN', 'AU', 'CA', 'BR'];
 const EXCH = ['NASDAQ', 'NYSE', 'LSE', 'TSE', 'HKEX', 'EUREX', 'CME'];
+const COMPANY_WORD_A = ['Atlas', 'Summit', 'Northstar', 'Pioneer', 'Apex', 'Vertex', 'Evergreen', 'Global', 'Harbor', 'Sterling', 'Union', 'Meridian', 'Blue Ridge', 'Crescent', 'Horizon'];
+const COMPANY_WORD_B = ['Technologies', 'Capital', 'Industries', 'Energy', 'Logistics', 'Biopharma', 'Retail Group', 'Holdings', 'Semiconductor', 'Networks', 'Payments', 'Aerospace', 'Utilities', 'Materials', 'Systems'];
+const INDEX_NAMES = ['S&P 500 Index', 'NASDAQ 100 Index', 'Dow Jones Industrial Average', 'Euro Stoxx 50 Index', 'Nikkei 225 Index', 'FTSE 100 Index', 'DAX Index', 'CAC 40 Index'];
+const ETF_NAMES = ['Global Quality ETF', 'US Large Cap ETF', 'World Tech Leaders ETF', 'Dividend Income ETF', 'Value Leaders ETF', 'Cybersecurity ETF', 'Emerging Markets ETF', 'Healthcare Innovation ETF'];
+const FX_PAIRS = ['EURUSD Curncy', 'GBPUSD Curncy', 'USDJPY Curncy', 'USDCHF Curncy', 'AUDUSD Curncy', 'USDCAD Curncy', 'NZDUSD Curncy', 'USDCNY Curncy'];
+const FUTURE_NAMES = ['CL1 Comdty', 'GC1 Comdty', 'NG1 Comdty', 'ES1 Index', 'NQ1 Index', 'ZN1 Comdty', 'BZ1 Comdty', 'HG1 Comdty'];
+const RATE_NAMES = ['USGG2YR Index', 'USGG5YR Index', 'USGG10YR Index', 'USGG30YR Index', 'GDBR10 Index', 'GUKG10 Index', 'GJGB10 Index', 'GFRN10 Index'];
+
+function companyNameFor(i: number): string {
+  const a = COMPANY_WORD_A[i % COMPANY_WORD_A.length]!;
+  const b = COMPANY_WORD_B[(i * 5 + 3) % COMPANY_WORD_B.length]!;
+  return `${a} ${b}`;
+}
 
 function h(s: string) { return Array.from(s).reduce((a, c) => a + c.charCodeAt(0), 0); }
 
@@ -69,10 +82,33 @@ export function getInstrumentByIndex(i: number): FabricInstrument {
   const seed = h(ticker);
   const cls = (['EQUITY', 'ETF', 'INDEX', 'FX', 'RATE', 'FUTURE', 'OPTION'] as const)[seed % 7]!;
   const country = COUNTRIES[seed % COUNTRIES.length]!;
+  const companyName = companyNameFor(i);
+  const optionBase = `OPT${String(100000 + (i % 900000)).slice(0, 6)}`;
+  let sym = `${ticker} ${country} Equity`;
+  let name = companyName;
+  if (cls === 'ETF') {
+    sym = `ETF${String(i).padStart(5, '0')} ${country} Equity`;
+    name = ETF_NAMES[seed % ETF_NAMES.length]!;
+  } else if (cls === 'INDEX') {
+    sym = `IDX${String(i).padStart(5, '0')} ${country} Index`;
+    name = INDEX_NAMES[seed % INDEX_NAMES.length]!;
+  } else if (cls === 'FX') {
+    sym = FX_PAIRS[seed % FX_PAIRS.length]!;
+    name = `${sym.slice(0, 3)}/${sym.slice(3, 6)} Spot`;
+  } else if (cls === 'RATE') {
+    sym = RATE_NAMES[seed % RATE_NAMES.length]!;
+    name = `${country} Government Curve Point`;
+  } else if (cls === 'FUTURE') {
+    sym = FUTURE_NAMES[seed % FUTURE_NAMES.length]!;
+    name = `${sym.split(' ')[0]} Front Contract`;
+  } else if (cls === 'OPTION') {
+    sym = `${optionBase} ${country} Equity`;
+    name = `${companyName} Call Option`;
+  }
   return {
     id: `INS-${i}`,
-    sym: cls === 'FX' ? `${country}USD Curncy` : `${ticker} ${country} ${cls === 'INDEX' ? 'Index' : 'Equity'}`,
-    name: `MarketMind ${ticker}`,
+    sym,
+    name,
     assetClass: cls,
     sector: SECTORS[seed % SECTORS.length]!,
     industry: INDUSTRIES[seed % INDUSTRIES.length]!,
@@ -214,7 +250,10 @@ export function relatedEntitiesFor(security: string, count = 24): EntityRef[] {
   const seed = h(security);
   return Array.from({ length: count }, (_, i) => {
     const v = (seed + i * 19) % 7;
-    if (v === 0) return makeSecurity(`MM${String(1000 + i).padStart(6, '0')} US Equity`);
+    if (v === 0) {
+      const peer = getInstrumentByIndex((seed + i * 37) % estimateUniverseSize());
+      return makeSecurity(peer.sym, peer.name);
+    }
     if (v === 1) return makeSector(SECTORS[(seed + i) % SECTORS.length]!);
     if (v === 2) return makeHolder(`Holder ${i + 1}`, 1 + ((seed + i) % 10));
     if (v === 3) return makeCountry(COUNTRIES[(seed + i) % COUNTRIES.length]!, COUNTRIES[(seed + i) % COUNTRIES.length]!);

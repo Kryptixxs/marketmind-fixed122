@@ -7,6 +7,7 @@ import { DENSITY } from '../constants/layoutDensity';
 import { useTerminalOS } from './TerminalOSContext';
 import type { MarketSector } from './panelState';
 import { MNEMONIC_DEFS } from './MnemonicRegistry';
+import { listCatalogMnemonics } from '../mnemonics/catalog';
 import { saveWorkspace, loadWorkspace } from './workspaceManager';
 import { addCommandHistory, loadCommandHistory, saveCommandHistory } from './commandHistoryStore';
 import { appendAuditEvent } from './commandAuditStore';
@@ -57,7 +58,7 @@ const SECURITY_UNIVERSE = [
   { sym: 'NG1 Comdty', name: 'Natural Gas Futures', sector: 'COMDTY' },
 ];
 
-const MNEMONIC_LIST = Object.values(MNEMONIC_DEFS).map((m) => ({
+const MNEMONIC_LIST = listCatalogMnemonics().map((m) => ({
   code: m.code,
   title: m.title,
 }));
@@ -92,12 +93,13 @@ function levenshtein(a: string, b: string): number {
 function closestMnemonic(token: string): string | undefined {
   const t = token.toUpperCase();
   if (KNOWN_MNEMONICS.has(t)) return t;
+  if (t.length < 3) return undefined;
   const prefix = MNEMONIC_LIST.find((m) => m.code.startsWith(t));
   if (prefix) return prefix.code;
   let best: { code: string; dist: number } | null = null;
   for (const m of MNEMONIC_LIST) {
     const d = levenshtein(t, m.code);
-    if (d <= 2 && (!best || d < best.dist)) best = { code: m.code, dist: d };
+    if (d <= 2 && m.code[0] === t[0] && (!best || d < best.dist)) best = { code: m.code, dist: d };
   }
   return best?.code;
 }
@@ -143,13 +145,22 @@ export function parseGoCommand(input: string, _currentSecurity: string, _current
   let mnemonic: string | undefined;
   let sector: MarketSector | undefined;
   const secTokens: string[] = [];
-
-  for (const t of filtered) {
+  const mnemonicCandidates: Array<{ idx: number; code: string }> = [];
+  filtered.forEach((t, idx) => {
     const maybeMnemonic = closestMnemonic(t);
-    if (!mnemonic && maybeMnemonic) { mnemonic = maybeMnemonic; continue; }
-    if (SECTOR_KEYS[t] && !sector) { sector = SECTOR_KEYS[t]; continue; }
-    secTokens.push(t);
+    if (maybeMnemonic) mnemonicCandidates.push({ idx, code: maybeMnemonic });
+  });
+  if (mnemonicCandidates.length > 0) {
+    const first = mnemonicCandidates[0]!;
+    const last = mnemonicCandidates[mnemonicCandidates.length - 1]!;
+    const preferred = first.idx === 0 && filtered.length >= 2 ? first : last;
+    mnemonic = preferred.code;
   }
+  filtered.forEach((t, idx) => {
+    if (mnemonic && mnemonicCandidates.some((m) => m.idx === idx && m.code === mnemonic)) return;
+    if (SECTOR_KEYS[t] && !sector) { sector = SECTOR_KEYS[t]; return; }
+    secTokens.push(t);
+  });
 
   let security: string | undefined;
   if (secTokens.length > 0) {
@@ -436,7 +447,7 @@ export function PanelCommandLine({ panelIdx, isFocused }: { panelIdx: number; is
     navigatePanel(panelIdx, mn, sec, sector);
     appendAuditEvent({ panelIdx, type: 'GO', actor: 'USER', detail: `${cmd || p.commandInput} -> ${mn} ${sec}`.trim(), mnemonic: mn, security: sec });
     if (parsed.timeframe) dispatchPanel(panelIdx, { type: 'SET_TIMEFRAME', tf: parsed.timeframe });
-  }, [p.commandInput, p.activeSecurity, p.activeMnemonic, p.marketSector, p.timeframe, panelIdx, panels, dispatchPanel, navigatePanel, addPanel, setFocusedPanel, setDockLayout]);
+  }, [p.commandInput, p.activeSecurity, p.activeMnemonic, p.marketSector, p.timeframe, panelIdx, panels, dispatchPanel, navigatePanel, addPanel, setFocusedPanel]);
 
   useEffect(() => {
     const onExec = (e: Event) => {
