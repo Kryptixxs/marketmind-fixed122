@@ -4,6 +4,7 @@ import { SettingsProvider } from '@/services/context/SettingsContext';
 import { LayoutWrapper } from '@/features/Terminal/components/LayoutWrapper';
 import { AuthProvider } from '@/services/context/AuthContext';
 import { ClientProviders } from './_components/ClientProviders';
+import { Analytics } from '@vercel/analytics/next';
 
 export const metadata: Metadata = {
   title: "MarketMind Terminal",
@@ -40,6 +41,7 @@ export default function RootLayout({
             </ClientProviders>
           </SettingsProvider>
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
